@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Loader2, Search, Edit, Trash2, BookOpen, Filter } from 'lucide-react';
+import { Plus, Loader2, Search, Edit, Trash2, BookOpen, Filter, Users, CheckSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -51,6 +51,8 @@ export const SubjectManagement = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [formData, setFormData] = useState(initialFormState);
+  const [levelsWithStudents, setLevelsWithStudents] = useState<string[]>([]);
+  const [isLoadingLevels, setIsLoadingLevels] = useState(false);
 
   const fetchSubjects = async () => {
     setIsLoading(true);
@@ -67,7 +69,42 @@ export const SubjectManagement = () => {
 
   useEffect(() => {
     fetchSubjects();
+    fetchLevelsWithStudents();
   }, []);
+
+  const fetchLevelsWithStudents = async () => {
+    setIsLoadingLevels(true);
+    const { data } = await supabase
+      .from('students')
+      .select('level');
+    
+    if (data) {
+      const levels = [...new Set(data.map((s: { level: string }) => s.level))];
+      setLevelsWithStudents(levels);
+    }
+    setIsLoadingLevels(false);
+  };
+
+  const handleAutoSelectLevelsWithStudents = () => {
+    setFormData(prev => ({
+      ...prev,
+      grade_levels: [...new Set([...prev.grade_levels, ...levelsWithStudents])],
+    }));
+  };
+
+  const handleSelectAllLevels = () => {
+    setFormData(prev => ({
+      ...prev,
+      grade_levels: [...GRADE_LEVELS],
+    }));
+  };
+
+  const handleClearLevels = () => {
+    setFormData(prev => ({
+      ...prev,
+      grade_levels: [],
+    }));
+  };
 
   const handleOpenModal = (subject?: Subject) => {
     if (subject) {
@@ -355,7 +392,41 @@ export const SubjectManagement = () => {
               />
             </div>
             <div>
-              <Label className="mb-3 block">Grade Levels *</Label>
+              <div className="flex items-center justify-between mb-3">
+                <Label>Grade Levels *</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAutoSelectLevelsWithStudents}
+                    disabled={isLoadingLevels}
+                    className="text-xs h-7"
+                  >
+                    <Users className="h-3 w-3 mr-1" />
+                    Levels with Students ({levelsWithStudents.length})
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSelectAllLevels}
+                    className="text-xs h-7"
+                  >
+                    <CheckSquare className="h-3 w-3 mr-1" />
+                    All
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClearLevels}
+                    className="text-xs h-7"
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </div>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {GRADE_LEVELS.map(level => (
                   <div key={level} className="flex items-center space-x-2">
@@ -364,7 +435,12 @@ export const SubjectManagement = () => {
                       checked={formData.grade_levels.includes(level)}
                       onCheckedChange={() => handleGradeLevelToggle(level)}
                     />
-                    <label htmlFor={level} className="text-sm cursor-pointer">{level}</label>
+                    <label htmlFor={level} className="text-sm cursor-pointer flex items-center gap-1">
+                      {level}
+                      {levelsWithStudents.includes(level) && (
+                        <Users className="h-3 w-3 text-muted-foreground" />
+                      )}
+                    </label>
                   </div>
                 ))}
               </div>
