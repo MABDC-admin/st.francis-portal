@@ -5,7 +5,6 @@ import { Users, GraduationCap, TrendingUp, UserPlus } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { Charts } from '@/components/dashboard/Charts';
-import { GlobalStudentSearch } from '@/components/dashboard/GlobalStudentSearch';
 import { StudentTable } from '@/components/students/StudentTable';
 import { StudentProfileModal } from '@/components/students/StudentProfileModal';
 import { StudentFormModal } from '@/components/students/StudentFormModal';
@@ -183,17 +182,6 @@ const Index = () => {
 
   return (
     <DashboardLayout activeTab={activeTab} onTabChange={handleTabChange}>
-      {/* Global Student Search - Admin/Registrar only */}
-      {hasAdminAccess && activeTab !== 'portal' && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-6"
-        >
-          <GlobalStudentSearch />
-        </motion.div>
-      )}
-
       {/* Role-specific Portal Home */}
       {activeTab === 'portal' && renderPortal()}
 

@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Users, FileText, Upload, FolderOpen, UserPlus, Library, GraduationCap, BookOpen } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { GlobalStudentSearch } from '@/components/dashboard/GlobalStudentSearch';
 
 interface RegistrarPortalProps {
   onNavigate: (tab: string) => void;
@@ -68,9 +69,13 @@ export const RegistrarPortal = ({ onNavigate, stats }: RegistrarPortalProps) => 
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"
       >
-        <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Registrar Portal</h1>
-        <p className="text-muted-foreground mt-1">Enrollment and student record management</p>
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Registrar Portal</h1>
+          <p className="text-muted-foreground mt-1">Enrollment and student record management</p>
+        </div>
+        <GlobalStudentSearch />
       </motion.div>
 
       {/* Quick Stats */}
