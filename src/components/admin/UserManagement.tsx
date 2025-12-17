@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Users, UserPlus, Key, Loader2, Eye, EyeOff, Copy, Check, RefreshCcw, Trash2, AlertTriangle } from 'lucide-react';
+import { Users, UserPlus, Key, Loader2, Eye, EyeOff, Copy, Check, RefreshCcw, Trash2, AlertTriangle, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -19,6 +20,8 @@ interface UserCredential {
   created_at: string;
   password_changed: boolean;
   student_id: string | null;
+  student_name?: string;
+  student_level?: string;
 }
 
 export const UserManagement = () => {
@@ -29,25 +32,63 @@ export const UserManagement = () => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [confirmText, setConfirmText] = useState('');
+  const [levelFilter, setLevelFilter] = useState<string>('all');
+  const [roleFilter, setRoleFilter] = useState<string>('all');
   
   // Form states for creating accounts
   const [adminForm, setAdminForm] = useState({ email: 'denskie@edutrack.local', password: 'Denskie123', fullName: 'Admin User' });
   const [registrarForm, setRegistrarForm] = useState({ email: 'registrar@edutrack.local', password: 'registrar123', fullName: 'Registrar User' });
 
   const fetchCredentials = async () => {
+    // Fetch credentials with student info
     const { data, error } = await supabase
       .from('user_credentials')
-      .select('*')
+      .select(`
+        *,
+        students:student_id (
+          student_name,
+          level
+        )
+      `)
       .order('created_at', { ascending: false });
     
     if (!error && data) {
-      setCredentials(data as UserCredential[]);
+      const mappedData = data.map((cred: any) => ({
+        ...cred,
+        student_name: cred.students?.student_name || null,
+        student_level: cred.students?.level || null,
+      }));
+      setCredentials(mappedData as UserCredential[]);
     }
   };
 
   useEffect(() => {
     fetchCredentials();
   }, []);
+
+  // Get unique levels for filter
+  const uniqueLevels = useMemo(() => {
+    const levels = new Set<string>();
+    credentials.forEach(cred => {
+      if (cred.student_level) {
+        levels.add(cred.student_level);
+      }
+    });
+    return Array.from(levels).sort((a, b) => {
+      // Custom sort for levels
+      const order = ['Kinder 1', 'Kinder 2', 'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5', 'Level 6', 'Level 7', 'Level 8', 'Level 9', 'Level 10', 'Level 11', 'Level 12'];
+      return order.indexOf(a) - order.indexOf(b);
+    });
+  }, [credentials]);
+
+  // Filtered credentials
+  const filteredCredentials = useMemo(() => {
+    return credentials.filter(cred => {
+      const matchesLevel = levelFilter === 'all' || cred.student_level === levelFilter;
+      const matchesRole = roleFilter === 'all' || cred.role === roleFilter;
+      return matchesLevel && matchesRole;
+    });
+  }, [credentials, levelFilter, roleFilter]);
 
   const createUser = async (action: string, data: any) => {
     setIsLoading(true);
@@ -243,8 +284,7 @@ export const UserManagement = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              This will create login accounts for all students in the database who don't have accounts yet. 
-              Random passwords will be generated.
+              This will create login accounts for all students. Username will be their LRN.
             </p>
             <div className="flex gap-2">
               <Button onClick={handleBulkCreateStudents} disabled={isLoading} className="flex-1" variant="secondary">
@@ -262,7 +302,7 @@ export const UserManagement = () => {
       {/* Credentials Table */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Key className="h-5 w-5" />
@@ -270,19 +310,52 @@ export const UserManagement = () => {
               </CardTitle>
               <CardDescription>View and manage temporary passwords</CardDescription>
             </div>
-            <Button variant="outline" size="sm" onClick={fetchCredentials}>
-              <RefreshCcw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <Select value={roleFilter} onValueChange={setRoleFilter}>
+                  <SelectTrigger className="w-[130px]">
+                    <SelectValue placeholder="Role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Roles</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="registrar">Registrar</SelectItem>
+                    <SelectItem value="teacher">Teacher</SelectItem>
+                    <SelectItem value="student">Student</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={levelFilter} onValueChange={setLevelFilter}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Grade Level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Levels</SelectItem>
+                    {uniqueLevels.map(level => (
+                      <SelectItem key={level} value={level}>{level}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button variant="outline" size="sm" onClick={fetchCredentials}>
+                <RefreshCcw className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
-          {credentials.length > 0 ? (
+          {filteredCredentials.length > 0 ? (
             <div className="overflow-x-auto">
+              <div className="mb-2 text-sm text-muted-foreground">
+                Showing {filteredCredentials.length} of {credentials.length} credentials
+              </div>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Email</TableHead>
+                    <TableHead>Username (LRN)</TableHead>
+                    <TableHead>Student Name</TableHead>
+                    <TableHead>Level</TableHead>
                     <TableHead>Password</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Created</TableHead>
@@ -290,9 +363,15 @@ export const UserManagement = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {credentials.map((cred) => (
+                  {filteredCredentials.map((cred) => (
                     <TableRow key={cred.id}>
-                      <TableCell className="font-medium">{cred.email}</TableCell>
+                      <TableCell className="font-mono font-medium">{cred.email}</TableCell>
+                      <TableCell className="text-sm">{cred.student_name || '-'}</TableCell>
+                      <TableCell>
+                        {cred.student_level ? (
+                          <Badge variant="outline">{cred.student_level}</Badge>
+                        ) : '-'}
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-sm">
@@ -320,7 +399,7 @@ export const UserManagement = () => {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => copyToClipboard(`Email: ${cred.email}\nPassword: ${cred.temp_password}`, cred.id)}
+                          onClick={() => copyToClipboard(`Username: ${cred.email}\nPassword: ${cred.temp_password}`, cred.id)}
                         >
                           {copiedId === cred.id ? (
                             <Check className="h-4 w-4 text-green-500" />
@@ -337,8 +416,12 @@ export const UserManagement = () => {
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <Key className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No credentials generated yet</p>
-              <p className="text-sm">Create user accounts to see their credentials here</p>
+              <p>No credentials found</p>
+              <p className="text-sm">
+                {credentials.length > 0 
+                  ? 'Try adjusting your filters' 
+                  : 'Create user accounts to see their credentials here'}
+              </p>
             </div>
           )}
         </CardContent>
