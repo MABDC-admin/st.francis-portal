@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Loader2, Users, BookOpen, GraduationCap, RefreshCcw } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Loader2, Users, BookOpen, GraduationCap, RefreshCcw, ChevronDown, ChevronRight, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -28,6 +29,13 @@ interface EnrollmentStat {
   subject_count: number;
 }
 
+interface StudentEnrollment {
+  id: string;
+  student_name: string;
+  lrn: string;
+  subjects: { id: string; code: string; name: string; status: string }[];
+}
+
 export const EnrollmentManagement = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isEnrolling, setIsEnrolling] = useState(false);
@@ -35,7 +43,9 @@ export const EnrollmentManagement = () => {
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [enrollmentStats, setEnrollmentStats] = useState<EnrollmentStat[]>([]);
-
+  const [expandedLevels, setExpandedLevels] = useState<Set<string>>(new Set());
+  const [detailedEnrollments, setDetailedEnrollments] = useState<Record<string, StudentEnrollment[]>>({});
+  const [loadingLevel, setLoadingLevel] = useState<string | null>(null);
   const GRADE_LEVELS = [
     'Kinder 1', 'Kinder 2',
     'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5', 'Level 6',
@@ -87,6 +97,81 @@ export const EnrollmentManagement = () => {
     setEnrollmentStats(stats);
   };
 
+  const fetchDetailedEnrollments = async (gradeLevel: string) => {
+    if (!selectedYear) return;
+    
+    setLoadingLevel(gradeLevel);
+    
+    try {
+      // Get students for this grade level
+      const { data: students } = await supabase
+        .from('students')
+        .select('id, student_name, lrn')
+        .eq('level', gradeLevel)
+        .order('student_name');
+
+      if (!students) {
+        setDetailedEnrollments(prev => ({ ...prev, [gradeLevel]: [] }));
+        return;
+      }
+
+      const enrollments: StudentEnrollment[] = [];
+
+      for (const student of students) {
+        // Get enrolled subjects for this student
+        const { data: enrolledSubjects } = await supabase
+          .from('student_subjects')
+          .select(`
+            status,
+            subjects:subject_id (
+              id,
+              code,
+              name
+            )
+          `)
+          .eq('student_id', student.id)
+          .eq('academic_year_id', selectedYear);
+
+        const subjectsList = (enrolledSubjects || [])
+          .filter((e: any) => e.subjects)
+          .map((e: any) => ({
+            id: e.subjects.id,
+            code: e.subjects.code,
+            name: e.subjects.name,
+            status: e.status || 'enrolled',
+          }));
+
+        enrollments.push({
+          id: student.id,
+          student_name: student.student_name,
+          lrn: student.lrn,
+          subjects: subjectsList,
+        });
+      }
+
+      setDetailedEnrollments(prev => ({ ...prev, [gradeLevel]: enrollments }));
+    } catch (error) {
+      console.error('Error fetching detailed enrollments:', error);
+    } finally {
+      setLoadingLevel(null);
+    }
+  };
+
+  const toggleLevel = async (gradeLevel: string) => {
+    const newExpanded = new Set(expandedLevels);
+    
+    if (newExpanded.has(gradeLevel)) {
+      newExpanded.delete(gradeLevel);
+    } else {
+      newExpanded.add(gradeLevel);
+      // Fetch detailed data if not already loaded
+      if (!detailedEnrollments[gradeLevel]) {
+        await fetchDetailedEnrollments(gradeLevel);
+      }
+    }
+    
+    setExpandedLevels(newExpanded);
+  };
   useEffect(() => {
     fetchData();
   }, []);
@@ -233,15 +318,94 @@ export const EnrollmentManagement = () => {
                 </TableHeader>
                 <TableBody>
                   {enrollmentStats.map((stat) => (
-                    <TableRow key={stat.grade_level}>
-                      <TableCell className="font-medium">{stat.grade_level}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{stat.student_count} students</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{stat.subject_count} subjects</Badge>
-                      </TableCell>
-                    </TableRow>
+                    <Collapsible key={stat.grade_level} open={expandedLevels.has(stat.grade_level)}>
+                      <TableRow 
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => toggleLevel(stat.grade_level)}
+                      >
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {loadingLevel === stat.grade_level ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : expandedLevels.has(stat.grade_level) ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                            {stat.grade_level}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{stat.student_count} students</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">{stat.subject_count} subjects</Badge>
+                        </TableCell>
+                      </TableRow>
+                      
+                      <CollapsibleContent asChild>
+                        <tr>
+                          <td colSpan={3} className="p-0">
+                            <AnimatePresence>
+                              {expandedLevels.has(stat.grade_level) && (
+                                <motion.div
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: 'auto' }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  className="bg-muted/30 border-t border-b"
+                                >
+                                  <div className="p-4">
+                                    {detailedEnrollments[stat.grade_level]?.length > 0 ? (
+                                      <div className="space-y-3">
+                                        {detailedEnrollments[stat.grade_level].map((student) => (
+                                          <div 
+                                            key={student.id} 
+                                            className="bg-card rounded-lg p-3 border shadow-sm"
+                                          >
+                                            <div className="flex items-center gap-2 mb-2">
+                                              <User className="h-4 w-4 text-muted-foreground" />
+                                              <span className="font-medium">{student.student_name}</span>
+                                              <Badge variant="outline" className="text-xs font-mono">
+                                                {student.lrn}
+                                              </Badge>
+                                            </div>
+                                            {student.subjects.length > 0 ? (
+                                              <div className="flex flex-wrap gap-1.5 ml-6">
+                                                {student.subjects.map((subject) => (
+                                                  <Badge 
+                                                    key={subject.id} 
+                                                    variant={subject.status === 'enrolled' ? 'default' : 'secondary'}
+                                                    className="text-xs"
+                                                  >
+                                                    {subject.code}
+                                                  </Badge>
+                                                ))}
+                                              </div>
+                                            ) : (
+                                              <p className="text-sm text-muted-foreground ml-6">
+                                                No subjects enrolled
+                                              </p>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : loadingLevel === stat.grade_level ? (
+                                      <div className="flex items-center justify-center py-4">
+                                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                                      </div>
+                                    ) : (
+                                      <p className="text-sm text-muted-foreground text-center py-4">
+                                        No students in this grade level
+                                      </p>
+                                    )}
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </td>
+                        </tr>
+                      </CollapsibleContent>
+                    </Collapsible>
                   ))}
                 </TableBody>
               </Table>
