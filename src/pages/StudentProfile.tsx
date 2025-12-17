@@ -510,15 +510,22 @@ const StudentProfile = () => {
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         {/* Student Header Card */}
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-6 shadow-lg"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-6 shadow-lg overflow-hidden"
           style={theme.accentColor ? { borderTopColor: theme.accentColor, borderTopWidth: '3px' } : {}}
         >
           <div className="flex flex-col lg:flex-row lg:items-start gap-6">
             {/* Avatar and Info */}
             <div className="flex items-center gap-4">
-              <div className="relative group">
+              {/* Avatar with brick animation */}
+              <motion.div 
+                className="relative group"
+                initial={{ opacity: 0, x: -30, scale: 0.8 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.1, type: "spring", stiffness: 200 }}
+              >
                 <input
                   ref={photoInputRef}
                   type="file"
@@ -549,17 +556,43 @@ const StudentProfile = () => {
                     <Camera className="h-5 w-5 text-white" />
                   )}
                 </button>
-              </div>
+              </motion.div>
               
-              <div>
-                <div className="flex items-center gap-2">
+              <div className="space-y-1">
+                {/* Name with brick animation */}
+                <motion.div 
+                  className="flex items-center gap-2"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.4, delay: 0.2 }}
+                >
                   <h1 className="text-2xl font-bold text-foreground">{student.student_name}</h1>
-                  <Badge className="bg-green-100 text-green-700">Active</Badge>
-                </div>
-                <p className="text-muted-foreground text-sm mt-1">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3, delay: 0.4, type: "spring" }}
+                  >
+                    <Badge className="bg-green-100 text-green-700">Active</Badge>
+                  </motion.div>
+                </motion.div>
+                
+                {/* LRN and Level - brick animation */}
+                <motion.p 
+                  className="text-muted-foreground text-sm"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.4, delay: 0.3 }}
+                >
                   {student.lrn} • {student.level} • {student.school || 'MABDC'}
-                </p>
-                <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                </motion.p>
+                
+                {/* Contact info - brick animation */}
+                <motion.div 
+                  className="flex items-center gap-4 mt-2 text-sm text-muted-foreground"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.4, delay: 0.4 }}
+                >
                   {student.mother_contact && (
                     <span className="flex items-center gap-1">
                       <Phone className="h-3 w-3" /> {student.mother_contact}
@@ -568,22 +601,37 @@ const StudentProfile = () => {
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" /> Enrolled: {formatDate(student.created_at)}
                   </span>
-                </div>
+                </motion.div>
               </div>
             </div>
 
-            {/* Stats */}
-            <div className="lg:ml-auto text-right">
-              <p 
+            {/* Stats - brick animation from right */}
+            <motion.div 
+              className="lg:ml-auto text-right"
+              initial={{ opacity: 0, x: 30, scale: 0.9 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.3, type: "spring", stiffness: 150 }}
+            >
+              <motion.p 
                 className="text-4xl font-bold"
                 style={{ color: theme.accentColor || 'hsl(var(--foreground))' }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.5 }}
               >
                 {grades.length > 0 && grades[0].final_grade 
                   ? grades[0].final_grade.toFixed(2)
                   : '--'}
-              </p>
-              <p className="text-sm text-muted-foreground">Current Average</p>
-            </div>
+              </motion.p>
+              <motion.p 
+                className="text-sm text-muted-foreground"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3, delay: 0.6 }}
+              >
+                Current Average
+              </motion.p>
+            </motion.div>
           </div>
         </motion.div>
 
