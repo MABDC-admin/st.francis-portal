@@ -6,6 +6,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface ColorThemeSelectorProps {
   currentTheme: string;
@@ -13,13 +14,20 @@ interface ColorThemeSelectorProps {
 }
 
 const themeColors = [
-  { id: 'default', name: 'Default', color: 'bg-card', ring: 'ring-border' },
-  { id: 'emerald', name: 'Emerald', color: 'bg-emerald-500', ring: 'ring-emerald-400' },
-  { id: 'blue', name: 'Blue', color: 'bg-blue-500', ring: 'ring-blue-400' },
-  { id: 'purple', name: 'Purple', color: 'bg-purple-500', ring: 'ring-purple-400' },
-  { id: 'rose', name: 'Rose', color: 'bg-rose-500', ring: 'ring-rose-400' },
-  { id: 'amber', name: 'Amber', color: 'bg-amber-500', ring: 'ring-amber-400' },
-  { id: 'slate', name: 'Slate', color: 'bg-slate-600', ring: 'ring-slate-400' },
+  { id: 'default', name: 'Default', gradient: 'bg-card border border-border' },
+  { id: 'sunset', name: 'Sunset', gradient: 'bg-gradient-to-r from-orange-500 to-amber-400' },
+  { id: 'ocean', name: 'Ocean', gradient: 'bg-gradient-to-r from-emerald-500 to-teal-400' },
+  { id: 'berry', name: 'Berry', gradient: 'bg-gradient-to-r from-pink-600 to-rose-500' },
+  { id: 'sky', name: 'Sky', gradient: 'bg-gradient-to-r from-blue-600 to-sky-500' },
+  { id: 'grape', name: 'Grape', gradient: 'bg-gradient-to-r from-purple-700 to-violet-600' },
+  { id: 'blush', name: 'Blush', gradient: 'bg-gradient-to-r from-pink-400 to-fuchsia-400' },
+  { id: 'cherry', name: 'Cherry', gradient: 'bg-gradient-to-r from-red-600 to-red-500' },
+  { id: 'slate', name: 'Slate', gradient: 'bg-gradient-to-r from-gray-500 to-slate-400' },
+  { id: 'navy', name: 'Navy', gradient: 'bg-gradient-to-r from-blue-900 to-indigo-800' },
+  { id: 'royal', name: 'Royal', gradient: 'bg-gradient-to-r from-blue-700 to-blue-500' },
+  { id: 'peach', name: 'Peach', gradient: 'bg-gradient-to-r from-orange-400 to-amber-300' },
+  { id: 'silver', name: 'Silver', gradient: 'bg-gradient-to-r from-gray-300 to-slate-200' },
+  { id: 'emerald', name: 'Emerald', gradient: 'bg-gradient-to-r from-emerald-900 to-emerald-700' },
 ];
 
 export const ColorThemeSelector = ({ currentTheme, onSelectTheme }: ColorThemeSelectorProps) => {
@@ -35,30 +43,37 @@ export const ColorThemeSelector = ({ currentTheme, onSelectTheme }: ColorThemeSe
           <Palette className="h-4 w-4" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-3" align="start">
+      <PopoverContent className="w-72 p-3" align="start">
         <div className="space-y-3">
           <div className="flex items-center gap-2 pb-2 border-b border-border">
             <Palette className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium">Color Theme</span>
           </div>
-          <div className="grid grid-cols-4 gap-2">
-            {themeColors.map((theme) => (
-              <button
-                key={theme.id}
-                onClick={() => onSelectTheme(theme.id)}
-                className={cn(
-                  "relative h-10 w-full rounded-lg transition-all duration-200 ring-2 ring-offset-2 ring-offset-background",
-                  theme.color,
-                  currentTheme === theme.id ? theme.ring : "ring-transparent hover:ring-muted"
-                )}
-                title={theme.name}
-              >
-                {currentTheme === theme.id && (
-                  <Check className="absolute inset-0 m-auto h-4 w-4 text-white drop-shadow-md" />
-                )}
-              </button>
-            ))}
-          </div>
+          <ScrollArea className="h-[280px] pr-2">
+            <div className="grid grid-cols-3 gap-2">
+              {themeColors.map((theme) => (
+                <button
+                  key={theme.id}
+                  onClick={() => onSelectTheme(theme.id)}
+                  className={cn(
+                    "relative h-12 w-full rounded-lg transition-all duration-200 ring-2 ring-offset-2 ring-offset-background",
+                    theme.gradient,
+                    currentTheme === theme.id ? "ring-primary" : "ring-transparent hover:ring-muted"
+                  )}
+                  title={theme.name}
+                >
+                  {currentTheme === theme.id && (
+                    <Check className={cn(
+                      "absolute inset-0 m-auto h-5 w-5 drop-shadow-md",
+                      theme.id === 'default' || theme.id === 'silver' || theme.id === 'peach' 
+                        ? "text-foreground" 
+                        : "text-white"
+                    )} />
+                  )}
+                </button>
+              ))}
+            </div>
+          </ScrollArea>
           <p className="text-xs text-muted-foreground text-center pt-1">
             Customize sidebar & page colors
           </p>
