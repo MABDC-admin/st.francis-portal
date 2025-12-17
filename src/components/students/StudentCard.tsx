@@ -33,6 +33,11 @@ export const StudentCard = ({ student, onView, onEdit, onDelete, index }: Studen
       <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/40 via-lime-400/25 to-emerald-100/10 pointer-events-none rounded-xl" />
       <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-600 to-lime-400" />
       
+      {/* Shimmer sweep effect on hover */}
+      <div className="absolute inset-0 overflow-hidden rounded-xl pointer-events-none">
+        <div className="absolute inset-0 -translate-x-full opacity-0 group-hover:opacity-100 group-hover:animate-shimmer-sweep bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+      </div>
+      
       <div className="relative p-3">
       {/* Status Badge & Actions */}
       <div className="flex justify-between items-start mb-2">
