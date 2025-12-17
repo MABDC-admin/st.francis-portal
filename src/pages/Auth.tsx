@@ -29,9 +29,19 @@ const Auth = () => {
     }
   }, [user, loading, navigate]);
 
+  const getLoginEmail = (input: string) => {
+    const trimmed = input.trim();
+    // Staff accounts use real emails (contains "@")
+    if (trimmed.includes('@')) return trimmed;
+
+    // Student accounts are created as: `${cleanLrn}@student.edutrack.local`
+    const cleanLrn = trimmed.replace(/[^a-zA-Z0-9]/g, '');
+    return `${cleanLrn}@student.edutrack.local`;
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const validation = loginSchema.safeParse(loginData);
     if (!validation.success) {
       toast.error(validation.error.errors[0].message);
@@ -39,10 +49,8 @@ const Auth = () => {
     }
 
     setIsSubmitting(true);
-    
-    // Use the input directly - if it's an LRN (no @), it's used as-is since that's how student emails are stored
-    const emailToUse = loginData.email.trim();
 
+    const emailToUse = getLoginEmail(loginData.email);
     const { error } = await signIn(emailToUse, loginData.password);
     setIsSubmitting(false);
 
