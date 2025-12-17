@@ -8,8 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useSchool, SchoolType } from '@/contexts/SchoolContext';
 
 interface Teacher {
   id: string;
@@ -22,6 +24,7 @@ interface Teacher {
   grade_level: string | null;
   subjects: string[] | null;
   status: string;
+  school: string | null;
   created_at: string;
 }
 
@@ -33,16 +36,18 @@ const initialFormState = {
   department: '',
   grade_level: '',
   subjects: '',
+  school: 'MABDC',
 };
 
 export const TeacherManagement = () => {
+  const { selectedSchool } = useSchool();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
-  const [formData, setFormData] = useState(initialFormState);
+  const [formData, setFormData] = useState({ ...initialFormState, school: selectedSchool });
   const [createAccount, setCreateAccount] = useState(true);
 
   const fetchTeachers = async () => {
@@ -50,6 +55,7 @@ export const TeacherManagement = () => {
     const { data, error } = await supabase
       .from('teachers')
       .select('*')
+      .eq('school', selectedSchool)
       .order('full_name');
     
     if (!error && data) {
@@ -60,7 +66,7 @@ export const TeacherManagement = () => {
 
   useEffect(() => {
     fetchTeachers();
-  }, []);
+  }, [selectedSchool]);
 
   const handleOpenModal = (teacher?: Teacher) => {
     if (teacher) {
@@ -73,11 +79,12 @@ export const TeacherManagement = () => {
         department: teacher.department || '',
         grade_level: teacher.grade_level || '',
         subjects: teacher.subjects?.join(', ') || '',
+        school: (teacher.school as SchoolType) || selectedSchool,
       });
       setCreateAccount(false);
     } else {
       setEditingTeacher(null);
-      setFormData(initialFormState);
+      setFormData({ ...initialFormState, school: selectedSchool });
       setCreateAccount(true);
     }
     setIsModalOpen(true);
@@ -107,6 +114,7 @@ export const TeacherManagement = () => {
             department: formData.department || null,
             grade_level: formData.grade_level || null,
             subjects: subjectsArray,
+            school: formData.school,
           })
           .eq('id', editingTeacher.id);
 
@@ -146,6 +154,7 @@ export const TeacherManagement = () => {
             department: formData.department || null,
             grade_level: formData.grade_level || null,
             subjects: subjectsArray,
+            school: formData.school,
             user_id: userId,
           });
 

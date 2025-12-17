@@ -471,6 +471,7 @@ export type Database = {
           grade_level: string | null
           id: string
           phone: string | null
+          school: string | null
           status: string | null
           subjects: string[] | null
           updated_at: string | null
@@ -485,6 +486,7 @@ export type Database = {
           grade_level?: string | null
           id?: string
           phone?: string | null
+          school?: string | null
           status?: string | null
           subjects?: string[] | null
           updated_at?: string | null
@@ -499,6 +501,7 @@ export type Database = {
           grade_level?: string | null
           id?: string
           phone?: string | null
+          school?: string | null
           status?: string | null
           subjects?: string[] | null
           updated_at?: string | null
