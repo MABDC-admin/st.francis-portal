@@ -23,10 +23,14 @@ export const StudentCard = ({ student, onView, onEdit, onDelete, index }: Studen
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.03, duration: 0.2 }}
-      className="relative rounded-xl shadow-card hover:shadow-lg transition-all duration-300 border border-border/50 group overflow-hidden"
+      className="relative rounded-xl shadow-card hover:shadow-lg hover:shadow-emerald-500/20 transition-all duration-300 border border-border/50 hover:border-emerald-400/60 group overflow-hidden"
     >
+      {/* Pulsing glow effect on hover */}
+      <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 rounded-xl opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-300 animate-pulse pointer-events-none" />
+      <div className="absolute inset-0 bg-card rounded-xl" />
+      
       {/* Gradient Background that blends */}
-      <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/40 via-lime-400/25 to-emerald-100/10 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/40 via-lime-400/25 to-emerald-100/10 pointer-events-none rounded-xl" />
       <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-600 to-lime-400" />
       
       <div className="relative p-3">
