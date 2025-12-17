@@ -228,6 +228,7 @@ export const EnrollmentForm = () => {
             studentId: result.id,
             studentLrn: finalLrn,
             studentName: formData.student_name.trim(),
+            studentSchool: formData.school,
           },
         });
 

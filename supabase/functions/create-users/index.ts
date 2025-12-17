@@ -14,6 +14,7 @@ interface CreateUserRequest {
   studentId?: string;
   studentLrn?: string;
   studentName?: string;
+  studentSchool?: string;
   credentialId?: string;
   userId?: string;
 }
@@ -28,11 +29,15 @@ function generatePassword(length = 12): string {
   return password;
 }
 
-// Generate email from LRN only
-function generateEmail(lrn: string): string {
-  // Use LRN as the username part
+// Generate email from LRN and school
+function generateEmail(lrn: string, school?: string | null): string {
   const cleanLrn = lrn.replace(/[^a-zA-Z0-9]/g, "");
-  return `${cleanLrn}@student.edutrack.local`;
+  // Use school-specific domain
+  if (school?.toLowerCase().includes('stfxsa') || school?.toLowerCase().includes('st. francis')) {
+    return `${cleanLrn}@stfxsa.org`;
+  }
+  // Default to MABDC
+  return `${cleanLrn}@mabdc.org`;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -52,7 +57,7 @@ const handler = async (req: Request): Promise<Response> => {
       },
     });
 
-    const { action, email, password, fullName, studentId, studentLrn, studentName, credentialId, userId }: CreateUserRequest = await req.json();
+    const { action, email, password, fullName, studentId, studentLrn, studentName, studentSchool, credentialId, userId }: CreateUserRequest = await req.json();
     console.log(`Processing action: ${action}`);
 
     if (action === "create_admin" || action === "create_registrar" || action === "create_teacher") {
@@ -119,10 +124,10 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     if (action === "bulk_create_students") {
-      // Fetch all students without accounts
+      // Fetch all students without accounts (include school field)
       const { data: students, error: studentsError } = await supabaseAdmin
         .from("students")
-        .select("id, student_name, lrn, level");
+        .select("id, student_name, lrn, level, school");
 
       if (studentsError) {
         console.error("Error fetching students:", studentsError);
@@ -151,8 +156,8 @@ const handler = async (req: Request): Promise<Response> => {
 
       for (const student of studentsToCreate) {
         try {
-          // Use LRN as username
-          const email = generateEmail(student.lrn);
+          // Use LRN and school to generate email
+          const email = generateEmail(student.lrn, student.school);
           const password = generatePassword();
 
           // Create user
@@ -281,7 +286,7 @@ const handler = async (req: Request): Promise<Response> => {
         );
       }
 
-      const generatedEmail = generateEmail(studentLrn);
+      const generatedEmail = generateEmail(studentLrn, studentSchool);
       const generatedPassword = generatePassword();
 
       const { data: userData, error: userError } = await supabaseAdmin.auth.admin.createUser({

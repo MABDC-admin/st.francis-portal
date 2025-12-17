@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,14 +30,26 @@ const Auth = () => {
     }
   }, [user, loading, navigate]);
 
-  const getLoginEmail = (input: string) => {
+  const getLoginEmailBySchool = async (input: string): Promise<string | null> => {
     const trimmed = input.trim();
     // Staff accounts use real emails (contains "@")
     if (trimmed.includes('@')) return trimmed;
 
-    // Student accounts are created as: `${cleanLrn}@student.edutrack.local`
     const cleanLrn = trimmed.replace(/[^a-zA-Z0-9]/g, '');
-    return `${cleanLrn}@student.edutrack.local`;
+    
+    // Look up student's school by LRN
+    const { data: student } = await supabase
+      .from('students')
+      .select('school')
+      .eq('lrn', trimmed)
+      .single();
+    
+    // Determine email domain based on school
+    if (student?.school?.toLowerCase().includes('stfxsa') || student?.school?.toLowerCase().includes('st. francis')) {
+      return `${cleanLrn}@stfxsa.org`;
+    }
+    // Default to MABDC
+    return `${cleanLrn}@mabdc.org`;
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -50,7 +63,12 @@ const Auth = () => {
 
     setIsSubmitting(true);
 
-    const emailToUse = getLoginEmail(loginData.email);
+    const emailToUse = await getLoginEmailBySchool(loginData.email);
+    if (!emailToUse) {
+      toast.error('Could not determine login email. Please contact administrator.');
+      setIsSubmitting(false);
+      return;
+    }
     const { error } = await signIn(emailToUse, loginData.password);
     setIsSubmitting(false);
 
