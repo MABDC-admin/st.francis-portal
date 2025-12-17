@@ -12,7 +12,9 @@ import {
   LogOut,
   Home,
   BookOpen,
-  UserCircle
+  UserCircle,
+  Library,
+  Calendar
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/useTheme';
@@ -47,18 +49,23 @@ const getNavItemsForRole = (role: string | null) => {
       return [
         ...baseItems,
         { id: 'dashboard', icon: BarChart3, label: 'Dashboard' },
-        { id: 'enrollment', icon: GraduationCap, label: 'Enrollment' },
         { id: 'students', icon: Users, label: 'Students' },
         { id: 'teachers', icon: BookOpen, label: 'Teachers' },
+        { id: 'subjects', icon: Library, label: 'Subjects' },
+        { id: 'academic-years', icon: Calendar, label: 'Academic Years' },
+        { id: 'subject-enrollment', icon: GraduationCap, label: 'Enrollment' },
+        { id: 'enrollment', icon: GraduationCap, label: 'New Student' },
         { id: 'import', icon: Upload, label: 'Import CSV' },
       ];
     case 'registrar':
       return [
         ...baseItems,
         { id: 'dashboard', icon: BarChart3, label: 'Dashboard' },
-        { id: 'enrollment', icon: GraduationCap, label: 'Enrollment' },
         { id: 'students', icon: Users, label: 'Students' },
         { id: 'teachers', icon: BookOpen, label: 'Teachers' },
+        { id: 'subjects', icon: Library, label: 'Subjects' },
+        { id: 'subject-enrollment', icon: GraduationCap, label: 'Enrollment' },
+        { id: 'enrollment', icon: GraduationCap, label: 'New Student' },
         { id: 'import', icon: Upload, label: 'Import CSV' },
       ];
     case 'teacher':

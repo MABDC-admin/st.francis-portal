@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      academic_years: {
+        Row: {
+          created_at: string | null
+          end_date: string
+          id: string
+          is_current: boolean | null
+          name: string
+          start_date: string
+        }
+        Insert: {
+          created_at?: string | null
+          end_date: string
+          id?: string
+          is_current?: boolean | null
+          name: string
+          start_date: string
+        }
+        Update: {
+          created_at?: string | null
+          end_date?: string
+          id?: string
+          is_current?: boolean | null
+          name?: string
+          start_date?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -85,6 +112,58 @@ export type Database = {
           },
         ]
       }
+      student_subjects: {
+        Row: {
+          academic_year_id: string | null
+          enrolled_at: string | null
+          grade: number | null
+          id: string
+          status: string | null
+          student_id: string
+          subject_id: string
+        }
+        Insert: {
+          academic_year_id?: string | null
+          enrolled_at?: string | null
+          grade?: number | null
+          id?: string
+          status?: string | null
+          student_id: string
+          subject_id: string
+        }
+        Update: {
+          academic_year_id?: string | null
+          enrolled_at?: string | null
+          grade?: number | null
+          id?: string
+          status?: string | null
+          student_id?: string
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_subjects_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_subjects_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_subjects_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       students: {
         Row: {
           age: number | null
@@ -145,6 +224,45 @@ export type Database = {
           student_name?: string
           uae_address?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      subjects: {
+        Row: {
+          code: string
+          created_at: string | null
+          department: string | null
+          description: string | null
+          grade_levels: string[]
+          id: string
+          is_active: boolean | null
+          name: string
+          units: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          department?: string | null
+          description?: string | null
+          grade_levels: string[]
+          id?: string
+          is_active?: boolean | null
+          name: string
+          units?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          department?: string | null
+          description?: string | null
+          grade_levels?: string[]
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          units?: number | null
+          updated_at?: string | null
         }
         Relationships: []
       }

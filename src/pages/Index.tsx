@@ -26,6 +26,11 @@ import { StudentPortal } from '@/components/portals/StudentPortal';
 import { ParentPortal } from '@/components/portals/ParentPortal';
 import { TeacherManagement } from '@/components/teachers/TeacherManagement';
 
+// Curriculum Components
+import { SubjectManagement } from '@/components/curriculum/SubjectManagement';
+import { AcademicYearManagement } from '@/components/curriculum/AcademicYearManagement';
+import { EnrollmentManagement } from '@/components/curriculum/EnrollmentManagement';
+
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading, role } = useAuth();
@@ -278,6 +283,21 @@ const Index = () => {
       {/* Teachers - Admin/Registrar only */}
       {activeTab === 'teachers' && hasAdminAccess && (
         <TeacherManagement />
+      )}
+
+      {/* Subjects - Admin/Registrar only */}
+      {activeTab === 'subjects' && hasAdminAccess && (
+        <SubjectManagement />
+      )}
+
+      {/* Academic Years - Admin only */}
+      {activeTab === 'academic-years' && role === 'admin' && (
+        <AcademicYearManagement />
+      )}
+
+      {/* Subject Enrollment - Admin/Registrar only */}
+      {activeTab === 'subject-enrollment' && hasAdminAccess && (
+        <EnrollmentManagement />
       )}
 
       {/* Admin Panel - Admin only */}

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Users, Settings, Shield, Database, FileText, Bell } from 'lucide-react';
+import { Users, Settings, Shield, Database, FileText, BookOpen, Calendar, GraduationCap, Library } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -26,33 +26,57 @@ export const AdminPortal = ({ onNavigate }: AdminPortalProps) => {
       action: () => onNavigate('students'),
     },
     {
-      id: 'enrollment',
-      title: 'Enrollment',
-      description: 'Process new enrollments and registrations',
-      icon: FileText,
+      id: 'teachers',
+      title: 'Teachers',
+      description: 'Manage teacher records and accounts',
+      icon: BookOpen,
       color: 'bg-green-500',
+      action: () => onNavigate('teachers'),
+    },
+    {
+      id: 'subjects',
+      title: 'Course Catalog',
+      description: 'Manage subjects and curriculum',
+      icon: Library,
+      color: 'bg-indigo-500',
+      action: () => onNavigate('subjects'),
+    },
+    {
+      id: 'academic-years',
+      title: 'Academic Years',
+      description: 'Configure school years and terms',
+      icon: Calendar,
+      color: 'bg-amber-500',
+      action: () => onNavigate('academic-years'),
+    },
+    {
+      id: 'subject-enrollment',
+      title: 'Subject Enrollment',
+      description: 'Auto-enroll students to subjects',
+      icon: GraduationCap,
+      color: 'bg-teal-500',
+      action: () => onNavigate('subject-enrollment'),
+    },
+    {
+      id: 'enrollment',
+      title: 'New Student',
+      description: 'Process new student enrollments',
+      icon: FileText,
+      color: 'bg-cyan-500',
       action: () => onNavigate('enrollment'),
     },
     {
       id: 'import',
       title: 'Data Import',
-      description: 'Bulk import students from CSV files',
+      description: 'Bulk import students from CSV',
       icon: Database,
       color: 'bg-orange-500',
       action: () => onNavigate('import'),
     },
     {
-      id: 'settings',
-      title: 'System Settings',
-      description: 'Configure school year, levels, and sections',
-      icon: Settings,
-      color: 'bg-slate-500',
-      action: () => {},
-    },
-    {
       id: 'security',
       title: 'Security & Roles',
-      description: 'Manage access control and permissions',
+      description: 'Manage access control',
       icon: Shield,
       color: 'bg-red-500',
       action: () => onNavigate('admin'),

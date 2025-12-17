@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Users, FileText, Upload, ClipboardList, FolderOpen, UserPlus } from 'lucide-react';
+import { Users, FileText, Upload, FolderOpen, UserPlus, Library, GraduationCap, BookOpen } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -30,12 +30,28 @@ export const RegistrarPortal = ({ onNavigate, stats }: RegistrarPortalProps) => 
       action: () => onNavigate('students'),
     },
     {
-      id: 'documents',
-      title: 'Documents',
-      description: 'Manage student documents and requirements',
-      icon: FolderOpen,
+      id: 'teachers',
+      title: 'Teachers',
+      description: 'Manage teacher records',
+      icon: BookOpen,
+      color: 'bg-teal-500',
+      action: () => onNavigate('teachers'),
+    },
+    {
+      id: 'subjects',
+      title: 'Subjects',
+      description: 'View course catalog',
+      icon: Library,
+      color: 'bg-indigo-500',
+      action: () => onNavigate('subjects'),
+    },
+    {
+      id: 'subject-enrollment',
+      title: 'Subject Enrollment',
+      description: 'Enroll students to subjects',
+      icon: GraduationCap,
       color: 'bg-purple-500',
-      action: () => onNavigate('students'),
+      action: () => onNavigate('subject-enrollment'),
     },
     {
       id: 'import',
