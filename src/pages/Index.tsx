@@ -24,6 +24,7 @@ import { RegistrarPortal } from '@/components/portals/RegistrarPortal';
 import { TeacherPortal } from '@/components/portals/TeacherPortal';
 import { StudentPortal } from '@/components/portals/StudentPortal';
 import { ParentPortal } from '@/components/portals/ParentPortal';
+import { TeacherManagement } from '@/components/teachers/TeacherManagement';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -272,6 +273,11 @@ const Index = () => {
 
           <CSVImport />
         </div>
+      )}
+
+      {/* Teachers - Admin/Registrar only */}
+      {activeTab === 'teachers' && hasAdminAccess && (
+        <TeacherManagement />
       )}
 
       {/* Admin Panel - Admin only */}

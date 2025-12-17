@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 interface CreateUserRequest {
-  action: "create_admin" | "create_registrar" | "bulk_create_students";
+  action: "create_admin" | "create_registrar" | "create_teacher" | "bulk_create_students";
   email?: string;
   password?: string;
   fullName?: string;
@@ -50,20 +50,27 @@ const handler = async (req: Request): Promise<Response> => {
     const { action, email, password, fullName }: CreateUserRequest = await req.json();
     console.log(`Processing action: ${action}`);
 
-    if (action === "create_admin" || action === "create_registrar") {
-      if (!email || !password) {
+    if (action === "create_admin" || action === "create_registrar" || action === "create_teacher") {
+      const generatedPassword = password || generatePassword();
+      
+      if (!email) {
         return new Response(
-          JSON.stringify({ error: "Email and password required" }),
+          JSON.stringify({ error: "Email required" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      const role = action === "create_admin" ? "admin" : "registrar";
+      const roleMap: Record<string, string> = {
+        create_admin: "admin",
+        create_registrar: "registrar",
+        create_teacher: "teacher",
+      };
+      const role = roleMap[action];
       
       // Create user
       const { data: userData, error: userError } = await supabaseAdmin.auth.admin.createUser({
         email,
-        password,
+        password: generatedPassword,
         email_confirm: true,
         user_metadata: { full_name: fullName || email.split("@")[0] },
       });
@@ -92,7 +99,7 @@ const handler = async (req: Request): Promise<Response> => {
       await supabaseAdmin.from("user_credentials").insert({
         user_id: userData.user.id,
         email,
-        temp_password: password,
+        temp_password: generatedPassword,
         role,
       });
 

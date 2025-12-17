@@ -49,6 +49,7 @@ const getNavItemsForRole = (role: string | null) => {
         { id: 'dashboard', icon: BarChart3, label: 'Dashboard' },
         { id: 'enrollment', icon: GraduationCap, label: 'Enrollment' },
         { id: 'students', icon: Users, label: 'Students' },
+        { id: 'teachers', icon: BookOpen, label: 'Teachers' },
         { id: 'import', icon: Upload, label: 'Import CSV' },
       ];
     case 'registrar':
@@ -57,6 +58,7 @@ const getNavItemsForRole = (role: string | null) => {
         { id: 'dashboard', icon: BarChart3, label: 'Dashboard' },
         { id: 'enrollment', icon: GraduationCap, label: 'Enrollment' },
         { id: 'students', icon: Users, label: 'Students' },
+        { id: 'teachers', icon: BookOpen, label: 'Teachers' },
         { id: 'import', icon: Upload, label: 'Import CSV' },
       ];
     case 'teacher':
