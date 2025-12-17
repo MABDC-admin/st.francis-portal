@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { 
   X, 
   User, 
@@ -12,10 +12,11 @@ import {
   Printer,
   Camera,
   FileText,
-  Upload,
-  Loader2
+  Loader2,
+  Search
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Student, StudentDocument } from '@/types/student';
 import { DocumentSlot } from './DocumentSlot';
 import { 
@@ -33,6 +34,14 @@ interface StudentProfileModalProps {
   onClose: () => void;
 }
 
+interface SearchableField {
+  label: string;
+  value: string | null;
+  tab: string;
+  tabLabel: string;
+  icon?: any;
+}
+
 const tabs = [
   { id: 'personal', label: 'Personal Info', icon: User },
   { id: 'parents', label: 'Parents/Guardian', icon: Users },
@@ -44,12 +53,46 @@ const tabs = [
 export const StudentProfileModal = ({ student, isOpen, onClose }: StudentProfileModalProps) => {
   const [activeTab, setActiveTab] = useState('personal');
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const photoInputRef = useRef<HTMLInputElement>(null);
   
   const { data: documents = [] } = useStudentDocuments(student?.id || '');
   const uploadDocument = useUploadDocument();
   const deleteDocument = useDeleteDocument();
   const uploadPhoto = useUploadStudentPhoto();
+
+  // Build searchable fields
+  const searchableFields: SearchableField[] = useMemo(() => {
+    if (!student) return [];
+    return [
+      { label: 'Full Name', value: student.student_name, tab: 'personal', tabLabel: 'Personal Info', icon: User },
+      { label: 'LRN', value: student.lrn, tab: 'personal', tabLabel: 'Personal Info', icon: Mail },
+      { label: 'Date of Birth', value: student.birth_date, tab: 'personal', tabLabel: 'Personal Info', icon: Calendar },
+      { label: 'Age', value: student.age?.toString() || null, tab: 'personal', tabLabel: 'Personal Info' },
+      { label: 'Gender', value: student.gender, tab: 'personal', tabLabel: 'Personal Info' },
+      { label: 'Level', value: student.level, tab: 'personal', tabLabel: 'Personal Info', icon: School },
+      { label: "Mother's Maiden Name", value: student.mother_maiden_name, tab: 'parents', tabLabel: 'Parents/Guardian' },
+      { label: "Mother's Contact", value: student.mother_contact, tab: 'parents', tabLabel: 'Parents/Guardian', icon: Phone },
+      { label: "Father's Name", value: student.father_name, tab: 'parents', tabLabel: 'Parents/Guardian' },
+      { label: "Father's Contact", value: student.father_contact, tab: 'parents', tabLabel: 'Parents/Guardian', icon: Phone },
+      { label: 'Philippines Address', value: student.phil_address, tab: 'address', tabLabel: 'Address', icon: MapPin },
+      { label: 'UAE Address', value: student.uae_address, tab: 'address', tabLabel: 'Address', icon: MapPin },
+      { label: 'Current Level', value: student.level, tab: 'academic', tabLabel: 'Academic', icon: School },
+      { label: 'Previous School', value: student.previous_school, tab: 'academic', tabLabel: 'Academic', icon: School },
+    ];
+  }, [student]);
+
+  // Filter search results
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const query = searchQuery.toLowerCase();
+    return searchableFields.filter(field => 
+      field.value?.toLowerCase().includes(query) || 
+      field.label.toLowerCase().includes(query)
+    );
+  }, [searchQuery, searchableFields]);
+
+  const isSearching = searchQuery.trim().length > 0;
 
   if (!student) return null;
 
@@ -93,15 +136,44 @@ export const StudentProfileModal = ({ student, isOpen, onClose }: StudentProfile
     return documents.find(d => d.slot_number === slot) || null;
   };
 
-  const InfoItem = ({ label, value, icon: Icon }: { label: string; value: string | null; icon?: any }) => (
+  const highlightMatch = (text: string | null, query: string) => {
+    if (!text || !query.trim()) return text || 'Not provided';
+    
+    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const parts = text.split(regex);
+    
+    return parts.map((part, i) => 
+      regex.test(part) ? (
+        <mark key={i} className="bg-stat-yellow text-foreground px-0.5 rounded">
+          {part}
+        </mark>
+      ) : (
+        part
+      )
+    );
+  };
+
+  const InfoItem = ({ label, value, icon: Icon, highlight = false }: { 
+    label: string; 
+    value: string | null; 
+    icon?: any;
+    highlight?: boolean;
+  }) => (
     <div className="space-y-1">
       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
         {Icon && <Icon className="h-3.5 w-3.5" />}
-        {label}
+        {highlight ? highlightMatch(label, searchQuery) : label}
       </p>
-      <p className="text-foreground font-medium">{value || 'Not provided'}</p>
+      <p className="text-foreground font-medium">
+        {highlight ? highlightMatch(value, searchQuery) : (value || 'Not provided')}
+      </p>
     </div>
   );
+
+  const handleSearchResultClick = (tab: string) => {
+    setActiveTab(tab);
+    setSearchQuery('');
+  };
 
   return (
     <AnimatePresence>
@@ -181,33 +253,106 @@ export const StudentProfileModal = ({ student, isOpen, onClose }: StudentProfile
                   </Button>
                 </div>
               </div>
-            </div>
 
-            {/* Tabs */}
-            <div className="px-6 py-3 border-b border-border no-print overflow-x-auto">
-              <div className="flex gap-1">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
-                      activeTab === tab.id
-                        ? "bg-stat-purple text-white"
-                        : "text-muted-foreground hover:bg-secondary hover:text-secondary-foreground"
-                    )}
+              {/* Search Bar */}
+              <div className="mt-4 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search student information..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 bg-background/50"
+                />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                    onClick={() => setSearchQuery('')}
                   >
-                    <tab.icon className="h-4 w-4" />
-                    {tab.label}
-                  </button>
-                ))}
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
               </div>
             </div>
+
+            {/* Search Results */}
+            <AnimatePresence>
+              {isSearching && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="border-b border-border overflow-hidden"
+                >
+                  <div className="p-4 bg-stat-purple-light/30 max-h-48 overflow-y-auto">
+                    <p className="text-xs font-medium text-muted-foreground mb-3">
+                      {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} found
+                    </p>
+                    {searchResults.length > 0 ? (
+                      <div className="space-y-2">
+                        {searchResults.map((result, index) => (
+                          <motion.button
+                            key={`${result.tab}-${result.label}`}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            onClick={() => handleSearchResultClick(result.tab)}
+                            className="w-full text-left p-3 rounded-lg bg-card hover:bg-secondary transition-colors"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-foreground">
+                                  {highlightMatch(result.value || 'Not provided', searchQuery)}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {result.label} • {result.tabLabel}
+                                </p>
+                              </div>
+                              <span className="text-xs px-2 py-1 rounded-full bg-stat-purple/10 text-stat-purple">
+                                {result.tabLabel}
+                              </span>
+                            </div>
+                          </motion.button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        No matching information found
+                      </p>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Tabs */}
+            {!isSearching && (
+              <div className="px-6 py-3 border-b border-border no-print overflow-x-auto">
+                <div className="flex gap-1">
+                  {tabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={cn(
+                        "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
+                        activeTab === tab.id
+                          ? "bg-stat-purple text-white"
+                          : "text-muted-foreground hover:bg-secondary hover:text-secondary-foreground"
+                      )}
+                    >
+                      <tab.icon className="h-4 w-4" />
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6">
               <AnimatePresence mode="wait">
-                {activeTab === 'personal' && (
+                {activeTab === 'personal' && !isSearching && (
                   <motion.div
                     key="personal"
                     initial={{ opacity: 0, x: 20 }}
@@ -224,7 +369,7 @@ export const StudentProfileModal = ({ student, isOpen, onClose }: StudentProfile
                   </motion.div>
                 )}
 
-                {activeTab === 'parents' && (
+                {activeTab === 'parents' && !isSearching && (
                   <motion.div
                     key="parents"
                     initial={{ opacity: 0, x: 20 }}
@@ -255,7 +400,7 @@ export const StudentProfileModal = ({ student, isOpen, onClose }: StudentProfile
                   </motion.div>
                 )}
 
-                {activeTab === 'address' && (
+                {activeTab === 'address' && !isSearching && (
                   <motion.div
                     key="address"
                     initial={{ opacity: 0, x: 20 }}
@@ -280,7 +425,7 @@ export const StudentProfileModal = ({ student, isOpen, onClose }: StudentProfile
                   </motion.div>
                 )}
 
-                {activeTab === 'academic' && (
+                {activeTab === 'academic' && !isSearching && (
                   <motion.div
                     key="academic"
                     initial={{ opacity: 0, x: 20 }}
@@ -302,7 +447,7 @@ export const StudentProfileModal = ({ student, isOpen, onClose }: StudentProfile
                   </motion.div>
                 )}
 
-                {activeTab === 'documents' && (
+                {activeTab === 'documents' && !isSearching && (
                   <motion.div
                     key="documents"
                     initial={{ opacity: 0, x: 20 }}
