@@ -437,6 +437,32 @@ export const GradesManagement = () => {
     URL.revokeObjectURL(url);
   };
 
+  const exportGrades = () => {
+    const dataToExport = filteredGrades.map(grade => ({
+      lrn: grade.student_lrn || '',
+      student_name: grade.student_name || '',
+      subject_code: grade.subject_code || '',
+      subject_name: grade.subject_name || '',
+      academic_year: grade.academic_year || '',
+      q1: grade.q1_grade ?? '',
+      q2: grade.q2_grade ?? '',
+      q3: grade.q3_grade ?? '',
+      q4: grade.q4_grade ?? '',
+      final_grade: grade.final_grade ?? '',
+      remarks: grade.remarks || ''
+    }));
+
+    const csv = Papa.unparse(dataToExport);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `grades_export_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${dataToExport.length} grades to CSV`);
+  };
+
   const filteredGrades = grades.filter(grade => {
     const matchesSearch = 
       grade.student_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -610,14 +636,20 @@ export const GradesManagement = () => {
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Grades Management</h1>
           <p className="text-muted-foreground mt-1">Manage student grades by subject and quarter</p>
         </div>
-        <Button onClick={handleAdd} className="w-full sm:w-auto">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Grade
-        </Button>
-        <Button variant="outline" onClick={() => setIsImportModalOpen(true)} className="w-full sm:w-auto">
-          <Upload className="h-4 w-4 mr-2" />
-          Import CSV
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={handleAdd} className="w-full sm:w-auto">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Grade
+          </Button>
+          <Button variant="outline" onClick={() => setIsImportModalOpen(true)} className="w-full sm:w-auto">
+            <Upload className="h-4 w-4 mr-2" />
+            Import CSV
+          </Button>
+          <Button variant="outline" onClick={exportGrades} disabled={filteredGrades.length === 0} className="w-full sm:w-auto">
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
+        </div>
       </motion.div>
 
       {/* Filters */}
