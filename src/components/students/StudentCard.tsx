@@ -23,12 +23,13 @@ export const StudentCard = ({ student, onView, onEdit, onDelete, index }: Studen
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.03, duration: 0.2 }}
-      className="relative bg-card rounded-xl shadow-card hover:shadow-lg transition-all duration-300 border border-border/50 group overflow-hidden"
+      className="relative rounded-xl shadow-card hover:shadow-lg transition-all duration-300 border border-border/50 group overflow-hidden"
     >
-      {/* Gradient Header */}
-      <div className="h-2 bg-gradient-to-r from-emerald-600 to-lime-400" />
+      {/* Gradient Background that blends */}
+      <div className="absolute inset-0 bg-gradient-to-b from-emerald-600/20 via-lime-400/10 to-transparent pointer-events-none" />
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-600 to-lime-400" />
       
-      <div className="p-3">
+      <div className="relative p-3 bg-card/80 backdrop-blur-sm">
       {/* Status Badge & Actions */}
       <div className="flex justify-between items-start mb-2">
         <span className={cn(
