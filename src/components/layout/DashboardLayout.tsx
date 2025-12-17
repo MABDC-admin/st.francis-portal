@@ -33,6 +33,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useSchoolSettings } from '@/hooks/useSchoolSettings';
+import { useColorTheme } from '@/hooks/useColorTheme';
+import { ColorThemeSelector } from '@/components/ColorThemeSelector';
 
 interface NavItem {
   id: string;
@@ -124,6 +126,9 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
   const { user, role, signOut } = useAuth();
   const [isDragging, setIsDragging] = useState(false);
   const { data: schoolSettings } = useSchoolSettings('MABDC');
+  const { theme, currentTheme, selectTheme } = useColorTheme();
+
+  const hasCustomTheme = currentTheme !== 'default';
 
   const defaultNavItems = getNavItemsForRole(role);
   
@@ -166,14 +171,18 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className={cn("min-h-screen bg-background", hasCustomTheme && theme.pageBg)}>
       {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-card border-b border-border px-4 py-3 flex items-center justify-between">
+      <header className={cn(
+        "lg:hidden fixed top-0 left-0 right-0 z-50 border-b border-border px-4 py-3 flex items-center justify-between",
+        hasCustomTheme ? `bg-gradient-to-r ${theme.sidebarBg} ${theme.sidebarText}` : "bg-card"
+      )}>
         <Button
           variant="ghost"
           size="icon"
           onClick={() => setSidebarOpen(!sidebarOpen)}
           aria-label="Toggle menu"
+          className={hasCustomTheme ? "text-inherit hover:bg-white/10" : ""}
         >
           <Menu className="h-5 w-5" />
         </Button>
@@ -187,10 +196,19 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
               </div>
             )}
           </div>
-          <span className="font-bold text-foreground">{schoolSettings?.acronym || 'EduTrack'}</span>
+          <span className={cn("font-bold", hasCustomTheme ? "text-inherit" : "text-foreground")}>
+            {schoolSettings?.acronym || 'EduTrack'}
+          </span>
+          <ColorThemeSelector currentTheme={currentTheme} onSelectTheme={selectTheme} />
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={toggle} 
+            aria-label="Toggle theme"
+            className={hasCustomTheme ? "text-inherit hover:bg-white/10" : ""}
+          >
             {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </Button>
         </div>
@@ -206,8 +224,9 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed left-0 top-0 z-50 h-full w-64 bg-card border-r border-border transform transition-transform duration-300 lg:translate-x-0 flex flex-col",
-        sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        "fixed left-0 top-0 z-50 h-full w-64 border-r border-border transform transition-transform duration-300 lg:translate-x-0 flex flex-col",
+        sidebarOpen ? "translate-x-0" : "-translate-x-full",
+        hasCustomTheme ? `bg-gradient-to-b ${theme.sidebarBg} ${theme.sidebarText}` : "bg-card"
       )}>
         <div className="p-6">
           <motion.div 
@@ -224,9 +243,16 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
                 </div>
               )}
             </div>
-            <div>
-              <h1 className="font-bold text-lg text-foreground">{schoolSettings?.acronym || 'EduTrack'}</h1>
-              <p className="text-xs text-muted-foreground">{roleLabels[role || ''] || 'Loading...'}</p>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1">
+                <h1 className={cn("font-bold text-lg truncate", hasCustomTheme ? "text-inherit" : "text-foreground")}>
+                  {schoolSettings?.acronym || 'EduTrack'}
+                </h1>
+                <ColorThemeSelector currentTheme={currentTheme} onSelectTheme={selectTheme} />
+              </div>
+              <p className={cn("text-xs", hasCustomTheme ? "text-inherit/70" : "text-muted-foreground")}>
+                {roleLabels[role || ''] || 'Loading...'}
+              </p>
             </div>
           </motion.div>
         </div>
@@ -236,15 +262,23 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
           <div className="px-3 pb-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="w-full justify-start gap-3 h-auto py-3">
+                <Button 
+                  variant="ghost" 
+                  className={cn(
+                    "w-full justify-start gap-3 h-auto py-3",
+                    hasCustomTheme && "hover:bg-white/10"
+                  )}
+                >
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className={cn("text-white text-xs", roleColors[role || 'student'])}>
                       {getInitials(user.email || 'U')}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col items-start text-left min-w-0">
-                    <span className="text-sm font-medium truncate max-w-[140px]">{user.email}</span>
-                    <Badge variant="secondary" className="text-xs capitalize mt-0.5">
+                    <span className={cn("text-sm font-medium truncate max-w-[140px]", hasCustomTheme && "text-inherit")}>
+                      {user.email}
+                    </span>
+                    <Badge variant="secondary" className={cn("text-xs capitalize mt-0.5", hasCustomTheme && "bg-white/20 text-inherit")}>
                       {role || 'Loading...'}
                     </Badge>
                   </div>
@@ -288,8 +322,12 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
                   className={cn(
                     "w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 cursor-grab active:cursor-grabbing",
                     activeTab === item.id
-                      ? "bg-stat-purple text-white shadow-md"
-                      : "text-muted-foreground hover:bg-secondary hover:text-secondary-foreground"
+                      ? hasCustomTheme 
+                        ? `${theme.menuActiveBg} ${theme.menuActiveText} shadow-md`
+                        : "bg-stat-purple text-white shadow-md"
+                      : hasCustomTheme
+                        ? `text-inherit/80 ${theme.menuHoverBg}`
+                        : "text-muted-foreground hover:bg-secondary hover:text-secondary-foreground"
                   )}
                 >
                   <GripVertical className="h-4 w-4 opacity-40" />
@@ -314,8 +352,12 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
                 className={cn(
                   "w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200",
                   activeTab === item.id
-                    ? "bg-stat-purple text-white shadow-md"
-                    : "text-muted-foreground hover:bg-secondary hover:text-secondary-foreground"
+                    ? hasCustomTheme 
+                      ? `${theme.menuActiveBg} ${theme.menuActiveText} shadow-md`
+                      : "bg-stat-purple text-white shadow-md"
+                    : hasCustomTheme
+                      ? `text-inherit/80 ${theme.menuHoverBg}`
+                      : "text-muted-foreground hover:bg-secondary hover:text-secondary-foreground"
                 )}
               >
                 <item.icon className="h-5 w-5" />
@@ -341,7 +383,9 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
                 "w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200",
                 activeTab === adminItem.id
                   ? "bg-destructive text-destructive-foreground shadow-md"
-                  : "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  : hasCustomTheme
+                    ? "text-inherit/80 hover:bg-white/10 hover:text-red-300"
+                    : "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
               )}
             >
               <adminItem.icon className="h-5 w-5" />
@@ -353,7 +397,10 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
           <div className="hidden lg:block">
             <Button 
               variant="outline" 
-              className="w-full justify-start gap-3" 
+              className={cn(
+                "w-full justify-start gap-3",
+                hasCustomTheme && "border-white/20 text-inherit hover:bg-white/10"
+              )}
               onClick={toggle}
             >
               {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
