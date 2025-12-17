@@ -171,10 +171,13 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
   };
 
   return (
-    <div className={cn("min-h-screen bg-background", hasCustomTheme && theme.pageBg)}>
+    <div className={cn(
+      "min-h-screen bg-background theme-transition",
+      hasCustomTheme && theme.pageBg
+    )}>
       {/* Mobile Header */}
       <header className={cn(
-        "lg:hidden fixed top-0 left-0 right-0 z-50 border-b border-border px-4 py-3 flex items-center justify-between",
+        "lg:hidden fixed top-0 left-0 right-0 z-50 border-b border-border px-4 py-3 flex items-center justify-between theme-transition",
         hasCustomTheme ? `bg-gradient-to-r ${theme.sidebarBg} ${theme.sidebarText}` : "bg-card"
       )}>
         <Button
@@ -224,7 +227,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed left-0 top-0 z-50 h-full w-64 border-r border-border transform transition-transform duration-300 lg:translate-x-0 flex flex-col",
+        "fixed left-0 top-0 z-50 h-full w-64 border-r border-border transform transition-all duration-500 lg:translate-x-0 flex flex-col theme-transition",
         sidebarOpen ? "translate-x-0" : "-translate-x-full",
         hasCustomTheme ? `bg-gradient-to-b ${theme.sidebarBg} ${theme.sidebarText}` : "bg-card"
       )}>
