@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Search, 
@@ -10,8 +10,13 @@ import {
   FileSpreadsheet,
   Loader2,
   ChevronDown,
-  Filter
+  Filter,
+  Upload,
+  Download,
+  AlertCircle,
+  CheckCircle2
 } from 'lucide-react';
+import Papa from 'papaparse';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -91,6 +96,23 @@ interface AcademicYear {
   is_current: boolean;
 }
 
+interface CSVGradeRow {
+  lrn: string;
+  subject_code: string;
+  q1: string;
+  q2: string;
+  q3: string;
+  q4: string;
+  remarks?: string;
+  // Parsed data
+  student_id?: string;
+  student_name?: string;
+  subject_id?: string;
+  subject_name?: string;
+  isValid?: boolean;
+  error?: string;
+}
+
 export const GradesManagement = () => {
   const [grades, setGrades] = useState<StudentGrade[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -105,8 +127,15 @@ export const GradesManagement = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedGrade, setSelectedGrade] = useState<StudentGrade | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // CSV Import state
+  const [csvData, setCsvData] = useState<CSVGradeRow[]>([]);
+  const [importAcademicYear, setImportAcademicYear] = useState<string>('');
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -296,6 +325,118 @@ export const GradesManagement = () => {
     return 'text-red-600';
   };
 
+  // CSV Import handlers
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const parsed = results.data.map((row: any) => {
+          const lrn = (row.lrn || row.LRN || '').toString().trim();
+          const subjectCode = (row.subject_code || row.subject || row.SUBJECT_CODE || row.SUBJECT || '').toString().trim().toUpperCase();
+          
+          // Find matching student and subject
+          const student = students.find(s => s.lrn.toLowerCase() === lrn.toLowerCase());
+          const subject = subjects.find(s => s.code.toUpperCase() === subjectCode);
+          
+          let error = '';
+          if (!student) error = 'Student not found';
+          else if (!subject) error = 'Subject not found';
+          else if (!subject.grade_levels.includes(student.level)) error = 'Subject not available for student level';
+
+          return {
+            lrn,
+            subject_code: subjectCode,
+            q1: (row.q1 || row.Q1 || '').toString().trim(),
+            q2: (row.q2 || row.Q2 || '').toString().trim(),
+            q3: (row.q3 || row.Q3 || '').toString().trim(),
+            q4: (row.q4 || row.Q4 || '').toString().trim(),
+            remarks: (row.remarks || row.REMARKS || '').toString().trim(),
+            student_id: student?.id,
+            student_name: student?.student_name,
+            subject_id: subject?.id,
+            subject_name: subject?.name,
+            isValid: !!student && !!subject && subject.grade_levels.includes(student.level),
+            error
+          };
+        });
+        
+        setCsvData(parsed);
+        
+        // Set default academic year
+        const currentYear = academicYears.find(y => y.is_current);
+        if (currentYear) setImportAcademicYear(currentYear.id);
+      },
+      error: (error) => {
+        toast.error('Failed to parse CSV file');
+        console.error('CSV parse error:', error);
+      }
+    });
+    
+    // Reset file input
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleImportGrades = async () => {
+    const validRows = csvData.filter(row => row.isValid);
+    if (validRows.length === 0) {
+      toast.error('No valid grades to import');
+      return;
+    }
+
+    if (!importAcademicYear) {
+      toast.error('Please select an academic year');
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      const gradesToInsert = validRows.map(row => ({
+        student_id: row.student_id!,
+        subject_id: row.subject_id!,
+        academic_year_id: importAcademicYear,
+        q1_grade: row.q1 ? parseFloat(row.q1) : null,
+        q2_grade: row.q2 ? parseFloat(row.q2) : null,
+        q3_grade: row.q3 ? parseFloat(row.q3) : null,
+        q4_grade: row.q4 ? parseFloat(row.q4) : null,
+        remarks: row.remarks || null
+      }));
+
+      const { error } = await supabase
+        .from('student_grades')
+        .upsert(gradesToInsert, { 
+          onConflict: 'student_id,subject_id,academic_year_id',
+          ignoreDuplicates: false 
+        });
+
+      if (error) throw error;
+      
+      toast.success(`Successfully imported ${validRows.length} grades`);
+      setIsImportModalOpen(false);
+      setCsvData([]);
+      fetchData();
+    } catch (error: any) {
+      console.error('Import error:', error);
+      toast.error('Failed to import grades: ' + (error.message || 'Unknown error'));
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const downloadTemplate = () => {
+    const template = 'lrn,subject_code,q1,q2,q3,q4,remarks\n12345678901,MATH101,85,88,90,92,Good performance';
+    const blob = new Blob([template], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'grades_import_template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const filteredGrades = grades.filter(grade => {
     const matchesSearch = 
       grade.student_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -473,6 +614,10 @@ export const GradesManagement = () => {
           <Plus className="h-4 w-4 mr-2" />
           Add Grade
         </Button>
+        <Button variant="outline" onClick={() => setIsImportModalOpen(true)} className="w-full sm:w-auto">
+          <Upload className="h-4 w-4 mr-2" />
+          Import CSV
+        </Button>
       </motion.div>
 
       {/* Filters */}
@@ -615,6 +760,132 @@ export const GradesManagement = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* CSV Import Modal */}
+      <Dialog open={isImportModalOpen} onOpenChange={(open) => { setIsImportModalOpen(open); if (!open) setCsvData([]); }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Import Grades from CSV</DialogTitle>
+            <DialogDescription>
+              Upload a CSV file with columns: lrn, subject_code, q1, q2, q3, q4, remarks
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
+            {csvData.length === 0 ? (
+              <div className="border-2 border-dashed rounded-lg p-8 text-center">
+                <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground mb-4">Select a CSV file to import grades</p>
+                <div className="flex justify-center gap-2">
+                  <Button onClick={() => fileInputRef.current?.click()}>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Select File
+                  </Button>
+                  <Button variant="outline" onClick={downloadTemplate}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download Template
+                  </Button>
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <Label>Academic Year for Import</Label>
+                    <Select value={importAcademicYear} onValueChange={setImportAcademicYear}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select academic year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {academicYears.map(y => (
+                          <SelectItem key={y.id} value={y.id}>
+                            {y.name} {y.is_current && '(Current)'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="text-sm">
+                    <span className="text-green-600 font-medium">{csvData.filter(r => r.isValid).length} valid</span>
+                    {' / '}
+                    <span className="text-red-600 font-medium">{csvData.filter(r => !r.isValid).length} invalid</span>
+                    {' / '}
+                    <span>{csvData.length} total</span>
+                  </div>
+                </div>
+                
+                <div className="flex-1 overflow-auto border rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-10">Status</TableHead>
+                        <TableHead>LRN</TableHead>
+                        <TableHead>Student</TableHead>
+                        <TableHead>Subject</TableHead>
+                        <TableHead className="text-center">Q1</TableHead>
+                        <TableHead className="text-center">Q2</TableHead>
+                        <TableHead className="text-center">Q3</TableHead>
+                        <TableHead className="text-center">Q4</TableHead>
+                        <TableHead>Error</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {csvData.map((row, idx) => (
+                        <TableRow key={idx} className={row.isValid ? '' : 'bg-destructive/10'}>
+                          <TableCell>
+                            {row.isValid ? (
+                              <CheckCircle2 className="h-4 w-4 text-green-600" />
+                            ) : (
+                              <AlertCircle className="h-4 w-4 text-destructive" />
+                            )}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">{row.lrn}</TableCell>
+                          <TableCell>{row.student_name || '-'}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{row.subject_code}</Badge>
+                            {row.subject_name && <span className="ml-1 text-xs text-muted-foreground">{row.subject_name}</span>}
+                          </TableCell>
+                          <TableCell className="text-center">{row.q1 || '-'}</TableCell>
+                          <TableCell className="text-center">{row.q2 || '-'}</TableCell>
+                          <TableCell className="text-center">{row.q3 || '-'}</TableCell>
+                          <TableCell className="text-center">{row.q4 || '-'}</TableCell>
+                          <TableCell className="text-destructive text-xs">{row.error}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            )}
+          </div>
+
+          <DialogFooter className="flex-shrink-0">
+            <Button variant="outline" onClick={() => { setIsImportModalOpen(false); setCsvData([]); }}>Cancel</Button>
+            {csvData.length > 0 && (
+              <>
+                <Button variant="outline" onClick={() => setCsvData([])}>
+                  <X className="h-4 w-4 mr-2" />
+                  Clear
+                </Button>
+                <Button 
+                  onClick={handleImportGrades} 
+                  disabled={isImporting || csvData.filter(r => r.isValid).length === 0}
+                >
+                  {isImporting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Import {csvData.filter(r => r.isValid).length} Grades
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
