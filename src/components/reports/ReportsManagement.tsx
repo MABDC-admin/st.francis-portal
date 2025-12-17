@@ -44,6 +44,8 @@ import {
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useSchool, SCHOOL_THEMES, SchoolType } from '@/contexts/SchoolContext';
+import { useSchoolSettings } from '@/hooks/useSchoolSettings';
 
 interface ReportTemplate {
   id: string;
@@ -63,6 +65,8 @@ interface Student {
 }
 
 export const ReportsManagement = () => {
+  const { selectedSchool, schoolTheme } = useSchool();
+  const { data: schoolSettings } = useSchoolSettings(selectedSchool);
   const [templates, setTemplates] = useState<ReportTemplate[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -79,7 +83,7 @@ export const ReportsManagement = () => {
   const [uploadForm, setUploadForm] = useState({
     name: '',
     type: 'report_card' as 'report_card' | 'certificate',
-    school: 'MABDC',
+    school: selectedSchool,
     file: null as File | null
   });
   
@@ -93,22 +97,26 @@ export const ReportsManagement = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [selectedSchool]);
 
   const fetchData = async () => {
     setIsLoading(true);
     try {
+      // Fetch templates filtered by school
       const { data: templatesData, error: templatesError } = await supabase
         .from('report_templates')
         .select('*')
+        .eq('school', selectedSchool)
         .order('created_at', { ascending: false });
 
       if (templatesError) throw templatesError;
       setTemplates((templatesData || []) as ReportTemplate[]);
 
+      // Fetch students filtered by school
       const { data: studentsData } = await supabase
         .from('students')
         .select('id, student_name, lrn, level')
+        .eq('school', selectedSchool)
         .order('student_name');
       setStudents(studentsData || []);
     } catch (error) {
@@ -123,7 +131,7 @@ export const ReportsManagement = () => {
     setUploadForm({
       name: '',
       type: activeTab as 'report_card' | 'certificate',
-      school: 'MABDC',
+      school: selectedSchool,
       file: null
     });
     setIsUploadModalOpen(true);
@@ -243,60 +251,81 @@ export const ReportsManagement = () => {
 
   const filteredTemplates = templates.filter(t => t.type === activeTab);
 
-  const TemplateCard = ({ template }: { template: ReportTemplate }) => (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-    >
-      <Card className="overflow-hidden hover:shadow-md transition-shadow">
-        <div className="aspect-[3/4] bg-muted relative overflow-hidden">
-          {template.file_url.endsWith('.pdf') ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-red-50">
-              <FileText className="h-16 w-16 text-red-500" />
-            </div>
-          ) : (
-            <img 
-              src={template.file_url} 
-              alt={template.name}
-              className="w-full h-full object-cover"
-            />
-          )}
-          <Badge className="absolute top-2 right-2" variant={template.is_active ? 'default' : 'secondary'}>
-            {template.school}
-          </Badge>
-        </div>
-        <CardContent className="p-4">
-          <h3 className="font-semibold truncate">{template.name}</h3>
-          <p className="text-xs text-muted-foreground mb-3">
-            {new Date(template.created_at).toLocaleDateString()}
-          </p>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" className="flex-1" onClick={() => handleGenerate(template)}>
-              <Printer className="h-3 w-3 mr-1" />
-              Generate
-            </Button>
-            <Button size="sm" variant="ghost" asChild>
-              <a href={template.file_url} target="_blank" rel="noopener noreferrer">
-                <Eye className="h-4 w-4" />
-              </a>
-            </Button>
-            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(template)}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
+  const TemplateCard = ({ template }: { template: ReportTemplate }) => {
+    const templateSchoolTheme = SCHOOL_THEMES[template.school as keyof typeof SCHOOL_THEMES];
+    
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <Card className="overflow-hidden hover:shadow-md transition-shadow">
+          <div className="aspect-[3/4] bg-muted relative overflow-hidden">
+            {template.file_url.endsWith('.pdf') ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-red-50">
+                <FileText className="h-16 w-16 text-red-500" />
+              </div>
+            ) : (
+              <img 
+                src={template.file_url} 
+                alt={template.name}
+                className="w-full h-full object-cover"
+              />
+            )}
+            <Badge 
+              className="absolute top-2 right-2" 
+              style={{ backgroundColor: templateSchoolTheme?.accentColor || 'hsl(var(--primary))' }}
+            >
+              {template.school}
+            </Badge>
           </div>
-        </CardContent>
-      </Card>
-    </motion.div>
-  );
+          <CardContent className="p-4">
+            <h3 className="font-semibold truncate">{template.name}</h3>
+            <p className="text-xs text-muted-foreground mb-1">
+              {templateSchoolTheme?.fullName || template.school}
+            </p>
+            <p className="text-xs text-muted-foreground mb-3">
+              {new Date(template.created_at).toLocaleDateString()}
+            </p>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" className="flex-1" onClick={() => handleGenerate(template)}>
+                <Printer className="h-3 w-3 mr-1" />
+                Generate
+              </Button>
+              <Button size="sm" variant="ghost" asChild>
+                <a href={template.file_url} target="_blank" rel="noopener noreferrer">
+                  <Eye className="h-4 w-4" />
+                </a>
+              </Button>
+              <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(template)}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  };
 
   return (
     <div className="space-y-6">
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
+        className="flex items-center gap-4"
       >
-        <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Reports</h1>
-        <p className="text-muted-foreground mt-1">Generate report cards and certificates from templates</p>
+        <div 
+          className="h-12 w-12 rounded-lg flex items-center justify-center"
+          style={{ backgroundColor: schoolTheme.accentColor }}
+        >
+          <FileText className="h-6 w-6 text-white" />
+        </div>
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Reports</h1>
+          <p className="text-muted-foreground mt-1">
+            {schoolTheme.fullName} - Generate report cards and certificates
+          </p>
+        </div>
       </motion.div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -414,7 +443,7 @@ export const ReportsManagement = () => {
               <Label>School</Label>
               <Select 
                 value={uploadForm.school} 
-                onValueChange={(v) => setUploadForm({ ...uploadForm, school: v })}
+                onValueChange={(v) => setUploadForm({ ...uploadForm, school: v as SchoolType })}
               >
                 <SelectTrigger>
                   <SelectValue />
