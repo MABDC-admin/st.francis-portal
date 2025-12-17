@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Users, UserPlus, Key, Loader2, Eye, EyeOff, Copy, Check, RefreshCcw, Trash2, AlertTriangle, Filter } from 'lucide-react';
+import { Users, UserPlus, Key, Loader2, Eye, EyeOff, Copy, Check, RefreshCcw, Trash2, AlertTriangle, Filter, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { PrintableCredentialSlips } from './PrintableCredentialSlips';
 
 interface UserCredential {
   id: string;
@@ -34,6 +35,8 @@ export const UserManagement = () => {
   const [confirmText, setConfirmText] = useState('');
   const [levelFilter, setLevelFilter] = useState<string>('all');
   const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [showPrintDialog, setShowPrintDialog] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
   
   // Form states for creating accounts
   const [adminForm, setAdminForm] = useState({ email: 'denskie@edutrack.local', password: 'Denskie123', fullName: 'Admin User' });
@@ -89,6 +92,105 @@ export const UserManagement = () => {
       return matchesLevel && matchesRole;
     });
   }, [credentials, levelFilter, roleFilter]);
+
+  // Student credentials only for printing
+  const studentCredentials = useMemo(() => {
+    return filteredCredentials.filter(cred => cred.role === 'student');
+  }, [filteredCredentials]);
+
+  const handlePrint = () => {
+    if (studentCredentials.length === 0) {
+      toast.error('No student credentials to print');
+      return;
+    }
+    setShowPrintDialog(true);
+  };
+
+  const executePrint = () => {
+    const printWindow = window.open('', '_blank');
+    if (printWindow && printRef.current) {
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Student Credentials</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+              .credential-slip {
+                border: 2px dashed #666;
+                padding: 16px;
+                margin-bottom: 8px;
+                page-break-inside: avoid;
+                background: white;
+              }
+              .slip-header {
+                text-align: center;
+                border-bottom: 1px solid #ccc;
+                padding-bottom: 8px;
+                margin-bottom: 12px;
+              }
+              .slip-header h3 {
+                font-size: 14px;
+                font-weight: bold;
+                margin: 0;
+                color: #333;
+              }
+              .slip-header p {
+                font-size: 10px;
+                color: #666;
+                margin: 4px 0 0 0;
+              }
+              .slip-content {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+              }
+              .slip-field {
+                font-size: 11px;
+              }
+              .slip-field label {
+                font-weight: 600;
+                color: #444;
+                display: block;
+                margin-bottom: 2px;
+              }
+              .slip-field .value {
+                font-family: monospace;
+                font-size: 12px;
+                background: #f5f5f5;
+                padding: 4px 8px;
+                border-radius: 4px;
+                border: 1px solid #ddd;
+              }
+              .slip-footer {
+                margin-top: 12px;
+                padding-top: 8px;
+                border-top: 1px dashed #ccc;
+                font-size: 9px;
+                color: #888;
+                text-align: center;
+              }
+              .slips-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+              }
+              @media print {
+                @page { size: A4; margin: 10mm; }
+              }
+            </style>
+          </head>
+          <body>
+            ${printRef.current.innerHTML}
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.print();
+    }
+    setShowPrintDialog(false);
+  };
+
 
   const createUser = async (action: string, data: any) => {
     setIsLoading(true);
@@ -337,6 +439,10 @@ export const UserManagement = () => {
                   </SelectContent>
                 </Select>
               </div>
+              <Button variant="outline" size="sm" onClick={handlePrint}>
+                <Printer className="h-4 w-4 mr-2" />
+                Print Slips
+              </Button>
               <Button variant="outline" size="sm" onClick={fetchCredentials}>
                 <RefreshCcw className="h-4 w-4 mr-2" />
                 Refresh
@@ -461,6 +567,39 @@ export const UserManagement = () => {
             >
               {isResetting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
               Reset All
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Print Dialog */}
+      <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Printer className="h-5 w-5" />
+              Print Credential Slips
+            </DialogTitle>
+            <DialogDescription>
+              Preview and print {studentCredentials.length} student credential slips. Each slip can be cut along the dotted lines.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="border rounded-lg p-4 bg-muted/30 max-h-[400px] overflow-y-auto">
+            <PrintableCredentialSlips 
+              ref={printRef}
+              credentials={studentCredentials}
+              schoolName="EduTrack"
+            />
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPrintDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={executePrint}>
+              <Printer className="h-4 w-4 mr-2" />
+              Print
             </Button>
           </DialogFooter>
         </DialogContent>
