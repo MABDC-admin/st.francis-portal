@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 interface CreateUserRequest {
-  action: "create_admin" | "create_registrar" | "create_teacher" | "bulk_create_students";
+  action: "create_admin" | "create_registrar" | "create_teacher" | "bulk_create_students" | "reset_student_accounts";
   email?: string;
   password?: string;
   fullName?: string;
@@ -193,6 +193,60 @@ const handler = async (req: Request): Promise<Response> => {
           success: true, 
           message: `Created ${results.created} student accounts, ${results.failed} failed`,
           ...results 
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (action === "reset_student_accounts") {
+      console.log("Resetting all student accounts...");
+
+      // Get all student credentials
+      const { data: studentCreds, error: fetchError } = await supabaseAdmin
+        .from("user_credentials")
+        .select("user_id, id")
+        .eq("role", "student");
+
+      if (fetchError) {
+        console.error("Error fetching student credentials:", fetchError);
+        return new Response(
+          JSON.stringify({ error: fetchError.message }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      let deleted = 0;
+      let failed = 0;
+
+      for (const cred of studentCreds || []) {
+        try {
+          // Delete the auth user (this will cascade delete the credentials via foreign key)
+          if (cred.user_id) {
+            const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(cred.user_id);
+            if (deleteError) {
+              console.error(`Error deleting user ${cred.user_id}:`, deleteError);
+              failed++;
+              continue;
+            }
+          }
+          
+          // Delete the credential record
+          await supabaseAdmin.from("user_credentials").delete().eq("id", cred.id);
+          deleted++;
+        } catch (err) {
+          console.error(`Error processing credential ${cred.id}:`, err);
+          failed++;
+        }
+      }
+
+      console.log(`Reset complete: ${deleted} deleted, ${failed} failed`);
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: `Deleted ${deleted} student accounts${failed > 0 ? `, ${failed} failed` : ''}`,
+          deleted,
+          failed
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );

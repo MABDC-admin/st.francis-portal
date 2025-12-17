@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, UserPlus, Key, Loader2, Eye, EyeOff, Copy, Check, RefreshCcw } from 'lucide-react';
+import { Users, UserPlus, Key, Loader2, Eye, EyeOff, Copy, Check, RefreshCcw, Trash2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -22,9 +23,12 @@ interface UserCredential {
 
 export const UserManagement = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [credentials, setCredentials] = useState<UserCredential[]>([]);
   const [showPasswords, setShowPasswords] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
   
   // Form states for creating accounts
   const [adminForm, setAdminForm] = useState({ email: 'denskie@edutrack.local', password: 'Denskie123', fullName: 'Admin User' });
@@ -82,6 +86,32 @@ export const UserManagement = () => {
 
   const handleBulkCreateStudents = () => {
     createUser('bulk_create_students', {});
+  };
+
+  const handleResetStudentAccounts = async () => {
+    if (confirmText !== 'RESET') {
+      toast.error('Please type RESET to confirm');
+      return;
+    }
+    
+    setIsResetting(true);
+    try {
+      const { data: result, error } = await supabase.functions.invoke('create-users', {
+        body: { action: 'reset_student_accounts' },
+      });
+
+      if (error) throw error;
+      
+      toast.success(result.message || 'Student accounts reset successfully');
+      setShowResetDialog(false);
+      setConfirmText('');
+      fetchCredentials();
+    } catch (error: any) {
+      console.error('Error:', error);
+      toast.error(error.message || 'Failed to reset student accounts');
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   const togglePasswordVisibility = (id: string) => {
@@ -216,10 +246,15 @@ export const UserManagement = () => {
               This will create login accounts for all students in the database who don't have accounts yet. 
               Random passwords will be generated.
             </p>
-            <Button onClick={handleBulkCreateStudents} disabled={isLoading} className="w-full" variant="secondary">
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserPlus className="h-4 w-4 mr-2" />}
-              Create All Student Accounts
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={handleBulkCreateStudents} disabled={isLoading} className="flex-1" variant="secondary">
+                {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserPlus className="h-4 w-4 mr-2" />}
+                Create All
+              </Button>
+              <Button onClick={() => setShowResetDialog(true)} variant="destructive" size="icon" title="Reset all student accounts">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -308,6 +343,45 @@ export const UserManagement = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Reset Student Accounts Dialog */}
+      <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Reset All Student Accounts
+            </DialogTitle>
+            <DialogDescription>
+              This will permanently delete all student user accounts and their credentials. 
+              The student records will remain, but their login accounts will be removed.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm font-medium mb-2">
+              Type <span className="font-bold text-destructive">RESET</span> to confirm:
+            </p>
+            <Input
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder="RESET"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowResetDialog(false); setConfirmText(''); }}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleResetStudentAccounts}
+              disabled={isResetting || confirmText !== 'RESET'}
+            >
+              {isResetting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              Reset All
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
