@@ -82,6 +82,7 @@ interface Subject {
   id: string;
   code: string;
   name: string;
+  grade_levels: string[];
 }
 
 interface AcademicYear {
@@ -161,7 +162,7 @@ export const GradesManagement = () => {
       // Fetch subjects
       const { data: subjectsData } = await supabase
         .from('subjects')
-        .select('id, code, name')
+        .select('id, code, name, grade_levels')
         .eq('is_active', true)
         .order('name');
       setSubjects(subjectsData || []);
@@ -323,7 +324,7 @@ export const GradesManagement = () => {
             <Label>Student</Label>
             <Select 
               value={formData.student_id} 
-              onValueChange={(v) => setFormData({ ...formData, student_id: v })}
+              onValueChange={(v) => setFormData({ ...formData, student_id: v, subject_id: '' })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select student" />
@@ -331,7 +332,7 @@ export const GradesManagement = () => {
               <SelectContent>
                 {students.map(s => (
                   <SelectItem key={s.id} value={s.id}>
-                    {s.student_name} ({s.lrn})
+                    {s.student_name} ({s.lrn}) - {s.level}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -340,21 +341,30 @@ export const GradesManagement = () => {
 
           <div className="space-y-2">
             <Label>Subject</Label>
-            <Select 
-              value={formData.subject_id} 
-              onValueChange={(v) => setFormData({ ...formData, subject_id: v })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select subject" />
-              </SelectTrigger>
-              <SelectContent>
-                {subjects.map(s => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.code} - {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {(() => {
+              const selectedStudent = students.find(s => s.id === formData.student_id);
+              const filteredSubjects = selectedStudent 
+                ? subjects.filter(sub => sub.grade_levels.includes(selectedStudent.level))
+                : [];
+              return (
+                <Select 
+                  value={formData.subject_id} 
+                  onValueChange={(v) => setFormData({ ...formData, subject_id: v })}
+                  disabled={!formData.student_id}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={formData.student_id ? "Select subject" : "Select student first"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredSubjects.map(s => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.code} - {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              );
+            })()}
           </div>
 
           <div className="space-y-2">
