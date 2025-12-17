@@ -32,6 +32,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useSchoolSettings } from '@/hooks/useSchoolSettings';
 
 interface NavItem {
   id: string;
@@ -122,6 +123,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, role, signOut } = useAuth();
   const [isDragging, setIsDragging] = useState(false);
+  const { data: schoolSettings } = useSchoolSettings('MABDC');
 
   const defaultNavItems = getNavItemsForRole(role);
   
@@ -176,10 +178,16 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
           <Menu className="h-5 w-5" />
         </Button>
         <div className="flex items-center gap-2">
-          <div className="gradient-primary p-2 rounded-lg">
-            <GraduationCap className="h-5 w-5 text-primary-foreground" />
+          <div className="w-8 h-8 rounded-lg overflow-hidden bg-white flex items-center justify-center">
+            {schoolSettings?.logo_url ? (
+              <img src={schoolSettings.logo_url} alt="Logo" className="w-full h-full object-contain" />
+            ) : (
+              <div className="gradient-primary w-full h-full flex items-center justify-center">
+                <GraduationCap className="h-5 w-5 text-primary-foreground" />
+              </div>
+            )}
           </div>
-          <span className="font-bold text-foreground">EduTrack</span>
+          <span className="font-bold text-foreground">{schoolSettings?.acronym || 'EduTrack'}</span>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">
@@ -207,11 +215,17 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
             animate={{ opacity: 1, y: 0 }}
             className="flex items-center gap-3"
           >
-            <div className="gradient-primary p-2.5 rounded-xl shadow-md">
-              <GraduationCap className="h-6 w-6 text-primary-foreground" />
+            <div className="w-12 h-12 rounded-xl shadow-md overflow-hidden bg-white flex items-center justify-center">
+              {schoolSettings?.logo_url ? (
+                <img src={schoolSettings.logo_url} alt="Logo" className="w-full h-full object-contain p-1" />
+              ) : (
+                <div className="gradient-primary w-full h-full flex items-center justify-center">
+                  <GraduationCap className="h-6 w-6 text-primary-foreground" />
+                </div>
+              )}
             </div>
             <div>
-              <h1 className="font-bold text-lg text-foreground">EduTrack</h1>
+              <h1 className="font-bold text-lg text-foreground">{schoolSettings?.acronym || 'EduTrack'}</h1>
               <p className="text-xs text-muted-foreground">{roleLabels[role || ''] || 'Loading...'}</p>
             </div>
           </motion.div>
