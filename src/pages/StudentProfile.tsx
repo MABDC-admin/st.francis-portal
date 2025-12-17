@@ -19,9 +19,12 @@ import {
   Loader2,
   Camera,
   X,
-  CheckCircle2,
-  Clock,
-  Eye
+  Trash2,
+  Save,
+  Upload,
+  File,
+  Eye,
+  FolderOpen
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -47,6 +50,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Table,
   TableBody,
   TableCell,
@@ -54,8 +67,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useStudents } from '@/hooks/useStudents';
-import { useUploadStudentPhoto } from '@/hooks/useStudentDocuments';
+import { useStudents, useUpdateStudent } from '@/hooks/useStudents';
+import { 
+  useUploadStudentPhoto, 
+  useStudentDocuments, 
+  useUploadDocument, 
+  useDeleteDocument 
+} from '@/hooks/useStudentDocuments';
+import { DocumentSlot } from '@/components/students/DocumentSlot';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -106,8 +125,19 @@ const StudentProfile = () => {
   const [grades, setGrades] = useState<StudentGrade[]>([]);
   const [incidents, setIncidents] = useState<StudentIncident[]>([]);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  
+  // Modal states
   const [isIncidentModalOpen, setIsIncidentModalOpen] = useState(false);
+  const [isEditingIncident, setIsEditingIncident] = useState(false);
+  const [selectedIncident, setSelectedIncident] = useState<StudentIncident | null>(null);
+  const [isDeleteIncidentOpen, setIsDeleteIncidentOpen] = useState(false);
   const [isSavingIncident, setIsSavingIncident] = useState(false);
+  
+  // Edit mode states
+  const [isEditingPersonal, setIsEditingPersonal] = useState(false);
+  const [isEditingAcademic, setIsEditingAcademic] = useState(false);
+  const [isSavingStudent, setIsSavingStudent] = useState(false);
+  
   const [incidentForm, setIncidentForm] = useState({
     incident_date: new Date().toISOString().split('T')[0],
     category: '',
@@ -117,12 +147,57 @@ const StudentProfile = () => {
     reported_by: '',
     status: 'open'
   });
+
+  const [studentForm, setStudentForm] = useState({
+    student_name: '',
+    lrn: '',
+    gender: '',
+    age: '',
+    birth_date: '',
+    father_name: '',
+    father_contact: '',
+    mother_maiden_name: '',
+    mother_contact: '',
+    uae_address: '',
+    phil_address: '',
+    level: '',
+    school: '',
+    previous_school: ''
+  });
   
   const photoInputRef = useRef<HTMLInputElement>(null);
   const uploadPhoto = useUploadStudentPhoto();
+  const updateStudent = useUpdateStudent();
   
   const { data: students = [], isLoading } = useStudents();
   const student = students.find(s => s.id === id);
+  
+  // Documents
+  const { data: documents = [] } = useStudentDocuments(id || '');
+  const uploadDocument = useUploadDocument();
+  const deleteDocument = useDeleteDocument();
+
+  // Initialize student form when student data loads
+  useEffect(() => {
+    if (student) {
+      setStudentForm({
+        student_name: student.student_name || '',
+        lrn: student.lrn || '',
+        gender: student.gender || '',
+        age: student.age?.toString() || '',
+        birth_date: student.birth_date || '',
+        father_name: student.father_name || '',
+        father_contact: student.father_contact || '',
+        mother_maiden_name: student.mother_maiden_name || '',
+        mother_contact: student.mother_contact || '',
+        uae_address: student.uae_address || '',
+        phil_address: student.phil_address || '',
+        level: student.level || '',
+        school: student.school || '',
+        previous_school: student.previous_school || ''
+      });
+    }
+  }, [student]);
 
   // Fetch enrolled subjects
   useEffect(() => {
@@ -194,21 +269,21 @@ const StudentProfile = () => {
   }, [id]);
 
   // Fetch incidents
+  const fetchIncidents = async () => {
+    if (!id) return;
+    
+    const { data, error } = await supabase
+      .from('student_incidents')
+      .select('*')
+      .eq('student_id', id)
+      .order('incident_date', { ascending: false });
+
+    if (!error && data) {
+      setIncidents(data);
+    }
+  };
+
   useEffect(() => {
-    const fetchIncidents = async () => {
-      if (!id) return;
-      
-      const { data, error } = await supabase
-        .from('student_incidents')
-        .select('*')
-        .eq('student_id', id)
-        .order('incident_date', { ascending: false });
-
-      if (!error && data) {
-        setIncidents(data);
-      }
-    };
-
     fetchIncidents();
   }, [id]);
 
@@ -232,25 +307,42 @@ const StudentProfile = () => {
     }
   };
 
-  const handleSaveIncident = async () => {
-    if (!incidentForm.category || !incidentForm.title) {
-      toast.error('Please fill in required fields');
-      return;
-    }
-
-    setIsSavingIncident(true);
+  const handleSaveStudent = async () => {
+    if (!student) return;
+    
+    setIsSavingStudent(true);
     try {
-      const { error } = await supabase
-        .from('student_incidents')
-        .insert({
-          student_id: id,
-          ...incidentForm
-        });
+      await updateStudent.mutateAsync({
+        id: student.id,
+        ...studentForm,
+        age: studentForm.age ? parseInt(studentForm.age) : null
+      });
+      toast.success('Student information updated');
+      setIsEditingPersonal(false);
+      setIsEditingAcademic(false);
+    } catch (error) {
+      toast.error('Failed to update student');
+    } finally {
+      setIsSavingStudent(false);
+    }
+  };
 
-      if (error) throw error;
-
-      toast.success('Incident recorded successfully');
-      setIsIncidentModalOpen(false);
+  const handleOpenIncidentModal = (incident?: StudentIncident) => {
+    if (incident) {
+      setIsEditingIncident(true);
+      setSelectedIncident(incident);
+      setIncidentForm({
+        incident_date: incident.incident_date,
+        category: incident.category,
+        title: incident.title,
+        description: incident.description || '',
+        action_taken: incident.action_taken || '',
+        reported_by: incident.reported_by || '',
+        status: incident.status
+      });
+    } else {
+      setIsEditingIncident(false);
+      setSelectedIncident(null);
       setIncidentForm({
         incident_date: new Date().toISOString().split('T')[0],
         category: '',
@@ -260,18 +352,93 @@ const StudentProfile = () => {
         reported_by: '',
         status: 'open'
       });
+    }
+    setIsIncidentModalOpen(true);
+  };
 
-      // Refresh incidents
-      const { data } = await supabase
-        .from('student_incidents')
-        .select('*')
-        .eq('student_id', id)
-        .order('incident_date', { ascending: false });
-      if (data) setIncidents(data);
+  const handleSaveIncident = async () => {
+    if (!incidentForm.category || !incidentForm.title) {
+      toast.error('Please fill in required fields');
+      return;
+    }
+
+    setIsSavingIncident(true);
+    try {
+      if (isEditingIncident && selectedIncident) {
+        const { error } = await supabase
+          .from('student_incidents')
+          .update(incidentForm)
+          .eq('id', selectedIncident.id);
+
+        if (error) throw error;
+        toast.success('Incident updated successfully');
+      } else {
+        const { error } = await supabase
+          .from('student_incidents')
+          .insert({
+            student_id: id,
+            ...incidentForm
+          });
+
+        if (error) throw error;
+        toast.success('Incident recorded successfully');
+      }
+
+      setIsIncidentModalOpen(false);
+      fetchIncidents();
     } catch (error) {
       toast.error('Failed to save incident');
     } finally {
       setIsSavingIncident(false);
+    }
+  };
+
+  const handleDeleteIncident = async () => {
+    if (!selectedIncident) return;
+
+    try {
+      const { error } = await supabase
+        .from('student_incidents')
+        .delete()
+        .eq('id', selectedIncident.id);
+
+      if (error) throw error;
+      toast.success('Incident deleted');
+      setIsDeleteIncidentOpen(false);
+      setSelectedIncident(null);
+      fetchIncidents();
+    } catch (error) {
+      toast.error('Failed to delete incident');
+    }
+  };
+
+  const handleDocumentUpload = async (slotNumber: number, file: File) => {
+    if (!student) return;
+    
+    try {
+      await uploadDocument.mutateAsync({
+        studentId: student.id,
+        slotNumber,
+        file,
+      });
+      toast.success('Document uploaded successfully');
+    } catch (error) {
+      toast.error('Failed to upload document');
+    }
+  };
+
+  const handleDocumentDelete = async (slotNumber: number, documentId: string) => {
+    if (!student) return;
+    const doc = documents.find(d => d.id === documentId);
+    try {
+      await deleteDocument.mutateAsync({
+        documentId,
+        studentId: student.id,
+        fileUrl: doc?.file_url || null,
+      });
+      toast.success('Document deleted');
+    } catch (error) {
+      toast.error('Failed to delete document');
     }
   };
 
@@ -327,6 +494,28 @@ const StudentProfile = () => {
     </div>
   );
 
+  const EditableField = ({ 
+    label, 
+    value, 
+    field, 
+    type = 'text' 
+  }: { 
+    label: string; 
+    value: string; 
+    field: keyof typeof studentForm;
+    type?: string;
+  }) => (
+    <div className="space-y-1">
+      <Label className="text-xs">{label}</Label>
+      <Input 
+        type={type}
+        value={studentForm[field]}
+        onChange={(e) => setStudentForm({ ...studentForm, [field]: e.target.value })}
+        className="h-8"
+      />
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-background">
       {/* Top Navigation Bar */}
@@ -348,10 +537,6 @@ const StudentProfile = () => {
             <Button variant="outline" size="sm" className="gap-2">
               <Download className="h-4 w-4" />
               Export
-            </Button>
-            <Button size="sm" className="gap-2">
-              <Pencil className="h-4 w-4" />
-              Edit
             </Button>
           </div>
         </div>
@@ -430,7 +615,7 @@ const StudentProfile = () => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent">
+          <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent flex-wrap">
             <TabsTrigger 
               value="personal" 
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
@@ -460,6 +645,13 @@ const StudentProfile = () => {
               Grades
             </TabsTrigger>
             <TabsTrigger 
+              value="documents" 
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
+            >
+              <FolderOpen className="h-4 w-4 mr-2" />
+              Documents
+            </TabsTrigger>
+            <TabsTrigger 
               value="anecdotal" 
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
             >
@@ -470,6 +662,26 @@ const StudentProfile = () => {
 
           {/* Personal Information Tab */}
           <TabsContent value="personal" className="mt-6">
+            <div className="flex justify-end mb-4">
+              {isEditingPersonal ? (
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setIsEditingPersonal(false)}>
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel
+                  </Button>
+                  <Button size="sm" onClick={handleSaveStudent} disabled={isSavingStudent}>
+                    {isSavingStudent ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                    Save Changes
+                  </Button>
+                </div>
+              ) : (
+                <Button variant="outline" size="sm" onClick={() => setIsEditingPersonal(true)}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+              )}
+            </div>
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
@@ -479,15 +691,42 @@ const StudentProfile = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <InfoRow label="Full Name" value={student.student_name} />
-                    <InfoRow label="LRN" value={student.lrn} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <InfoRow label="Gender" value={student.gender} />
-                    <InfoRow label="Age" value={student.age?.toString()} />
-                  </div>
-                  <InfoRow label="Birth Date" value={formatDate(student.birth_date)} />
+                  {isEditingPersonal ? (
+                    <>
+                      <div className="grid grid-cols-2 gap-4">
+                        <EditableField label="Full Name" value={studentForm.student_name} field="student_name" />
+                        <EditableField label="LRN" value={studentForm.lrn} field="lrn" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Gender</Label>
+                          <Select value={studentForm.gender} onValueChange={(v) => setStudentForm({ ...studentForm, gender: v })}>
+                            <SelectTrigger className="h-8">
+                              <SelectValue placeholder="Select gender" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Male">Male</SelectItem>
+                              <SelectItem value="Female">Female</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <EditableField label="Age" value={studentForm.age} field="age" type="number" />
+                      </div>
+                      <EditableField label="Birth Date" value={studentForm.birth_date} field="birth_date" type="date" />
+                    </>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 gap-4">
+                        <InfoRow label="Full Name" value={student.student_name} />
+                        <InfoRow label="LRN" value={student.lrn} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <InfoRow label="Gender" value={student.gender} />
+                        <InfoRow label="Age" value={student.age?.toString()} />
+                      </div>
+                      <InfoRow label="Birth Date" value={formatDate(student.birth_date)} />
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
@@ -499,18 +738,29 @@ const StudentProfile = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div>
-                    <InfoRow label="Father's Name" value={student.father_name} />
-                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                      <Phone className="h-3 w-3" /> {student.father_contact || 'No contact'}
-                    </p>
-                  </div>
-                  <div>
-                    <InfoRow label="Mother's Name" value={student.mother_maiden_name} />
-                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                      <Phone className="h-3 w-3" /> {student.mother_contact || 'No contact'}
-                    </p>
-                  </div>
+                  {isEditingPersonal ? (
+                    <>
+                      <EditableField label="Father's Name" value={studentForm.father_name} field="father_name" />
+                      <EditableField label="Father's Contact" value={studentForm.father_contact} field="father_contact" />
+                      <EditableField label="Mother's Name" value={studentForm.mother_maiden_name} field="mother_maiden_name" />
+                      <EditableField label="Mother's Contact" value={studentForm.mother_contact} field="mother_contact" />
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <InfoRow label="Father's Name" value={student.father_name} />
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                          <Phone className="h-3 w-3" /> {student.father_contact || 'No contact'}
+                        </p>
+                      </div>
+                      <div>
+                        <InfoRow label="Mother's Name" value={student.mother_maiden_name} />
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                          <Phone className="h-3 w-3" /> {student.mother_contact || 'No contact'}
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
@@ -522,10 +772,31 @@ const StudentProfile = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InfoRow label="UAE Address" value={student.uae_address} />
-                    <InfoRow label="Philippine Address" value={student.phil_address} />
-                  </div>
+                  {isEditingPersonal ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <Label className="text-xs">UAE Address</Label>
+                        <Textarea 
+                          value={studentForm.uae_address}
+                          onChange={(e) => setStudentForm({ ...studentForm, uae_address: e.target.value })}
+                          rows={2}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Philippine Address</Label>
+                        <Textarea 
+                          value={studentForm.phil_address}
+                          onChange={(e) => setStudentForm({ ...studentForm, phil_address: e.target.value })}
+                          rows={2}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <InfoRow label="UAE Address" value={student.uae_address} />
+                      <InfoRow label="Philippine Address" value={student.phil_address} />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -534,15 +805,63 @@ const StudentProfile = () => {
           {/* Academic History Tab */}
           <TabsContent value="academic" className="mt-6">
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base">Academic Background</CardTitle>
+                {isEditingAcademic ? (
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setIsEditingAcademic(false)}>
+                      <X className="h-4 w-4 mr-2" />
+                      Cancel
+                    </Button>
+                    <Button size="sm" onClick={handleSaveStudent} disabled={isSavingStudent}>
+                      {isSavingStudent ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                      Save
+                    </Button>
+                  </div>
+                ) : (
+                  <Button variant="outline" size="sm" onClick={() => setIsEditingAcademic(true)}>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                )}
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <InfoRow label="Current Level" value={student.level} />
-                  <InfoRow label="School" value={student.school || 'MABDC'} />
-                  <InfoRow label="Previous School" value={student.previous_school} />
-                </div>
+                {isEditingAcademic ? (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Current Level</Label>
+                      <Select value={studentForm.level} onValueChange={(v) => setStudentForm({ ...studentForm, level: v })}>
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="Select level" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {['Kinder 1', 'Kinder 2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'].map(level => (
+                            <SelectItem key={level} value={level}>{level}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">School</Label>
+                      <Select value={studentForm.school} onValueChange={(v) => setStudentForm({ ...studentForm, school: v })}>
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="Select school" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="MABDC">MABDC</SelectItem>
+                          <SelectItem value="STFXSA">STFXSA</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <EditableField label="Previous School" value={studentForm.previous_school} field="previous_school" />
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <InfoRow label="Current Level" value={student.level} />
+                    <InfoRow label="School" value={student.school || 'MABDC'} />
+                    <InfoRow label="Previous School" value={student.previous_school} />
+                  </div>
+                )}
                 <div className="pt-4 border-t">
                   <p className="text-sm font-medium mb-3">Enrollment History</p>
                   <div className="bg-muted/50 rounded-lg p-4 text-sm text-muted-foreground">
@@ -650,6 +969,39 @@ const StudentProfile = () => {
             </Card>
           </TabsContent>
 
+          {/* Documents Tab */}
+          <TabsContent value="documents" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FolderOpen className="h-4 w-4" />
+                  Student Documents
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Upload and manage student documents. Click on an empty slot to upload.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[1, 2, 3, 4, 5, 6].map((slotNumber, index) => {
+                    const doc = documents.find(d => d.slot_number === slotNumber) || null;
+                    return (
+                      <DocumentSlot
+                        key={slotNumber}
+                        slot={slotNumber}
+                        studentId={student.id}
+                        document={doc}
+                        onUpload={handleDocumentUpload}
+                        onDelete={handleDocumentDelete}
+                        index={index}
+                      />
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Anecdotal/Behavior Tab */}
           <TabsContent value="anecdotal" className="mt-6">
             <Card>
@@ -658,7 +1010,7 @@ const StudentProfile = () => {
                   <CardTitle className="text-base">Anecdotal Records / Behavior Incidents</CardTitle>
                   <p className="text-sm text-muted-foreground mt-1">Track and manage student behavior incidents</p>
                 </div>
-                <Button onClick={() => setIsIncidentModalOpen(true)} className="gap-2">
+                <Button onClick={() => handleOpenIncidentModal()} className="gap-2">
                   <Plus className="h-4 w-4" />
                   Add Incident
                 </Button>
@@ -701,6 +1053,27 @@ const StudentProfile = () => {
                                 </p>
                               )}
                             </div>
+                            <div className="flex gap-1">
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8"
+                                onClick={() => handleOpenIncidentModal(incident)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 text-destructive"
+                                onClick={() => {
+                                  setSelectedIncident(incident);
+                                  setIsDeleteIncidentOpen(true);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
                         </motion.div>
                       );
@@ -719,11 +1092,11 @@ const StudentProfile = () => {
         </Tabs>
       </div>
 
-      {/* Add Incident Modal */}
+      {/* Add/Edit Incident Modal */}
       <Dialog open={isIncidentModalOpen} onOpenChange={setIsIncidentModalOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Record New Incident</DialogTitle>
+            <DialogTitle>{isEditingIncident ? 'Edit Incident' : 'Record New Incident'}</DialogTitle>
             <DialogDescription>
               Document a behavior incident or notable event for this student.
             </DialogDescription>
@@ -820,11 +1193,29 @@ const StudentProfile = () => {
             <Button variant="outline" onClick={() => setIsIncidentModalOpen(false)}>Cancel</Button>
             <Button onClick={handleSaveIncident} disabled={isSavingIncident}>
               {isSavingIncident && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Save Incident
+              {isEditingIncident ? 'Update Incident' : 'Save Incident'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Incident Confirmation */}
+      <AlertDialog open={isDeleteIncidentOpen} onOpenChange={setIsDeleteIncidentOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Incident</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this incident record? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteIncident} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
