@@ -23,11 +23,11 @@ function generatePassword(length = 12): string {
   return password;
 }
 
-// Generate email from student name
-function generateEmail(studentName: string, lrn: string): string {
-  const cleanName = studentName.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const shortLrn = lrn.slice(-4);
-  return `${cleanName.slice(0, 10)}${shortLrn}@student.edutrack.local`;
+// Generate email from LRN only
+function generateEmail(lrn: string): string {
+  // Use LRN as the username part
+  const cleanLrn = lrn.replace(/[^a-zA-Z0-9]/g, "");
+  return `${cleanLrn}@student.edutrack.local`;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -117,7 +117,7 @@ const handler = async (req: Request): Promise<Response> => {
       // Fetch all students without accounts
       const { data: students, error: studentsError } = await supabaseAdmin
         .from("students")
-        .select("id, student_name, lrn");
+        .select("id, student_name, lrn, level");
 
       if (studentsError) {
         console.error("Error fetching students:", studentsError);
@@ -146,7 +146,8 @@ const handler = async (req: Request): Promise<Response> => {
 
       for (const student of studentsToCreate) {
         try {
-          const email = generateEmail(student.student_name, student.lrn);
+          // Use LRN as username
+          const email = generateEmail(student.lrn);
           const password = generatePassword();
 
           // Create user
@@ -170,10 +171,10 @@ const handler = async (req: Request): Promise<Response> => {
             .update({ role: "student" })
             .eq("user_id", userData.user.id);
 
-          // Store credentials
+          // Store credentials with LRN as the display username
           await supabaseAdmin.from("user_credentials").insert({
             user_id: userData.user.id,
-            email,
+            email: student.lrn, // Store LRN as the "email" field for display
             temp_password: password,
             role: "student",
             student_id: student.id,
