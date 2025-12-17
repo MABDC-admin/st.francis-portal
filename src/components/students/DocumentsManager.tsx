@@ -54,14 +54,14 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
   const [documentName, setDocumentName] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: documents = [] } = useStudentDocuments(studentId);
   const uploadDocument = useUploadDocument();
   const deleteDocument = useDeleteDocument();
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFileSelect = (file: File) => {
     if (file) {
       setSelectedFile(file);
       // Auto-fill document name with file name (without extension)
@@ -69,6 +69,28 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
       setDocumentName(nameWithoutExt);
       setIsUploadModalOpen(true);
     }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFileSelect(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFileSelect(file);
   };
 
   const handleUpload = async () => {
@@ -146,7 +168,26 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
   };
 
   return (
-    <div>
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className="relative"
+    >
+      {/* Drag Overlay */}
+      {isDragging && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="absolute inset-0 bg-primary/10 border-2 border-dashed border-primary rounded-xl z-10 flex items-center justify-center"
+        >
+          <div className="text-center">
+            <Plus className="h-12 w-12 text-primary mx-auto mb-2" />
+            <p className="text-lg font-medium text-primary">Drop file to upload</p>
+          </div>
+        </motion.div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
@@ -160,7 +201,7 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
             type="file"
             accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
             className="hidden"
-            onChange={handleFileSelect}
+            onChange={handleInputChange}
           />
           <Button onClick={() => fileInputRef.current?.click()} className="gap-2">
             <Plus className="h-4 w-4" />
@@ -231,10 +272,16 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
           ))}
         </div>
       ) : (
-        <div className="text-center py-12 border-2 border-dashed rounded-xl">
+        <div 
+          className={cn(
+            "text-center py-12 border-2 border-dashed rounded-xl transition-colors cursor-pointer",
+            isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/30 hover:border-primary/50"
+          )}
+          onClick={() => fileInputRef.current?.click()}
+        >
           <FolderOpen className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
           <p className="text-muted-foreground">No documents uploaded</p>
-          <p className="text-sm text-muted-foreground mt-1">Click "Add Document" to upload</p>
+          <p className="text-sm text-muted-foreground mt-1">Drag & drop or click to upload</p>
         </div>
       )}
 
