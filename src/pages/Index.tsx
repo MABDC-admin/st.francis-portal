@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Users, GraduationCap, TrendingUp, UserPlus } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -15,8 +16,30 @@ import { AdminPinModal } from '@/components/admin/AdminPinModal';
 import { Button } from '@/components/ui/button';
 import { useStudents, useCreateStudent, useUpdateStudent, useDeleteStudent } from '@/hooks/useStudents';
 import { Student, StudentFormData } from '@/types/student';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
+  const navigate = useNavigate();
+  const { user, loading, role } = useAuth();
+  
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth');
+    }
+  }, [user, loading, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);

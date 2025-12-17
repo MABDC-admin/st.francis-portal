@@ -8,12 +8,25 @@ import {
   Moon, 
   Sun,
   Menu,
-  ShieldAlert
+  ShieldAlert,
+  LogOut,
+  User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/useTheme';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -30,9 +43,22 @@ const navItems = [
 
 const adminItem = { id: 'admin', icon: ShieldAlert, label: 'Admin' };
 
+const roleColors: Record<string, string> = {
+  admin: 'bg-red-500',
+  registrar: 'bg-blue-500',
+  teacher: 'bg-green-500',
+  student: 'bg-purple-500',
+  parent: 'bg-orange-500',
+};
+
 export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardLayoutProps) => {
   const { isDark, toggle } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user, role, signOut } = useAuth();
+
+  const getInitials = (email: string) => {
+    return email.substring(0, 2).toUpperCase();
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -52,9 +78,11 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
           </div>
           <span className="font-bold text-foreground">EduTrack</span>
         </div>
-        <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">
-          {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">
+            {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          </Button>
+        </div>
       </header>
 
       {/* Sidebar Overlay */}
@@ -86,6 +114,37 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
           </motion.div>
         </div>
 
+        {/* User Info */}
+        {user && (
+          <div className="px-3 pb-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="w-full justify-start gap-3 h-auto py-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className={cn("text-white text-xs", roleColors[role || 'student'])}>
+                      {getInitials(user.email || 'U')}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col items-start text-left min-w-0">
+                    <span className="text-sm font-medium truncate max-w-[140px]">{user.email}</span>
+                    <Badge variant="secondary" className="text-xs capitalize mt-0.5">
+                      {role || 'Loading...'}
+                    </Badge>
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={signOut} className="text-destructive">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+
         <nav className="px-3 space-y-1 flex-1">
           {navItems.map((item, index) => (
             <motion.button
@@ -112,25 +171,27 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
 
         {/* Bottom Section - Admin & Theme Toggle */}
         <div className="px-3 pb-6 space-y-2">
-          {/* Admin Button */}
-          <motion.button
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-            onClick={() => {
-              onTabChange(adminItem.id);
-              setSidebarOpen(false);
-            }}
-            className={cn(
-              "w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200",
-              activeTab === adminItem.id
-                ? "bg-destructive text-destructive-foreground shadow-md"
-                : "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-            )}
-          >
-            <adminItem.icon className="h-5 w-5" />
-            {adminItem.label}
-          </motion.button>
+          {/* Admin Button - Only show for admin role */}
+          {(role === 'admin' || role === 'registrar') && (
+            <motion.button
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
+              onClick={() => {
+                onTabChange(adminItem.id);
+                setSidebarOpen(false);
+              }}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200",
+                activeTab === adminItem.id
+                  ? "bg-destructive text-destructive-foreground shadow-md"
+                  : "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+              )}
+            >
+              <adminItem.icon className="h-5 w-5" />
+              {adminItem.label}
+            </motion.button>
+          )}
 
           {/* Theme Toggle - Desktop */}
           <div className="hidden lg:block">
