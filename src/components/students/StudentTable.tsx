@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, 
@@ -7,14 +7,14 @@ import {
   Eye, 
   Pencil, 
   Trash2,
-  ChevronLeft,
-  ChevronRight,
   Filter,
   Download,
   X,
   LayoutGrid,
   List,
-  GraduationCap
+  GraduationCap,
+  Rows3,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,9 +39,9 @@ interface StudentTableProps {
 
 type SortField = 'student_name' | 'level' | 'age' | 'gender';
 type SortDirection = 'asc' | 'desc';
-type ViewMode = 'cards' | 'table';
+type ViewMode = 'cards' | 'table' | 'compact';
 
-const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
+const ITEMS_PER_LOAD = 30;
 
 const SCHOOLS = [
   { id: 'all', name: 'All Schools', acronym: 'ALL', dbValue: '' },
@@ -62,10 +62,12 @@ export const StudentTable = ({
   const [genderFilter, setGenderFilter] = useState<string>('all');
   const [sortField, setSortField] = useState<SortField>('student_name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const [displayCount, setDisplayCount] = useState(ITEMS_PER_LOAD);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // Get unique levels and genders for filters
   const levels = useMemo(() => {
@@ -108,12 +110,41 @@ export const StudentTable = ({
       });
   }, [students, search, schoolFilter, levelFilter, genderFilter, sortField, sortDirection]);
 
-  // Pagination
-  const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
-  const paginatedStudents = filteredStudents.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // Reset display count when filters change
+  useEffect(() => {
+    setDisplayCount(ITEMS_PER_LOAD);
+  }, [search, schoolFilter, levelFilter, genderFilter, sortField, sortDirection]);
+
+  // Infinite scroll with intersection observer
+  const displayedStudents = filteredStudents.slice(0, displayCount);
+  const hasMore = displayCount < filteredStudents.length;
+
+  const loadMore = useCallback(() => {
+    if (hasMore && !isLoadingMore) {
+      setIsLoadingMore(true);
+      setTimeout(() => {
+        setDisplayCount(prev => Math.min(prev + ITEMS_PER_LOAD, filteredStudents.length));
+        setIsLoadingMore(false);
+      }, 200);
+    }
+  }, [hasMore, isLoadingMore, filteredStudents.length]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [loadMore]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -161,7 +192,6 @@ export const StudentTable = ({
     setSchoolFilter('all');
     setLevelFilter('all');
     setGenderFilter('all');
-    setCurrentPage(1);
   };
 
   const hasActiveFilters = search || schoolFilter !== 'all' || levelFilter !== 'all' || genderFilter !== 'all';
@@ -173,7 +203,7 @@ export const StudentTable = ({
         {/* School Selector & View Toggle Row */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           {/* School Dropdown */}
-          <Select value={schoolFilter} onValueChange={(v) => { setSchoolFilter(v); setCurrentPage(1); }}>
+          <Select value={schoolFilter} onValueChange={(v) => setSchoolFilter(v)}>
             <SelectTrigger className="w-[280px] bg-card border-2 border-stat-purple/20 hover:border-stat-purple/40">
               <div className="flex items-center gap-2">
                 <GraduationCap className="h-4 w-4 text-stat-purple" />
@@ -204,8 +234,21 @@ export const StudentTable = ({
                   ? "bg-stat-purple text-white shadow-sm" 
                   : "text-muted-foreground hover:text-foreground"
               )}
+              title="Card View"
             >
               <LayoutGrid className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('compact')}
+              className={cn(
+                "p-2 rounded-md transition-all",
+                viewMode === 'compact' 
+                  ? "bg-stat-purple text-white shadow-sm" 
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              title="Compact View"
+            >
+              <Rows3 className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode('table')}
@@ -215,6 +258,7 @@ export const StudentTable = ({
                   ? "bg-stat-purple text-white shadow-sm" 
                   : "text-muted-foreground hover:text-foreground"
               )}
+              title="Table View"
             >
               <List className="h-4 w-4" />
             </button>
@@ -228,10 +272,7 @@ export const StudentTable = ({
             <Input
               placeholder="Search by name or LRN..."
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setCurrentPage(1);
-              }}
+              onChange={(e) => setSearch(e.target.value)}
               className="pl-10"
             />
           </div>
@@ -239,7 +280,7 @@ export const StudentTable = ({
           {/* Level Filter - Always Visible */}
           <div className="flex items-center gap-2 w-full lg:w-auto">
             <label className="text-sm font-medium text-muted-foreground whitespace-nowrap">Level:</label>
-            <Select value={levelFilter} onValueChange={(v) => { setLevelFilter(v); setCurrentPage(1); }}>
+            <Select value={levelFilter} onValueChange={(v) => setLevelFilter(v)}>
               <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="All Levels" />
               </SelectTrigger>
@@ -285,7 +326,7 @@ export const StudentTable = ({
               <div className="flex flex-wrap gap-4 pt-4 border-t border-border">
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-muted-foreground">Gender</label>
-                  <Select value={genderFilter} onValueChange={(v) => { setGenderFilter(v); setCurrentPage(1); }}>
+                  <Select value={genderFilter} onValueChange={(v) => setGenderFilter(v)}>
                     <SelectTrigger className="w-[180px]">
                       <SelectValue placeholder="All Genders" />
                     </SelectTrigger>
@@ -301,6 +342,11 @@ export const StudentTable = ({
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Results Count */}
+        <div className="text-sm text-muted-foreground">
+          Showing {displayedStudents.length} of {filteredStudents.length} students
+        </div>
       </div>
 
       {/* Content */}
@@ -312,12 +358,12 @@ export const StudentTable = ({
               Array.from({ length: 12 }).map((_, i) => (
                 <div key={i} className="bg-secondary/50 rounded-xl h-48 animate-pulse" />
               ))
-            ) : paginatedStudents.length === 0 ? (
+            ) : displayedStudents.length === 0 ? (
               <div className="col-span-full py-12 text-center text-muted-foreground">
                 No students found. {hasActiveFilters && 'Try adjusting your filters.'}
               </div>
             ) : (
-              paginatedStudents.map((student, index) => (
+              displayedStudents.map((student, index) => (
                 <StudentCard
                   key={student.id}
                   student={student}
@@ -326,6 +372,80 @@ export const StudentTable = ({
                   onDelete={onDelete}
                   index={index}
                 />
+              ))
+            )}
+          </div>
+        ) : viewMode === 'compact' ? (
+          /* Compact List View */
+          <div className="space-y-1">
+            {isLoading ? (
+              Array.from({ length: 20 }).map((_, i) => (
+                <div key={i} className="bg-secondary/50 rounded h-10 animate-pulse" />
+              ))
+            ) : displayedStudents.length === 0 ? (
+              <div className="py-12 text-center text-muted-foreground">
+                No students found. {hasActiveFilters && 'Try adjusting your filters.'}
+              </div>
+            ) : (
+              displayedStudents.map((student, index) => (
+                <motion.div
+                  key={student.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: Math.min(index * 0.01, 0.3) }}
+                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50 transition-colors cursor-pointer group"
+                  onClick={() => onView(student)}
+                >
+                  {/* Avatar */}
+                  {student.photo_url ? (
+                    <img 
+                      src={student.photo_url} 
+                      alt="" 
+                      className="h-8 w-8 rounded-full object-cover flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="h-8 w-8 rounded-full bg-stat-purple/20 flex items-center justify-center flex-shrink-0">
+                      <span className="text-xs font-bold text-stat-purple">
+                        {student.student_name.charAt(0)}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Name */}
+                  <span className="font-medium text-sm flex-1 truncate min-w-0">
+                    {student.student_name}
+                  </span>
+                  
+                  {/* Level Badge */}
+                  <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-stat-purple/10 text-stat-purple flex-shrink-0">
+                    {student.level}
+                  </span>
+                  
+                  {/* LRN */}
+                  <span className="font-mono text-[10px] text-muted-foreground hidden sm:block flex-shrink-0 w-28 truncate">
+                    {student.lrn}
+                  </span>
+                  
+                  {/* Actions */}
+                  <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6"
+                      onClick={(e) => { e.stopPropagation(); onEdit(student); }}
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-destructive hover:text-destructive"
+                      onClick={(e) => { e.stopPropagation(); onDelete(student); }}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </motion.div>
               ))
             )}
           </div>
@@ -372,19 +492,19 @@ export const StudentTable = ({
                       <td className="px-4 lg:px-6 py-4"><div className="h-4 bg-muted rounded w-20 ml-auto" /></td>
                     </tr>
                   ))
-                ) : paginatedStudents.length === 0 ? (
+                ) : displayedStudents.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-4 lg:px-6 py-12 text-center text-muted-foreground">
                       No students found. {hasActiveFilters && 'Try adjusting your filters.'}
                     </td>
                   </tr>
                 ) : (
-                  paginatedStudents.map((student, index) => (
+                  displayedStudents.map((student, index) => (
                     <motion.tr
                       key={student.id}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      transition={{ delay: index * 0.02 }}
+                      transition={{ delay: Math.min(index * 0.01, 0.3) }}
                       className="hover:bg-secondary/30 transition-colors"
                     >
                       <td className="px-4 lg:px-6 py-4">
@@ -455,78 +575,24 @@ export const StudentTable = ({
             </table>
           </div>
         )}
-      </div>
 
-      {/* Pagination */}
-      {!isLoading && filteredStudents.length > 0 && (
-        <div className="px-4 lg:px-6 py-4 border-t border-border flex flex-col sm:flex-row gap-4 items-center justify-between">
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span>
-              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredStudents.length)} of {filteredStudents.length}
-            </span>
-            <Select 
-              value={itemsPerPage.toString()} 
-              onValueChange={(v) => { setItemsPerPage(Number(v)); setCurrentPage(1); }}
-            >
-              <SelectTrigger className="w-[100px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ITEMS_PER_PAGE_OPTIONS.map(option => (
-                  <SelectItem key={option} value={option.toString()}>{option} / page</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/* Infinite Scroll Loader */}
+        {hasMore && !isLoading && (
+          <div 
+            ref={loadMoreRef} 
+            className="flex items-center justify-center py-8"
+          >
+            {isLoadingMore ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Loading more...</span>
+              </div>
+            ) : (
+              <span className="text-sm text-muted-foreground">Scroll for more</span>
+            )}
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let pageNum;
-                if (totalPages <= 5) {
-                  pageNum = i + 1;
-                } else if (currentPage <= 3) {
-                  pageNum = i + 1;
-                } else if (currentPage >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i;
-                } else {
-                  pageNum = currentPage - 2 + i;
-                }
-                
-                return (
-                  <Button
-                    key={pageNum}
-                    variant={currentPage === pageNum ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setCurrentPage(pageNum)}
-                    className={cn(
-                      "w-9",
-                      currentPage === pageNum && "bg-stat-purple hover:bg-stat-purple"
-                    )}
-                  >
-                    {pageNum}
-                  </Button>
-                );
-              })}
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
