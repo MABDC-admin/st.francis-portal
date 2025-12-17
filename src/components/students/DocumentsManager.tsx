@@ -46,13 +46,18 @@ interface DocumentsManagerProps {
   studentId: string;
 }
 
+interface PendingFile {
+  file: File;
+  name: string;
+  id: string;
+}
+
 export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<StudentDocument | null>(null);
-  const [documentName, setDocumentName] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -61,19 +66,24 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
   const uploadDocument = useUploadDocument();
   const deleteDocument = useDeleteDocument();
 
-  const handleFileSelect = (file: File) => {
-    if (file) {
-      setSelectedFile(file);
-      // Auto-fill document name with file name (without extension)
-      const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
-      setDocumentName(nameWithoutExt);
-      setIsUploadModalOpen(true);
-    }
+  const handleFilesSelect = (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    if (fileArray.length === 0) return;
+
+    const newPendingFiles: PendingFile[] = fileArray.map((file) => ({
+      file,
+      name: file.name.replace(/\.[^/.]+$/, ''), // Remove extension
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    }));
+
+    setPendingFiles(newPendingFiles);
+    setIsUploadModalOpen(true);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleFileSelect(file);
+    if (e.target.files) handleFilesSelect(e.target.files);
+    // Reset input so same file can be selected again
+    e.target.value = '';
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -89,32 +99,56 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) handleFileSelect(file);
+    if (e.dataTransfer.files) handleFilesSelect(e.dataTransfer.files);
+  };
+
+  const updateFileName = (id: string, newName: string) => {
+    setPendingFiles((prev) =>
+      prev.map((pf) => (pf.id === id ? { ...pf, name: newName } : pf))
+    );
+  };
+
+  const removeFile = (id: string) => {
+    setPendingFiles((prev) => prev.filter((pf) => pf.id !== id));
+    if (pendingFiles.length <= 1) {
+      setIsUploadModalOpen(false);
+    }
   };
 
   const handleUpload = async () => {
-    if (!selectedFile || !documentName.trim()) {
-      toast.error('Please enter a document name');
+    const validFiles = pendingFiles.filter((pf) => pf.name.trim());
+    if (validFiles.length === 0) {
+      toast.error('Please enter names for all documents');
       return;
     }
 
     setIsUploading(true);
-    try {
-      await uploadDocument.mutateAsync({
-        studentId,
-        file: selectedFile,
-        documentName: documentName.trim(),
-      });
-      toast.success('Document uploaded successfully');
-      setIsUploadModalOpen(false);
-      setDocumentName('');
-      setSelectedFile(null);
-    } catch (error) {
-      toast.error('Failed to upload document');
-    } finally {
-      setIsUploading(false);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const pf of validFiles) {
+      try {
+        await uploadDocument.mutateAsync({
+          studentId,
+          file: pf.file,
+          documentName: pf.name.trim(),
+        });
+        successCount++;
+      } catch (error) {
+        failCount++;
+      }
     }
+
+    if (successCount > 0) {
+      toast.success(`${successCount} document${successCount > 1 ? 's' : ''} uploaded successfully`);
+    }
+    if (failCount > 0) {
+      toast.error(`${failCount} document${failCount > 1 ? 's' : ''} failed to upload`);
+    }
+
+    setIsUploadModalOpen(false);
+    setPendingFiles([]);
+    setIsUploading(false);
   };
 
   const handleDelete = async () => {
@@ -200,6 +234,7 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
             ref={fileInputRef}
             type="file"
             accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+            multiple
             className="hidden"
             onChange={handleInputChange}
           />
@@ -286,46 +321,64 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
       )}
 
       {/* Upload Modal */}
-      <Dialog open={isUploadModalOpen} onOpenChange={setIsUploadModalOpen}>
-        <DialogContent className="max-w-md">
+      <Dialog open={isUploadModalOpen} onOpenChange={(open) => {
+        if (!open) setPendingFiles([]);
+        setIsUploadModalOpen(open);
+      }}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle>Upload Document</DialogTitle>
+            <DialogTitle>
+              Upload {pendingFiles.length > 1 ? `${pendingFiles.length} Documents` : 'Document'}
+            </DialogTitle>
             <DialogDescription>
-              Enter a name for this document
+              {pendingFiles.length > 1 
+                ? 'Edit names for each document before uploading' 
+                : 'Enter a name for this document'}
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
-            {selectedFile && (
-              <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-                {getFileIcon(selectedFile.type)}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{selectedFile.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {(selectedFile.size / 1024).toFixed(1)} KB
-                  </p>
+          <div className="flex-1 overflow-y-auto space-y-3 py-4">
+            {pendingFiles.map((pf, index) => (
+              <div key={pf.id} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                <div className="shrink-0">
+                  {getFileIcon(pf.file.type)}
                 </div>
+                <div className="flex-1 min-w-0 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs text-muted-foreground truncate">{pf.file.name}</p>
+                    <span className="text-xs text-muted-foreground">
+                      ({(pf.file.size / 1024).toFixed(1)} KB)
+                    </span>
+                  </div>
+                  <Input
+                    value={pf.name}
+                    onChange={(e) => updateFileName(pf.id, e.target.value)}
+                    placeholder="Document name"
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
+                  onClick={() => removeFile(pf.id)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="documentName">Document Name *</Label>
-              <Input
-                id="documentName"
-                value={documentName}
-                onChange={(e) => setDocumentName(e.target.value)}
-                placeholder="e.g., Birth Certificate, Report Card"
-              />
-            </div>
+            ))}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="border-t pt-4">
             <Button variant="outline" onClick={() => setIsUploadModalOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleUpload} disabled={isUploading}>
+            <Button 
+              onClick={handleUpload} 
+              disabled={isUploading || pendingFiles.length === 0}
+            >
               {isUploading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Upload
+              Upload {pendingFiles.length > 1 ? `${pendingFiles.length} Files` : ''}
             </Button>
           </DialogFooter>
         </DialogContent>
