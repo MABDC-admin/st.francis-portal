@@ -22,33 +22,33 @@ export const StudentCard = ({ student, onView, onEdit, onDelete, index }: Studen
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05, duration: 0.3 }}
-      className="bg-card rounded-2xl shadow-card p-5 hover:shadow-lg transition-all duration-300 border border-border/50 group"
+      transition={{ delay: index * 0.03, duration: 0.2 }}
+      className="bg-card rounded-xl shadow-card p-3 hover:shadow-lg transition-all duration-300 border border-border/50 group"
     >
-      {/* Status Badge */}
-      <div className="flex justify-between items-start mb-4">
+      {/* Status Badge & Actions */}
+      <div className="flex justify-between items-start mb-2">
         <span className={cn(
-          "px-3 py-1 rounded-full text-xs font-semibold",
+          "px-2 py-0.5 rounded-full text-[10px] font-semibold",
           getStatusColor()
         )}>
           Active
         </span>
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-8 w-8"
+            className="h-6 w-6"
             onClick={() => onEdit(student)}
           >
-            <Pencil className="h-3.5 w-3.5" />
+            <Pencil className="h-3 w-3" />
           </Button>
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-8 w-8 text-destructive hover:text-destructive"
+            className="h-6 w-6 text-destructive hover:text-destructive"
             onClick={() => onDelete(student)}
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 className="h-3 w-3" />
           </Button>
         </div>
       </div>
@@ -59,77 +59,59 @@ export const StudentCard = ({ student, onView, onEdit, onDelete, index }: Studen
         onClick={() => onView(student)}
       >
         {/* Avatar */}
-        <div className="relative mb-3">
+        <div className="relative mb-2">
           {student.photo_url ? (
             <img 
               src={student.photo_url} 
               alt={student.student_name}
-              className="h-20 w-20 rounded-full object-cover border-4 border-stat-purple-light"
+              className="h-12 w-12 rounded-full object-cover border-2 border-stat-purple-light"
             />
           ) : (
-            <div className="h-20 w-20 rounded-full bg-gradient-to-br from-stat-purple to-stat-pink flex items-center justify-center border-4 border-stat-purple-light">
-              <span className="text-2xl font-bold text-white">
+            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-stat-purple to-stat-pink flex items-center justify-center border-2 border-stat-purple-light">
+              <span className="text-base font-bold text-white">
                 {student.student_name.charAt(0).toUpperCase()}
               </span>
             </div>
           )}
-          <div className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-stat-green border-2 border-card flex items-center justify-center">
-            <div className="h-2 w-2 rounded-full bg-white" />
+          <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full bg-stat-green border-2 border-card flex items-center justify-center">
+            <div className="h-1.5 w-1.5 rounded-full bg-white" />
           </div>
         </div>
 
         {/* Name & Level */}
-        <h3 className="font-bold text-foreground text-lg mb-0.5 line-clamp-1">
+        <h3 className="font-bold text-foreground text-sm mb-0.5 line-clamp-1">
           {student.student_name}
         </h3>
-        <p className="text-stat-purple font-medium text-sm mb-4">
+        <p className="text-stat-purple font-medium text-xs mb-2">
           {student.level}
         </p>
 
-        {/* Divider */}
-        <div className="w-full border-t border-border my-3" />
-
         {/* Info Grid */}
-        <div className="w-full grid grid-cols-2 gap-3 text-left text-sm">
+        <div className="w-full grid grid-cols-2 gap-2 text-left text-xs border-t border-border pt-2">
           <div>
-            <p className="text-muted-foreground text-xs">LRN</p>
-            <p className="text-foreground font-medium truncate font-mono text-xs">
+            <p className="text-muted-foreground text-[10px]">LRN</p>
+            <p className="text-foreground font-medium truncate font-mono text-[10px]">
               {student.lrn}
             </p>
           </div>
           <div>
-            <p className="text-muted-foreground text-xs">Age</p>
-            <p className="text-foreground font-medium">
+            <p className="text-muted-foreground text-[10px]">Age</p>
+            <p className="text-foreground font-medium text-xs">
               {student.age || '-'}
             </p>
           </div>
-        </div>
-
-        {/* Contact Info */}
-        <div className="w-full mt-3 space-y-2">
-          {student.mother_contact && (
-            <div className="flex items-center gap-2 text-muted-foreground text-xs">
-              <Phone className="h-3.5 w-3.5 text-stat-green" />
-              <span className="truncate">{student.mother_contact}</span>
-            </div>
-          )}
-          {student.gender && (
-            <div className="flex items-center gap-2 text-muted-foreground text-xs">
-              <GraduationCap className="h-3.5 w-3.5 text-stat-purple" />
-              <span>{student.gender}</span>
-            </div>
-          )}
         </div>
       </div>
 
       {/* View Profile Button */}
       <Button 
         variant="outline" 
-        className="w-full mt-4 border-stat-purple text-stat-purple hover:bg-stat-purple hover:text-white transition-colors"
+        size="sm"
+        className="w-full mt-2 h-7 text-xs border-stat-purple text-stat-purple hover:bg-stat-purple hover:text-white transition-colors"
         onClick={() => onView(student)}
       >
-        <Eye className="h-4 w-4 mr-2" />
-        View Profile
+        <Eye className="h-3 w-3 mr-1" />
+        View
       </Button>
     </motion.div>
   );

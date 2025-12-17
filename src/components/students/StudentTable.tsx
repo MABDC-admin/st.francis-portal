@@ -307,10 +307,10 @@ export const StudentTable = ({
       <div className="p-4 lg:p-6">
         {viewMode === 'cards' ? (
           /* Card View */
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
             {isLoading ? (
-              Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="bg-secondary/50 rounded-2xl h-72 animate-pulse" />
+              Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} className="bg-secondary/50 rounded-xl h-48 animate-pulse" />
               ))
             ) : paginatedStudents.length === 0 ? (
               <div className="col-span-full py-12 text-center text-muted-foreground">
