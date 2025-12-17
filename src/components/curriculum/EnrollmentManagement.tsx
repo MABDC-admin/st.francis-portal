@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useSchool } from '@/contexts/SchoolContext';
 
 interface Subject {
   id: string;
@@ -37,6 +38,7 @@ interface StudentEnrollment {
 }
 
 export const EnrollmentManagement = () => {
+  const { selectedSchool } = useSchool();
   const [isLoading, setIsLoading] = useState(false);
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -76,11 +78,12 @@ export const EnrollmentManagement = () => {
     const stats: EnrollmentStat[] = [];
     
     for (const level of GRADE_LEVELS) {
-      // Get student count for this grade level
+      // Get student count for this grade level filtered by school
       const { count: studentCount } = await supabase
         .from('students')
         .select('*', { count: 'exact', head: true })
-        .eq('level', level);
+        .eq('level', level)
+        .eq('school', selectedSchool);
 
       // Get subject count for this grade level
       const subjectCount = subjects.filter(s => s.grade_levels.includes(level)).length;
@@ -103,11 +106,12 @@ export const EnrollmentManagement = () => {
     setLoadingLevel(gradeLevel);
     
     try {
-      // Get students for this grade level
+      // Get students for this grade level filtered by school
       const { data: students } = await supabase
         .from('students')
         .select('id, student_name, lrn')
         .eq('level', gradeLevel)
+        .eq('school', selectedSchool)
         .order('student_name');
 
       if (!students) {
@@ -174,13 +178,16 @@ export const EnrollmentManagement = () => {
   };
   useEffect(() => {
     fetchData();
-  }, []);
+    // Clear expanded levels and detailed enrollments when school changes
+    setExpandedLevels(new Set());
+    setDetailedEnrollments({});
+  }, [selectedSchool]);
 
   useEffect(() => {
     if (selectedYear && subjects.length > 0) {
       fetchEnrollmentStats();
     }
-  }, [selectedYear, subjects]);
+  }, [selectedYear, subjects, selectedSchool]);
 
   const handleAutoEnroll = async () => {
     if (!selectedYear) {
@@ -193,8 +200,11 @@ export const EnrollmentManagement = () => {
       let enrolled = 0;
       let skipped = 0;
 
-      // Get all students
-      const { data: students } = await supabase.from('students').select('id, level');
+      // Get all students filtered by school
+      const { data: students } = await supabase
+        .from('students')
+        .select('id, level')
+        .eq('school', selectedSchool);
 
       for (const student of students || []) {
         // Get subjects for this student's grade level

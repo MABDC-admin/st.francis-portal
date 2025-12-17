@@ -57,6 +57,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useSchool } from '@/contexts/SchoolContext';
 
 interface StudentGrade {
   id: string;
@@ -114,6 +115,7 @@ interface CSVGradeRow {
 }
 
 export const GradesManagement = () => {
+  const { selectedSchool } = useSchool();
   const [grades, setGrades] = useState<StudentGrade[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -159,28 +161,43 @@ export const GradesManagement = () => {
     hasExisting: boolean;
   }>>({});
 
-  // Fetch data
+  // Fetch data when school changes
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [selectedSchool]);
 
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Fetch grades with related data
-      const { data: gradesData, error: gradesError } = await supabase
-        .from('student_grades')
-        .select(`
-          *,
-          students:student_id (student_name, lrn, level),
-          subjects:subject_id (code, name),
-          academic_years:academic_year_id (name)
-        `)
-        .order('created_at', { ascending: false });
+      // Fetch students filtered by school first
+      const { data: studentsData } = await supabase
+        .from('students')
+        .select('id, student_name, lrn, level')
+        .eq('school', selectedSchool)
+        .order('student_name');
+      setStudents(studentsData || []);
 
-      if (gradesError) throw gradesError;
+      const studentIds = (studentsData || []).map(s => s.id);
 
-      const formattedGrades = (gradesData || []).map((g: any) => ({
+      // Fetch grades only for students in the selected school
+      let gradesData: any[] = [];
+      if (studentIds.length > 0) {
+        const { data, error: gradesError } = await supabase
+          .from('student_grades')
+          .select(`
+            *,
+            students:student_id (student_name, lrn, level),
+            subjects:subject_id (code, name),
+            academic_years:academic_year_id (name)
+          `)
+          .in('student_id', studentIds)
+          .order('created_at', { ascending: false });
+
+        if (gradesError) throw gradesError;
+        gradesData = data || [];
+      }
+
+      const formattedGrades = gradesData.map((g: any) => ({
         ...g,
         student_name: g.students?.student_name,
         student_lrn: g.students?.lrn,
@@ -191,13 +208,6 @@ export const GradesManagement = () => {
       }));
       setGrades(formattedGrades);
 
-      // Fetch students
-      const { data: studentsData } = await supabase
-        .from('students')
-        .select('id, student_name, lrn, level')
-        .order('student_name');
-      setStudents(studentsData || []);
-
       // Fetch subjects
       const { data: subjectsData } = await supabase
         .from('subjects')
@@ -205,6 +215,7 @@ export const GradesManagement = () => {
         .eq('is_active', true)
         .order('name');
       setSubjects(subjectsData || []);
+
 
       // Fetch academic years
       const { data: yearsData } = await supabase

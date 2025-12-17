@@ -13,6 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useSchool } from '@/contexts/SchoolContext';
 
 interface Subject {
   id: string;
@@ -43,6 +44,7 @@ const initialFormState = {
 };
 
 export const SubjectManagement = () => {
+  const { selectedSchool } = useSchool();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -70,13 +72,14 @@ export const SubjectManagement = () => {
   useEffect(() => {
     fetchSubjects();
     fetchLevelsWithStudents();
-  }, []);
+  }, [selectedSchool]);
 
   const fetchLevelsWithStudents = async () => {
     setIsLoadingLevels(true);
     const { data } = await supabase
       .from('students')
-      .select('level');
+      .select('level')
+      .eq('school', selectedSchool);
     
     if (data) {
       const levels = [...new Set(data.map((s: { level: string }) => s.level))];
