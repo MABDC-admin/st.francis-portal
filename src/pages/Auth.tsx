@@ -6,10 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { GraduationCap, Mail, Lock } from 'lucide-react';
+import { GraduationCap, Lock, User } from 'lucide-react';
 import { z } from 'zod';
 import { useSchoolSettings } from '@/hooks/useSchoolSettings';
-import { supabase } from '@/integrations/supabase/client';
 
 const loginSchema = z.object({
   email: z.string().min(1, 'Email or LRN is required'),
@@ -30,52 +29,6 @@ const Auth = () => {
     }
   }, [user, loading, navigate]);
 
-  // Check if input looks like an email
-  const isEmail = (input: string) => {
-    return input.includes('@');
-  };
-
-  // Look up email by LRN from user_credentials
-  const getEmailByLRN = async (lrn: string): Promise<string | null> => {
-    // For students, the email format is typically lrn@student.local or similar
-    // First try direct lookup in user_credentials by matching the email pattern
-    const { data, error } = await supabase
-      .from('user_credentials')
-      .select('email')
-      .or(`email.ilike.${lrn}@%,email.eq.${lrn}`)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Error looking up LRN:', error);
-      return null;
-    }
-
-    if (data?.email) {
-      return data.email;
-    }
-
-    // Also try checking if there's a student with this LRN and find their credentials
-    const { data: studentData } = await supabase
-      .from('students')
-      .select('id')
-      .eq('lrn', lrn)
-      .maybeSingle();
-
-    if (studentData?.id) {
-      const { data: credData } = await supabase
-        .from('user_credentials')
-        .select('email')
-        .eq('student_id', studentData.id)
-        .maybeSingle();
-
-      if (credData?.email) {
-        return credData.email;
-      }
-    }
-
-    return null;
-  };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -87,28 +40,15 @@ const Auth = () => {
 
     setIsSubmitting(true);
     
-    let emailToUse = loginData.email.trim();
-
-    // If input doesn't look like an email, try to look up by LRN
-    if (!isEmail(emailToUse)) {
-      const foundEmail = await getEmailByLRN(emailToUse);
-      if (foundEmail) {
-        emailToUse = foundEmail;
-      } else {
-        // If no email found, still try with the input (might be a username-style email)
-        // Some systems use LRN directly as email without @
-        setIsSubmitting(false);
-        toast.error('LRN not found. Please check your LRN or contact administrator.');
-        return;
-      }
-    }
+    // Use the input directly - if it's an LRN (no @), it's used as-is since that's how student emails are stored
+    const emailToUse = loginData.email.trim();
 
     const { error } = await signIn(emailToUse, loginData.password);
     setIsSubmitting(false);
 
     if (error) {
       if (error.message.includes('Invalid login credentials')) {
-        toast.error('Invalid credentials. Please check your LRN/email and password.');
+        toast.error('Invalid LRN/email or password. Please check your credentials.');
       } else {
         toast.error(error.message);
       }
@@ -151,9 +91,9 @@ const Auth = () => {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="login-email">Email / Username</Label>
+              <Label htmlFor="login-email">LRN / Email</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="login-email"
                   type="text"
