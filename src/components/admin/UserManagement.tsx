@@ -36,7 +36,13 @@ export const UserManagement = () => {
   const [levelFilter, setLevelFilter] = useState<string>('all');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [showPrintDialog, setShowPrintDialog] = useState(false);
+  const [selectedSchool, setSelectedSchool] = useState('M.A Brain Development Center');
   const printRef = useRef<HTMLDivElement>(null);
+  
+  const schoolOptions = [
+    { value: 'M.A Brain Development Center', label: 'M.A Brain Development Center (MABDC)' },
+    { value: 'St. Francis Xavier Smart Academy Inc', label: 'St. Francis Xavier Smart Academy Inc (STFXSA)' },
+  ];
   
   // Form states for creating accounts
   const [adminForm, setAdminForm] = useState({ email: 'denskie@edutrack.local', password: 'Denskie123', fullName: 'Admin User' });
@@ -585,12 +591,30 @@ export const UserManagement = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="border rounded-lg p-4 bg-muted/30 max-h-[400px] overflow-y-auto">
-            <PrintableCredentialSlips 
-              ref={printRef}
-              credentials={studentCredentials}
-              schoolName="EduTrack"
-            />
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <Label className="whitespace-nowrap">School Name:</Label>
+              <Select value={selectedSchool} onValueChange={setSelectedSchool}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {schoolOptions.map(school => (
+                    <SelectItem key={school.value} value={school.value}>
+                      {school.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="border rounded-lg p-4 bg-muted/30 max-h-[400px] overflow-y-auto">
+              <PrintableCredentialSlips 
+                ref={printRef}
+                credentials={studentCredentials}
+                schoolName={selectedSchool}
+              />
+            </div>
           </div>
           
           <DialogFooter>
