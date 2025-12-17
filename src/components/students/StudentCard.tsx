@@ -26,10 +26,10 @@ export const StudentCard = ({ student, onView, onEdit, onDelete, index }: Studen
       className="relative rounded-xl shadow-card hover:shadow-lg transition-all duration-300 border border-border/50 group overflow-hidden"
     >
       {/* Gradient Background that blends */}
-      <div className="absolute inset-0 bg-gradient-to-b from-emerald-600/20 via-lime-400/10 to-transparent pointer-events-none" />
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-600 to-lime-400" />
+      <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/40 via-lime-400/25 to-emerald-100/10 pointer-events-none" />
+      <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-600 to-lime-400" />
       
-      <div className="relative p-3 bg-card/80 backdrop-blur-sm">
+      <div className="relative p-3">
       {/* Status Badge & Actions */}
       <div className="flex justify-between items-start mb-2">
         <span className={cn(
