@@ -13,7 +13,8 @@ import {
   Download,
   X,
   LayoutGrid,
-  List
+  List,
+  GraduationCap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -167,24 +168,29 @@ export const StudentTable = ({
     <div className="bg-card rounded-2xl shadow-card overflow-hidden">
       {/* Header */}
       <div className="p-4 lg:p-6 border-b border-border space-y-4">
-        {/* School Selector */}
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            {SCHOOLS.map((school) => (
-              <button
-                key={school.id}
-                onClick={() => { setSchoolFilter(school.id); setCurrentPage(1); }}
-                className={cn(
-                  "px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200",
-                  schoolFilter === school.id
-                    ? "bg-stat-purple text-white shadow-md"
-                    : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                )}
-              >
-                {school.acronym}
-              </button>
-            ))}
-          </div>
+        {/* School Selector & View Toggle Row */}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          {/* School Dropdown */}
+          <Select value={schoolFilter} onValueChange={(v) => { setSchoolFilter(v); setCurrentPage(1); }}>
+            <SelectTrigger className="w-[280px] bg-card border-2 border-stat-purple/20 hover:border-stat-purple/40">
+              <div className="flex items-center gap-2">
+                <GraduationCap className="h-4 w-4 text-stat-purple" />
+                <SelectValue>
+                  {SCHOOLS.find(s => s.id === schoolFilter)?.acronym || 'Select School'}
+                </SelectValue>
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              {SCHOOLS.map((school) => (
+                <SelectItem key={school.id} value={school.id}>
+                  <div className="flex flex-col">
+                    <span className="font-semibold">{school.acronym}</span>
+                    <span className="text-xs text-muted-foreground">{school.name}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           
           {/* View Mode Toggle */}
           <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
