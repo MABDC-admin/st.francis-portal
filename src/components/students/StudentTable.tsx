@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Student } from '@/types/student';
 import { StudentCard } from './StudentCard';
+import { StudentHoverPreview } from './StudentHoverPreview';
 import { cn } from '@/lib/utils';
 import {
   Select,
@@ -388,64 +389,65 @@ export const StudentTable = ({
               </div>
             ) : (
               displayedStudents.map((student, index) => (
-                <motion.div
-                  key={student.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: Math.min(index * 0.01, 0.3) }}
-                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50 transition-colors cursor-pointer group"
-                  onClick={() => onView(student)}
-                >
-                  {/* Avatar */}
-                  {student.photo_url ? (
-                    <img 
-                      src={student.photo_url} 
-                      alt="" 
-                      className="h-8 w-8 rounded-full object-cover flex-shrink-0"
-                    />
-                  ) : (
-                    <div className="h-8 w-8 rounded-full bg-stat-purple/20 flex items-center justify-center flex-shrink-0">
-                      <span className="text-xs font-bold text-stat-purple">
-                        {student.student_name.charAt(0)}
-                      </span>
+                <StudentHoverPreview key={student.id} student={student}>
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: Math.min(index * 0.01, 0.3) }}
+                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50 transition-colors cursor-pointer group"
+                    onClick={() => onView(student)}
+                  >
+                    {/* Avatar */}
+                    {student.photo_url ? (
+                      <img 
+                        src={student.photo_url} 
+                        alt="" 
+                        className="h-8 w-8 rounded-full object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="h-8 w-8 rounded-full bg-stat-purple/20 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-bold text-stat-purple">
+                          {student.student_name.charAt(0)}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {/* Name */}
+                    <span className="font-medium text-sm flex-1 truncate min-w-0">
+                      {student.student_name}
+                    </span>
+                    
+                    {/* Level Badge */}
+                    <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-stat-purple/10 text-stat-purple flex-shrink-0">
+                      {student.level}
+                    </span>
+                    
+                    {/* LRN */}
+                    <span className="font-mono text-[10px] text-muted-foreground hidden sm:block flex-shrink-0 w-28 truncate">
+                      {student.lrn}
+                    </span>
+                    
+                    {/* Actions */}
+                    <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6"
+                        onClick={(e) => { e.stopPropagation(); onEdit(student); }}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 text-destructive hover:text-destructive"
+                        onClick={(e) => { e.stopPropagation(); onDelete(student); }}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
                     </div>
-                  )}
-                  
-                  {/* Name */}
-                  <span className="font-medium text-sm flex-1 truncate min-w-0">
-                    {student.student_name}
-                  </span>
-                  
-                  {/* Level Badge */}
-                  <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-stat-purple/10 text-stat-purple flex-shrink-0">
-                    {student.level}
-                  </span>
-                  
-                  {/* LRN */}
-                  <span className="font-mono text-[10px] text-muted-foreground hidden sm:block flex-shrink-0 w-28 truncate">
-                    {student.lrn}
-                  </span>
-                  
-                  {/* Actions */}
-                  <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-6 w-6"
-                      onClick={(e) => { e.stopPropagation(); onEdit(student); }}
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-6 w-6 text-destructive hover:text-destructive"
-                      onClick={(e) => { e.stopPropagation(); onDelete(student); }}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </motion.div>
+                  </motion.div>
+                </StudentHoverPreview>
               ))
             )}
           </div>

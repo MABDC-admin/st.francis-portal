@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion';
-import { Eye, Pencil, Trash2, Phone, Mail, GraduationCap } from 'lucide-react';
+import { Eye, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Student } from '@/types/student';
 import { cn } from '@/lib/utils';
+import { StudentHoverPreview } from './StudentHoverPreview';
 
 interface StudentCardProps {
   student: Student;
@@ -14,7 +15,6 @@ interface StudentCardProps {
 
 export const StudentCard = ({ student, onView, onEdit, onDelete, index }: StudentCardProps) => {
   const getStatusColor = () => {
-    // You can add logic here based on student status
     return 'bg-stat-green text-white';
   };
 
@@ -53,55 +53,57 @@ export const StudentCard = ({ student, onView, onEdit, onDelete, index }: Studen
         </div>
       </div>
 
-      {/* Profile Section */}
-      <div 
-        className="flex flex-col items-center text-center cursor-pointer"
-        onClick={() => onView(student)}
-      >
-        {/* Avatar */}
-        <div className="relative mb-2">
-          {student.photo_url ? (
-            <img 
-              src={student.photo_url} 
-              alt={student.student_name}
-              className="h-12 w-12 rounded-full object-cover border-2 border-stat-purple-light"
-            />
-          ) : (
-            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-stat-purple to-stat-pink flex items-center justify-center border-2 border-stat-purple-light">
-              <span className="text-base font-bold text-white">
-                {student.student_name.charAt(0).toUpperCase()}
-              </span>
+      {/* Profile Section with Hover Preview */}
+      <StudentHoverPreview student={student}>
+        <div 
+          className="flex flex-col items-center text-center cursor-pointer"
+          onClick={() => onView(student)}
+        >
+          {/* Avatar */}
+          <div className="relative mb-2">
+            {student.photo_url ? (
+              <img 
+                src={student.photo_url} 
+                alt={student.student_name}
+                className="h-12 w-12 rounded-full object-cover border-2 border-stat-purple-light"
+              />
+            ) : (
+              <div className="h-12 w-12 rounded-full bg-gradient-to-br from-stat-purple to-stat-pink flex items-center justify-center border-2 border-stat-purple-light">
+                <span className="text-base font-bold text-white">
+                  {student.student_name.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            )}
+            <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full bg-stat-green border-2 border-card flex items-center justify-center">
+              <div className="h-1.5 w-1.5 rounded-full bg-white" />
             </div>
-          )}
-          <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full bg-stat-green border-2 border-card flex items-center justify-center">
-            <div className="h-1.5 w-1.5 rounded-full bg-white" />
+          </div>
+
+          {/* Name & Level */}
+          <h3 className="font-bold text-foreground text-sm mb-0.5 line-clamp-1">
+            {student.student_name}
+          </h3>
+          <p className="text-stat-purple font-medium text-xs mb-2">
+            {student.level}
+          </p>
+
+          {/* Info Grid */}
+          <div className="w-full grid grid-cols-2 gap-2 text-left text-xs border-t border-border pt-2">
+            <div>
+              <p className="text-muted-foreground text-[10px]">LRN</p>
+              <p className="text-foreground font-medium truncate font-mono text-[10px]">
+                {student.lrn}
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-[10px]">Age</p>
+              <p className="text-foreground font-medium text-xs">
+                {student.age || '-'}
+              </p>
+            </div>
           </div>
         </div>
-
-        {/* Name & Level */}
-        <h3 className="font-bold text-foreground text-sm mb-0.5 line-clamp-1">
-          {student.student_name}
-        </h3>
-        <p className="text-stat-purple font-medium text-xs mb-2">
-          {student.level}
-        </p>
-
-        {/* Info Grid */}
-        <div className="w-full grid grid-cols-2 gap-2 text-left text-xs border-t border-border pt-2">
-          <div>
-            <p className="text-muted-foreground text-[10px]">LRN</p>
-            <p className="text-foreground font-medium truncate font-mono text-[10px]">
-              {student.lrn}
-            </p>
-          </div>
-          <div>
-            <p className="text-muted-foreground text-[10px]">Age</p>
-            <p className="text-foreground font-medium text-xs">
-              {student.age || '-'}
-            </p>
-          </div>
-        </div>
-      </div>
+      </StudentHoverPreview>
 
       {/* View Profile Button */}
       <Button 
