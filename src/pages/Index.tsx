@@ -9,6 +9,8 @@ import { StudentProfileModal } from '@/components/students/StudentProfileModal';
 import { StudentFormModal } from '@/components/students/StudentFormModal';
 import { DeleteConfirmModal } from '@/components/students/DeleteConfirmModal';
 import { CSVImport } from '@/components/import/CSVImport';
+import { AdminPanel } from '@/components/admin/AdminPanel';
+import { AdminPinModal } from '@/components/admin/AdminPinModal';
 import { Button } from '@/components/ui/button';
 import { useStudents, useCreateStudent, useUpdateStudent, useDeleteStudent } from '@/hooks/useStudents';
 import { Student, StudentFormData } from '@/types/student';
@@ -20,6 +22,11 @@ const Index = () => {
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  
+  // Admin state
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
+  const [pendingTab, setPendingTab] = useState<string | null>(null);
 
   const { data: students = [], isLoading } = useStudents();
   const createStudent = useCreateStudent();
@@ -31,6 +38,24 @@ const Index = () => {
   const maleCount = students.filter(s => s.gender?.toUpperCase() === 'MALE').length;
   const femaleCount = students.filter(s => s.gender?.toUpperCase() === 'FEMALE').length;
   const levels = [...new Set(students.map(s => s.level))].length;
+
+  const handleTabChange = (tab: string) => {
+    if (tab === 'admin' && !isAdminUnlocked) {
+      setPendingTab(tab);
+      setIsPinModalOpen(true);
+    } else {
+      setActiveTab(tab);
+    }
+  };
+
+  const handleAdminUnlock = () => {
+    setIsAdminUnlocked(true);
+    setIsPinModalOpen(false);
+    if (pendingTab) {
+      setActiveTab(pendingTab);
+      setPendingTab(null);
+    }
+  };
 
   const handleView = (student: Student) => {
     setSelectedStudent(student);
@@ -71,7 +96,7 @@ const Index = () => {
   };
 
   return (
-    <DashboardLayout activeTab={activeTab} onTabChange={setActiveTab}>
+    <DashboardLayout activeTab={activeTab} onTabChange={handleTabChange}>
       {activeTab === 'dashboard' && (
         <div className="space-y-6">
           <motion.div
@@ -165,7 +190,20 @@ const Index = () => {
         </div>
       )}
 
+      {activeTab === 'admin' && isAdminUnlocked && (
+        <AdminPanel />
+      )}
+
       {/* Modals */}
+      <AdminPinModal
+        isOpen={isPinModalOpen}
+        onClose={() => {
+          setIsPinModalOpen(false);
+          setPendingTab(null);
+        }}
+        onSuccess={handleAdminUnlock}
+      />
+
       <StudentProfileModal
         student={selectedStudent}
         isOpen={isViewModalOpen}

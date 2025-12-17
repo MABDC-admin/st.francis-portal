@@ -7,7 +7,8 @@ import {
   Upload, 
   Moon, 
   Sun,
-  Menu
+  Menu,
+  ShieldAlert
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/useTheme';
@@ -25,6 +26,8 @@ const navItems = [
   { id: 'students', icon: Users, label: 'Students' },
   { id: 'import', icon: Upload, label: 'Import CSV' },
 ];
+
+const adminItem = { id: 'admin', icon: ShieldAlert, label: 'Admin' };
 
 export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardLayoutProps) => {
   const { isDark, toggle } = useTheme();
@@ -63,7 +66,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed left-0 top-0 z-50 h-full w-64 bg-card border-r border-border transform transition-transform duration-300 lg:translate-x-0",
+        "fixed left-0 top-0 z-50 h-full w-64 bg-card border-r border-border transform transition-transform duration-300 lg:translate-x-0 flex flex-col",
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="p-6">
@@ -82,7 +85,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
           </motion.div>
         </div>
 
-        <nav className="px-3 space-y-1">
+        <nav className="px-3 space-y-1 flex-1">
           {navItems.map((item, index) => (
             <motion.button
               key={item.id}
@@ -106,16 +109,39 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
           ))}
         </nav>
 
-        {/* Theme Toggle - Desktop */}
-        <div className="hidden lg:block absolute bottom-6 left-3 right-3">
-          <Button 
-            variant="outline" 
-            className="w-full justify-start gap-3" 
-            onClick={toggle}
+        {/* Bottom Section - Admin & Theme Toggle */}
+        <div className="px-3 pb-6 space-y-2">
+          {/* Admin Button */}
+          <motion.button
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 }}
+            onClick={() => {
+              onTabChange(adminItem.id);
+              setSidebarOpen(false);
+            }}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200",
+              activeTab === adminItem.id
+                ? "bg-destructive text-destructive-foreground shadow-md"
+                : "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            )}
           >
-            {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-            {isDark ? 'Light Mode' : 'Dark Mode'}
-          </Button>
+            <adminItem.icon className="h-5 w-5" />
+            {adminItem.label}
+          </motion.button>
+
+          {/* Theme Toggle - Desktop */}
+          <div className="hidden lg:block">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start gap-3" 
+              onClick={toggle}
+            >
+              {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              {isDark ? 'Light Mode' : 'Dark Mode'}
+            </Button>
+          </div>
         </div>
       </aside>
 
