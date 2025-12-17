@@ -116,24 +116,24 @@ export const StudentCard = ({ student, onView, onEdit, onDelete, index }: Studen
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.03, duration: 0.2 }}
       className={cn(
-        "relative rounded-xl shadow-card hover:shadow-lg transition-all duration-300 border border-border/50 group overflow-hidden",
+        "relative rounded-xl shadow-card hover:shadow-lg transition-all duration-500 border border-border/50 group overflow-hidden",
         `hover:${cardTheme.accent}`
       )}
     >
       {/* Pulsing glow effect on hover */}
       <div className={cn(
-        "absolute -inset-0.5 bg-gradient-to-r rounded-xl opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-300 animate-pulse pointer-events-none",
+        "absolute -inset-0.5 bg-gradient-to-r rounded-xl opacity-0 group-hover:opacity-100 blur-sm transition-all duration-500 animate-pulse pointer-events-none",
         cardTheme.glow
       )} />
-      <div className="absolute inset-0 bg-card rounded-xl" />
+      <div className="absolute inset-0 bg-card rounded-xl transition-colors duration-500" />
       
       {/* Gradient Background that blends */}
       <div className={cn(
-        "absolute inset-0 bg-gradient-to-b pointer-events-none rounded-xl",
+        "absolute inset-0 bg-gradient-to-b pointer-events-none rounded-xl transition-all duration-500",
         cardTheme.bg
       )} />
       <div className={cn(
-        "absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r",
+        "absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r transition-all duration-500",
         cardTheme.bar
       )} />
       
