@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Loader2, Search, Edit, Trash2, BookOpen, GraduationCap } from 'lucide-react';
+import { Plus, Loader2, Search, Edit, Trash2, BookOpen, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -27,8 +28,8 @@ interface Subject {
 
 const GRADE_LEVELS = [
   'Kinder 1', 'Kinder 2',
-  'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6',
-  'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'
+  'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5', 'Level 6',
+  'Level 7', 'Level 8', 'Level 9', 'Level 10', 'Level 11', 'Level 12'
 ];
 
 const initialFormState = {
@@ -46,6 +47,7 @@ export const SubjectManagement = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [gradeFilter, setGradeFilter] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [formData, setFormData] = useState(initialFormState);
@@ -163,10 +165,12 @@ export const SubjectManagement = () => {
     }
   };
 
-  const filteredSubjects = subjects.filter(s =>
-    s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.code.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredSubjects = subjects.filter(s => {
+    const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.code.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesGrade = gradeFilter === 'all' || s.grade_levels.includes(gradeFilter);
+    return matchesSearch && matchesGrade;
+  });
 
   return (
     <div className="space-y-6">
@@ -185,17 +189,33 @@ export const SubjectManagement = () => {
         </Button>
       </motion.div>
 
-      {/* Search */}
+      {/* Search & Filter */}
       <Card>
         <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name or code..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or code..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Select value={gradeFilter} onValueChange={setGradeFilter}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Grade Level" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Levels</SelectItem>
+                  {GRADE_LEVELS.map(level => (
+                    <SelectItem key={level} value={level}>{level}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
