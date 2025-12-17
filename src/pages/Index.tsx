@@ -111,7 +111,7 @@ const Index = () => {
   };
 
   const handleView = (student: Student) => {
-    window.open(`/student/${student.id}`, '_blank');
+    navigate(`/student/${student.id}`);
   };
 
   const handleEdit = (student: Student) => {

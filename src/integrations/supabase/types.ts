@@ -257,6 +257,56 @@ export type Database = {
           },
         ]
       }
+      student_incidents: {
+        Row: {
+          action_taken: string | null
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          incident_date: string
+          reported_by: string | null
+          status: string | null
+          student_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          action_taken?: string | null
+          category: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          incident_date?: string
+          reported_by?: string | null
+          status?: string | null
+          student_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          action_taken?: string | null
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          incident_date?: string
+          reported_by?: string | null
+          status?: string | null
+          student_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_incidents_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_subjects: {
         Row: {
           academic_year_id: string | null
