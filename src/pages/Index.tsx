@@ -31,6 +31,10 @@ import { SubjectManagement } from '@/components/curriculum/SubjectManagement';
 import { AcademicYearManagement } from '@/components/curriculum/AcademicYearManagement';
 import { EnrollmentManagement } from '@/components/curriculum/EnrollmentManagement';
 
+// Grades and Reports
+import { GradesManagement } from '@/components/grades/GradesManagement';
+import { ReportsManagement } from '@/components/reports/ReportsManagement';
+
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading, role } = useAuth();
@@ -298,6 +302,16 @@ const Index = () => {
       {/* Subject Enrollment - Admin/Registrar only */}
       {activeTab === 'subject-enrollment' && hasAdminAccess && (
         <EnrollmentManagement />
+      )}
+
+      {/* Grades Management - Admin/Registrar/Teacher */}
+      {activeTab === 'grades' && (role === 'admin' || role === 'registrar' || role === 'teacher') && (
+        <GradesManagement />
+      )}
+
+      {/* Reports Management - Admin/Registrar only */}
+      {activeTab === 'reports' && hasAdminAccess && (
+        <ReportsManagement />
       )}
 
       {/* Admin Panel - Admin only */}

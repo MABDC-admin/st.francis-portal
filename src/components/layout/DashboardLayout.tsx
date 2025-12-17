@@ -16,7 +16,9 @@ import {
   Library,
   Calendar,
   GripVertical,
-  LucideIcon
+  LucideIcon,
+  FileSpreadsheet,
+  FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/useTheme';
@@ -50,7 +52,7 @@ interface DashboardLayoutProps {
 
 // Icon mapping for serialization
 const iconMap: Record<string, LucideIcon> = {
-  Home, BarChart3, Users, BookOpen, Library, Calendar, GraduationCap, Upload, UserCircle
+  Home, BarChart3, Users, BookOpen, Library, Calendar, GraduationCap, Upload, UserCircle, FileSpreadsheet, FileText
 };
 
 const getNavItemsForRole = (role: string | null): NavItem[] => {
@@ -65,9 +67,11 @@ const getNavItemsForRole = (role: string | null): NavItem[] => {
         { id: 'dashboard', icon: BarChart3, label: 'Dashboard' },
         { id: 'students', icon: Users, label: 'Students' },
         { id: 'teachers', icon: BookOpen, label: 'Teachers' },
+        { id: 'grades', icon: FileSpreadsheet, label: 'Grades' },
         { id: 'subjects', icon: Library, label: 'Subjects' },
         { id: 'academic-years', icon: Calendar, label: 'Academic Years' },
         { id: 'subject-enrollment', icon: GraduationCap, label: 'Enrollment' },
+        { id: 'reports', icon: FileText, label: 'Reports' },
         { id: 'enrollment', icon: GraduationCap, label: 'New Student' },
         { id: 'import', icon: Upload, label: 'Import CSV' },
       ];
@@ -77,8 +81,10 @@ const getNavItemsForRole = (role: string | null): NavItem[] => {
         { id: 'dashboard', icon: BarChart3, label: 'Dashboard' },
         { id: 'students', icon: Users, label: 'Students' },
         { id: 'teachers', icon: BookOpen, label: 'Teachers' },
+        { id: 'grades', icon: FileSpreadsheet, label: 'Grades' },
         { id: 'subjects', icon: Library, label: 'Subjects' },
         { id: 'subject-enrollment', icon: GraduationCap, label: 'Enrollment' },
+        { id: 'reports', icon: FileText, label: 'Reports' },
         { id: 'enrollment', icon: GraduationCap, label: 'New Student' },
         { id: 'import', icon: Upload, label: 'Import CSV' },
       ];
@@ -86,6 +92,7 @@ const getNavItemsForRole = (role: string | null): NavItem[] => {
       return [
         ...baseItems,
         { id: 'classes', icon: BookOpen, label: 'My Classes' },
+        { id: 'grades', icon: FileSpreadsheet, label: 'Grades' },
       ];
     case 'student':
       return [
