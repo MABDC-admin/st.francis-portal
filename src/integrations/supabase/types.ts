@@ -148,6 +148,47 @@ export type Database = {
         }
         Relationships: []
       }
+      user_credentials: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          password_changed: boolean | null
+          role: string
+          student_id: string | null
+          temp_password: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          password_changed?: boolean | null
+          role: string
+          student_id?: string | null
+          temp_password: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          password_changed?: boolean | null
+          role?: string
+          student_id?: string | null
+          temp_password?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_credentials_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
