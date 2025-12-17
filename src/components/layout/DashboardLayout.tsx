@@ -10,7 +10,9 @@ import {
   Menu,
   ShieldAlert,
   LogOut,
-  User
+  Home,
+  BookOpen,
+  UserCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/useTheme';
@@ -34,12 +36,48 @@ interface DashboardLayoutProps {
   onTabChange: (tab: string) => void;
 }
 
-const navItems = [
-  { id: 'dashboard', icon: BarChart3, label: 'Dashboard' },
-  { id: 'enrollment', icon: GraduationCap, label: 'Enrollment' },
-  { id: 'students', icon: Users, label: 'Students' },
-  { id: 'import', icon: Upload, label: 'Import CSV' },
-];
+// Role-specific navigation configurations
+const getNavItemsForRole = (role: string | null) => {
+  const baseItems = [
+    { id: 'portal', icon: Home, label: 'Portal Home' },
+  ];
+
+  switch (role) {
+    case 'admin':
+      return [
+        ...baseItems,
+        { id: 'dashboard', icon: BarChart3, label: 'Dashboard' },
+        { id: 'enrollment', icon: GraduationCap, label: 'Enrollment' },
+        { id: 'students', icon: Users, label: 'Students' },
+        { id: 'import', icon: Upload, label: 'Import CSV' },
+      ];
+    case 'registrar':
+      return [
+        ...baseItems,
+        { id: 'dashboard', icon: BarChart3, label: 'Dashboard' },
+        { id: 'enrollment', icon: GraduationCap, label: 'Enrollment' },
+        { id: 'students', icon: Users, label: 'Students' },
+        { id: 'import', icon: Upload, label: 'Import CSV' },
+      ];
+    case 'teacher':
+      return [
+        ...baseItems,
+        { id: 'classes', icon: BookOpen, label: 'My Classes' },
+      ];
+    case 'student':
+      return [
+        ...baseItems,
+        { id: 'profile', icon: UserCircle, label: 'My Profile' },
+      ];
+    case 'parent':
+      return [
+        ...baseItems,
+        { id: 'children', icon: Users, label: 'My Children' },
+      ];
+    default:
+      return baseItems;
+  }
+};
 
 const adminItem = { id: 'admin', icon: ShieldAlert, label: 'Admin' };
 
@@ -51,10 +89,20 @@ const roleColors: Record<string, string> = {
   parent: 'bg-orange-500',
 };
 
+const roleLabels: Record<string, string> = {
+  admin: 'Administrator',
+  registrar: 'Registrar',
+  teacher: 'Teacher',
+  student: 'Student',
+  parent: 'Parent',
+};
+
 export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardLayoutProps) => {
   const { isDark, toggle } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, role, signOut } = useAuth();
+
+  const navItems = getNavItemsForRole(role);
 
   const getInitials = (email: string) => {
     return email.substring(0, 2).toUpperCase();
@@ -109,7 +157,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
             </div>
             <div>
               <h1 className="font-bold text-lg text-foreground">EduTrack</h1>
-              <p className="text-xs text-muted-foreground">Student Records</p>
+              <p className="text-xs text-muted-foreground">{roleLabels[role || ''] || 'Loading...'}</p>
             </div>
           </motion.div>
         </div>
@@ -172,7 +220,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
         {/* Bottom Section - Admin & Theme Toggle */}
         <div className="px-3 pb-6 space-y-2">
           {/* Admin Button - Only show for admin role */}
-          {(role === 'admin' || role === 'registrar') && (
+          {role === 'admin' && (
             <motion.button
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}

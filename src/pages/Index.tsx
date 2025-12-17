@@ -18,6 +18,13 @@ import { useStudents, useCreateStudent, useUpdateStudent, useDeleteStudent } fro
 import { Student, StudentFormData } from '@/types/student';
 import { useAuth } from '@/contexts/AuthContext';
 
+// Portal Components
+import { AdminPortal } from '@/components/portals/AdminPortal';
+import { RegistrarPortal } from '@/components/portals/RegistrarPortal';
+import { TeacherPortal } from '@/components/portals/TeacherPortal';
+import { StudentPortal } from '@/components/portals/StudentPortal';
+import { ParentPortal } from '@/components/portals/ParentPortal';
+
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading, role } = useAuth();
@@ -28,19 +35,12 @@ const Index = () => {
     }
   }, [user, loading, navigate]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
-      </div>
-    );
-  }
+  // Set default tab based on role
+  const getDefaultTab = (userRole: string | null) => {
+    return 'portal'; // All roles start at their portal home
+  };
 
-  if (!user) {
-    return null;
-  }
-
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => getDefaultTab(role));
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -56,6 +56,25 @@ const Index = () => {
   const createStudent = useCreateStudent();
   const updateStudent = useUpdateStudent();
   const deleteStudent = useDeleteStudent();
+
+  // Update activeTab when role changes
+  useEffect(() => {
+    if (role) {
+      setActiveTab('portal');
+    }
+  }, [role]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   // Calculate stats
   const totalStudents = students.length;
@@ -118,9 +137,34 @@ const Index = () => {
     }
   };
 
+  // Render portal based on role
+  const renderPortal = () => {
+    switch (role) {
+      case 'admin':
+        return <AdminPortal onNavigate={handleTabChange} />;
+      case 'registrar':
+        return <RegistrarPortal onNavigate={handleTabChange} stats={{ totalStudents, pendingEnrollments: 0 }} />;
+      case 'teacher':
+        return <TeacherPortal />;
+      case 'student':
+        return <StudentPortal />;
+      case 'parent':
+        return <ParentPortal />;
+      default:
+        return <StudentPortal />;
+    }
+  };
+
+  // Check if user has access to admin/registrar features
+  const hasAdminAccess = role === 'admin' || role === 'registrar';
+
   return (
     <DashboardLayout activeTab={activeTab} onTabChange={handleTabChange}>
-      {activeTab === 'dashboard' && (
+      {/* Role-specific Portal Home */}
+      {activeTab === 'portal' && renderPortal()}
+
+      {/* Dashboard - Admin/Registrar only */}
+      {activeTab === 'dashboard' && hasAdminAccess && (
         <div className="space-y-6">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
@@ -168,12 +212,12 @@ const Index = () => {
             />
           </div>
 
-          {/* Charts */}
           <Charts students={students} />
         </div>
       )}
 
-      {activeTab === 'enrollment' && (
+      {/* Enrollment - Admin/Registrar only */}
+      {activeTab === 'enrollment' && hasAdminAccess && (
         <div className="space-y-6">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
@@ -187,7 +231,8 @@ const Index = () => {
         </div>
       )}
 
-      {activeTab === 'students' && (
+      {/* Students - Admin/Registrar only */}
+      {activeTab === 'students' && hasAdminAccess && (
         <div className="space-y-6">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
@@ -214,7 +259,8 @@ const Index = () => {
         </div>
       )}
 
-      {activeTab === 'import' && (
+      {/* Import - Admin/Registrar only */}
+      {activeTab === 'import' && hasAdminAccess && (
         <div className="space-y-6">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
@@ -228,7 +274,8 @@ const Index = () => {
         </div>
       )}
 
-      {activeTab === 'admin' && isAdminUnlocked && (
+      {/* Admin Panel - Admin only */}
+      {activeTab === 'admin' && role === 'admin' && isAdminUnlocked && (
         <AdminPanel />
       )}
 
