@@ -38,8 +38,8 @@ export const EnrollmentManagement = () => {
 
   const GRADE_LEVELS = [
     'Kinder 1', 'Kinder 2',
-    'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6',
-    'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'
+    'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5', 'Level 6',
+    'Level 7', 'Level 8', 'Level 9', 'Level 10', 'Level 11', 'Level 12'
   ];
 
   const fetchData = async () => {
