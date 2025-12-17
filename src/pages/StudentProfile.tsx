@@ -21,9 +21,6 @@ import {
   X,
   Trash2,
   Save,
-  Upload,
-  File,
-  Eye,
   FolderOpen
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -68,13 +65,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useStudents, useUpdateStudent } from '@/hooks/useStudents';
-import { 
-  useUploadStudentPhoto, 
-  useStudentDocuments, 
-  useUploadDocument, 
-  useDeleteDocument 
-} from '@/hooks/useStudentDocuments';
-import { DocumentSlot } from '@/components/students/DocumentSlot';
+import { useUploadStudentPhoto } from '@/hooks/useStudentDocuments';
+import { DocumentsManager } from '@/components/students/DocumentsManager';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -171,11 +163,6 @@ const StudentProfile = () => {
   
   const { data: students = [], isLoading } = useStudents();
   const student = students.find(s => s.id === id);
-  
-  // Documents
-  const { data: documents = [] } = useStudentDocuments(id || '');
-  const uploadDocument = useUploadDocument();
-  const deleteDocument = useDeleteDocument();
 
   // Initialize student form when student data loads
   useEffect(() => {
@@ -412,35 +399,6 @@ const StudentProfile = () => {
     }
   };
 
-  const handleDocumentUpload = async (slotNumber: number, file: File) => {
-    if (!student) return;
-    
-    try {
-      await uploadDocument.mutateAsync({
-        studentId: student.id,
-        slotNumber,
-        file,
-      });
-      toast.success('Document uploaded successfully');
-    } catch (error) {
-      toast.error('Failed to upload document');
-    }
-  };
-
-  const handleDocumentDelete = async (slotNumber: number, documentId: string) => {
-    if (!student) return;
-    const doc = documents.find(d => d.id === documentId);
-    try {
-      await deleteDocument.mutateAsync({
-        documentId,
-        studentId: student.id,
-        fileUrl: doc?.file_url || null,
-      });
-      toast.success('Document deleted');
-    } catch (error) {
-      toast.error('Failed to delete document');
-    }
-  };
 
   const getGradeColor = (grade: number | null) => {
     if (grade === null) return 'text-muted-foreground';
@@ -972,32 +930,8 @@ const StudentProfile = () => {
           {/* Documents Tab */}
           <TabsContent value="documents" className="mt-6">
             <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <FolderOpen className="h-4 w-4" />
-                  Student Documents
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Upload and manage student documents. Click on an empty slot to upload.
-                </p>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {[1, 2, 3, 4, 5, 6].map((slotNumber, index) => {
-                    const doc = documents.find(d => d.slot_number === slotNumber) || null;
-                    return (
-                      <DocumentSlot
-                        key={slotNumber}
-                        slot={slotNumber}
-                        studentId={student.id}
-                        document={doc}
-                        onUpload={handleDocumentUpload}
-                        onDelete={handleDocumentDelete}
-                        index={index}
-                      />
-                    );
-                  })}
-                </div>
+              <CardContent className="pt-6">
+                <DocumentsManager studentId={student.id} />
               </CardContent>
             </Card>
           </TabsContent>

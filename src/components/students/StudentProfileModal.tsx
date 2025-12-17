@@ -1,24 +1,11 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useRef } from 'react';
-import { 
-  X, 
-  Printer,
-  Camera,
-  Loader2,
-  FileText
-} from 'lucide-react';
+import { useState } from 'react';
+import { X, Printer, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Student, StudentDocument } from '@/types/student';
-import { DocumentSlot } from './DocumentSlot';
+import { Student } from '@/types/student';
 import { StudentProfileCard } from './StudentProfileCard';
-import { 
-  useStudentDocuments, 
-  useUploadDocument, 
-  useDeleteDocument,
-  useUploadStudentPhoto 
-} from '@/hooks/useStudentDocuments';
-import { toast } from 'sonner';
+import { DocumentsManager } from './DocumentsManager';
 
 interface StudentProfileModalProps {
   student: Student | null;
@@ -28,41 +15,11 @@ interface StudentProfileModalProps {
 
 export const StudentProfileModal = ({ student, isOpen, onClose }: StudentProfileModalProps) => {
   const [activeTab, setActiveTab] = useState('profile');
-  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
-  const photoInputRef = useRef<HTMLInputElement>(null);
-  
-  const { data: documents = [] } = useStudentDocuments(student?.id || '');
-  const uploadDocument = useUploadDocument();
-  const deleteDocument = useDeleteDocument();
-  const uploadPhoto = useUploadStudentPhoto();
 
   if (!student) return null;
 
   const handlePrint = () => {
     window.print();
-  };
-
-  const handleDocumentUpload = async (slot: number, file: File) => {
-    await uploadDocument.mutateAsync({ 
-      studentId: student.id, 
-      slotNumber: slot, 
-      file 
-    });
-    toast.success('Document uploaded successfully');
-  };
-
-  const handleDocumentDelete = async (slot: number, documentId: string) => {
-    const doc = documents.find(d => d.id === documentId);
-    await deleteDocument.mutateAsync({ 
-      documentId, 
-      studentId: student.id,
-      fileUrl: doc?.file_url || null
-    });
-    toast.success('Document deleted');
-  };
-
-  const getDocumentForSlot = (slot: number): StudentDocument | null => {
-    return documents.find(d => d.slot_number === slot) || null;
   };
 
   return (
@@ -132,28 +89,7 @@ export const StudentProfileModal = ({ student, isOpen, onClose }: StudentProfile
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                   >
-                    <div className="mb-6">
-                      <h3 className="text-lg font-semibold text-foreground mb-2 flex items-center gap-2">
-                        <FileText className="h-5 w-5" />
-                        Student Documents
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        Upload and manage student documents. Drag and drop or click to upload files.
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {[1, 2, 3, 4, 5, 6].map((slot, index) => (
-                        <DocumentSlot
-                          key={slot}
-                          slot={slot}
-                          studentId={student.id}
-                          document={getDocumentForSlot(slot)}
-                          onUpload={handleDocumentUpload}
-                          onDelete={handleDocumentDelete}
-                          index={index}
-                        />
-                      ))}
-                    </div>
+                    <DocumentsManager studentId={student.id} />
                   </motion.div>
                 )}
               </AnimatePresence>

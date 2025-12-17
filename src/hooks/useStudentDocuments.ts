@@ -10,7 +10,7 @@ export const useStudentDocuments = (studentId: string) => {
         .from('student_documents')
         .select('*')
         .eq('student_id', studentId)
-        .order('slot_number');
+        .order('created_at', { ascending: false });
       
       if (error) throw error;
       return data as StudentDocument[];
@@ -25,16 +25,16 @@ export const useUploadDocument = () => {
   return useMutation({
     mutationFn: async ({ 
       studentId, 
-      slotNumber, 
-      file 
+      file,
+      documentName
     }: { 
       studentId: string; 
-      slotNumber: number; 
       file: File;
+      documentName: string;
     }) => {
       // Upload file to storage
       const fileExt = file.name.split('.').pop();
-      const fileName = `${studentId}/${slotNumber}-${Date.now()}.${fileExt}`;
+      const fileName = `${studentId}/${Date.now()}-${file.name}`;
       
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('student-documents')
@@ -47,18 +47,26 @@ export const useUploadDocument = () => {
         .from('student-documents')
         .getPublicUrl(fileName);
 
-      // Upsert document record
+      // Get the next slot number
+      const { data: existingDocs } = await supabase
+        .from('student_documents')
+        .select('slot_number')
+        .eq('student_id', studentId)
+        .order('slot_number', { ascending: false })
+        .limit(1);
+
+      const nextSlot = existingDocs && existingDocs.length > 0 ? existingDocs[0].slot_number + 1 : 1;
+
+      // Insert document record
       const { data, error } = await supabase
         .from('student_documents')
-        .upsert({
+        .insert({
           student_id: studentId,
-          slot_number: slotNumber,
-          document_name: file.name,
+          slot_number: nextSlot,
+          document_name: documentName,
           document_type: file.type,
           file_url: urlData.publicUrl,
           uploaded_at: new Date().toISOString(),
-        }, {
-          onConflict: 'student_id,slot_number'
         })
         .select()
         .single();
