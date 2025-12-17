@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Users, Settings, Shield, Database, FileText, BookOpen, Calendar, GraduationCap, Library } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { GlobalStudentSearch } from '@/components/dashboard/GlobalStudentSearch';
 
 interface AdminPortalProps {
   onNavigate: (tab: string) => void;
@@ -88,9 +89,13 @@ export const AdminPortal = ({ onNavigate }: AdminPortalProps) => {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"
       >
-        <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Admin Portal</h1>
-        <p className="text-muted-foreground mt-1">Full system access and management</p>
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Admin Portal</h1>
+          <p className="text-muted-foreground mt-1">Full system access and management</p>
+        </div>
+        <GlobalStudentSearch />
       </motion.div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
