@@ -11,11 +11,14 @@ import {
   ChevronRight,
   Filter,
   Download,
-  X
+  X,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Student } from '@/types/student';
+import { StudentCard } from './StudentCard';
 import { cn } from '@/lib/utils';
 import {
   Select,
@@ -35,6 +38,7 @@ interface StudentTableProps {
 
 type SortField = 'student_name' | 'level' | 'age' | 'gender';
 type SortDirection = 'asc' | 'desc';
+type ViewMode = 'cards' | 'table';
 
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
@@ -60,6 +64,7 @@ export const StudentTable = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('cards');
 
   // Get unique levels and genders for filters
   const levels = useMemo(() => {
@@ -163,21 +168,49 @@ export const StudentTable = ({
       {/* Header */}
       <div className="p-4 lg:p-6 border-b border-border space-y-4">
         {/* School Selector */}
-        <div className="flex flex-wrap items-center gap-2">
-          {SCHOOLS.map((school) => (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {SCHOOLS.map((school) => (
+              <button
+                key={school.id}
+                onClick={() => { setSchoolFilter(school.id); setCurrentPage(1); }}
+                className={cn(
+                  "px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200",
+                  schoolFilter === school.id
+                    ? "bg-stat-purple text-white shadow-md"
+                    : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                )}
+              >
+                {school.acronym}
+              </button>
+            ))}
+          </div>
+          
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
             <button
-              key={school.id}
-              onClick={() => { setSchoolFilter(school.id); setCurrentPage(1); }}
+              onClick={() => setViewMode('cards')}
               className={cn(
-                "px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200",
-                schoolFilter === school.id
-                  ? "bg-primary text-primary-foreground shadow-md"
-                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                "p-2 rounded-md transition-all",
+                viewMode === 'cards' 
+                  ? "bg-stat-purple text-white shadow-sm" 
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
-              {school.acronym}
+              <LayoutGrid className="h-4 w-4" />
             </button>
-          ))}
+            <button
+              onClick={() => setViewMode('table')}
+              className={cn(
+                "p-2 rounded-md transition-all",
+                viewMode === 'table' 
+                  ? "bg-stat-purple text-white shadow-sm" 
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <List className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         {/* Search and Level Filter Row */}
@@ -262,114 +295,158 @@ export const StudentTable = ({
         </AnimatePresence>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-secondary/50">
-            <tr>
-              {[
-                { field: 'student_name' as SortField, label: 'Name' },
-                { field: 'level' as SortField, label: 'Level' },
-                { field: 'age' as SortField, label: 'Age' },
-                { field: 'gender' as SortField, label: 'Gender' },
-              ].map(({ field, label }) => (
-                <th
-                  key={field}
-                  onClick={() => handleSort(field)}
-                  className="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors"
-                >
-                  <div className="flex items-center gap-1">
-                    {label}
-                    <SortIcon field={field} />
-                  </div>
-                </th>
-              ))}
-              <th className="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                LRN
-              </th>
-              <th className="px-4 lg:px-6 py-4 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
+      {/* Content */}
+      <div className="p-4 lg:p-6">
+        {viewMode === 'cards' ? (
+          /* Card View */
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i} className="animate-pulse">
-                  <td className="px-4 lg:px-6 py-4"><div className="h-4 bg-muted rounded w-32" /></td>
-                  <td className="px-4 lg:px-6 py-4"><div className="h-4 bg-muted rounded w-20" /></td>
-                  <td className="px-4 lg:px-6 py-4"><div className="h-4 bg-muted rounded w-10" /></td>
-                  <td className="px-4 lg:px-6 py-4"><div className="h-4 bg-muted rounded w-16" /></td>
-                  <td className="px-4 lg:px-6 py-4"><div className="h-4 bg-muted rounded w-24" /></td>
-                  <td className="px-4 lg:px-6 py-4"><div className="h-4 bg-muted rounded w-20 ml-auto" /></td>
-                </tr>
+              Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="bg-secondary/50 rounded-2xl h-72 animate-pulse" />
               ))
             ) : paginatedStudents.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 lg:px-6 py-12 text-center text-muted-foreground">
-                  No students found. {hasActiveFilters && 'Try adjusting your filters.'}
-                </td>
-              </tr>
+              <div className="col-span-full py-12 text-center text-muted-foreground">
+                No students found. {hasActiveFilters && 'Try adjusting your filters.'}
+              </div>
             ) : (
               paginatedStudents.map((student, index) => (
-                <motion.tr
+                <StudentCard
                   key={student.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: index * 0.02 }}
-                  className="hover:bg-secondary/30 transition-colors"
-                >
-                  <td className="px-4 lg:px-6 py-4">
-                    <p className="font-medium text-foreground">{student.student_name}</p>
-                  </td>
-                  <td className="px-4 lg:px-6 py-4">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                      {student.level}
-                    </span>
-                  </td>
-                  <td className="px-4 lg:px-6 py-4 text-muted-foreground">
-                    {student.age || '-'}
-                  </td>
-                  <td className="px-4 lg:px-6 py-4 text-muted-foreground">
-                    {student.gender || '-'}
-                  </td>
-                  <td className="px-4 lg:px-6 py-4 font-mono text-sm text-muted-foreground">
-                    {student.lrn}
-                  </td>
-                  <td className="px-4 lg:px-6 py-4">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => onView(student)}
-                        aria-label="View student"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => onEdit(student)}
-                        aria-label="Edit student"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => onDelete(student)}
-                        className="text-destructive hover:text-destructive"
-                        aria-label="Delete student"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </td>
-                </motion.tr>
+                  student={student}
+                  onView={onView}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  index={index}
+                />
               ))
             )}
-          </tbody>
-        </table>
+          </div>
+        ) : (
+          /* Table View */
+          <div className="overflow-x-auto -mx-4 lg:-mx-6">
+            <table className="w-full">
+              <thead className="bg-secondary/50">
+                <tr>
+                  {[
+                    { field: 'student_name' as SortField, label: 'Name' },
+                    { field: 'level' as SortField, label: 'Level' },
+                    { field: 'age' as SortField, label: 'Age' },
+                    { field: 'gender' as SortField, label: 'Gender' },
+                  ].map(({ field, label }) => (
+                    <th
+                      key={field}
+                      onClick={() => handleSort(field)}
+                      className="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors"
+                    >
+                      <div className="flex items-center gap-1">
+                        {label}
+                        <SortIcon field={field} />
+                      </div>
+                    </th>
+                  ))}
+                  <th className="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    LRN
+                  </th>
+                  <th className="px-4 lg:px-6 py-4 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i} className="animate-pulse">
+                      <td className="px-4 lg:px-6 py-4"><div className="h-4 bg-muted rounded w-32" /></td>
+                      <td className="px-4 lg:px-6 py-4"><div className="h-4 bg-muted rounded w-20" /></td>
+                      <td className="px-4 lg:px-6 py-4"><div className="h-4 bg-muted rounded w-10" /></td>
+                      <td className="px-4 lg:px-6 py-4"><div className="h-4 bg-muted rounded w-16" /></td>
+                      <td className="px-4 lg:px-6 py-4"><div className="h-4 bg-muted rounded w-24" /></td>
+                      <td className="px-4 lg:px-6 py-4"><div className="h-4 bg-muted rounded w-20 ml-auto" /></td>
+                    </tr>
+                  ))
+                ) : paginatedStudents.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 lg:px-6 py-12 text-center text-muted-foreground">
+                      No students found. {hasActiveFilters && 'Try adjusting your filters.'}
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedStudents.map((student, index) => (
+                    <motion.tr
+                      key={student.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: index * 0.02 }}
+                      className="hover:bg-secondary/30 transition-colors"
+                    >
+                      <td className="px-4 lg:px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          {student.photo_url ? (
+                            <img 
+                              src={student.photo_url} 
+                              alt="" 
+                              className="h-10 w-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="h-10 w-10 rounded-full bg-stat-purple/20 flex items-center justify-center">
+                              <span className="text-sm font-bold text-stat-purple">
+                                {student.student_name.charAt(0)}
+                              </span>
+                            </div>
+                          )}
+                          <p className="font-medium text-foreground">{student.student_name}</p>
+                        </div>
+                      </td>
+                      <td className="px-4 lg:px-6 py-4">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-stat-purple/10 text-stat-purple">
+                          {student.level}
+                        </span>
+                      </td>
+                      <td className="px-4 lg:px-6 py-4 text-muted-foreground">
+                        {student.age || '-'}
+                      </td>
+                      <td className="px-4 lg:px-6 py-4 text-muted-foreground">
+                        {student.gender || '-'}
+                      </td>
+                      <td className="px-4 lg:px-6 py-4 font-mono text-sm text-muted-foreground">
+                        {student.lrn}
+                      </td>
+                      <td className="px-4 lg:px-6 py-4">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => onView(student)}
+                            aria-label="View student"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => onEdit(student)}
+                            aria-label="Edit student"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => onDelete(student)}
+                            className="text-destructive hover:text-destructive"
+                            aria-label="Delete student"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Pagination */}
@@ -421,7 +498,10 @@ export const StudentTable = ({
                     variant={currentPage === pageNum ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setCurrentPage(pageNum)}
-                    className="w-9"
+                    className={cn(
+                      "w-9",
+                      currentPage === pageNum && "bg-stat-purple hover:bg-stat-purple"
+                    )}
                   >
                     {pageNum}
                   </Button>

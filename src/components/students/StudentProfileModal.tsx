@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useRef } from 'react';
 import { 
   X, 
   User, 
@@ -8,12 +9,23 @@ import {
   Calendar,
   Users,
   Mail,
-  Printer
+  Printer,
+  Camera,
+  FileText,
+  Upload,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Student } from '@/types/student';
-import { useState } from 'react';
+import { Student, StudentDocument } from '@/types/student';
+import { DocumentSlot } from './DocumentSlot';
+import { 
+  useStudentDocuments, 
+  useUploadDocument, 
+  useDeleteDocument,
+  useUploadStudentPhoto 
+} from '@/hooks/useStudentDocuments';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface StudentProfileModalProps {
   student: Student | null;
@@ -26,15 +38,59 @@ const tabs = [
   { id: 'parents', label: 'Parents/Guardian', icon: Users },
   { id: 'address', label: 'Address', icon: MapPin },
   { id: 'academic', label: 'Academic', icon: School },
+  { id: 'documents', label: 'Documents', icon: FileText },
 ];
 
 export const StudentProfileModal = ({ student, isOpen, onClose }: StudentProfileModalProps) => {
   const [activeTab, setActiveTab] = useState('personal');
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  
+  const { data: documents = [] } = useStudentDocuments(student?.id || '');
+  const uploadDocument = useUploadDocument();
+  const deleteDocument = useDeleteDocument();
+  const uploadPhoto = useUploadStudentPhoto();
 
   if (!student) return null;
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !student) return;
+
+    setIsUploadingPhoto(true);
+    try {
+      await uploadPhoto.mutateAsync({ studentId: student.id, file });
+      toast.success('Photo uploaded successfully');
+    } catch (error) {
+      toast.error('Failed to upload photo');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  const handleDocumentUpload = async (slot: number, file: File) => {
+    await uploadDocument.mutateAsync({ 
+      studentId: student.id, 
+      slotNumber: slot, 
+      file 
+    });
+  };
+
+  const handleDocumentDelete = async (slot: number, documentId: string) => {
+    const doc = documents.find(d => d.id === documentId);
+    await deleteDocument.mutateAsync({ 
+      documentId, 
+      studentId: student.id,
+      fileUrl: doc?.file_url || null
+    });
+  };
+
+  const getDocumentForSlot = (slot: number): StudentDocument | null => {
+    return documents.find(d => d.slot_number === slot) || null;
   };
 
   const InfoItem = ({ label, value, icon: Icon }: { label: string; value: string | null; icon?: any }) => (
@@ -65,19 +121,54 @@ export const StudentProfileModal = ({ student, isOpen, onClose }: StudentProfile
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed inset-4 lg:inset-auto lg:left-1/2 lg:top-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:w-full lg:max-w-2xl lg:max-h-[90vh] bg-card rounded-2xl shadow-lg z-50 overflow-hidden flex flex-col"
+            className="fixed inset-4 lg:inset-auto lg:left-1/2 lg:top-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:w-full lg:max-w-3xl lg:max-h-[90vh] bg-card rounded-2xl shadow-lg z-50 overflow-hidden flex flex-col"
           >
-            {/* Header */}
-            <div className="px-6 py-5 border-b border-border bg-gradient-to-r from-primary/5 to-transparent">
+            {/* Header with Photo */}
+            <div className="px-6 py-6 border-b border-border bg-gradient-to-r from-stat-purple/10 via-stat-pink/5 to-transparent">
               <div className="flex items-start justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="h-14 w-14 rounded-xl gradient-primary flex items-center justify-center shadow-md">
-                    <span className="text-2xl font-bold text-primary-foreground">
-                      {student.student_name.charAt(0)}
-                    </span>
+                <div className="flex items-center gap-5">
+                  {/* Photo Upload Area */}
+                  <div className="relative group">
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handlePhotoUpload}
+                    />
+                    {student.photo_url ? (
+                      <img 
+                        src={student.photo_url} 
+                        alt={student.student_name}
+                        className="h-20 w-20 rounded-2xl object-cover border-4 border-stat-purple-light shadow-lg"
+                      />
+                    ) : (
+                      <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-stat-purple to-stat-pink flex items-center justify-center border-4 border-stat-purple-light shadow-lg">
+                        <span className="text-3xl font-bold text-white">
+                          {student.student_name.charAt(0)}
+                        </span>
+                      </div>
+                    )}
+                    {/* Upload Overlay */}
+                    <button
+                      onClick={() => photoInputRef.current?.click()}
+                      disabled={isUploadingPhoto}
+                      className="absolute inset-0 rounded-2xl bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                    >
+                      {isUploadingPhoto ? (
+                        <Loader2 className="h-6 w-6 text-white animate-spin" />
+                      ) : (
+                        <Camera className="h-6 w-6 text-white" />
+                      )}
+                    </button>
+                    {/* Status indicator */}
+                    <div className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-stat-green border-2 border-card flex items-center justify-center">
+                      <div className="h-2 w-2 rounded-full bg-white" />
+                    </div>
                   </div>
                   <div>
                     <h2 className="text-xl font-bold text-foreground">{student.student_name}</h2>
+                    <p className="text-stat-purple font-medium">{student.level}</p>
                     <p className="text-sm text-muted-foreground font-mono">LRN: {student.lrn}</p>
                   </div>
                 </div>
@@ -93,8 +184,8 @@ export const StudentProfileModal = ({ student, isOpen, onClose }: StudentProfile
             </div>
 
             {/* Tabs */}
-            <div className="px-6 py-3 border-b border-border no-print">
-              <div className="flex gap-1 overflow-x-auto">
+            <div className="px-6 py-3 border-b border-border no-print overflow-x-auto">
+              <div className="flex gap-1">
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
@@ -102,7 +193,7 @@ export const StudentProfileModal = ({ student, isOpen, onClose }: StudentProfile
                     className={cn(
                       "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
                       activeTab === tab.id
-                        ? "bg-primary text-primary-foreground"
+                        ? "bg-stat-purple text-white"
                         : "text-muted-foreground hover:bg-secondary hover:text-secondary-foreground"
                     )}
                   >
@@ -141,9 +232,9 @@ export const StudentProfileModal = ({ student, isOpen, onClose }: StudentProfile
                     exit={{ opacity: 0, x: -20 }}
                     className="space-y-6"
                   >
-                    <div className="p-4 rounded-xl bg-secondary/50">
+                    <div className="p-4 rounded-xl bg-stat-pink-light">
                       <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-                        <Users className="h-4 w-4" />
+                        <Users className="h-4 w-4 text-stat-pink" />
                         Mother's Information
                       </h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -151,9 +242,9 @@ export const StudentProfileModal = ({ student, isOpen, onClose }: StudentProfile
                         <InfoItem label="Contact Number" value={student.mother_contact} icon={Phone} />
                       </div>
                     </div>
-                    <div className="p-4 rounded-xl bg-secondary/50">
+                    <div className="p-4 rounded-xl bg-stat-purple-light">
                       <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-                        <Users className="h-4 w-4" />
+                        <Users className="h-4 w-4 text-stat-purple" />
                         Father's Information
                       </h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -172,16 +263,16 @@ export const StudentProfileModal = ({ student, isOpen, onClose }: StudentProfile
                     exit={{ opacity: 0, x: -20 }}
                     className="space-y-6"
                   >
-                    <div className="p-4 rounded-xl bg-secondary/50">
+                    <div className="p-4 rounded-xl bg-stat-green-light">
                       <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-                        <MapPin className="h-4 w-4" />
+                        <MapPin className="h-4 w-4 text-stat-green" />
                         Philippines Address
                       </h3>
                       <p className="text-foreground">{student.phil_address || 'Not provided'}</p>
                     </div>
-                    <div className="p-4 rounded-xl bg-secondary/50">
+                    <div className="p-4 rounded-xl bg-stat-yellow-light">
                       <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-                        <MapPin className="h-4 w-4" />
+                        <MapPin className="h-4 w-4 text-stat-yellow" />
                         UAE Address
                       </h3>
                       <p className="text-foreground">{student.uae_address || 'Not provided'}</p>
@@ -201,12 +292,41 @@ export const StudentProfileModal = ({ student, isOpen, onClose }: StudentProfile
                       <InfoItem label="Current Level" value={student.level} icon={School} />
                       <InfoItem label="LRN" value={student.lrn} />
                     </div>
-                    <div className="p-4 rounded-xl bg-secondary/50">
+                    <div className="p-4 rounded-xl bg-stat-purple-light">
                       <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-                        <School className="h-4 w-4" />
+                        <School className="h-4 w-4 text-stat-purple" />
                         Previous School
                       </h3>
                       <p className="text-foreground">{student.previous_school || 'Not provided'}</p>
+                    </div>
+                  </motion.div>
+                )}
+
+                {activeTab === 'documents' && (
+                  <motion.div
+                    key="documents"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                  >
+                    <div className="mb-6">
+                      <h3 className="text-lg font-semibold text-foreground mb-2">Student Documents</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Upload and manage student documents. Drag and drop or click to upload files.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {[1, 2, 3, 4, 5, 6].map((slot, index) => (
+                        <DocumentSlot
+                          key={slot}
+                          slot={slot}
+                          studentId={student.id}
+                          document={getDocumentForSlot(slot)}
+                          onUpload={handleDocumentUpload}
+                          onDelete={handleDocumentDelete}
+                          index={index}
+                        />
+                      ))}
                     </div>
                   </motion.div>
                 )}

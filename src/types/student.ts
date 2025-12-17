@@ -13,6 +13,19 @@ export interface Student {
   phil_address: string | null;
   uae_address: string | null;
   previous_school: string | null;
+  photo_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StudentDocument {
+  id: string;
+  student_id: string;
+  document_name: string;
+  document_type: string;
+  file_url: string | null;
+  slot_number: number;
+  uploaded_at: string | null;
   created_at: string;
   updated_at: string;
 }

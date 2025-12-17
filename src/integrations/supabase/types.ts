@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      student_documents: {
+        Row: {
+          created_at: string
+          document_name: string
+          document_type: string
+          file_url: string | null
+          id: string
+          slot_number: number
+          student_id: string
+          updated_at: string
+          uploaded_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          document_name: string
+          document_type: string
+          file_url?: string | null
+          id?: string
+          slot_number: number
+          student_id: string
+          updated_at?: string
+          uploaded_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          document_name?: string
+          document_type?: string
+          file_url?: string | null
+          id?: string
+          slot_number?: number
+          student_id?: string
+          updated_at?: string
+          uploaded_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_documents_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       students: {
         Row: {
           age: number | null
@@ -28,6 +72,7 @@ export type Database = {
           mother_contact: string | null
           mother_maiden_name: string | null
           phil_address: string | null
+          photo_url: string | null
           previous_school: string | null
           student_name: string
           uae_address: string | null
@@ -46,6 +91,7 @@ export type Database = {
           mother_contact?: string | null
           mother_maiden_name?: string | null
           phil_address?: string | null
+          photo_url?: string | null
           previous_school?: string | null
           student_name: string
           uae_address?: string | null
@@ -64,6 +110,7 @@ export type Database = {
           mother_contact?: string | null
           mother_maiden_name?: string | null
           phil_address?: string | null
+          photo_url?: string | null
           previous_school?: string | null
           student_name?: string
           uae_address?: string | null
