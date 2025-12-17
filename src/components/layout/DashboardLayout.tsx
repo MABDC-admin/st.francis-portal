@@ -18,12 +18,15 @@ import {
   GripVertical,
   LucideIcon,
   FileSpreadsheet,
-  FileText
+  FileText,
+  Building2,
+  ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSchool, SCHOOL_THEMES, SchoolType } from '@/contexts/SchoolContext';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
@@ -132,10 +135,20 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, role, signOut } = useAuth();
   const [isDragging, setIsDragging] = useState(false);
-  const { data: schoolSettings } = useSchoolSettings('MABDC');
+  const { selectedSchool, setSelectedSchool, schoolTheme, setCanSwitchSchool } = useSchool();
+  const { data: schoolSettings } = useSchoolSettings(selectedSchool);
   const { theme, currentTheme, selectTheme } = useColorTheme();
 
+  // Admin and Registrar can switch schools
+  const canSwitch = role === 'admin' || role === 'registrar';
+
+  useEffect(() => {
+    setCanSwitchSchool(canSwitch);
+  }, [canSwitch, setCanSwitchSchool]);
+
+  // Use school theme when no custom theme is set
   const hasCustomTheme = currentTheme !== 'default';
+  const effectiveTheme = hasCustomTheme ? theme : schoolTheme;
 
   const defaultNavItems = getNavItemsForRole(role);
   
@@ -180,19 +193,19 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
   return (
     <div className={cn(
       "min-h-screen bg-background theme-transition",
-      hasCustomTheme && theme.pageBg
+      effectiveTheme.pageBg
     )}>
       {/* Mobile Header */}
       <header className={cn(
         "lg:hidden fixed top-0 left-0 right-0 z-50 border-b border-border px-4 py-3 flex items-center justify-between theme-transition",
-        hasCustomTheme ? `bg-gradient-to-r ${theme.sidebarBg} ${theme.sidebarText}` : "bg-card"
+        `bg-gradient-to-r ${effectiveTheme.sidebarBg} ${effectiveTheme.sidebarText}`
       )}>
         <Button
           variant="ghost"
           size="icon"
           onClick={() => setSidebarOpen(!sidebarOpen)}
           aria-label="Toggle menu"
-          className={hasCustomTheme ? "text-inherit hover:bg-white/10" : ""}
+          className="text-inherit hover:bg-white/10"
         >
           <Menu className="h-5 w-5" />
         </Button>
@@ -201,15 +214,37 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
             {schoolSettings?.logo_url ? (
               <img src={schoolSettings.logo_url} alt="Logo" className="w-full h-full object-contain" />
             ) : (
-              <div className="gradient-primary w-full h-full flex items-center justify-center">
-                <GraduationCap className="h-5 w-5 text-primary-foreground" />
+              <div className={cn("w-full h-full flex items-center justify-center bg-gradient-to-br", effectiveTheme.sidebarBg)}>
+                <GraduationCap className="h-5 w-5 text-white" />
               </div>
             )}
           </div>
-          <span className={cn("font-bold", hasCustomTheme ? "text-inherit" : "text-foreground")}>
-            {schoolSettings?.acronym || 'EduTrack'}
+          <span className="font-bold text-inherit">
+            {schoolSettings?.acronym || selectedSchool}
           </span>
-          <ColorThemeSelector currentTheme={currentTheme} onSelectTheme={selectTheme} />
+          {canSwitch && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-6 px-2 text-inherit hover:bg-white/10">
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Switch School</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setSelectedSchool('MABDC')}>
+                  <Building2 className="h-4 w-4 mr-2 text-emerald-500" />
+                  MABDC
+                  {selectedSchool === 'MABDC' && <span className="ml-auto">✓</span>}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSelectedSchool('STFXSA')}>
+                  <Building2 className="h-4 w-4 mr-2 text-blue-500" />
+                  STFXSA
+                  {selectedSchool === 'STFXSA' && <span className="ml-auto">✓</span>}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button 
@@ -217,7 +252,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
             size="icon" 
             onClick={toggle} 
             aria-label="Toggle theme"
-            className={hasCustomTheme ? "text-inherit hover:bg-white/10" : ""}
+            className="text-inherit hover:bg-white/10"
           >
             {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </Button>
@@ -236,7 +271,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
       <aside className={cn(
         "fixed left-0 top-0 z-50 h-full w-64 border-r border-border transform transition-all duration-500 lg:translate-x-0 flex flex-col theme-transition",
         sidebarOpen ? "translate-x-0" : "-translate-x-full",
-        hasCustomTheme ? `bg-gradient-to-b ${theme.sidebarBg} ${theme.sidebarText}` : "bg-card"
+        `bg-gradient-to-b ${effectiveTheme.sidebarBg} ${effectiveTheme.sidebarText}`
       )}>
         <div className="p-6">
           <motion.div 
@@ -248,23 +283,66 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
               {schoolSettings?.logo_url ? (
                 <img src={schoolSettings.logo_url} alt="Logo" className="w-full h-full object-contain p-1" />
               ) : (
-                <div className="gradient-primary w-full h-full flex items-center justify-center">
-                  <GraduationCap className="h-6 w-6 text-primary-foreground" />
+                <div className={cn("w-full h-full flex items-center justify-center bg-gradient-to-br", effectiveTheme.sidebarBg)}>
+                  <GraduationCap className="h-6 w-6 text-white" />
                 </div>
               )}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1">
-                <h1 className={cn("font-bold text-lg truncate", hasCustomTheme ? "text-inherit" : "text-foreground")}>
-                  {schoolSettings?.acronym || 'EduTrack'}
+                <h1 className="font-bold text-lg truncate text-inherit">
+                  {schoolSettings?.acronym || selectedSchool}
                 </h1>
-                <ColorThemeSelector currentTheme={currentTheme} onSelectTheme={selectTheme} />
               </div>
-              <p className={cn("text-xs", hasCustomTheme ? "text-inherit/70" : "text-muted-foreground")}>
+              <p className="text-xs text-inherit/70">
                 {roleLabels[role || ''] || 'Loading...'}
               </p>
             </div>
           </motion.div>
+          
+          {/* School Switcher for Admin/Registrar */}
+          {canSwitch && (
+            <div className="mt-4">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-between text-inherit hover:bg-white/10 border border-white/20"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4" />
+                      <span className="text-sm">{selectedSchool}</span>
+                    </div>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-[200px]">
+                  <DropdownMenuLabel>Switch School Portal</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={() => setSelectedSchool('MABDC')}
+                    className={selectedSchool === 'MABDC' ? 'bg-emerald-50 dark:bg-emerald-950' : ''}
+                  >
+                    <div className="flex items-center gap-2 flex-1">
+                      <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                      <span>MABDC</span>
+                    </div>
+                    {selectedSchool === 'MABDC' && <span className="text-emerald-500">✓</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => setSelectedSchool('STFXSA')}
+                    className={selectedSchool === 'STFXSA' ? 'bg-blue-50 dark:bg-blue-950' : ''}
+                  >
+                    <div className="flex items-center gap-2 flex-1">
+                      <div className="w-3 h-3 rounded-full bg-blue-500" />
+                      <span>STFXSA</span>
+                    </div>
+                    {selectedSchool === 'STFXSA' && <span className="text-blue-500">✓</span>}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
         </div>
 
         {/* User Info */}
@@ -274,10 +352,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
               <DropdownMenuTrigger asChild>
                 <Button 
                   variant="ghost" 
-                  className={cn(
-                    "w-full justify-start gap-3 h-auto py-3",
-                    hasCustomTheme && "hover:bg-white/10"
-                  )}
+                  className="w-full justify-start gap-3 h-auto py-3 hover:bg-white/10"
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className={cn("text-white text-xs", roleColors[role || 'student'])}>
@@ -285,10 +360,10 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col items-start text-left min-w-0">
-                    <span className={cn("text-sm font-medium truncate max-w-[140px]", hasCustomTheme && "text-inherit")}>
+                    <span className="text-sm font-medium truncate max-w-[140px] text-inherit">
                       {user.email}
                     </span>
-                    <Badge variant="secondary" className={cn("text-xs capitalize mt-0.5", hasCustomTheme && "bg-white/20 text-inherit")}>
+                    <Badge variant="secondary" className="text-xs capitalize mt-0.5 bg-white/20 text-inherit">
                       {role || 'Loading...'}
                     </Badge>
                   </div>
@@ -332,12 +407,8 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
                   className={cn(
                     "w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 cursor-grab active:cursor-grabbing",
                     activeTab === item.id
-                      ? hasCustomTheme 
-                        ? `${theme.menuActiveBg} ${theme.menuActiveText} shadow-md`
-                        : "bg-stat-purple text-white shadow-md"
-                      : hasCustomTheme
-                        ? `text-inherit/80 ${theme.menuHoverBg}`
-                        : "text-muted-foreground hover:bg-secondary hover:text-secondary-foreground"
+                      ? `${effectiveTheme.menuActiveBg} ${effectiveTheme.menuActiveText} shadow-md`
+                      : `text-inherit/80 ${effectiveTheme.menuHoverBg}`
                   )}
                 >
                   <GripVertical className="h-4 w-4 opacity-40" />
@@ -362,12 +433,8 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
                 className={cn(
                   "w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200",
                   activeTab === item.id
-                    ? hasCustomTheme 
-                      ? `${theme.menuActiveBg} ${theme.menuActiveText} shadow-md`
-                      : "bg-stat-purple text-white shadow-md"
-                    : hasCustomTheme
-                      ? `text-inherit/80 ${theme.menuHoverBg}`
-                      : "text-muted-foreground hover:bg-secondary hover:text-secondary-foreground"
+                    ? `${effectiveTheme.menuActiveBg} ${effectiveTheme.menuActiveText} shadow-md`
+                    : `text-inherit/80 ${effectiveTheme.menuHoverBg}`
                 )}
               >
                 <item.icon className="h-5 w-5" />
@@ -393,9 +460,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
                 "w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200",
                 activeTab === adminItem.id
                   ? "bg-destructive text-destructive-foreground shadow-md"
-                  : hasCustomTheme
-                    ? "text-inherit/80 hover:bg-white/10 hover:text-red-300"
-                    : "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  : "text-inherit/80 hover:bg-white/10 hover:text-red-300"
               )}
             >
               <adminItem.icon className="h-5 w-5" />
@@ -407,10 +472,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
           <div className="hidden lg:block">
             <Button 
               variant="outline" 
-              className={cn(
-                "w-full justify-start gap-3",
-                hasCustomTheme && "border-white/20 text-inherit hover:bg-white/10"
-              )}
+              className="w-full justify-start gap-3 border-white/20 text-inherit hover:bg-white/10"
               onClick={toggle}
             >
               {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}

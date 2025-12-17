@@ -2,15 +2,29 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Student, StudentFormData } from '@/types/student';
 import { toast } from 'sonner';
+import { useSchool, SchoolType } from '@/contexts/SchoolContext';
 
-export const useStudents = () => {
+export const useStudents = (schoolOverride?: SchoolType) => {
+  const { selectedSchool } = useSchool();
+  const school = schoolOverride || selectedSchool;
+  
   return useQuery({
-    queryKey: ['students'],
+    queryKey: ['students', school],
     queryFn: async (): Promise<Student[]> => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('students')
         .select('*')
         .order('student_name', { ascending: true });
+      
+      // Filter by school
+      if (school === 'STFXSA') {
+        query = query.or('school.ilike.%stfxsa%,school.ilike.%st. francis%');
+      } else {
+        // MABDC - includes MABDC or null/empty school values
+        query = query.or('school.ilike.%mabdc%,school.is.null,school.eq.');
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return data || [];

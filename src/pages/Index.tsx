@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { useStudents, useCreateStudent, useUpdateStudent, useDeleteStudent } from '@/hooks/useStudents';
 import { Student, StudentFormData } from '@/types/student';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSchool } from '@/contexts/SchoolContext';
 
 // Portal Components
 import { AdminPortal } from '@/components/portals/AdminPortal';
