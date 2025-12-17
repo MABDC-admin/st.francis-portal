@@ -156,6 +156,7 @@ export const GradesManagement = () => {
     q3: string;
     q4: string;
     remarks: string;
+    hasExisting: boolean;
   }>>({});
 
   // Fetch data
@@ -236,17 +237,43 @@ export const GradesManagement = () => {
     setIsAddModalOpen(true);
   };
 
-  // Initialize bulk grades when student is selected
-  const initializeBulkGrades = (studentId: string) => {
+  // Initialize bulk grades when student is selected - fetch existing grades
+  const initializeBulkGrades = async (studentId: string, academicYearId?: string) => {
     const student = students.find(s => s.id === studentId);
     if (!student) return;
     
     const studentSubjects = subjects.filter(sub => sub.grade_levels.includes(student.level));
-    const initialGrades: Record<string, { q1: string; q2: string; q3: string; q4: string; remarks: string }> = {};
+    const initialGrades: Record<string, { q1: string; q2: string; q3: string; q4: string; remarks: string; hasExisting: boolean }> = {};
     
+    // Initialize all subjects with empty values
     studentSubjects.forEach(sub => {
-      initialGrades[sub.id] = { q1: '', q2: '', q3: '', q4: '', remarks: '' };
+      initialGrades[sub.id] = { q1: '', q2: '', q3: '', q4: '', remarks: '', hasExisting: false };
     });
+
+    // Fetch existing grades for this student and academic year
+    const yearId = academicYearId || formData.academic_year_id;
+    if (yearId) {
+      const { data: existingGrades } = await supabase
+        .from('student_grades')
+        .select('subject_id, q1_grade, q2_grade, q3_grade, q4_grade, remarks')
+        .eq('student_id', studentId)
+        .eq('academic_year_id', yearId);
+
+      if (existingGrades) {
+        existingGrades.forEach(grade => {
+          if (initialGrades[grade.subject_id]) {
+            initialGrades[grade.subject_id] = {
+              q1: grade.q1_grade?.toString() || '',
+              q2: grade.q2_grade?.toString() || '',
+              q3: grade.q3_grade?.toString() || '',
+              q4: grade.q4_grade?.toString() || '',
+              remarks: grade.remarks || '',
+              hasExisting: true
+            };
+          }
+        });
+      }
+    }
     
     setBulkGrades(initialGrades);
   };
@@ -603,7 +630,12 @@ export const GradesManagement = () => {
               <Label>Academic Year</Label>
               <Select 
                 value={formData.academic_year_id} 
-                onValueChange={(v) => setFormData({ ...formData, academic_year_id: v })}
+                onValueChange={(v) => {
+                  setFormData({ ...formData, academic_year_id: v });
+                  if (formData.student_id) {
+                    initializeBulkGrades(formData.student_id, v);
+                  }
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select academic year" />
@@ -626,7 +658,14 @@ export const GradesManagement = () => {
                 <p className="font-medium">{selectedStudentForAdd.student_name}</p>
                 <p className="text-sm text-muted-foreground">LRN: {selectedStudentForAdd.lrn} • Level: {selectedStudentForAdd.level}</p>
               </div>
-              <Badge variant="secondary">{subjectsForStudent.length} subjects</Badge>
+              <div className="flex gap-2">
+                <Badge variant="secondary">{subjectsForStudent.length} subjects</Badge>
+                {Object.values(bulkGrades).filter(g => g.hasExisting).length > 0 && (
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                    {Object.values(bulkGrades).filter(g => g.hasExisting).length} with existing grades
+                  </Badge>
+                )}
+              </div>
             </div>
           )}
 
@@ -646,11 +685,16 @@ export const GradesManagement = () => {
                 </TableHeader>
                 <TableBody>
                   {subjectsForStudent.map(subject => (
-                    <TableRow key={subject.id}>
+                    <TableRow key={subject.id} className={bulkGrades[subject.id]?.hasExisting ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''}>
                       <TableCell>
-                        <div>
-                          <Badge variant="outline" className="mb-1">{subject.code}</Badge>
-                          <p className="text-sm text-muted-foreground">{subject.name}</p>
+                        <div className="flex items-center gap-2">
+                          <div>
+                            <Badge variant="outline" className="mb-1">{subject.code}</Badge>
+                            <p className="text-sm text-muted-foreground">{subject.name}</p>
+                          </div>
+                          {bulkGrades[subject.id]?.hasExisting && (
+                            <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">Existing</Badge>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
