@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { UserPlus, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { UserPlus, Loader2, AlertCircle, CheckCircle2, Printer, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { useCreateStudent } from '@/hooks/useStudents';
 import { toast } from 'sonner';
+import { differenceInYears } from 'date-fns';
 
 const GRADE_LEVELS = [
   'Kinder 1', 'Kinder 2',
@@ -32,9 +33,11 @@ const GRADE_LEVELS = [
 
 const KINDER_LEVELS = ['Kinder 1', 'Kinder 2'];
 
-const SCHOOL_YEARS = [
-  '2025-2026', '2024-2025', '2023-2024'
-];
+// Generate school years from 2025-2026 to 2039-2040
+const SCHOOL_YEARS = Array.from({ length: 15 }, (_, i) => {
+  const startYear = 2025 + i;
+  return `${startYear}-${startYear + 1}`;
+});
 
 const GENDERS = ['Male', 'Female'];
 
@@ -72,12 +75,22 @@ export const EnrollmentForm = () => {
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [enrollmentComplete, setEnrollmentComplete] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
 
   const createStudent = useCreateStudent();
 
   const isKinderLevel = useMemo(() => {
     return KINDER_LEVELS.includes(formData.level);
   }, [formData.level]);
+
+  // Auto-calculate age from birth date
+  const calculatedAge = useMemo(() => {
+    if (!formData.birth_date) return null;
+    const birthDate = new Date(formData.birth_date);
+    const age = differenceInYears(new Date(), birthDate);
+    return age >= 0 ? age : null;
+  }, [formData.birth_date]);
 
   const validateField = (field: string, value: string): string | undefined => {
     switch (field) {
@@ -174,6 +187,7 @@ export const EnrollmentForm = () => {
     }
 
     setShowConfirmDialog(true);
+    setEnrollmentComplete(false);
   };
 
   const handleConfirmEnrollment = async () => {
@@ -186,6 +200,7 @@ export const EnrollmentForm = () => {
         lrn: finalLrn,
         level: formData.level,
         birth_date: formData.birth_date || undefined,
+        age: calculatedAge || undefined,
         gender: formData.gender || undefined,
         mother_maiden_name: formData.mother_maiden_name.trim() || undefined,
         mother_contact: formData.mother_contact.trim() || undefined,
@@ -197,29 +212,117 @@ export const EnrollmentForm = () => {
       });
       
       toast.success('Student enrolled successfully!');
-      setShowConfirmDialog(false);
-      
-      // Reset form
-      setFormData({
-        student_name: '',
-        lrn: '',
-        level: '',
-        school_year: '2025-2026',
-        birth_date: '',
-        gender: '',
-        mother_maiden_name: '',
-        mother_contact: '',
-        father_name: '',
-        father_contact: '',
-        phil_address: '',
-        uae_address: '',
-        previous_school: '',
-      });
-      setErrors({});
-      setTouched({});
+      setEnrollmentComplete(true);
     } catch (error) {
       toast.error('Failed to enroll student');
     }
+  };
+
+  const handlePrint = () => {
+    const printContent = printRef.current;
+    if (!printContent) return;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast.error('Please allow popups to print');
+      return;
+    }
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Enrollment Confirmation - ${formData.student_name}</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
+            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #7c3aed; padding-bottom: 20px; }
+            .header h1 { color: #7c3aed; font-size: 24px; margin-bottom: 5px; }
+            .header p { color: #666; font-size: 14px; }
+            .section { margin-bottom: 25px; }
+            .section-title { font-size: 16px; font-weight: bold; color: #7c3aed; margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px solid #e5e7eb; }
+            .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f3f4f6; }
+            .row:last-child { border-bottom: none; }
+            .label { color: #666; font-size: 13px; }
+            .value { font-weight: 500; font-size: 13px; text-align: right; max-width: 60%; }
+            .footer { margin-top: 40px; text-align: center; color: #666; font-size: 12px; }
+            .date { margin-top: 30px; text-align: right; font-size: 12px; color: #666; }
+            @media print { body { padding: 20px; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Student Enrollment Confirmation</h1>
+            <p>School Year ${formData.school_year}</p>
+          </div>
+          
+          <div class="section">
+            <div class="section-title">Student Information</div>
+            <div class="row"><span class="label">Full Name</span><span class="value">${formData.student_name}</span></div>
+            <div class="row"><span class="label">LRN</span><span class="value">${formData.lrn || (isKinderLevel ? 'To be assigned' : '-')}</span></div>
+            <div class="row"><span class="label">Grade Level</span><span class="value">${formData.level}</span></div>
+            <div class="row"><span class="label">Birth Date</span><span class="value">${formData.birth_date}</span></div>
+            <div class="row"><span class="label">Age</span><span class="value">${calculatedAge !== null ? `${calculatedAge} years old` : '-'}</span></div>
+            <div class="row"><span class="label">Gender</span><span class="value">${formData.gender}</span></div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Parent/Guardian Information</div>
+            <div class="row"><span class="label">Mother's Maiden Name</span><span class="value">${formData.mother_maiden_name}</span></div>
+            <div class="row"><span class="label">Mother's Contact</span><span class="value">${formData.mother_contact}</span></div>
+            <div class="row"><span class="label">Father's Name</span><span class="value">${formData.father_name}</span></div>
+            <div class="row"><span class="label">Father's Contact</span><span class="value">${formData.father_contact}</span></div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Address Information</div>
+            <div class="row"><span class="label">Philippine Address</span><span class="value">${formData.phil_address}</span></div>
+            <div class="row"><span class="label">UAE Address</span><span class="value">${formData.uae_address}</span></div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Academic History</div>
+            <div class="row"><span class="label">Previous School</span><span class="value">${formData.previous_school || 'N/A'}</span></div>
+          </div>
+
+          <div class="date">
+            Enrollment Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+          </div>
+
+          <div class="footer">
+            This document serves as confirmation of enrollment.
+          </div>
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 250);
+  };
+
+  const handleNewEnrollment = () => {
+    setShowConfirmDialog(false);
+    setEnrollmentComplete(false);
+    setFormData({
+      student_name: '',
+      lrn: '',
+      level: '',
+      school_year: '2025-2026',
+      birth_date: '',
+      gender: '',
+      mother_maiden_name: '',
+      mother_contact: '',
+      father_name: '',
+      father_contact: '',
+      phil_address: '',
+      uae_address: '',
+      previous_school: '',
+    });
+    setErrors({});
+    setTouched({});
   };
 
   const FieldError = ({ error }: { error?: string }) => {
@@ -328,6 +431,15 @@ export const EnrollmentForm = () => {
                   className={`bg-secondary/50 ${errors.birth_date && touched.birth_date ? 'border-destructive' : ''}`}
                 />
                 {touched.birth_date && <FieldError error={errors.birth_date} />}
+              </div>
+              <div className="space-y-2">
+                <Label className="text-stat-purple">Age</Label>
+                <Input
+                  value={calculatedAge !== null ? `${calculatedAge} years old` : ''}
+                  placeholder="Auto-calculated from birth date"
+                  disabled
+                  className="bg-secondary/30 text-muted-foreground"
+                />
               </div>
               <div className="space-y-2">
                 <Label className="text-stat-purple">
@@ -486,14 +598,16 @@ export const EnrollmentForm = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-stat-purple" />
-              Confirm Enrollment
+              {enrollmentComplete ? 'Enrollment Successful!' : 'Confirm Enrollment'}
             </DialogTitle>
             <DialogDescription>
-              Please review the student information before submitting.
+              {enrollmentComplete 
+                ? 'The student has been enrolled successfully. You can print or save this confirmation.'
+                : 'Please review the student information before submitting.'}
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-6 py-4">
+          <div ref={printRef} className="space-y-6 py-4">
             {/* Student Information */}
             <div>
               <h4 className="font-semibold text-foreground mb-2 text-stat-purple">Student Information</h4>
@@ -503,6 +617,7 @@ export const EnrollmentForm = () => {
                 <ReviewItem label="Grade Level" value={formData.level} />
                 <ReviewItem label="School Year" value={formData.school_year} />
                 <ReviewItem label="Birth Date" value={formData.birth_date} />
+                <ReviewItem label="Age" value={calculatedAge !== null ? `${calculatedAge} years old` : '-'} />
                 <ReviewItem label="Gender" value={formData.gender} />
               </div>
             </div>
@@ -536,22 +651,40 @@ export const EnrollmentForm = () => {
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
-              Go Back & Edit
-            </Button>
-            <Button 
-              onClick={handleConfirmEnrollment}
-              disabled={createStudent.isPending}
-              className="bg-stat-purple hover:bg-stat-purple/90 text-white"
-            >
-              {createStudent.isPending ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-              )}
-              Confirm Enrollment
-            </Button>
+          <DialogFooter className="gap-2 flex-wrap">
+            {enrollmentComplete ? (
+              <>
+                <Button variant="outline" onClick={handlePrint} className="gap-2">
+                  <Printer className="h-4 w-4" />
+                  Print Confirmation
+                </Button>
+                <Button 
+                  onClick={handleNewEnrollment}
+                  className="bg-stat-purple hover:bg-stat-purple/90 text-white gap-2"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Enroll Another Student
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
+                  Go Back & Edit
+                </Button>
+                <Button 
+                  onClick={handleConfirmEnrollment}
+                  disabled={createStudent.isPending}
+                  className="bg-stat-purple hover:bg-stat-purple/90 text-white"
+                >
+                  {createStudent.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                  )}
+                  Confirm Enrollment
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
