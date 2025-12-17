@@ -19,6 +19,7 @@ interface Teacher {
   email: string;
   phone: string | null;
   department: string | null;
+  grade_level: string | null;
   subjects: string[] | null;
   status: string;
   created_at: string;
@@ -30,6 +31,7 @@ const initialFormState = {
   email: '',
   phone: '',
   department: '',
+  grade_level: '',
   subjects: '',
 };
 
@@ -69,6 +71,7 @@ export const TeacherManagement = () => {
         email: teacher.email,
         phone: teacher.phone || '',
         department: teacher.department || '',
+        grade_level: teacher.grade_level || '',
         subjects: teacher.subjects?.join(', ') || '',
       });
       setCreateAccount(false);
@@ -102,6 +105,7 @@ export const TeacherManagement = () => {
             email: formData.email,
             phone: formData.phone || null,
             department: formData.department || null,
+            grade_level: formData.grade_level || null,
             subjects: subjectsArray,
           })
           .eq('id', editingTeacher.id);
@@ -140,6 +144,7 @@ export const TeacherManagement = () => {
             email: formData.email,
             phone: formData.phone || null,
             department: formData.department || null,
+            grade_level: formData.grade_level || null,
             subjects: subjectsArray,
             user_id: userId,
           });
@@ -232,6 +237,7 @@ export const TeacherManagement = () => {
                     <TableHead>Employee ID</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
+                    <TableHead>Grade Level</TableHead>
                     <TableHead>Department</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
@@ -248,6 +254,7 @@ export const TeacherManagement = () => {
                           {teacher.email}
                         </div>
                       </TableCell>
+                      <TableCell>{teacher.grade_level || '-'}</TableCell>
                       <TableCell>{teacher.department || '-'}</TableCell>
                       <TableCell>
                         <Badge variant={teacher.status === 'active' ? 'default' : 'secondary'}>
@@ -332,13 +339,23 @@ export const TeacherManagement = () => {
                 placeholder="+63 912 345 6789"
               />
             </div>
-            <div>
-              <Label>Subjects (comma-separated)</Label>
-              <Input
-                value={formData.subjects}
-                onChange={(e) => setFormData({ ...formData, subjects: e.target.value })}
-                placeholder="Math, Science, English"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Grade Level</Label>
+                <Input
+                  value={formData.grade_level}
+                  onChange={(e) => setFormData({ ...formData, grade_level: e.target.value })}
+                  placeholder="Grade 6"
+                />
+              </div>
+              <div>
+                <Label>Subjects (comma-separated)</Label>
+                <Input
+                  value={formData.subjects}
+                  onChange={(e) => setFormData({ ...formData, subjects: e.target.value })}
+                  placeholder="Math, Science"
+                />
+              </div>
             </div>
             {!editingTeacher && (
               <div className="flex items-center gap-2">

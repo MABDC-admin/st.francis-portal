@@ -155,6 +155,7 @@ export type Database = {
           email: string
           employee_id: string
           full_name: string
+          grade_level: string | null
           id: string
           phone: string | null
           status: string | null
@@ -168,6 +169,7 @@ export type Database = {
           email: string
           employee_id: string
           full_name: string
+          grade_level?: string | null
           id?: string
           phone?: string | null
           status?: string | null
@@ -181,6 +183,7 @@ export type Database = {
           email?: string
           employee_id?: string
           full_name?: string
+          grade_level?: string | null
           id?: string
           phone?: string | null
           status?: string | null
