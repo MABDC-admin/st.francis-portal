@@ -8,14 +8,10 @@ import {
   Users,
   Camera,
   Loader2,
-  BookOpen,
-  Award,
-  Music,
-  Trophy,
-  GraduationCap
+  Pencil
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Student } from '@/types/student';
 import { useUploadStudentPhoto } from '@/hooks/useStudentDocuments';
 import { toast } from 'sonner';
@@ -24,6 +20,8 @@ import { supabase } from '@/integrations/supabase/client';
 interface StudentProfileCardProps {
   student: Student;
   showPhotoUpload?: boolean;
+  showEditButton?: boolean;
+  onEditClick?: () => void;
   compact?: boolean;
 }
 
@@ -34,7 +32,13 @@ interface EnrolledSubject {
   status: string;
 }
 
-export const StudentProfileCard = ({ student, showPhotoUpload = true, compact = false }: StudentProfileCardProps) => {
+export const StudentProfileCard = ({ 
+  student, 
+  showPhotoUpload = true, 
+  showEditButton = false,
+  onEditClick,
+  compact = false 
+}: StudentProfileCardProps) => {
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [enrolledSubjects, setEnrolledSubjects] = useState<EnrolledSubject[]>([]);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -103,13 +107,6 @@ export const StudentProfileCard = ({ student, showPhotoUpload = true, compact = 
     }
   };
 
-  const InfoRow = ({ label, value }: { label: string; value: string | null | undefined }) => (
-    <div className="space-y-0.5">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-sm font-medium text-foreground">{value || 'Not provided'}</p>
-    </div>
-  );
-
   const calculateAge = () => {
     if (!student.birth_date) return student.age?.toString() || 'N/A';
     const birthDate = new Date(student.birth_date);
@@ -128,232 +125,243 @@ export const StudentProfileCard = ({ student, showPhotoUpload = true, compact = 
     return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return 'N/A';
+    return new Date(dateStr).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Header Section */}
+    <motion.div 
+      className="space-y-6"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
+      {/* Header Card - Teal/Cyan Gradient */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-border"
+        transition={{ duration: 0.4, delay: 0.1 }}
+        className="relative overflow-hidden rounded-2xl shadow-lg"
+        style={{
+          background: 'linear-gradient(135deg, #0891b2 0%, #22d3ee 50%, #67e8f9 100%)'
+        }}
       >
         <div className="p-6">
-          <div className="flex flex-col lg:flex-row lg:items-start gap-6">
-            {/* Left: Photo and Name */}
-            <div className="flex items-center gap-4">
-              {/* Photo */}
-              <div className="relative group shrink-0">
-                {showPhotoUpload && (
-                  <input
-                    ref={photoInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handlePhotoUpload}
-                  />
-                )}
-                {student.photo_url ? (
-                  <img 
-                    src={student.photo_url} 
-                    alt={student.student_name}
-                    className="h-20 w-20 rounded-full object-cover border-4 border-primary/20 shadow-lg"
-                  />
-                ) : (
-                  <div className="h-20 w-20 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center border-4 border-primary/20 shadow-lg">
-                    <span className="text-2xl font-bold text-primary-foreground">
-                      {student.student_name.charAt(0)}
-                    </span>
-                  </div>
-                )}
-                {showPhotoUpload && (
-                  <button
-                    onClick={() => photoInputRef.current?.click()}
-                    disabled={isUploadingPhoto}
-                    className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                  >
-                    {isUploadingPhoto ? (
-                      <Loader2 className="h-5 w-5 text-white animate-spin" />
-                    ) : (
-                      <Camera className="h-5 w-5 text-white" />
-                    )}
-                  </button>
-                )}
-              </div>
-              
-              {/* Name and Class */}
-              <div>
-                <h2 className="text-xl lg:text-2xl font-bold text-primary">{student.student_name}</h2>
-                <div className="flex items-center gap-2 mt-1">
-                  <GraduationCap className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium text-muted-foreground">{student.level}</span>
+          <div className="flex flex-col lg:flex-row lg:items-center gap-6">
+            {/* Avatar */}
+            <div className="relative group shrink-0">
+              {showPhotoUpload && (
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoUpload}
+                />
+              )}
+              {student.photo_url ? (
+                <img 
+                  src={student.photo_url} 
+                  alt={student.student_name}
+                  className="h-16 w-16 rounded-full object-cover border-4 border-white/30 shadow-lg"
+                />
+              ) : (
+                <div className="h-16 w-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border-4 border-white/30 shadow-lg">
+                  <span className="text-xl font-bold text-white">
+                    {student.student_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                  </span>
                 </div>
+              )}
+              {showPhotoUpload && (
+                <button
+                  onClick={() => photoInputRef.current?.click()}
+                  disabled={isUploadingPhoto}
+                  className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                >
+                  {isUploadingPhoto ? (
+                    <Loader2 className="h-5 w-5 text-white animate-spin" />
+                  ) : (
+                    <Camera className="h-5 w-5 text-white" />
+                  )}
+                </button>
+              )}
+            </div>
+            
+            {/* Student Info */}
+            <div className="flex-1 space-y-1">
+              <div className="flex items-center gap-3 flex-wrap">
+                <h2 className="text-xl lg:text-2xl font-bold text-white">{student.student_name}</h2>
+                <Badge className="bg-amber-400 text-amber-900 hover:bg-amber-400 border-0 font-semibold">
+                  Active
+                </Badge>
+              </div>
+              <p className="text-white/80 text-sm">
+                {student.lrn} • {student.level} • {student.school || 'MABDC'}
+              </p>
+              <div className="flex items-center gap-4 text-sm text-white/70 flex-wrap">
+                {(student.mother_contact || student.father_contact) && (
+                  <span className="flex items-center gap-1">
+                    <Phone className="h-3 w-3" /> {student.mother_contact || student.father_contact}
+                  </span>
+                )}
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3" /> Enrolled: {formatDate(student.created_at)}
+                </span>
               </div>
             </div>
 
-            {/* Stats Row */}
-            <div className="flex flex-wrap gap-4 lg:gap-6 lg:ml-auto">
-              {/* Attendance */}
-              <div className="text-center px-4 py-2 rounded-lg bg-background/50">
-                <p className="text-xs text-muted-foreground">Attendance</p>
-                <p className="text-lg font-bold text-emerald-600">95%</p>
-                <p className="text-xs text-muted-foreground">(5 Leaves)</p>
-              </div>
-              
-              {/* Birth Date */}
-              <div className="text-center px-4 py-2 rounded-lg bg-background/50">
-                <p className="text-xs text-muted-foreground flex items-center gap-1 justify-center">
-                  <Calendar className="h-3 w-3" /> Birth Date
-                </p>
-                <p className="text-sm font-semibold text-foreground">{formatBirthDate()}</p>
-              </div>
-
-              {/* Best Subject */}
-              <div className="text-center px-4 py-2 rounded-lg bg-background/50">
-                <p className="text-xs text-muted-foreground flex items-center gap-1 justify-center">
-                  <Award className="h-3 w-3" /> Best Subject
-                </p>
-                <p className="text-sm font-semibold text-foreground">
-                  {enrolledSubjects[0]?.name || 'N/A'}
-                </p>
-              </div>
+            {/* Current Average */}
+            <div className="text-right">
+              <p className="text-4xl font-bold text-white">--</p>
+              <p className="text-sm text-white/70">Current Average</p>
             </div>
           </div>
         </div>
       </motion.div>
 
-      {/* Information Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Personal Information */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <Card className="h-full">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2 text-primary">
-                <User className="h-4 w-4" />
-                Personal Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <InfoRow label="Gender" value={student.gender} />
-                <InfoRow label="Age" value={calculateAge()} />
-              </div>
-              <InfoRow label="LRN" value={student.lrn} />
-              <InfoRow label="Contact" value={student.mother_contact || student.father_contact} />
-              <InfoRow label="Address" value={student.uae_address || student.phil_address} />
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Parents Information */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+      {/* Edit Button Row */}
+      {showEditButton && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
+          className="flex justify-end"
         >
-          <Card className="h-full">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2 text-primary">
-                <Users className="h-4 w-4" />
-                Parents Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <InfoRow label="Father's Name" value={student.father_name} />
-              <div className="flex items-center gap-2">
-                <Phone className="h-3 w-3 text-muted-foreground" />
-                <InfoRow label="Contact" value={student.father_contact} />
-              </div>
-              <InfoRow label="Mother's Name" value={student.mother_maiden_name} />
-              <div className="flex items-center gap-2">
-                <Phone className="h-3 w-3 text-muted-foreground" />
-                <InfoRow label="Contact" value={student.mother_contact} />
-              </div>
-            </CardContent>
-          </Card>
+          <Button 
+            variant="default" 
+            size="sm" 
+            onClick={onEditClick}
+            className="bg-slate-700 hover:bg-slate-800 text-white gap-2"
+          >
+            <Pencil className="h-4 w-4" />
+            Edit
+          </Button>
         </motion.div>
+      )}
 
-        {/* Academic Information */}
+      {/* Information Cards Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Basic Information Card - Teal Gradient */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+          className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border-t-4"
+          style={{ borderTopColor: '#0891b2' }}
         >
-          <Card className="h-full">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2 text-primary">
-                <BookOpen className="h-4 w-4" />
-                Academic Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <InfoRow label="Current Level" value={student.level} />
-              <InfoRow label="Previous School" value={student.previous_school} />
-              <InfoRow label="School" value={student.school} />
+          {/* Header */}
+          <div 
+            className="px-5 py-3 flex items-center gap-2"
+            style={{
+              background: 'linear-gradient(135deg, #0891b2 0%, #22d3ee 100%)'
+            }}
+          >
+            <User className="h-4 w-4 text-white" />
+            <h3 className="font-semibold text-white">Basic Information</h3>
+          </div>
+          
+          {/* Content */}
+          <div className="p-5 space-y-4 bg-gradient-to-br from-cyan-50/50 to-white dark:from-slate-800/50 dark:to-slate-900">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-xs text-muted-foreground mb-2">Enrolled Subjects</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {enrolledSubjects.length > 0 ? (
-                    enrolledSubjects.slice(0, 6).map((subject) => (
-                      <Badge key={subject.id} variant="secondary" className="text-xs">
-                        {subject.code}
-                      </Badge>
-                    ))
-                  ) : (
-                    <span className="text-sm text-muted-foreground">No subjects enrolled</span>
-                  )}
-                  {enrolledSubjects.length > 6 && (
-                    <Badge variant="outline" className="text-xs">
-                      +{enrolledSubjects.length - 6} more
-                    </Badge>
-                  )}
-                </div>
+                <p className="text-xs text-cyan-600 dark:text-cyan-400 font-medium">Full Name</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.student_name}</p>
               </div>
-            </CardContent>
-          </Card>
+              <div>
+                <p className="text-xs text-cyan-600 dark:text-cyan-400 font-medium">LRN</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.lrn}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-cyan-600 dark:text-cyan-400 font-medium">Gender</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.gender || 'Not provided'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-cyan-600 dark:text-cyan-400 font-medium">Age</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{calculateAge()}</p>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-cyan-600 dark:text-cyan-400 font-medium">Birth Date</p>
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{formatBirthDate()}</p>
+            </div>
+          </div>
         </motion.div>
 
-        {/* Extra Curriculum */}
+        {/* Parents/Guardian Card - Purple/Pink Gradient */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+          className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border-t-4"
+          style={{ borderTopColor: '#a855f7' }}
         >
-          <Card className="h-full">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2 text-primary">
-                <Trophy className="h-4 w-4" />
-                Extra Curriculum
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-start gap-3">
-                <Trophy className="h-4 w-4 text-amber-500 mt-0.5" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Sports</p>
-                  <p className="text-sm font-medium">No Participation</p>
-                </div>
+          {/* Header */}
+          <div 
+            className="px-5 py-3 flex items-center gap-2"
+            style={{
+              background: 'linear-gradient(135deg, #a855f7 0%, #d946ef 100%)'
+            }}
+          >
+            <Users className="h-4 w-4 text-white" />
+            <h3 className="font-semibold text-white">Parents/Guardian</h3>
+          </div>
+          
+          {/* Content */}
+          <div className="p-5 space-y-4 bg-gradient-to-br from-purple-50/50 to-white dark:from-slate-800/50 dark:to-slate-900">
+            <div>
+              <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Father's Name</p>
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.father_name || 'Not provided'}</p>
+              <p className="text-xs text-purple-500 dark:text-purple-400 flex items-center gap-1 mt-1">
+                <Phone className="h-3 w-3" /> {student.father_contact || 'No contact'}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Mother's Name</p>
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.mother_maiden_name || 'Not provided'}</p>
+              <p className="text-xs text-purple-500 dark:text-purple-400 flex items-center gap-1 mt-1">
+                <Phone className="h-3 w-3" /> {student.mother_contact || 'No contact'}
+              </p>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Address Information Card - Orange/Yellow Gradient - Full Width */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.4 }}
+          className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border-t-4 lg:col-span-2"
+          style={{ borderTopColor: '#f59e0b' }}
+        >
+          {/* Header */}
+          <div 
+            className="px-5 py-3 flex items-center gap-2"
+            style={{
+              background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #fde047 100%)'
+            }}
+          >
+            <MapPin className="h-4 w-4 text-white" />
+            <h3 className="font-semibold text-white">Address Information</h3>
+          </div>
+          
+          {/* Content */}
+          <div className="p-5 bg-gradient-to-br from-amber-50/50 to-white dark:from-slate-800/50 dark:to-slate-900">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">UAE Address</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.uae_address || 'Not provided'}</p>
               </div>
-              <div className="flex items-start gap-3">
-                <Award className="h-4 w-4 text-purple-500 mt-0.5" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Arts</p>
-                  <p className="text-sm font-medium">No Participation</p>
-                </div>
+              <div>
+                <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">Philippine Address</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.phil_address || 'Not provided'}</p>
               </div>
-              <div className="flex items-start gap-3">
-                <Music className="h-4 w-4 text-blue-500 mt-0.5" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Music</p>
-                  <p className="text-sm font-medium">No Participation</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 };

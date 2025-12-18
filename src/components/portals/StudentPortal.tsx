@@ -91,7 +91,7 @@ export const StudentPortal = () => {
 
         <TabsContent value="profile">
           {student ? (
-            <StudentProfileCard student={student} showPhotoUpload={false} />
+            <StudentProfileCard student={student} showPhotoUpload={false} showEditButton={false} />
           ) : (
             <Card>
               <CardContent className="py-10 text-center">

@@ -508,23 +508,24 @@ const StudentProfile = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        {/* Student Header Card */}
+        {/* Student Header Card - Teal/Cyan Gradient */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
-          className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-6 shadow-lg overflow-hidden"
-          style={theme.accentColor ? { borderTopColor: theme.accentColor, borderTopWidth: '3px' } : {}}
+          className="relative overflow-hidden rounded-2xl shadow-lg"
+          style={{
+            background: 'linear-gradient(135deg, #0891b2 0%, #22d3ee 50%, #67e8f9 100%)'
+          }}
         >
-          <div className="flex flex-col lg:flex-row lg:items-start gap-6">
-            {/* Avatar and Info */}
-            <div className="flex items-center gap-4">
+          <div className="p-6">
+            <div className="flex flex-col lg:flex-row lg:items-center gap-6">
               {/* Avatar with brick animation */}
               <motion.div 
-                className="relative group"
+                className="relative group shrink-0"
                 initial={{ opacity: 0, x: -30, scale: 0.8 }}
                 animate={{ opacity: 1, x: 0, scale: 1 }}
-                transition={{ duration: 0.5, delay: 0.1, type: "spring", stiffness: 200 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
               >
                 <input
                   ref={photoInputRef}
@@ -533,15 +534,9 @@ const StudentProfile = () => {
                   className="hidden"
                   onChange={handlePhotoUpload}
                 />
-                <Avatar 
-                  className="h-20 w-20 border-4"
-                  style={{ borderColor: theme.accentColor || 'hsl(var(--primary) / 0.2)' }}
-                >
+                <Avatar className="h-16 w-16 border-4 border-white/30 shadow-lg">
                   <AvatarImage src={student.photo_url || ''} alt={student.student_name} />
-                  <AvatarFallback 
-                    className="text-2xl font-bold text-white"
-                    style={{ backgroundColor: theme.accentColor || 'hsl(var(--primary))' }}
-                  >
+                  <AvatarFallback className="text-xl font-bold text-white bg-white/20 backdrop-blur-sm">
                     {student.student_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                   </AvatarFallback>
                 </Avatar>
@@ -558,27 +553,22 @@ const StudentProfile = () => {
                 </button>
               </motion.div>
               
-              <div className="space-y-1">
-                {/* Name with brick animation */}
+              {/* Student Info */}
+              <div className="flex-1 space-y-1">
                 <motion.div 
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-3 flex-wrap"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.4, delay: 0.2 }}
                 >
-                  <h1 className="text-2xl font-bold text-foreground">{student.student_name}</h1>
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.3, delay: 0.4, type: "spring" }}
-                  >
-                    <Badge className="bg-green-100 text-green-700">Active</Badge>
-                  </motion.div>
+                  <h1 className="text-xl lg:text-2xl font-bold text-white">{student.student_name}</h1>
+                  <Badge className="bg-amber-400 text-amber-900 hover:bg-amber-400 border-0 font-semibold">
+                    Active
+                  </Badge>
                 </motion.div>
                 
-                {/* LRN and Level - brick animation */}
                 <motion.p 
-                  className="text-muted-foreground text-sm"
+                  className="text-white/80 text-sm"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.4, delay: 0.3 }}
@@ -586,9 +576,8 @@ const StudentProfile = () => {
                   {student.lrn} • {student.level} • {student.school || 'MABDC'}
                 </motion.p>
                 
-                {/* Contact info - brick animation */}
                 <motion.div 
-                  className="flex items-center gap-4 mt-2 text-sm text-muted-foreground"
+                  className="flex items-center gap-4 text-sm text-white/70 flex-wrap"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.4, delay: 0.4 }}
@@ -603,35 +592,34 @@ const StudentProfile = () => {
                   </span>
                 </motion.div>
               </div>
-            </div>
 
-            {/* Stats - brick animation from right */}
-            <motion.div 
-              className="lg:ml-auto text-right"
-              initial={{ opacity: 0, x: 30, scale: 0.9 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              transition={{ duration: 0.5, delay: 0.3, type: "spring", stiffness: 150 }}
-            >
-              <motion.p 
-                className="text-4xl font-bold"
-                style={{ color: theme.accentColor || 'hsl(var(--foreground))' }}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.5 }}
+              {/* Current Average */}
+              <motion.div 
+                className="text-right"
+                initial={{ opacity: 0, x: 30, scale: 0.9 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
               >
-                {grades.length > 0 && grades[0].final_grade 
-                  ? grades[0].final_grade.toFixed(2)
-                  : '--'}
-              </motion.p>
-              <motion.p 
-                className="text-sm text-muted-foreground"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3, delay: 0.6 }}
-              >
-                Current Average
-              </motion.p>
-            </motion.div>
+                <motion.p 
+                  className="text-4xl font-bold text-white"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.5 }}
+                >
+                  {grades.length > 0 && grades[0].final_grade 
+                    ? grades[0].final_grade.toFixed(2)
+                    : '--'}
+                </motion.p>
+                <motion.p 
+                  className="text-sm text-white/70"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3, delay: 0.6 }}
+                >
+                  Current Average
+                </motion.p>
+              </motion.div>
+            </div>
           </div>
         </motion.div>
 
@@ -705,104 +693,70 @@ const StudentProfile = () => {
                   </Button>
                 </div>
               ) : (
-                <Button variant="outline" size="sm" onClick={() => setIsEditingPersonal(true)}>
-                  <Pencil className="h-4 w-4 mr-2" />
+                <Button variant="default" size="sm" onClick={() => setIsEditingPersonal(true)} className="bg-slate-700 hover:bg-slate-800 text-white gap-2">
+                  <Pencil className="h-4 w-4" />
                   Edit
                 </Button>
               )}
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    Basic Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {isEditingPersonal ? (
-                    <>
-                      <div className="grid grid-cols-2 gap-4">
-                        <EditableField label="Full Name" value={studentForm.student_name} field="student_name" />
-                        <EditableField label="LRN" value={studentForm.lrn} field="lrn" />
+            {isEditingPersonal ? (
+              /* Edit Mode - Traditional Cards */
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Basic Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <EditableField label="Full Name" value={studentForm.student_name} field="student_name" />
+                      <EditableField label="LRN" value={studentForm.lrn} field="lrn" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Gender</Label>
+                        <Select value={studentForm.gender} onValueChange={(v) => setStudentForm({ ...studentForm, gender: v })}>
+                          <SelectTrigger className="h-8">
+                            <SelectValue placeholder="Select gender" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Male">Male</SelectItem>
+                            <SelectItem value="Female">Female</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <Label className="text-xs">Gender</Label>
-                          <Select value={studentForm.gender} onValueChange={(v) => setStudentForm({ ...studentForm, gender: v })}>
-                            <SelectTrigger className="h-8">
-                              <SelectValue placeholder="Select gender" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Male">Male</SelectItem>
-                              <SelectItem value="Female">Female</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <EditableField label="Age" value={studentForm.age} field="age" type="number" />
-                      </div>
-                      <EditableField label="Birth Date" value={studentForm.birth_date} field="birth_date" type="date" />
-                    </>
-                  ) : (
-                    <>
-                      <div className="grid grid-cols-2 gap-4">
-                        <InfoRow label="Full Name" value={student.student_name} />
-                        <InfoRow label="LRN" value={student.lrn} />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <InfoRow label="Gender" value={student.gender} />
-                        <InfoRow label="Age" value={student.age?.toString()} />
-                      </div>
-                      <InfoRow label="Birth Date" value={formatDate(student.birth_date)} />
-                    </>
-                  )}
-                </CardContent>
-              </Card>
+                      <EditableField label="Age" value={studentForm.age} field="age" type="number" />
+                    </div>
+                    <EditableField label="Birth Date" value={studentForm.birth_date} field="birth_date" type="date" />
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    Parents/Guardian
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {isEditingPersonal ? (
-                    <>
-                      <EditableField label="Father's Name" value={studentForm.father_name} field="father_name" />
-                      <EditableField label="Father's Contact" value={studentForm.father_contact} field="father_contact" />
-                      <EditableField label="Mother's Name" value={studentForm.mother_maiden_name} field="mother_maiden_name" />
-                      <EditableField label="Mother's Contact" value={studentForm.mother_contact} field="mother_contact" />
-                    </>
-                  ) : (
-                    <>
-                      <div>
-                        <InfoRow label="Father's Name" value={student.father_name} />
-                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                          <Phone className="h-3 w-3" /> {student.father_contact || 'No contact'}
-                        </p>
-                      </div>
-                      <div>
-                        <InfoRow label="Mother's Name" value={student.mother_maiden_name} />
-                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                          <Phone className="h-3 w-3" /> {student.mother_contact || 'No contact'}
-                        </p>
-                      </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      Parents/Guardian
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <EditableField label="Father's Name" value={studentForm.father_name} field="father_name" />
+                    <EditableField label="Father's Contact" value={studentForm.father_contact} field="father_contact" />
+                    <EditableField label="Mother's Name" value={studentForm.mother_maiden_name} field="mother_maiden_name" />
+                    <EditableField label="Mother's Contact" value={studentForm.mother_contact} field="mother_contact" />
+                  </CardContent>
+                </Card>
 
-              <Card className="md:col-span-2">
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    Address Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {isEditingPersonal ? (
+                <Card className="md:col-span-2">
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Address Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <Label className="text-xs">UAE Address</Label>
@@ -821,15 +775,118 @@ const StudentProfile = () => {
                         />
                       </div>
                     </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <InfoRow label="UAE Address" value={student.uae_address} />
-                      <InfoRow label="Philippine Address" value={student.phil_address} />
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              /* View Mode - Colorful Gradient Cards */
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Basic Information Card - Teal Gradient */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.1 }}
+                  className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border-t-4"
+                  style={{ borderTopColor: '#0891b2' }}
+                >
+                  <div 
+                    className="px-5 py-3 flex items-center gap-2"
+                    style={{ background: 'linear-gradient(135deg, #0891b2 0%, #22d3ee 100%)' }}
+                  >
+                    <User className="h-4 w-4 text-white" />
+                    <h3 className="font-semibold text-white">Basic Information</h3>
+                  </div>
+                  <div className="p-5 space-y-4 bg-gradient-to-br from-cyan-50/50 to-white dark:from-slate-800/50 dark:to-slate-900">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-cyan-600 dark:text-cyan-400 font-medium">Full Name</p>
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.student_name}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-cyan-600 dark:text-cyan-400 font-medium">LRN</p>
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.lrn}</p>
+                      </div>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-cyan-600 dark:text-cyan-400 font-medium">Gender</p>
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.gender || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-cyan-600 dark:text-cyan-400 font-medium">Age</p>
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.age || 'N/A'}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs text-cyan-600 dark:text-cyan-400 font-medium">Birth Date</p>
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{formatDate(student.birth_date)}</p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Parents/Guardian Card - Purple/Pink Gradient */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.2 }}
+                  className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border-t-4"
+                  style={{ borderTopColor: '#a855f7' }}
+                >
+                  <div 
+                    className="px-5 py-3 flex items-center gap-2"
+                    style={{ background: 'linear-gradient(135deg, #a855f7 0%, #d946ef 100%)' }}
+                  >
+                    <Users className="h-4 w-4 text-white" />
+                    <h3 className="font-semibold text-white">Parents/Guardian</h3>
+                  </div>
+                  <div className="p-5 space-y-4 bg-gradient-to-br from-purple-50/50 to-white dark:from-slate-800/50 dark:to-slate-900">
+                    <div>
+                      <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Father's Name</p>
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.father_name || 'Not provided'}</p>
+                      <p className="text-xs text-purple-500 dark:text-purple-400 flex items-center gap-1 mt-1">
+                        <Phone className="h-3 w-3" /> {student.father_contact || 'No contact'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Mother's Name</p>
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.mother_maiden_name || 'Not provided'}</p>
+                      <p className="text-xs text-purple-500 dark:text-purple-400 flex items-center gap-1 mt-1">
+                        <Phone className="h-3 w-3" /> {student.mother_contact || 'No contact'}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Address Information Card - Orange/Yellow Gradient - Full Width */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.3 }}
+                  className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border-t-4 lg:col-span-2"
+                  style={{ borderTopColor: '#f59e0b' }}
+                >
+                  <div 
+                    className="px-5 py-3 flex items-center gap-2"
+                    style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #fde047 100%)' }}
+                  >
+                    <MapPin className="h-4 w-4 text-white" />
+                    <h3 className="font-semibold text-white">Address Information</h3>
+                  </div>
+                  <div className="p-5 bg-gradient-to-br from-amber-50/50 to-white dark:from-slate-800/50 dark:to-slate-900">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">UAE Address</p>
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.uae_address || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">Philippine Address</p>
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.phil_address || 'Not provided'}</p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            )}
           </TabsContent>
 
           {/* Academic History Tab */}
