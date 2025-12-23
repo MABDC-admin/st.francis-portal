@@ -4,24 +4,18 @@ import { Loader2, Users, BookOpen, GraduationCap, RefreshCcw, ChevronDown, Chevr
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useSchool } from '@/contexts/SchoolContext';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 interface Subject {
   id: string;
   code: string;
   name: string;
   grade_levels: string[];
-}
-
-interface AcademicYear {
-  id: string;
-  name: string;
-  is_current: boolean;
 }
 
 interface EnrollmentStat {
@@ -39,11 +33,10 @@ interface StudentEnrollment {
 
 export const EnrollmentManagement = () => {
   const { selectedSchool } = useSchool();
+  const { selectedYearId, selectedYear, isLoading: isLoadingYear } = useAcademicYear();
   const [isLoading, setIsLoading] = useState(false);
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
-  const [selectedYear, setSelectedYear] = useState<string>('');
   const [enrollmentStats, setEnrollmentStats] = useState<EnrollmentStat[]>([]);
   const [expandedLevels, setExpandedLevels] = useState<Set<string>>(new Set());
   const [detailedEnrollments, setDetailedEnrollments] = useState<Record<string, StudentEnrollment[]>>({});
@@ -54,26 +47,21 @@ export const EnrollmentManagement = () => {
     'Level 7', 'Level 8', 'Level 9', 'Level 10', 'Level 11', 'Level 12'
   ];
 
-  const fetchData = async () => {
+  const fetchSubjects = async () => {
     setIsLoading(true);
     
-    const [subjectsRes, yearsRes] = await Promise.all([
-      supabase.from('subjects').select('id, code, name, grade_levels').eq('is_active', true),
-      supabase.from('academic_years').select('*').order('start_date', { ascending: false }),
-    ]);
+    const { data: subjectsRes } = await supabase
+      .from('subjects')
+      .select('id, code, name, grade_levels')
+      .eq('is_active', true);
 
-    if (subjectsRes.data) setSubjects(subjectsRes.data as Subject[]);
-    if (yearsRes.data) {
-      setAcademicYears(yearsRes.data as AcademicYear[]);
-      const currentYear = yearsRes.data.find((y: AcademicYear) => y.is_current);
-      if (currentYear) setSelectedYear(currentYear.id);
-    }
+    if (subjectsRes) setSubjects(subjectsRes as Subject[]);
 
     setIsLoading(false);
   };
 
   const fetchEnrollmentStats = async () => {
-    if (!selectedYear) return;
+    if (!selectedYearId) return;
 
     const stats: EnrollmentStat[] = [];
     
@@ -82,7 +70,7 @@ export const EnrollmentManagement = () => {
       const { data: enrolledStudents } = await supabase
         .from('student_subjects')
         .select('student_id, students!inner(id, level, school)')
-        .eq('academic_year_id', selectedYear)
+        .eq('academic_year_id', selectedYearId)
         .eq('students.level', level)
         .eq('students.school', selectedSchool);
 
@@ -106,7 +94,7 @@ export const EnrollmentManagement = () => {
   };
 
   const fetchDetailedEnrollments = async (gradeLevel: string) => {
-    if (!selectedYear) return;
+    if (!selectedYearId) return;
     
     setLoadingLevel(gradeLevel);
     
@@ -120,7 +108,7 @@ export const EnrollmentManagement = () => {
           students!inner(id, student_name, lrn, level, school),
           subjects:subject_id (id, code, name)
         `)
-        .eq('academic_year_id', selectedYear)
+        .eq('academic_year_id', selectedYearId)
         .eq('students.level', gradeLevel)
         .eq('students.school', selectedSchool);
 
@@ -185,24 +173,24 @@ export const EnrollmentManagement = () => {
     setExpandedLevels(newExpanded);
   };
   useEffect(() => {
-    fetchData();
+    fetchSubjects();
     // Clear expanded levels and detailed enrollments when school changes
     setExpandedLevels(new Set());
     setDetailedEnrollments({});
   }, [selectedSchool]);
 
   useEffect(() => {
-    if (selectedYear && subjects.length > 0) {
+    if (selectedYearId && subjects.length > 0) {
       // Clear expanded levels and detailed enrollments when year changes
       setExpandedLevels(new Set());
       setDetailedEnrollments({});
       fetchEnrollmentStats();
     }
-  }, [selectedYear, subjects, selectedSchool]);
+  }, [selectedYearId, subjects, selectedSchool]);
 
   const handleAutoEnroll = async () => {
-    if (!selectedYear) {
-      toast.error('Please select an academic year');
+    if (!selectedYearId) {
+      toast.error('Please select an academic year from the sidebar');
       return;
     }
 
@@ -228,16 +216,16 @@ export const EnrollmentManagement = () => {
             .select('id')
             .eq('student_id', student.id)
             .eq('subject_id', subject.id)
-            .eq('academic_year_id', selectedYear)
+            .eq('academic_year_id', selectedYearId)
             .maybeSingle();
 
           if (!existing) {
-            const { error } = await supabase.from('student_subjects').insert({
+            const { error } = await supabase.from('student_subjects').insert([{
               student_id: student.id,
               subject_id: subject.id,
-              academic_year_id: selectedYear,
+              academic_year_id: selectedYearId,
               status: 'enrolled',
-            });
+            }]);
 
             if (!error) enrolled++;
           } else {
@@ -274,26 +262,30 @@ export const EnrollmentManagement = () => {
         <CardHeader>
           <CardTitle>Auto-Enrollment</CardTitle>
           <CardDescription>
-            Automatically enroll all students to their grade-level subjects
+            Automatically enroll all students to their grade-level subjects for the selected academic year
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
             <div className="flex-1">
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Academic Year" />
-                </SelectTrigger>
-                <SelectContent>
-                  {academicYears.map((year) => (
-                    <SelectItem key={year.id} value={year.id}>
-                      {year.name} {year.is_current && '(Current)'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Academic Year:</span>
+                {isLoadingYear ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : selectedYear ? (
+                  <Badge variant="secondary" className="text-sm">
+                    {selectedYear.name}
+                    {selectedYear.is_current && <span className="ml-1 text-xs">(Current)</span>}
+                  </Badge>
+                ) : (
+                  <span className="text-sm text-destructive">No academic year selected</span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Change the academic year from the sidebar switcher
+              </p>
             </div>
-            <Button onClick={handleAutoEnroll} disabled={isEnrolling || !selectedYear}>
+            <Button onClick={handleAutoEnroll} disabled={isEnrolling || !selectedYearId}>
               {isEnrolling ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (

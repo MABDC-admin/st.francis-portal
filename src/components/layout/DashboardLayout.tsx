@@ -20,13 +20,15 @@ import {
   FileSpreadsheet,
   FileText,
   Building2,
-  ChevronDown
+  ChevronDown,
+  CalendarDays
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchool, SCHOOL_THEMES, SchoolType } from '@/contexts/SchoolContext';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
@@ -40,6 +42,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useSchoolSettings } from '@/hooks/useSchoolSettings';
 import { useColorTheme } from '@/hooks/useColorTheme';
 import { ColorThemeSelector } from '@/components/ColorThemeSelector';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface NavItem {
   id: string;
@@ -136,6 +139,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
   const { user, role, signOut } = useAuth();
   const [isDragging, setIsDragging] = useState(false);
   const { selectedSchool, setSelectedSchool, schoolTheme, setCanSwitchSchool } = useSchool();
+  const { academicYears, selectedYearId, selectedYear, setSelectedYearId, isLoading: isLoadingYears } = useAcademicYear();
   const { data: schoolSettings } = useSchoolSettings(selectedSchool);
   const { theme, currentTheme, selectTheme } = useColorTheme();
 
@@ -339,6 +343,55 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
                     </div>
                     {selectedSchool === 'STFXSA' && <span className="text-blue-500">✓</span>}
                   </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
+
+          {/* Academic Year Switcher */}
+          {canSwitch && (
+            <div className="mt-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-between text-inherit hover:bg-white/10 border border-white/20"
+                  >
+                    <div className="flex items-center gap-2">
+                      <CalendarDays className="h-4 w-4" />
+                      {isLoadingYears ? (
+                        <Skeleton className="h-4 w-20 bg-white/20" />
+                      ) : (
+                        <span className="text-sm truncate">{selectedYear?.name || 'Select Year'}</span>
+                      )}
+                    </div>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-[200px] max-h-[300px] overflow-y-auto">
+                  <DropdownMenuLabel>Academic Year</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {academicYears.map((year) => (
+                    <DropdownMenuItem 
+                      key={year.id}
+                      onClick={() => setSelectedYearId(year.id)}
+                      className={selectedYearId === year.id ? 'bg-primary/10' : ''}
+                    >
+                      <div className="flex items-center gap-2 flex-1">
+                        <CalendarDays className="h-3 w-3 opacity-50" />
+                        <span>{year.name}</span>
+                        {year.is_current && (
+                          <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">Current</Badge>
+                        )}
+                      </div>
+                      {selectedYearId === year.id && <span className="text-primary">✓</span>}
+                    </DropdownMenuItem>
+                  ))}
+                  {academicYears.length === 0 && !isLoadingYears && (
+                    <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                      No academic years found
+                    </div>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

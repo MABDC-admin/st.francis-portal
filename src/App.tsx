@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ColorThemeProvider } from "@/contexts/ColorThemeContext";
 import { SchoolProvider } from "@/contexts/SchoolContext";
+import { AcademicYearProvider } from "@/contexts/AcademicYearContext";
 import Index from "./pages/Index";
 import StudentProfile from "./pages/StudentProfile";
 import Auth from "./pages/Auth";
@@ -43,23 +44,25 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <SchoolProvider>
-        <ColorThemeProvider>
-          <AuthProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <Routes>
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/" element={<Index />} />
-                  <Route path="/student/:id" element={<StudentProfile />} />
-                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </BrowserRouter>
-            </TooltipProvider>
-          </AuthProvider>
-        </ColorThemeProvider>
+        <AcademicYearProvider>
+          <ColorThemeProvider>
+            <AuthProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <Routes>
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/" element={<Index />} />
+                    <Route path="/student/:id" element={<StudentProfile />} />
+                    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </BrowserRouter>
+              </TooltipProvider>
+            </AuthProvider>
+          </ColorThemeProvider>
+        </AcademicYearProvider>
       </SchoolProvider>
     </QueryClientProvider>
   );
