@@ -79,6 +79,10 @@ interface ExtendedDocument extends StudentDocument {
   page_number?: number;
 }
 
+// Utility functions (must be defined before component to avoid hoisting issues)
+const isImage = (type: string) => type.startsWith('image/');
+const isPDF = (type: string) => type === 'application/pdf';
+
 export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
@@ -294,9 +298,6 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
       toast.error('Failed to delete document');
     }
   };
-
-  const isImage = (type: string) => type.startsWith('image/');
-  const isPDF = (type: string) => type === 'application/pdf';
 
   const getFileIcon = (type: string) => {
     if (isImage(type)) return <ImageIcon className="h-8 w-8 text-blue-500" />;
