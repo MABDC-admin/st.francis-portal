@@ -158,11 +158,17 @@ export type Database = {
           extracted_text: string | null
           file_url: string | null
           id: string
+          is_pdf_page: boolean | null
           keywords: string[] | null
           original_filename: string | null
+          page_count: number | null
+          page_images: Json | null
+          page_number: number | null
+          parent_document_id: string | null
           slot_number: number
           student_id: string
           summary: string | null
+          thumbnail_url: string | null
           updated_at: string
           uploaded_at: string | null
         }
@@ -177,11 +183,17 @@ export type Database = {
           extracted_text?: string | null
           file_url?: string | null
           id?: string
+          is_pdf_page?: boolean | null
           keywords?: string[] | null
           original_filename?: string | null
+          page_count?: number | null
+          page_images?: Json | null
+          page_number?: number | null
+          parent_document_id?: string | null
           slot_number: number
           student_id: string
           summary?: string | null
+          thumbnail_url?: string | null
           updated_at?: string
           uploaded_at?: string | null
         }
@@ -196,15 +208,28 @@ export type Database = {
           extracted_text?: string | null
           file_url?: string | null
           id?: string
+          is_pdf_page?: boolean | null
           keywords?: string[] | null
           original_filename?: string | null
+          page_count?: number | null
+          page_images?: Json | null
+          page_number?: number | null
+          parent_document_id?: string | null
           slot_number?: number
           student_id?: string
           summary?: string | null
+          thumbnail_url?: string | null
           updated_at?: string
           uploaded_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "student_documents_parent_document_id_fkey"
+            columns: ["parent_document_id"]
+            isOneToOne: false
+            referencedRelation: "student_documents"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "student_documents_student_id_fkey"
             columns: ["student_id"]

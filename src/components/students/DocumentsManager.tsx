@@ -17,7 +17,10 @@ import {
   Globe,
   CheckCircle,
   AlertCircle,
-  Clock
+  Clock,
+  Layers,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,6 +71,12 @@ interface ExtendedDocument extends StudentDocument {
   detected_language?: string;
   confidence_score?: number;
   analysis_status?: string;
+  page_count?: number;
+  page_images?: { page: number; url: string; thumbnail_url: string }[];
+  thumbnail_url?: string;
+  is_pdf_page?: boolean;
+  parent_document_id?: string;
+  page_number?: number;
 }
 
 export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
@@ -80,17 +89,31 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [analyzingDocs, setAnalyzingDocs] = useState<Set<string>>(new Set());
+  const [currentPdfPage, setCurrentPdfPage] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: documents = [], refetch } = useStudentDocuments(studentId);
   const uploadDocument = useUploadDocument();
   const deleteDocument = useDeleteDocument();
 
-  // Cast documents to extended type
+  // Cast documents to extended type and filter out PDF pages (show parent docs only)
   const extendedDocuments = documents as ExtendedDocument[];
+  const mainDocuments = extendedDocuments.filter(doc => !doc.is_pdf_page);
+  const pdfPages = extendedDocuments.filter(doc => doc.is_pdf_page);
+
+  // Group PDF pages by parent document
+  const pagesByParent = pdfPages.reduce((acc, page) => {
+    const parentId = page.parent_document_id;
+    if (parentId) {
+      if (!acc[parentId]) acc[parentId] = [];
+      acc[parentId].push(page);
+      acc[parentId].sort((a, b) => (a.page_number || 0) - (b.page_number || 0));
+    }
+    return acc;
+  }, {} as Record<string, ExtendedDocument[]>);
 
   // Filter documents by search query
-  const filteredDocuments = extendedDocuments.filter(doc => {
+  const filteredDocuments = mainDocuments.filter(doc => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -150,24 +173,30 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
     }
   };
 
-  const analyzeDocument = async (documentId: string, fileUrl: string, originalFilename: string) => {
+  const analyzeDocument = async (documentId: string, fileUrl: string, originalFilename: string, isPdf: boolean = false) => {
     setAnalyzingDocs(prev => new Set(prev).add(documentId));
     
     try {
       const { data, error } = await supabase.functions.invoke('analyze-document', {
-        body: { documentId, fileUrl, originalFilename }
+        body: { documentId, fileUrl, originalFilename, studentId }
       });
 
       if (error) {
         console.error('Analysis error:', error);
         toast.error('Document analysis failed');
       } else if (data?.success) {
-        const renamedMsg = data.analysis.renamed_to 
-          ? ` → Renamed to: ${data.analysis.renamed_to}` 
-          : '';
-        toast.success('Document analyzed & renamed', {
-          description: `${data.analysis.detected_type}${renamedMsg}`
-        });
+        if (data.isPDF) {
+          toast.success('PDF processing started', {
+            description: `Splitting ${data.pageCount} pages for AI analysis...`
+          });
+        } else {
+          const renamedMsg = data.analysis?.renamed_to 
+            ? ` → Renamed to: ${data.analysis.renamed_to}` 
+            : '';
+          toast.success('Document analyzed & renamed', {
+            description: `${data.analysis?.detected_type}${renamedMsg}`
+          });
+        }
         refetch();
       }
     } catch (error) {
@@ -221,7 +250,8 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
       // Trigger AI analysis for each uploaded document
       for (const doc of uploadedDocs) {
         if (doc.url) {
-          analyzeDocument(doc.id, doc.url, doc.name);
+          const isPdf = doc.name.toLowerCase().endsWith('.pdf');
+          analyzeDocument(doc.id, doc.url, doc.name, isPdf);
         }
       }
     }
@@ -310,9 +340,23 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
       );
     }
     if (isPDF(doc.document_type)) {
+      const pages = pagesByParent[doc.id] || [];
+      const pageCount = doc.page_count || pages.length;
+      
       return (
-        <div className="w-full h-full bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900 flex items-center justify-center">
-          <FileText className="h-12 w-12 text-red-500" />
+        <div className="w-full h-full bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900 flex flex-col items-center justify-center relative">
+          <FileText className="h-10 w-10 text-red-500" />
+          {pageCount > 0 && (
+            <div className="absolute bottom-2 right-2 flex items-center gap-1 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+              <Layers className="h-3 w-3" />
+              {pageCount} {pageCount === 1 ? 'page' : 'pages'}
+            </div>
+          )}
+          {doc.analysis_status === 'processing' && (
+            <div className="absolute top-2 right-2">
+              <Loader2 className="h-4 w-4 text-red-500 animate-spin" />
+            </div>
+          )}
         </div>
       );
     }
@@ -392,6 +436,7 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
               className="group relative border rounded-xl overflow-hidden bg-card hover:shadow-lg transition-all duration-300 cursor-pointer"
               onClick={() => {
                 setSelectedDocument(doc);
+                setCurrentPdfPage(0);
                 setIsViewerOpen(true);
               }}
             >
@@ -441,6 +486,7 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedDocument(doc);
+                    setCurrentPdfPage(0);
                     setIsViewerOpen(true);
                   }}
                 >
@@ -601,11 +647,80 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
                       </div>
                     )}
                     {isPDF(selectedDocument.document_type) && selectedDocument.file_url && (
-                      <iframe
-                        src={selectedDocument.file_url}
-                        className="w-full h-[60vh] rounded-lg border"
-                        title={selectedDocument.document_name}
-                      />
+                      <div className="flex flex-col h-full">
+                        {/* PDF Pages Gallery for multi-page PDFs */}
+                        {(() => {
+                          const docPages = pagesByParent[selectedDocument.id] || [];
+                          if (docPages.length > 0) {
+                            const currentPage = docPages[currentPdfPage];
+                            return (
+                              <div className="flex flex-col h-full">
+                                {/* Page Navigation */}
+                                <div className="flex items-center justify-center gap-4 mb-4 p-2 bg-muted rounded-lg">
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    disabled={currentPdfPage === 0}
+                                    onClick={() => setCurrentPdfPage(p => Math.max(0, p - 1))}
+                                  >
+                                    <ChevronLeft className="h-4 w-4" />
+                                  </Button>
+                                  <span className="text-sm font-medium">
+                                    Page {currentPdfPage + 1} of {docPages.length}
+                                  </span>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    disabled={currentPdfPage >= docPages.length - 1}
+                                    onClick={() => setCurrentPdfPage(p => Math.min(docPages.length - 1, p + 1))}
+                                  >
+                                    <ChevronRight className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                                
+                                {/* Current Page View */}
+                                {currentPage?.file_url && (
+                                  <iframe
+                                    src={currentPage.file_url}
+                                    className="flex-1 w-full rounded-lg border min-h-[50vh]"
+                                    title={`${selectedDocument.document_name} - Page ${currentPdfPage + 1}`}
+                                  />
+                                )}
+                                
+                                {/* Page Thumbnails */}
+                                <div className="flex gap-2 mt-4 overflow-x-auto p-2 bg-muted rounded-lg">
+                                  {docPages.map((page, idx) => (
+                                    <button
+                                      key={page.id}
+                                      onClick={() => setCurrentPdfPage(idx)}
+                                      className={cn(
+                                        "flex-shrink-0 w-16 h-20 rounded border-2 flex items-center justify-center transition-all",
+                                        currentPdfPage === idx 
+                                          ? "border-primary bg-primary/10" 
+                                          : "border-transparent bg-card hover:border-muted-foreground/50"
+                                      )}
+                                    >
+                                      <div className="text-center">
+                                        <FileText className="h-6 w-6 text-red-500 mx-auto" />
+                                        <span className="text-xs text-muted-foreground">{idx + 1}</span>
+                                      </div>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          }
+                          
+                          // Fallback for PDFs without pages (not yet processed)
+                          return (
+                            <iframe
+                              src={selectedDocument.file_url}
+                              className="w-full h-[60vh] rounded-lg border"
+                              title={selectedDocument.document_name}
+                            />
+                          );
+                        })()}
+                      </div>
                     )}
                     {!isImage(selectedDocument.document_type) && !isPDF(selectedDocument.document_type) && (
                       <div className="flex flex-col items-center justify-center h-full gap-4">
