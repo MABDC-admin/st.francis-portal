@@ -23,7 +23,7 @@ serve(async (req) => {
   }
 
   try {
-    const { documentId, fileUrl, originalFilename } = await req.json();
+    const { documentId, fileUrl, originalFilename, studentId } = await req.json();
 
     if (!documentId || !fileUrl) {
       return new Response(
@@ -46,7 +46,43 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Update status to processing
+    // Check if this is a PDF - if so, delegate to process-pdf function
+    const isPDF = fileUrl.toLowerCase().endsWith('.pdf') || 
+                  originalFilename?.toLowerCase().endsWith('.pdf');
+    
+    if (isPDF && studentId) {
+      console.log('Detected PDF, delegating to process-pdf function');
+      
+      // Update status
+      await supabase
+        .from('student_documents')
+        .update({ analysis_status: 'processing', original_filename: originalFilename })
+        .eq('id', documentId);
+
+      // Call the process-pdf function
+      const processPdfUrl = `${supabaseUrl}/functions/v1/process-pdf`;
+      const pdfResponse = await fetch(processPdfUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseServiceKey}`
+        },
+        body: JSON.stringify({ documentId, fileUrl, studentId, originalFilename })
+      });
+
+      const pdfResult = await pdfResponse.json();
+      
+      return new Response(
+        JSON.stringify({
+          success: pdfResult.success,
+          isPDF: true,
+          ...pdfResult
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Update status to processing for images
     await supabase
       .from('student_documents')
       .update({ analysis_status: 'processing', original_filename: originalFilename })
