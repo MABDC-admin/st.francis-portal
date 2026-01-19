@@ -1,8 +1,8 @@
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
+import workerSrc from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 
-// Configure worker - must match installed pdfjs-dist version (5.4.530)
-pdfjsLib.GlobalWorkerOptions.workerSrc = 
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.4.530/pdf.worker.min.mjs';
+// Configure worker (bundled with the app to avoid CDN/version/CORS issues)
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
 export interface PageImage {
   pageNumber: number;
