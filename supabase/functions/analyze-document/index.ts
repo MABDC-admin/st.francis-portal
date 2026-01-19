@@ -32,11 +32,12 @@ serve(async (req) => {
       );
     }
 
-    const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
-    if (!deepseekApiKey) {
-      console.error('DEEPSEEK_API_KEY not configured');
+    // Use Lovable AI Gateway (LOVABLE_API_KEY is auto-provisioned)
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    if (!lovableApiKey) {
+      console.error('LOVABLE_API_KEY not configured');
       return new Response(
-        JSON.stringify({ success: false, error: 'DeepSeek API key not configured' }),
+        JSON.stringify({ success: false, error: 'Lovable AI key not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -127,7 +128,7 @@ serve(async (req) => {
       );
     }
 
-    // Call DeepSeek Vision API
+    // Call Lovable AI Gateway with vision-capable model (Gemini 2.5 Flash supports vision)
     const prompt = `Analyze this document image and extract the following information in JSON format:
 
 1. **extracted_text**: All visible text from the document (perform OCR)
@@ -149,14 +150,14 @@ Respond ONLY with valid JSON, no markdown or extra text:
   "suggested_filename": "..."
 }`;
 
-    const deepseekResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${deepseekApiKey}`,
+        'Authorization': `Bearer ${lovableApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: 'google/gemini-2.5-flash',
         messages: [
           {
             role: 'user',
@@ -179,9 +180,34 @@ Respond ONLY with valid JSON, no markdown or extra text:
       })
     });
 
-    if (!deepseekResponse.ok) {
-      const errorText = await deepseekResponse.text();
-      console.error('DeepSeek API error:', deepseekResponse.status, errorText);
+    if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+      console.error('Lovable AI error:', aiResponse.status, errorText);
+      
+      // Handle rate limits
+      if (aiResponse.status === 429) {
+        await supabase
+          .from('student_documents')
+          .update({ analysis_status: 'error' })
+          .eq('id', documentId);
+        
+        return new Response(
+          JSON.stringify({ success: false, error: 'Rate limit exceeded. Please try again later.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      if (aiResponse.status === 402) {
+        await supabase
+          .from('student_documents')
+          .update({ analysis_status: 'error' })
+          .eq('id', documentId);
+        
+        return new Response(
+          JSON.stringify({ success: false, error: 'AI credits exhausted. Please add credits.' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       
       await supabase
         .from('student_documents')
@@ -189,28 +215,28 @@ Respond ONLY with valid JSON, no markdown or extra text:
         .eq('id', documentId);
       
       return new Response(
-        JSON.stringify({ success: false, error: `DeepSeek API error: ${deepseekResponse.status}` }),
+        JSON.stringify({ success: false, error: `AI analysis error: ${aiResponse.status}` }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const deepseekData = await deepseekResponse.json();
-    console.log('DeepSeek response received');
+    const aiData = await aiResponse.json();
+    console.log('AI response received');
 
     // Parse the response
     let analysis: AnalysisResult;
     try {
-      const content = deepseekData.choices[0]?.message?.content || '';
+      const content = aiData.choices[0]?.message?.content || '';
       // Clean up the response - remove markdown code blocks if present
       const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       analysis = JSON.parse(cleanContent);
     } catch (parseError) {
-      console.error('Failed to parse DeepSeek response:', parseError);
-      console.error('Raw content:', deepseekData.choices[0]?.message?.content);
+      console.error('Failed to parse AI response:', parseError);
+      console.error('Raw content:', aiData.choices[0]?.message?.content);
       
       // Fallback analysis
       analysis = {
-        extracted_text: deepseekData.choices[0]?.message?.content || 'Unable to extract text',
+        extracted_text: aiData.choices[0]?.message?.content || 'Unable to extract text',
         detected_type: 'other',
         summary: 'Document analysis completed with limited results',
         keywords: [],
