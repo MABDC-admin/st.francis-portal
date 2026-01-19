@@ -184,7 +184,13 @@ Respond ONLY with valid JSON, no markdown or extra text:
       };
     }
 
-    // Update the document with analysis results
+    // Generate smart filename with extension from original
+    const originalExt = originalFilename?.split('.').pop()?.toLowerCase() || 'jpg';
+    const smartFilename = analysis.suggested_filename 
+      ? `${analysis.suggested_filename.replace(/\.[^/.]+$/, '')}.${originalExt}`
+      : originalFilename || 'document';
+
+    // Update the document with analysis results and smart filename
     const { error: updateError } = await supabase
       .from('student_documents')
       .update({
@@ -194,7 +200,8 @@ Respond ONLY with valid JSON, no markdown or extra text:
         keywords: analysis.keywords,
         detected_language: analysis.detected_language,
         confidence_score: analysis.confidence_score,
-        analysis_status: 'completed'
+        analysis_status: 'completed',
+        document_name: smartFilename
       })
       .eq('id', documentId);
 
@@ -210,7 +217,8 @@ Respond ONLY with valid JSON, no markdown or extra text:
       type: analysis.detected_type,
       language: analysis.detected_language,
       confidence: analysis.confidence_score,
-      keywordsCount: analysis.keywords.length
+      keywordsCount: analysis.keywords.length,
+      smartFilename
     });
 
     return new Response(
@@ -218,7 +226,8 @@ Respond ONLY with valid JSON, no markdown or extra text:
         success: true,
         analysis: {
           ...analysis,
-          documentId
+          documentId,
+          renamed_to: smartFilename
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

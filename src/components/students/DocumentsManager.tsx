@@ -162,8 +162,11 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
         console.error('Analysis error:', error);
         toast.error('Document analysis failed');
       } else if (data?.success) {
-        toast.success('Document analyzed successfully', {
-          description: `Detected: ${data.analysis.detected_type}`
+        const renamedMsg = data.analysis.renamed_to 
+          ? ` → Renamed to: ${data.analysis.renamed_to}` 
+          : '';
+        toast.success('Document analyzed & renamed', {
+          description: `${data.analysis.detected_type}${renamedMsg}`
         });
         refetch();
       }
