@@ -24,12 +24,6 @@ import {
   FolderOpen
 } from 'lucide-react';
 
-// Monster mascot imports
-import monsterTeal from '@/assets/monster-teal.png';
-import monsterPurple from '@/assets/monster-purple.png';
-import monsterOrange from '@/assets/monster-orange.png';
-import monsterPink from '@/assets/monster-pink.png';
-import monsterBlue from '@/assets/monster-blue.png';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -796,29 +790,12 @@ const StudentProfile = () => {
                   className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border-t-4"
                   style={{ borderTopColor: '#0891b2' }}
                 >
-                  {/* Monster Mascot Decoration */}
-                  <motion.img 
-                    src={monsterTeal} 
-                    alt="" 
-                    className="absolute -right-4 -bottom-4 w-24 h-24 opacity-20 pointer-events-none"
-                    initial={{ opacity: 0, scale: 0.5, rotate: -10 }}
-                    animate={{ opacity: 0.2, scale: 1, rotate: 0 }}
-                    transition={{ duration: 0.6, delay: 0.3 }}
-                  />
                   <div 
-                    className="px-5 py-3 flex items-center gap-2 relative"
+                    className="px-5 py-3 flex items-center gap-2"
                     style={{ background: 'linear-gradient(135deg, #0891b2 0%, #22d3ee 100%)' }}
                   >
                     <User className="h-4 w-4 text-white" />
                     <h3 className="font-semibold text-white">Basic Information</h3>
-                    <motion.img 
-                      src={monsterTeal} 
-                      alt="" 
-                      className="absolute right-3 -bottom-6 w-14 h-14 drop-shadow-lg"
-                      initial={{ opacity: 0, y: -20, scale: 0.5 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ duration: 0.5, delay: 0.4, type: "spring", bounce: 0.4 }}
-                    />
                   </div>
                   <div className="p-5 space-y-4 bg-gradient-to-br from-cyan-50/50 to-white dark:from-slate-800/50 dark:to-slate-900 relative z-10">
                     <div className="grid grid-cols-2 gap-4">
@@ -856,29 +833,12 @@ const StudentProfile = () => {
                   className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border-t-4"
                   style={{ borderTopColor: '#a855f7' }}
                 >
-                  {/* Monster Mascot Decoration */}
-                  <motion.img 
-                    src={monsterPurple} 
-                    alt="" 
-                    className="absolute -right-4 -bottom-4 w-24 h-24 opacity-20 pointer-events-none"
-                    initial={{ opacity: 0, scale: 0.5, rotate: 10 }}
-                    animate={{ opacity: 0.2, scale: 1, rotate: 0 }}
-                    transition={{ duration: 0.6, delay: 0.4 }}
-                  />
                   <div 
-                    className="px-5 py-3 flex items-center gap-2 relative"
+                    className="px-5 py-3 flex items-center gap-2"
                     style={{ background: 'linear-gradient(135deg, #a855f7 0%, #d946ef 100%)' }}
                   >
                     <Users className="h-4 w-4 text-white" />
                     <h3 className="font-semibold text-white">Parents/Guardian</h3>
-                    <motion.img 
-                      src={monsterPurple} 
-                      alt="" 
-                      className="absolute right-3 -bottom-6 w-14 h-14 drop-shadow-lg"
-                      initial={{ opacity: 0, y: -20, scale: 0.5 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ duration: 0.5, delay: 0.5, type: "spring", bounce: 0.4 }}
-                    />
                   </div>
                   <div className="p-5 space-y-4 bg-gradient-to-br from-purple-50/50 to-white dark:from-slate-800/50 dark:to-slate-900 relative z-10">
                     <div>
@@ -906,29 +866,12 @@ const StudentProfile = () => {
                   className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border-t-4 lg:col-span-2"
                   style={{ borderTopColor: '#f59e0b' }}
                 >
-                  {/* Monster Mascot Decoration */}
-                  <motion.img 
-                    src={monsterOrange} 
-                    alt="" 
-                    className="absolute -right-6 -bottom-6 w-28 h-28 opacity-15 pointer-events-none"
-                    initial={{ opacity: 0, scale: 0.5, rotate: -5 }}
-                    animate={{ opacity: 0.15, scale: 1, rotate: 0 }}
-                    transition={{ duration: 0.6, delay: 0.5 }}
-                  />
                   <div 
-                    className="px-5 py-3 flex items-center gap-2 relative"
+                    className="px-5 py-3 flex items-center gap-2"
                     style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #fde047 100%)' }}
                   >
                     <MapPin className="h-4 w-4 text-white" />
                     <h3 className="font-semibold text-white">Address Information</h3>
-                    <motion.img 
-                      src={monsterOrange} 
-                      alt="" 
-                      className="absolute right-3 -bottom-6 w-14 h-14 drop-shadow-lg"
-                      initial={{ opacity: 0, y: -20, scale: 0.5 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ duration: 0.5, delay: 0.6, type: "spring", bounce: 0.4 }}
-                    />
                   </div>
                   <div className="p-5 bg-gradient-to-br from-amber-50/50 to-white dark:from-slate-800/50 dark:to-slate-900 relative z-10">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1015,29 +958,12 @@ const StudentProfile = () => {
                   className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border-t-4"
                   style={{ borderTopColor: '#3b82f6' }}
                 >
-                  {/* Monster Mascot Decoration */}
-                  <motion.img 
-                    src={monsterBlue} 
-                    alt="" 
-                    className="absolute -right-4 -bottom-4 w-24 h-24 opacity-20 pointer-events-none"
-                    initial={{ opacity: 0, scale: 0.5, rotate: -10 }}
-                    animate={{ opacity: 0.2, scale: 1, rotate: 0 }}
-                    transition={{ duration: 0.6, delay: 0.3 }}
-                  />
                   <div 
-                    className="px-5 py-3 flex items-center gap-2 relative"
+                    className="px-5 py-3 flex items-center gap-2"
                     style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%)' }}
                   >
                     <BookOpen className="h-4 w-4 text-white" />
                     <h3 className="font-semibold text-white">Academic Background</h3>
-                    <motion.img 
-                      src={monsterBlue} 
-                      alt="" 
-                      className="absolute right-3 -bottom-6 w-14 h-14 drop-shadow-lg"
-                      initial={{ opacity: 0, y: -20, scale: 0.5 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ duration: 0.5, delay: 0.4, type: "spring", bounce: 0.4 }}
-                    />
                   </div>
                   <div className="p-5 space-y-4 bg-gradient-to-br from-blue-50/50 to-white dark:from-slate-800/50 dark:to-slate-900 relative z-10">
                     <div className="grid grid-cols-3 gap-4">
@@ -1065,29 +991,12 @@ const StudentProfile = () => {
                   className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border-t-4"
                   style={{ borderTopColor: '#22c55e' }}
                 >
-                  {/* Monster Mascot Decoration */}
-                  <motion.img 
-                    src={monsterTeal} 
-                    alt="" 
-                    className="absolute -right-4 -bottom-4 w-24 h-24 opacity-20 pointer-events-none"
-                    initial={{ opacity: 0, scale: 0.5, rotate: 10 }}
-                    animate={{ opacity: 0.2, scale: 1, rotate: 0 }}
-                    transition={{ duration: 0.6, delay: 0.4 }}
-                  />
                   <div 
-                    className="px-5 py-3 flex items-center gap-2 relative"
+                    className="px-5 py-3 flex items-center gap-2"
                     style={{ background: 'linear-gradient(135deg, #22c55e 0%, #4ade80 100%)' }}
                   >
                     <Calendar className="h-4 w-4 text-white" />
                     <h3 className="font-semibold text-white">Enrollment History</h3>
-                    <motion.img 
-                      src={monsterTeal} 
-                      alt="" 
-                      className="absolute right-3 -bottom-6 w-14 h-14 drop-shadow-lg"
-                      initial={{ opacity: 0, y: -20, scale: 0.5 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ duration: 0.5, delay: 0.5, type: "spring", bounce: 0.4 }}
-                    />
                   </div>
                   <div className="p-5 space-y-4 bg-gradient-to-br from-green-50/50 to-white dark:from-slate-800/50 dark:to-slate-900 relative z-10">
                     <div>
@@ -1113,17 +1022,8 @@ const StudentProfile = () => {
               className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border-t-4"
               style={{ borderTopColor: '#8b5cf6' }}
             >
-              {/* Monster Mascot Decoration */}
-              <motion.img 
-                src={monsterPurple} 
-                alt="" 
-                className="absolute -right-6 -bottom-6 w-32 h-32 opacity-15 pointer-events-none"
-                initial={{ opacity: 0, scale: 0.5, rotate: 5 }}
-                animate={{ opacity: 0.15, scale: 1, rotate: 0 }}
-                transition={{ duration: 0.6, delay: 0.3 }}
-              />
               <div 
-                className="px-5 py-3 flex items-center justify-between relative"
+                className="px-5 py-3 flex items-center justify-between"
                 style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%)' }}
               >
                 <div className="flex items-center gap-2">
@@ -1131,14 +1031,6 @@ const StudentProfile = () => {
                   <h3 className="font-semibold text-white">Enrolled Subjects</h3>
                 </div>
                 <Badge className="bg-white/20 text-white border-0">{enrolledSubjects.length} subjects</Badge>
-                <motion.img 
-                  src={monsterPurple} 
-                  alt="" 
-                  className="absolute right-24 -bottom-6 w-14 h-14 drop-shadow-lg"
-                  initial={{ opacity: 0, y: -20, scale: 0.5 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ duration: 0.5, delay: 0.4, type: "spring", bounce: 0.4 }}
-                />
               </div>
               <div className="p-5 bg-gradient-to-br from-violet-50/50 to-white dark:from-slate-800/50 dark:to-slate-900 relative z-10">
                 {enrolledSubjects.length > 0 ? (
@@ -1184,17 +1076,8 @@ const StudentProfile = () => {
               className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border-t-4"
               style={{ borderTopColor: '#ec4899' }}
             >
-              {/* Monster Mascot Decoration */}
-              <motion.img 
-                src={monsterPink} 
-                alt="" 
-                className="absolute -right-6 -bottom-6 w-32 h-32 opacity-15 pointer-events-none"
-                initial={{ opacity: 0, scale: 0.5, rotate: -5 }}
-                animate={{ opacity: 0.15, scale: 1, rotate: 0 }}
-                transition={{ duration: 0.6, delay: 0.3 }}
-              />
               <div 
-                className="px-5 py-3 flex items-center justify-between relative"
+                className="px-5 py-3 flex items-center justify-between"
                 style={{ background: 'linear-gradient(135deg, #ec4899 0%, #f472b6 100%)' }}
               >
                 <div className="flex items-center gap-2">
@@ -1202,14 +1085,6 @@ const StudentProfile = () => {
                   <h3 className="font-semibold text-white">Grade Records</h3>
                 </div>
                 <Badge className="bg-white/20 text-white border-0">{grades.length} records</Badge>
-                <motion.img 
-                  src={monsterPink} 
-                  alt="" 
-                  className="absolute right-24 -bottom-6 w-14 h-14 drop-shadow-lg"
-                  initial={{ opacity: 0, y: -20, scale: 0.5 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ duration: 0.5, delay: 0.4, type: "spring", bounce: 0.4 }}
-                />
               </div>
               <div className="p-5 bg-gradient-to-br from-pink-50/50 to-white dark:from-slate-800/50 dark:to-slate-900 relative z-10">
                 {grades.length > 0 ? (
@@ -1294,17 +1169,8 @@ const StudentProfile = () => {
               className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border-t-4"
               style={{ borderTopColor: '#f97316' }}
             >
-              {/* Monster Mascot Decoration */}
-              <motion.img 
-                src={monsterOrange} 
-                alt="" 
-                className="absolute -right-6 -bottom-6 w-32 h-32 opacity-15 pointer-events-none"
-                initial={{ opacity: 0, scale: 0.5, rotate: 5 }}
-                animate={{ opacity: 0.15, scale: 1, rotate: 0 }}
-                transition={{ duration: 0.6, delay: 0.3 }}
-              />
               <div 
-                className="px-5 py-3 flex items-center justify-between relative"
+                className="px-5 py-3 flex items-center justify-between"
                 style={{ background: 'linear-gradient(135deg, #f97316 0%, #fb923c 100%)' }}
               >
                 <div className="flex items-center gap-2">
@@ -1318,14 +1184,6 @@ const StudentProfile = () => {
                   <Plus className="h-4 w-4" />
                   Add Incident
                 </Button>
-                <motion.img 
-                  src={monsterOrange} 
-                  alt="" 
-                  className="absolute right-36 -bottom-6 w-14 h-14 drop-shadow-lg"
-                  initial={{ opacity: 0, y: -20, scale: 0.5 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ duration: 0.5, delay: 0.4, type: "spring", bounce: 0.4 }}
-                />
               </div>
               <div className="p-5 bg-gradient-to-br from-orange-50/50 to-white dark:from-slate-800/50 dark:to-slate-900 relative z-10">
                 {incidents.length > 0 ? (
