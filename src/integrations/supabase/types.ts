@@ -148,35 +148,59 @@ export type Database = {
       }
       student_documents: {
         Row: {
+          analysis_status: string | null
+          confidence_score: number | null
           created_at: string
+          detected_language: string | null
+          detected_type: string | null
           document_name: string
           document_type: string
+          extracted_text: string | null
           file_url: string | null
           id: string
+          keywords: string[] | null
+          original_filename: string | null
           slot_number: number
           student_id: string
+          summary: string | null
           updated_at: string
           uploaded_at: string | null
         }
         Insert: {
+          analysis_status?: string | null
+          confidence_score?: number | null
           created_at?: string
+          detected_language?: string | null
+          detected_type?: string | null
           document_name: string
           document_type: string
+          extracted_text?: string | null
           file_url?: string | null
           id?: string
+          keywords?: string[] | null
+          original_filename?: string | null
           slot_number: number
           student_id: string
+          summary?: string | null
           updated_at?: string
           uploaded_at?: string | null
         }
         Update: {
+          analysis_status?: string | null
+          confidence_score?: number | null
           created_at?: string
+          detected_language?: string | null
+          detected_type?: string | null
           document_name?: string
           document_type?: string
+          extracted_text?: string | null
           file_url?: string | null
           id?: string
+          keywords?: string[] | null
+          original_filename?: string | null
           slot_number?: number
           student_id?: string
+          summary?: string | null
           updated_at?: string
           uploaded_at?: string | null
         }

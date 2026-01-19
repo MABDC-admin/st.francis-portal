@@ -10,11 +10,18 @@ import {
   Loader2,
   Eye,
   Download,
-  FolderOpen
+  FolderOpen,
+  Sparkles,
+  Search,
+  Tag,
+  Globe,
+  CheckCircle,
+  AlertCircle,
+  Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -41,6 +48,7 @@ import {
 } from '@/hooks/useStudentDocuments';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DocumentsManagerProps {
   studentId: string;
@@ -52,19 +60,47 @@ interface PendingFile {
   id: string;
 }
 
+interface ExtendedDocument extends StudentDocument {
+  extracted_text?: string;
+  detected_type?: string;
+  summary?: string;
+  keywords?: string[];
+  detected_language?: string;
+  confidence_score?: number;
+  analysis_status?: string;
+}
+
 export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [selectedDocument, setSelectedDocument] = useState<StudentDocument | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<ExtendedDocument | null>(null);
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [analyzingDocs, setAnalyzingDocs] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: documents = [] } = useStudentDocuments(studentId);
+  const { data: documents = [], refetch } = useStudentDocuments(studentId);
   const uploadDocument = useUploadDocument();
   const deleteDocument = useDeleteDocument();
+
+  // Cast documents to extended type
+  const extendedDocuments = documents as ExtendedDocument[];
+
+  // Filter documents by search query
+  const filteredDocuments = extendedDocuments.filter(doc => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      doc.document_name.toLowerCase().includes(query) ||
+      doc.extracted_text?.toLowerCase().includes(query) ||
+      doc.summary?.toLowerCase().includes(query) ||
+      doc.keywords?.some(k => k.toLowerCase().includes(query)) ||
+      doc.detected_type?.toLowerCase().includes(query)
+    );
+  });
 
   const handleFilesSelect = (files: FileList | File[]) => {
     const fileArray = Array.from(files);
@@ -82,7 +118,6 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) handleFilesSelect(e.target.files);
-    // Reset input so same file can be selected again
     e.target.value = '';
   };
 
@@ -115,6 +150,34 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
     }
   };
 
+  const analyzeDocument = async (documentId: string, fileUrl: string, originalFilename: string) => {
+    setAnalyzingDocs(prev => new Set(prev).add(documentId));
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-document', {
+        body: { documentId, fileUrl, originalFilename }
+      });
+
+      if (error) {
+        console.error('Analysis error:', error);
+        toast.error('Document analysis failed');
+      } else if (data?.success) {
+        toast.success('Document analyzed successfully', {
+          description: `Detected: ${data.analysis.detected_type}`
+        });
+        refetch();
+      }
+    } catch (error) {
+      console.error('Analysis error:', error);
+    } finally {
+      setAnalyzingDocs(prev => {
+        const next = new Set(prev);
+        next.delete(documentId);
+        return next;
+      });
+    }
+  };
+
   const handleUpload = async () => {
     const validFiles = pendingFiles.filter((pf) => pf.name.trim());
     if (validFiles.length === 0) {
@@ -125,15 +188,25 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
     setIsUploading(true);
     let successCount = 0;
     let failCount = 0;
+    const uploadedDocs: { id: string; url: string; name: string }[] = [];
 
     for (const pf of validFiles) {
       try {
-        await uploadDocument.mutateAsync({
+        const result = await uploadDocument.mutateAsync({
           studentId,
           file: pf.file,
           documentName: pf.name.trim(),
         });
         successCount++;
+        
+        // Get the newly created document to analyze
+        if (result) {
+          uploadedDocs.push({
+            id: result.id,
+            url: result.file_url || '',
+            name: pf.file.name
+          });
+        }
       } catch (error) {
         failCount++;
       }
@@ -141,6 +214,13 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
 
     if (successCount > 0) {
       toast.success(`${successCount} document${successCount > 1 ? 's' : ''} uploaded successfully`);
+      
+      // Trigger AI analysis for each uploaded document
+      for (const doc of uploadedDocs) {
+        if (doc.url) {
+          analyzeDocument(doc.id, doc.url, doc.name);
+        }
+      }
     }
     if (failCount > 0) {
       toast.error(`${failCount} document${failCount > 1 ? 's' : ''} failed to upload`);
@@ -177,7 +257,46 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
     return <File className="h-8 w-8 text-gray-500" />;
   };
 
-  const getThumbnail = (doc: StudentDocument) => {
+  const getAnalysisStatusIcon = (status: string | undefined) => {
+    switch (status) {
+      case 'completed':
+        return <CheckCircle className="h-3 w-3 text-green-500" />;
+      case 'processing':
+        return <Loader2 className="h-3 w-3 text-blue-500 animate-spin" />;
+      case 'error':
+        return <AlertCircle className="h-3 w-3 text-red-500" />;
+      default:
+        return <Clock className="h-3 w-3 text-muted-foreground" />;
+    }
+  };
+
+  const getDocumentTypeBadge = (type: string | undefined) => {
+    if (!type) return null;
+    const typeLabels: Record<string, { label: string; color: string }> = {
+      birth_certificate: { label: 'Birth Certificate', color: 'bg-blue-100 text-blue-700' },
+      report_card: { label: 'Report Card', color: 'bg-green-100 text-green-700' },
+      id_photo: { label: 'ID Photo', color: 'bg-purple-100 text-purple-700' },
+      transcript: { label: 'Transcript', color: 'bg-amber-100 text-amber-700' },
+      medical_record: { label: 'Medical', color: 'bg-red-100 text-red-700' },
+      diploma: { label: 'Diploma', color: 'bg-indigo-100 text-indigo-700' },
+      recommendation_letter: { label: 'Recommendation', color: 'bg-pink-100 text-pink-700' },
+      passport: { label: 'Passport', color: 'bg-cyan-100 text-cyan-700' },
+      visa: { label: 'Visa', color: 'bg-teal-100 text-teal-700' },
+      certificate: { label: 'Certificate', color: 'bg-orange-100 text-orange-700' },
+      enrollment_form: { label: 'Enrollment', color: 'bg-lime-100 text-lime-700' },
+      clearance: { label: 'Clearance', color: 'bg-emerald-100 text-emerald-700' },
+      good_moral: { label: 'Good Moral', color: 'bg-violet-100 text-violet-700' },
+      other: { label: 'Other', color: 'bg-gray-100 text-gray-700' },
+    };
+    const typeInfo = typeLabels[type] || typeLabels.other;
+    return (
+      <Badge className={cn("text-[10px] font-medium", typeInfo.color)}>
+        {typeInfo.label}
+      </Badge>
+    );
+  };
+
+  const getThumbnail = (doc: ExtendedDocument) => {
     if (isImage(doc.document_type) && doc.file_url) {
       return (
         <img 
@@ -223,13 +342,26 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-2">
           <FolderOpen className="h-5 w-5 text-muted-foreground" />
           <h3 className="text-lg font-semibold">Documents</h3>
           <span className="text-sm text-muted-foreground">({documents.length})</span>
+          <Badge variant="outline" className="gap-1 text-xs">
+            <Sparkles className="h-3 w-3" />
+            AI Powered
+          </Badge>
         </div>
-        <div>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:flex-initial">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search documents..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 h-9 w-full sm:w-[200px]"
+            />
+          </div>
           <input
             ref={fileInputRef}
             type="file"
@@ -240,15 +372,15 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
           />
           <Button onClick={() => fileInputRef.current?.click()} className="gap-2">
             <Plus className="h-4 w-4" />
-            Add Document
+            Add
           </Button>
         </div>
       </div>
 
       {/* Documents Grid */}
-      {documents.length > 0 ? (
+      {filteredDocuments.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {documents.map((doc, index) => (
+          {filteredDocuments.map((doc, index) => (
             <motion.div
               key={doc.id}
               initial={{ opacity: 0, scale: 0.9 }}
@@ -260,19 +392,41 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
                 setIsViewerOpen(true);
               }}
             >
+              {/* Analysis Status Indicator */}
+              {analyzingDocs.has(doc.id) && (
+                <div className="absolute top-2 right-2 z-10 bg-blue-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Analyzing...
+                </div>
+              )}
+
               {/* Thumbnail */}
-              <div className="aspect-square overflow-hidden">
+              <div className="aspect-square overflow-hidden relative">
                 {getThumbnail(doc)}
+                {doc.detected_type && (
+                  <div className="absolute bottom-2 left-2">
+                    {getDocumentTypeBadge(doc.detected_type)}
+                  </div>
+                )}
               </div>
 
-              {/* Document Name */}
-              <div className="p-3 border-t">
-                <p className="text-sm font-medium truncate" title={doc.document_name}>
-                  {doc.document_name}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
+              {/* Document Info */}
+              <div className="p-3 border-t space-y-1">
+                <div className="flex items-center gap-1">
+                  {getAnalysisStatusIcon(doc.analysis_status)}
+                  <p className="text-sm font-medium truncate flex-1" title={doc.document_name}>
+                    {doc.document_name}
+                  </p>
+                </div>
+                <p className="text-xs text-muted-foreground">
                   {new Date(doc.created_at).toLocaleDateString()}
                 </p>
+                {doc.detected_language && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Globe className="h-3 w-3" />
+                    {doc.detected_language}
+                  </div>
+                )}
               </div>
 
               {/* Hover Overlay */}
@@ -315,8 +469,12 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
           onClick={() => fileInputRef.current?.click()}
         >
           <FolderOpen className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
-          <p className="text-muted-foreground">No documents uploaded</p>
-          <p className="text-sm text-muted-foreground mt-1">Drag & drop or click to upload</p>
+          <p className="text-muted-foreground">
+            {searchQuery ? 'No documents match your search' : 'No documents uploaded'}
+          </p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {searchQuery ? 'Try a different search term' : 'Drag & drop or click to upload'}
+          </p>
         </div>
       )}
 
@@ -327,18 +485,20 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
       }}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
               Upload {pendingFiles.length > 1 ? `${pendingFiles.length} Documents` : 'Document'}
+              <Badge variant="outline" className="gap-1 text-xs">
+                <Sparkles className="h-3 w-3" />
+                AI Analysis
+              </Badge>
             </DialogTitle>
             <DialogDescription>
-              {pendingFiles.length > 1 
-                ? 'Edit names for each document before uploading' 
-                : 'Enter a name for this document'}
+              Documents will be automatically analyzed by DeepSeek AI for OCR and classification
             </DialogDescription>
           </DialogHeader>
           
           <div className="flex-1 overflow-y-auto space-y-3 py-4">
-            {pendingFiles.map((pf, index) => (
+            {pendingFiles.map((pf) => (
               <div key={pf.id} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
                 <div className="shrink-0">
                   {getFileIcon(pf.file.type)}
@@ -376,9 +536,11 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
             <Button 
               onClick={handleUpload} 
               disabled={isUploading || pendingFiles.length === 0}
+              className="gap-2"
             >
-              {isUploading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Upload {pendingFiles.length > 1 ? `${pendingFiles.length} Files` : ''}
+              {isUploading && <Loader2 className="h-4 w-4 animate-spin" />}
+              <Sparkles className="h-4 w-4" />
+              Upload & Analyze
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -386,12 +548,15 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
 
       {/* Document Viewer Modal */}
       <Dialog open={isViewerOpen} onOpenChange={setIsViewerOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
+        <DialogContent className="max-w-5xl max-h-[90vh] p-0 overflow-hidden">
           <div className="flex flex-col h-full">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b">
-              <div>
-                <h3 className="font-semibold">{selectedDocument?.document_name}</h3>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold">{selectedDocument?.document_name}</h3>
+                  {selectedDocument?.detected_type && getDocumentTypeBadge(selectedDocument.detected_type)}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   Uploaded {selectedDocument && new Date(selectedDocument.created_at).toLocaleDateString()}
                 </p>
@@ -418,36 +583,97 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-auto p-4 bg-muted/30 min-h-[400px]">
-              {selectedDocument && (
-                <>
-                  {isImage(selectedDocument.document_type) && selectedDocument.file_url && (
-                    <div className="flex items-center justify-center h-full">
-                      <img
+            <div className="flex-1 overflow-auto flex">
+              {/* Document Preview */}
+              <div className="flex-1 p-4 bg-muted/30 min-h-[400px]">
+                {selectedDocument && (
+                  <>
+                    {isImage(selectedDocument.document_type) && selectedDocument.file_url && (
+                      <div className="flex items-center justify-center h-full">
+                        <img
+                          src={selectedDocument.file_url}
+                          alt={selectedDocument.document_name}
+                          className="max-w-full max-h-[60vh] object-contain rounded-lg shadow-lg"
+                        />
+                      </div>
+                    )}
+                    {isPDF(selectedDocument.document_type) && selectedDocument.file_url && (
+                      <iframe
                         src={selectedDocument.file_url}
-                        alt={selectedDocument.document_name}
-                        className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg"
+                        className="w-full h-[60vh] rounded-lg border"
+                        title={selectedDocument.document_name}
                       />
+                    )}
+                    {!isImage(selectedDocument.document_type) && !isPDF(selectedDocument.document_type) && (
+                      <div className="flex flex-col items-center justify-center h-full gap-4">
+                        <File className="h-20 w-20 text-muted-foreground" />
+                        <p className="text-muted-foreground">Preview not available</p>
+                        <Button onClick={() => window.open(selectedDocument.file_url!, '_blank')}>
+                          <Download className="h-4 w-4 mr-2" />
+                          Download File
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* AI Analysis Panel */}
+              {selectedDocument?.analysis_status === 'completed' && (
+                <div className="w-80 border-l p-4 space-y-4 overflow-y-auto bg-card">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <h4 className="font-semibold text-sm">AI Analysis</h4>
+                    {selectedDocument.confidence_score && (
+                      <Badge variant="outline" className="text-xs ml-auto">
+                        {Math.round(selectedDocument.confidence_score * 100)}% confident
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Summary */}
+                  {selectedDocument.summary && (
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Summary</p>
+                      <p className="text-sm">{selectedDocument.summary}</p>
                     </div>
                   )}
-                  {isPDF(selectedDocument.document_type) && selectedDocument.file_url && (
-                    <iframe
-                      src={selectedDocument.file_url}
-                      className="w-full h-[70vh] rounded-lg border"
-                      title={selectedDocument.document_name}
-                    />
-                  )}
-                  {!isImage(selectedDocument.document_type) && !isPDF(selectedDocument.document_type) && (
-                    <div className="flex flex-col items-center justify-center h-full gap-4">
-                      <File className="h-20 w-20 text-muted-foreground" />
-                      <p className="text-muted-foreground">Preview not available</p>
-                      <Button onClick={() => window.open(selectedDocument.file_url!, '_blank')}>
-                        <Download className="h-4 w-4 mr-2" />
-                        Download File
-                      </Button>
+
+                  {/* Language */}
+                  {selectedDocument.detected_language && (
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{selectedDocument.detected_language}</span>
                     </div>
                   )}
-                </>
+
+                  {/* Keywords */}
+                  {selectedDocument.keywords && selectedDocument.keywords.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1">
+                        <Tag className="h-3 w-3 text-muted-foreground" />
+                        <p className="text-xs font-medium text-muted-foreground">Keywords</p>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {selectedDocument.keywords.map((keyword, idx) => (
+                          <Badge key={idx} variant="secondary" className="text-xs">
+                            {keyword}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Extracted Text */}
+                  {selectedDocument.extracted_text && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">Extracted Text</p>
+                      <div className="max-h-40 overflow-y-auto p-2 bg-muted rounded-lg">
+                        <p className="text-xs whitespace-pre-wrap">{selectedDocument.extracted_text}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>

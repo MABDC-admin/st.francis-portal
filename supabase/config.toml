@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.sync-students]
 verify_jwt = false
+
+[functions.analyze-document]
+verify_jwt = false
