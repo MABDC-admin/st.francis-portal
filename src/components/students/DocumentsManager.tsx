@@ -598,33 +598,53 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
               </div>
 
               {/* Hover Overlay */}
-              <div className="absolute inset-0 bg-foreground/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="gap-1"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedDocument(doc);
-                    setCurrentPdfPage(0);
-                    setIsViewerOpen(true);
-                  }}
-                >
-                  <Eye className="h-3 w-3" />
-                  View
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  className="gap-1"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedDocument(doc);
-                    setIsDeleteOpen(true);
-                  }}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
+              <div className="absolute inset-0 bg-foreground/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2">
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="gap-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedDocument(doc);
+                      setCurrentPdfPage(0);
+                      setIsViewerOpen(true);
+                    }}
+                  >
+                    <Eye className="h-3 w-3" />
+                    View
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="gap-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedDocument(doc);
+                      setIsDeleteOpen(true);
+                    }}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+                {/* View Original PDF button for PDF pages */}
+                {doc.is_pdf_page && doc.parent_document_id && (() => {
+                  const parentDoc = extendedDocuments.find(d => d.id === doc.parent_document_id);
+                  return parentDoc?.file_url ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1 bg-background/90 hover:bg-background text-foreground"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(parentDoc.file_url!, '_blank');
+                      }}
+                    >
+                      <FileText className="h-3 w-3 text-red-500" />
+                      View Original PDF
+                    </Button>
+                  ) : null;
+                })()}
               </div>
             </motion.div>
           ))}
