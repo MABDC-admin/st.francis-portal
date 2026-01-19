@@ -200,16 +200,16 @@ export const StudentTable = ({
   return (
     <div className="bg-card rounded-2xl shadow-card overflow-hidden">
       {/* Header */}
-      <div className="p-4 lg:p-6 border-b border-border space-y-4">
-        {/* School Selector & View Toggle Row */}
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          {/* School Dropdown */}
+      <div className="p-4 lg:p-6 border-b border-border space-y-3">
+        {/* Single Row: All Controls */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* School Dropdown - Compact */}
           <Select value={schoolFilter} onValueChange={(v) => setSchoolFilter(v)}>
-            <SelectTrigger className="w-[140px] bg-card border-2 border-stat-purple/20 hover:border-stat-purple/40">
-              <div className="flex items-center gap-2">
+            <SelectTrigger className="w-[110px] bg-card border-2 border-stat-purple/20 hover:border-stat-purple/40">
+              <div className="flex items-center gap-1.5">
                 <GraduationCap className="h-4 w-4 text-stat-purple" />
                 <SelectValue>
-                  {SCHOOLS.find(s => s.id === schoolFilter)?.acronym || 'Select School'}
+                  {SCHOOLS.find(s => s.id === schoolFilter)?.acronym || 'ALL'}
                 </SelectValue>
               </div>
             </SelectTrigger>
@@ -224,13 +224,37 @@ export const StudentTable = ({
               ))}
             </SelectContent>
           </Select>
-          
-          {/* View Mode Toggle */}
-          <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
+
+          {/* Search Input - Flexible width */}
+          <div className="relative flex-1 min-w-[160px] max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name or LRN..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10 h-9"
+            />
+          </div>
+
+          {/* Level Filter - Compact, no label */}
+          <Select value={levelFilter} onValueChange={(v) => setLevelFilter(v)}>
+            <SelectTrigger className="w-[130px] h-9">
+              <SelectValue placeholder="All Levels" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Levels</SelectItem>
+              {levels.map(level => (
+                <SelectItem key={level} value={level}>{level}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* View Mode Toggle - Compact */}
+          <div className="flex items-center gap-0.5 bg-secondary rounded-lg p-0.5">
             <button
               onClick={() => setViewMode('cards')}
               className={cn(
-                "p-2 rounded-md transition-all",
+                "p-1.5 rounded-md transition-all",
                 viewMode === 'cards' 
                   ? "bg-stat-purple text-white shadow-sm" 
                   : "text-muted-foreground hover:text-foreground"
@@ -242,7 +266,7 @@ export const StudentTable = ({
             <button
               onClick={() => setViewMode('compact')}
               className={cn(
-                "p-2 rounded-md transition-all",
+                "p-1.5 rounded-md transition-all",
                 viewMode === 'compact' 
                   ? "bg-stat-purple text-white shadow-sm" 
                   : "text-muted-foreground hover:text-foreground"
@@ -254,7 +278,7 @@ export const StudentTable = ({
             <button
               onClick={() => setViewMode('table')}
               className={cn(
-                "p-2 rounded-md transition-all",
+                "p-1.5 rounded-md transition-all",
                 viewMode === 'table' 
                   ? "bg-stat-purple text-white shadow-sm" 
                   : "text-muted-foreground hover:text-foreground"
@@ -264,55 +288,26 @@ export const StudentTable = ({
               <List className="h-4 w-4" />
             </button>
           </div>
-        </div>
 
-        {/* Search and Level Filter Row */}
-        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center">
-          <div className="relative flex-1 w-full lg:max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name or LRN..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          
-          {/* Level Filter - Always Visible */}
-          <div className="flex items-center gap-2 w-full lg:w-auto">
-            <label className="text-sm font-medium text-muted-foreground whitespace-nowrap">Level:</label>
-            <Select value={levelFilter} onValueChange={(v) => setLevelFilter(v)}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="All Levels" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Levels</SelectItem>
-                {levels.map(level => (
-                  <SelectItem key={level} value={level}>{level}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex gap-2 w-full lg:w-auto">
-            <Button 
-              variant="outline" 
-              onClick={() => setShowFilters(!showFilters)}
-              className={cn(showFilters && "bg-secondary")}
-            >
-              <Filter className="h-4 w-4 mr-2" />
-              More
+          {/* Action Buttons */}
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+            className={cn("h-9", showFilters && "bg-secondary")}
+          >
+            <Filter className="h-4 w-4 mr-1.5" />
+            More
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportToCSV} className="h-9">
+            <Download className="h-4 w-4 mr-1.5" />
+            Export
+          </Button>
+          {hasActiveFilters && (
+            <Button variant="ghost" size="icon" onClick={clearFilters} title="Clear all filters" className="h-9 w-9">
+              <X className="h-4 w-4" />
             </Button>
-            <Button variant="outline" onClick={exportToCSV}>
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-            {hasActiveFilters && (
-              <Button variant="ghost" size="icon" onClick={clearFilters} title="Clear all filters">
-                <X className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
+          )}
         </div>
 
         {/* Additional Filters Panel */}
@@ -324,11 +319,11 @@ export const StudentTable = ({
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden"
             >
-              <div className="flex flex-wrap gap-4 pt-4 border-t border-border">
-                <div className="space-y-1.5">
+              <div className="flex flex-wrap gap-4 pt-3 border-t border-border">
+                <div className="space-y-1">
                   <label className="text-sm font-medium text-muted-foreground">Gender</label>
                   <Select value={genderFilter} onValueChange={(v) => setGenderFilter(v)}>
-                    <SelectTrigger className="w-[180px]">
+                    <SelectTrigger className="w-[150px] h-9">
                       <SelectValue placeholder="All Genders" />
                     </SelectTrigger>
                     <SelectContent>
