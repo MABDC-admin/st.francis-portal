@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
   Plus, 
   FileText, 
@@ -25,6 +25,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import {
   Dialog,
   DialogContent,
@@ -47,11 +48,13 @@ import { StudentDocument } from '@/types/student';
 import { 
   useStudentDocuments, 
   useUploadDocument, 
-  useDeleteDocument 
+  useDeleteDocument,
+  useUploadPdfParent
 } from '@/hooks/useStudentDocuments';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { convertPdfToImages, PdfConversionProgress } from '@/utils/pdfToImages';
 
 interface DocumentsManagerProps {
   studentId: string;
@@ -94,10 +97,12 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [analyzingDocs, setAnalyzingDocs] = useState<Set<string>>(new Set());
   const [currentPdfPage, setCurrentPdfPage] = useState(0);
+  const [pdfConversionProgress, setPdfConversionProgress] = useState<PdfConversionProgress | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: documents = [], refetch } = useStudentDocuments(studentId);
   const uploadDocument = useUploadDocument();
+  const uploadPdfParent = useUploadPdfParent();
   const deleteDocument = useDeleteDocument();
 
   // Cast documents to extended type
@@ -238,26 +243,93 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
     setIsUploading(true);
     let successCount = 0;
     let failCount = 0;
-    const uploadedDocs: { id: string; url: string; name: string }[] = [];
+    const uploadedImageDocs: { id: string; url: string; name: string }[] = [];
 
     for (const pf of validFiles) {
       try {
-        const result = await uploadDocument.mutateAsync({
-          studentId,
-          file: pf.file,
-          documentName: pf.name.trim(),
-        });
-        successCount++;
-        
-        // Get the newly created document to analyze
-        if (result) {
-          uploadedDocs.push({
-            id: result.id,
-            url: result.file_url || '',
-            name: pf.file.name
+        const isPdf = pf.file.type === 'application/pdf';
+
+        if (isPdf) {
+          // Handle PDF: Convert to images and upload each page
+          toast.info('Converting PDF pages to images...', { id: 'pdf-conversion' });
+          
+          try {
+            // Convert PDF pages to images
+            const pageImages = await convertPdfToImages(pf.file, 1.5, (progress) => {
+              setPdfConversionProgress(progress);
+            });
+            
+            setPdfConversionProgress(null);
+            toast.dismiss('pdf-conversion');
+            
+            // Upload parent PDF first
+            const parentResult = await uploadPdfParent.mutateAsync({
+              studentId,
+              file: pf.file,
+              documentName: pf.name.trim(),
+              pageCount: pageImages.length,
+            });
+            
+            if (parentResult) {
+              toast.info(`Uploading ${pageImages.length} page images...`, { id: 'page-upload' });
+              
+              // Upload each page as an image
+              for (let i = 0; i < pageImages.length; i++) {
+                const pageImage = pageImages[i];
+                const pageFileName = `${pf.name.trim()}_page_${pageImage.pageNumber}.png`;
+                const pageFile = new window.File([pageImage.blob], pageFileName, { type: 'image/png' });
+                
+                const pageResult = await uploadDocument.mutateAsync({
+                  studentId,
+                  file: pageFile,
+                  documentName: `${pf.name.trim()} - Page ${pageImage.pageNumber}`,
+                  isPdfPage: true,
+                  parentDocumentId: parentResult.id,
+                  pageNumber: pageImage.pageNumber,
+                  thumbnailUrl: null, // Will use file_url as thumbnail
+                });
+                
+                // Trigger AI analysis for each page image
+                if (pageResult?.file_url) {
+                  analyzeDocument(pageResult.id, pageResult.file_url, pageFileName, false);
+                }
+              }
+              
+              toast.dismiss('page-upload');
+              
+              // Update parent PDF status to completed
+              await supabase
+                .from('student_documents')
+                .update({ analysis_status: 'completed' })
+                .eq('id', parentResult.id);
+              
+              successCount++;
+              refetch();
+            }
+          } catch (pdfError) {
+            console.error('PDF conversion error:', pdfError);
+            toast.error('Failed to convert PDF pages');
+            failCount++;
+          }
+        } else {
+          // Handle non-PDF files normally
+          const result = await uploadDocument.mutateAsync({
+            studentId,
+            file: pf.file,
+            documentName: pf.name.trim(),
           });
+          successCount++;
+          
+          if (result) {
+            uploadedImageDocs.push({
+              id: result.id,
+              url: result.file_url || '',
+              name: pf.file.name
+            });
+          }
         }
       } catch (error) {
+        console.error('Upload error:', error);
         failCount++;
       }
     }
@@ -265,11 +337,10 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
     if (successCount > 0) {
       toast.success(`${successCount} document${successCount > 1 ? 's' : ''} uploaded successfully`);
       
-      // Trigger AI analysis for each uploaded document
-      for (const doc of uploadedDocs) {
+      // Trigger AI analysis for non-PDF uploaded documents
+      for (const doc of uploadedImageDocs) {
         if (doc.url) {
-          const isPdf = doc.name.toLowerCase().endsWith('.pdf');
-          analyzeDocument(doc.id, doc.url, doc.name, isPdf);
+          analyzeDocument(doc.id, doc.url, doc.name, false);
         }
       }
     }
@@ -280,6 +351,7 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
     setIsUploadModalOpen(false);
     setPendingFiles([]);
     setIsUploading(false);
+    setPdfConversionProgress(null);
   };
 
   const handleDelete = async () => {
@@ -345,6 +417,30 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
   };
 
   const getThumbnail = (doc: ExtendedDocument) => {
+    // PDF page images - show actual image with page indicator
+    if (doc.is_pdf_page && doc.file_url) {
+      return (
+        <div className="w-full h-full relative">
+          <img 
+            src={doc.file_url} 
+            alt={doc.document_name}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute bottom-2 left-2 bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
+            <FileText className="h-3 w-3" />
+            Page {doc.page_number}
+          </div>
+          {doc.analysis_status === 'completed' && (
+            <CheckCircle className="absolute top-2 right-2 h-4 w-4 text-green-500 drop-shadow-md" />
+          )}
+          {doc.analysis_status === 'processing' && (
+            <Loader2 className="absolute top-2 right-2 h-4 w-4 text-blue-500 animate-spin drop-shadow-md" />
+          )}
+        </div>
+      );
+    }
+    
+    // Regular images
     if (isImage(doc.document_type) && doc.file_url) {
       return (
         <img 
@@ -354,24 +450,9 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
         />
       );
     }
+    
+    // Parent PDF document
     if (isPDF(doc.document_type)) {
-      // Check if this is a PDF page
-      if (doc.is_pdf_page) {
-        return (
-          <div className="w-full h-full bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900 flex flex-col items-center justify-center relative">
-            <FileText className="h-8 w-8 text-orange-500" />
-            <span className="text-xs font-medium text-orange-600 mt-1">Page {doc.page_number}</span>
-            {doc.analysis_status === 'completed' && (
-              <CheckCircle className="absolute top-2 right-2 h-4 w-4 text-green-500" />
-            )}
-            {doc.analysis_status === 'processing' && (
-              <Loader2 className="absolute top-2 right-2 h-4 w-4 text-blue-500 animate-spin" />
-            )}
-          </div>
-        );
-      }
-      
-      // Parent PDF that hasn't been processed yet
       const pages = pagesByParent[doc.id] || [];
       const pageCount = doc.page_count || pages.length;
       
@@ -392,6 +473,13 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
         </div>
       );
     }
+    
+    // Other files
+    return (
+      <div className="w-full h-full bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center">
+        <File className="h-12 w-12 text-gray-400" />
+      </div>
+    );
     return (
       <div className="w-full h-full bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center">
         <File className="h-12 w-12 text-gray-400" />
@@ -610,8 +698,26 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
             ))}
           </div>
 
+          {/* PDF Conversion Progress */}
+          {pdfConversionProgress && (
+            <div className="border-t pt-4 space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">
+                  Converting PDF page {pdfConversionProgress.currentPage} of {pdfConversionProgress.totalPages}...
+                </span>
+                <span className="font-medium">
+                  {Math.round((pdfConversionProgress.currentPage / pdfConversionProgress.totalPages) * 100)}%
+                </span>
+              </div>
+              <Progress 
+                value={(pdfConversionProgress.currentPage / pdfConversionProgress.totalPages) * 100} 
+                className="h-2"
+              />
+            </div>
+          )}
+
           <DialogFooter className="border-t pt-4">
-            <Button variant="outline" onClick={() => setIsUploadModalOpen(false)}>
+            <Button variant="outline" onClick={() => setIsUploadModalOpen(false)} disabled={isUploading}>
               Cancel
             </Button>
             <Button 
@@ -621,7 +727,7 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
             >
               {isUploading && <Loader2 className="h-4 w-4 animate-spin" />}
               <Sparkles className="h-4 w-4" />
-              Upload & Analyze
+              {pdfConversionProgress ? 'Converting...' : 'Upload & Analyze'}
             </Button>
           </DialogFooter>
         </DialogContent>
