@@ -215,7 +215,7 @@ const Index = () => {
               value={maleCount}
               subtitle={`${totalStudents ? ((maleCount / totalStudents) * 100).toFixed(1) : 0}% of total`}
               icon={TrendingUp}
-              variant="pink"
+              variant="purple"
               delay={0.1}
             />
             <StatsCard
@@ -223,7 +223,7 @@ const Index = () => {
               value={femaleCount}
               subtitle={`${totalStudents ? ((femaleCount / totalStudents) * 100).toFixed(1) : 0}% of total`}
               icon={TrendingUp}
-              variant="yellow"
+              variant="purple"
               delay={0.2}
             />
             <StatsCard

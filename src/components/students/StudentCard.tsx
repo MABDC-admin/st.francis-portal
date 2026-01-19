@@ -186,7 +186,7 @@ export const StudentCard = ({ student, onView, onEdit, onDelete, index }: Studen
                 className="h-12 w-12 rounded-full object-cover border-2 border-stat-purple-light"
               />
             ) : (
-              <div className="h-12 w-12 rounded-full bg-gradient-to-br from-stat-purple to-stat-pink flex items-center justify-center border-2 border-stat-purple-light">
+              <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border-2 border-white/30">
                 <span className="text-base font-bold text-white">
                   {student.student_name.charAt(0).toUpperCase()}
                 </span>
