@@ -1,11 +1,11 @@
 import { useState, useMemo, useEffect, Fragment } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Search, 
-  ChevronDown, 
-  ChevronUp, 
-  Eye, 
-  Pencil, 
+import {
+  Search,
+  ChevronDown,
+  ChevronUp,
+  Eye,
+  Pencil,
   Trash2,
   Filter,
   Download,
@@ -21,6 +21,7 @@ import { Student } from '@/types/student';
 import { StudentCard } from './StudentCard';
 import { StudentHoverPreview } from './StudentHoverPreview';
 import { cn } from '@/lib/utils';
+import { formatName } from '@/utils/textFormatting';
 import {
   Select,
   SelectContent,
@@ -58,12 +59,12 @@ const SCHOOLS = [
   { id: 'stfxsa', name: 'St. Francis Xavier Smart Academy Inc', acronym: 'STFXSA', dbValue: 'STFXSA' },
 ];
 
-export const StudentTable = ({ 
-  students, 
-  onView, 
-  onEdit, 
+export const StudentTable = ({
+  students,
+  onView,
+  onEdit,
   onDelete,
-  isLoading 
+  isLoading
 }: StudentTableProps) => {
   const [search, setSearch] = useState('');
   const [schoolFilter, setSchoolFilter] = useState<string>('all');
@@ -72,7 +73,7 @@ export const StudentTable = ({
   const [sortField, setSortField] = useState<SortField>('student_name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [currentPage, setCurrentPage] = useState(1);
 
   // Get unique levels and genders for filters
@@ -91,7 +92,7 @@ export const StudentTable = ({
     const selectedSchool = SCHOOLS.find(s => s.id === schoolFilter);
     return students
       .filter(student => {
-        const matchesSearch = 
+        const matchesSearch =
           student.student_name.toLowerCase().includes(search.toLowerCase()) ||
           student.lrn.toLowerCase().includes(search.toLowerCase());
         const matchesLevel = levelFilter === 'all' || student.level === levelFilter;
@@ -102,15 +103,15 @@ export const StudentTable = ({
       .sort((a, b) => {
         let aVal = a[sortField];
         let bVal = b[sortField];
-        
+
         if (aVal === null || aVal === undefined) aVal = '';
         if (bVal === null || bVal === undefined) bVal = '';
-        
+
         if (typeof aVal === 'string') {
           const comparison = aVal.localeCompare(bVal as string);
           return sortDirection === 'asc' ? comparison : -comparison;
         }
-        
+
         const comparison = (aVal as number) - (bVal as number);
         return sortDirection === 'asc' ? comparison : -comparison;
       });
@@ -137,8 +138,8 @@ export const StudentTable = ({
 
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) return null;
-    return sortDirection === 'asc' ? 
-      <ChevronUp className="h-4 w-4" /> : 
+    return sortDirection === 'asc' ?
+      <ChevronUp className="h-4 w-4" /> :
       <ChevronDown className="h-4 w-4" />;
   };
 
@@ -153,11 +154,11 @@ export const StudentTable = ({
       s.mother_contact || '',
       s.father_contact || ''
     ]);
-    
+
     const csvContent = [headers, ...csvData]
       .map(row => row.map(cell => `"${cell}"`).join(','))
       .join('\n');
-    
+
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -234,8 +235,8 @@ export const StudentTable = ({
               onClick={() => setViewMode('cards')}
               className={cn(
                 "p-1.5 rounded-md transition-all",
-                viewMode === 'cards' 
-                  ? "bg-stat-purple text-white shadow-sm" 
+                viewMode === 'cards'
+                  ? "bg-stat-purple text-white shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               )}
               title="Card View"
@@ -246,8 +247,8 @@ export const StudentTable = ({
               onClick={() => setViewMode('compact')}
               className={cn(
                 "p-1.5 rounded-md transition-all",
-                viewMode === 'compact' 
-                  ? "bg-stat-purple text-white shadow-sm" 
+                viewMode === 'compact'
+                  ? "bg-stat-purple text-white shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               )}
               title="Compact View"
@@ -258,8 +259,8 @@ export const StudentTable = ({
               onClick={() => setViewMode('table')}
               className={cn(
                 "p-1.5 rounded-md transition-all",
-                viewMode === 'table' 
-                  ? "bg-stat-purple text-white shadow-sm" 
+                viewMode === 'table'
+                  ? "bg-stat-purple text-white shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               )}
               title="Table View"
@@ -269,8 +270,8 @@ export const StudentTable = ({
           </div>
 
           {/* Action Buttons */}
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={() => setShowFilters(!showFilters)}
             className={cn("h-9", showFilters && "bg-secondary")}
@@ -362,7 +363,7 @@ export const StudentTable = ({
                 <Pagination>
                   <PaginationContent>
                     <PaginationItem>
-                      <PaginationPrevious 
+                      <PaginationPrevious
                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                         className={cn(
                           "cursor-pointer",
@@ -370,7 +371,7 @@ export const StudentTable = ({
                         )}
                       />
                     </PaginationItem>
-                    
+
                     {Array.from({ length: totalPages }, (_, i) => i + 1)
                       .filter(page => {
                         if (page === 1 || page === totalPages) return true;
@@ -395,9 +396,9 @@ export const StudentTable = ({
                           </PaginationItem>
                         </Fragment>
                       ))}
-                    
+
                     <PaginationItem>
-                      <PaginationNext 
+                      <PaginationNext
                         onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                         className={cn(
                           "cursor-pointer",
@@ -433,9 +434,9 @@ export const StudentTable = ({
                   >
                     {/* Avatar */}
                     {student.photo_url ? (
-                      <img 
-                        src={student.photo_url} 
-                        alt="" 
+                      <img
+                        src={student.photo_url}
+                        alt=""
                         className="h-8 w-8 rounded-full object-cover flex-shrink-0"
                       />
                     ) : (
@@ -445,35 +446,35 @@ export const StudentTable = ({
                         </span>
                       </div>
                     )}
-                    
+
                     {/* Name */}
                     <span className="font-medium text-sm flex-1 truncate min-w-0">
-                      {student.student_name}
+                      {formatName(student.student_name)}
                     </span>
-                    
+
                     {/* Level Badge */}
                     <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-stat-purple/10 text-stat-purple flex-shrink-0">
                       {student.level}
                     </span>
-                    
+
                     {/* LRN */}
                     <span className="font-mono text-[10px] text-muted-foreground hidden sm:block flex-shrink-0 w-28 truncate">
                       {student.lrn}
                     </span>
-                    
+
                     {/* Actions */}
                     <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-6 w-6"
                         onClick={(e) => { e.stopPropagation(); onEdit(student); }}
                       >
                         <Pencil className="h-3 w-3" />
                       </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-6 w-6 text-destructive hover:text-destructive"
                         onClick={(e) => { e.stopPropagation(); onDelete(student); }}
                       >
@@ -546,9 +547,9 @@ export const StudentTable = ({
                       <td className="px-4 lg:px-6 py-4">
                         <div className="flex items-center gap-3">
                           {student.photo_url ? (
-                            <img 
-                              src={student.photo_url} 
-                              alt="" 
+                            <img
+                              src={student.photo_url}
+                              alt=""
                               className="h-10 w-10 rounded-full object-cover"
                             />
                           ) : (
@@ -558,7 +559,7 @@ export const StudentTable = ({
                               </span>
                             </div>
                           )}
-                          <p className="font-medium text-foreground">{student.student_name}</p>
+                          <p className="font-medium text-foreground">{formatName(student.student_name)}</p>
                         </div>
                       </td>
                       <td className="px-4 lg:px-6 py-4">
@@ -577,25 +578,25 @@ export const StudentTable = ({
                       </td>
                       <td className="px-4 lg:px-6 py-4">
                         <div className="flex items-center justify-end gap-1">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => onView(student)}
                             aria-label="View student"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => onEdit(student)}
                             aria-label="Edit student"
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => onDelete(student)}
                             className="text-destructive hover:text-destructive"
                             aria-label="Delete student"
