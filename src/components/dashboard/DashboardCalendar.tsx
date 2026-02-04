@@ -1,12 +1,22 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { format, isSameMonth, parseISO } from 'date-fns';
+
+interface SchoolEvent {
+  id: string;
+  title: string;
+  event_date: string;
+  event_type: string;
+}
 
 export const DashboardCalendar = () => {
-  const [currentDate, setCurrentDate] = useState(new Date(2023, 3, 1)); // April 2023
+  const [currentDate, setCurrentDate] = useState(new Date());
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -14,6 +24,30 @@ export const DashboardCalendar = () => {
   ];
 
   const daysOfWeek = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+  // Fetch events from database
+  const { data: events = [] } = useQuery({
+    queryKey: ['school-events', currentDate.getFullYear(), currentDate.getMonth()],
+    queryFn: async () => {
+      const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+      
+      const { data, error } = await supabase
+        .from('school_events')
+        .select('id, title, event_date, event_type')
+        .gte('event_date', format(startOfMonth, 'yyyy-MM-dd'))
+        .lte('event_date', format(endOfMonth, 'yyyy-MM-dd'))
+        .order('event_date');
+      
+      if (error) throw error;
+      return data as SchoolEvent[];
+    },
+  });
+
+  // Get days with events
+  const eventDays = useMemo(() => {
+    return events.map(e => parseISO(e.event_date).getDate());
+  }, [events]);
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -40,8 +74,8 @@ export const DashboardCalendar = () => {
   };
 
   const days = getDaysInMonth(currentDate);
-  const today = 6; // Highlighted day
-  const events = [3, 4, 11, 23]; // Days with events
+  const today = new Date().getDate();
+  const isCurrentMonth = isSameMonth(currentDate, new Date());
 
   const prevMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
@@ -55,7 +89,7 @@ export const DashboardCalendar = () => {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.55 }}
+      transition={{ delay: 0.3 }}
     >
       <Card className="h-full bg-gradient-to-b from-info to-info/80 text-white overflow-hidden">
         <CardHeader className="pb-2 flex flex-row items-center justify-between">
@@ -69,7 +103,7 @@ export const DashboardCalendar = () => {
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="font-semibold">
+            <span className="font-semibold text-sm">
               {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
             </span>
             <Button 
@@ -85,12 +119,12 @@ export const DashboardCalendar = () => {
         <CardContent className="p-3">
           {/* Days of week header */}
           <div className="grid grid-cols-7 gap-1 mb-1">
-            {daysOfWeek.map((day) => (
+            {daysOfWeek.map((day, idx) => (
               <div 
                 key={day} 
                 className={cn(
                   "text-center text-xs font-medium py-1",
-                  day === 'Tu' ? 'bg-white/20 rounded' : ''
+                  idx === new Date().getDay() && isCurrentMonth ? 'bg-white/20 rounded' : ''
                 )}
               >
                 {day}
@@ -100,21 +134,36 @@ export const DashboardCalendar = () => {
           
           {/* Calendar grid */}
           <div className="grid grid-cols-7 gap-1">
-            {days.map((dayObj, index) => (
-              <div
-                key={index}
-                className={cn(
-                  "text-center text-xs py-1 rounded transition-colors",
-                  !dayObj.currentMonth && "opacity-40",
-                  dayObj.day === today && dayObj.currentMonth && "bg-white text-info font-bold",
-                  events.includes(dayObj.day) && dayObj.currentMonth && dayObj.day !== today && "bg-destructive",
-                  dayObj.currentMonth && dayObj.day !== today && !events.includes(dayObj.day) && "hover:bg-white/20"
-                )}
-              >
-                {dayObj.day}
-              </div>
-            ))}
+            {days.map((dayObj, index) => {
+              const hasEvent = eventDays.includes(dayObj.day) && dayObj.currentMonth;
+              const isToday = dayObj.day === today && dayObj.currentMonth && isCurrentMonth;
+              
+              return (
+                <div
+                  key={index}
+                  className={cn(
+                    "text-center text-xs py-1 rounded transition-colors relative",
+                    !dayObj.currentMonth && "opacity-40",
+                    isToday && "bg-white text-info font-bold",
+                    hasEvent && !isToday && "bg-destructive",
+                    dayObj.currentMonth && !isToday && !hasEvent && "hover:bg-white/20"
+                  )}
+                >
+                  {dayObj.day}
+                  {hasEvent && !isToday && (
+                    <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full" />
+                  )}
+                </div>
+              );
+            })}
           </div>
+
+          {/* Event count */}
+          {events.length > 0 && (
+            <div className="mt-2 text-xs text-white/80 text-center">
+              {events.length} event{events.length > 1 ? 's' : ''} this month
+            </div>
+          )}
         </CardContent>
       </Card>
     </motion.div>

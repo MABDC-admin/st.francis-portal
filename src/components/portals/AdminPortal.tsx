@@ -3,7 +3,6 @@ import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DashboardStatsRow } from '@/components/dashboard/DashboardStatsRow';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import { UpcomingEvents } from '@/components/dashboard/UpcomingEvents';
-import { RecentActivities } from '@/components/dashboard/RecentActivities';
 import { StudentOverview } from '@/components/dashboard/StudentOverview';
 import { TeacherSchedule } from '@/components/dashboard/TeacherSchedule';
 import { GenderChart } from '@/components/dashboard/GenderChart';
@@ -57,10 +56,10 @@ export const AdminPortal = ({ onNavigate }: AdminPortalProps) => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Left Column */}
         <div className="lg:col-span-2 space-y-4">
-          {/* Events and Activities Row */}
+          {/* Calendar and Events Row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <DashboardCalendar />
             <UpcomingEvents />
-            <RecentActivities />
           </div>
 
           {/* Teacher Schedule and Gender Chart Row */}
@@ -73,7 +72,6 @@ export const AdminPortal = ({ onNavigate }: AdminPortalProps) => {
         {/* Right Column */}
         <div className="space-y-4">
           <StudentOverview students={students} />
-          <DashboardCalendar />
         </div>
       </div>
 
