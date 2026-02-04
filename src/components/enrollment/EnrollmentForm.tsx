@@ -27,7 +27,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 const GRADE_LEVELS = [
   'Kinder 1', 'Kinder 2',
-  'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5', 
+  'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5',
   'Level 6', 'Level 7', 'Level 8', 'Level 9', 'Level 10',
   'Level 11', 'Level 12'
 ];
@@ -61,12 +61,15 @@ interface FormErrors {
   uae_address?: string;
 }
 
+import { useSchool } from '@/contexts/SchoolContext';
+
 export const EnrollmentForm = () => {
+  const { selectedSchool } = useSchool();
   const [formData, setFormData] = useState({
     student_name: '',
     lrn: '',
     level: '',
-    school: 'MABDC',
+    school: selectedSchool,
     school_year: '2025-2026',
     birth_date: '',
     gender: '',
@@ -78,6 +81,11 @@ export const EnrollmentForm = () => {
     uae_address: '',
     previous_school: '',
   });
+
+  // Update school when selectedSchool changes
+  useMemo(() => {
+    setFormData(prev => ({ ...prev, school: selectedSchool }));
+  }, [selectedSchool]);
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -145,10 +153,10 @@ export const EnrollmentForm = () => {
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
-    const fields = ['student_name', 'lrn', 'level', 'birth_date', 'gender', 
-                    'mother_maiden_name', 'mother_contact', 'father_name', 
-                    'father_contact', 'phil_address', 'uae_address'];
-    
+    const fields = ['student_name', 'lrn', 'level', 'birth_date', 'gender',
+      'mother_maiden_name', 'mother_contact', 'father_name',
+      'father_contact', 'phil_address', 'uae_address'];
+
     fields.forEach(field => {
       const error = validateField(field, formData[field as keyof typeof formData]);
       if (error) {
@@ -162,12 +170,12 @@ export const EnrollmentForm = () => {
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    
+
     // Clear LRN error when switching to Kinder level
     if (field === 'level' && KINDER_LEVELS.includes(value)) {
       setErrors(prev => ({ ...prev, lrn: undefined }));
     }
-    
+
     // Validate on change if field was touched
     if (touched[field]) {
       const error = validateField(field, value);
@@ -183,7 +191,7 @@ export const EnrollmentForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Mark all fields as touched
     const allTouched: Record<string, boolean> = {};
     Object.keys(formData).forEach(key => { allTouched[key] = true; });
@@ -219,7 +227,7 @@ export const EnrollmentForm = () => {
         uae_address: formData.uae_address.trim() || undefined,
         previous_school: formData.previous_school.trim() || undefined,
       });
-      
+
       // Auto-create student account
       try {
         const { data: credResult, error: credError } = await supabase.functions.invoke('create-users', {
@@ -246,7 +254,7 @@ export const EnrollmentForm = () => {
         console.error('Error creating credentials:', credErr);
         toast.error('Student enrolled but failed to create login account');
       }
-      
+
       setEnrollmentComplete(true);
     } catch (error) {
       toast.error('Failed to enroll student');
@@ -445,26 +453,6 @@ export const EnrollmentForm = () => {
               </div>
               <div className="space-y-2">
                 <Label className="text-stat-purple">
-                  School <span className="text-destructive">*</span>
-                </Label>
-                <Select value={formData.school} onValueChange={(v) => handleChange('school', v)}>
-                  <SelectTrigger className="bg-secondary/50">
-                    <SelectValue placeholder="Select school" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SCHOOLS.map(school => (
-                      <SelectItem key={school.id} value={school.id}>
-                        <div className="flex flex-col">
-                          <span className="font-semibold">{school.acronym}</span>
-                          <span className="text-xs text-muted-foreground">{school.name}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-stat-purple">
                   School Year <span className="text-destructive">*</span>
                 </Label>
                 <Select value={formData.school_year} onValueChange={(v) => handleChange('school_year', v)}>
@@ -635,8 +623,8 @@ export const EnrollmentForm = () => {
 
           {/* Submit Button */}
           <div className="flex justify-end pt-4">
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={createStudent.isPending}
               className="bg-stat-purple hover:bg-stat-purple/90 text-white px-8"
             >
@@ -660,12 +648,12 @@ export const EnrollmentForm = () => {
               {enrollmentComplete ? 'Enrollment Successful!' : 'Confirm Enrollment'}
             </DialogTitle>
             <DialogDescription>
-              {enrollmentComplete 
+              {enrollmentComplete
                 ? 'The student has been enrolled successfully. You can print or save this confirmation.'
                 : 'Please review the student information before submitting.'}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div ref={printRef} className="space-y-6 py-4">
             {/* Student Information */}
             <div>
@@ -743,7 +731,7 @@ export const EnrollmentForm = () => {
                   <Printer className="h-4 w-4" />
                   Print Confirmation
                 </Button>
-                <Button 
+                <Button
                   onClick={handleNewEnrollment}
                   className="bg-stat-purple hover:bg-stat-purple/90 text-white gap-2"
                 >
@@ -756,7 +744,7 @@ export const EnrollmentForm = () => {
                 <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
                   Go Back & Edit
                 </Button>
-                <Button 
+                <Button
                   onClick={handleConfirmEnrollment}
                   disabled={createStudent.isPending}
                   className="bg-stat-purple hover:bg-stat-purple/90 text-white"

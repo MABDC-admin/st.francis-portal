@@ -1,11 +1,9 @@
 import { motion } from 'framer-motion';
+import { StudentBirthdays } from '@/components/dashboard/StudentBirthdays';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DashboardStatsRow } from '@/components/dashboard/DashboardStatsRow';
 import { QuickActions } from '@/components/dashboard/QuickActions';
-import { UpcomingEvents } from '@/components/dashboard/UpcomingEvents';
 import { StudentOverview } from '@/components/dashboard/StudentOverview';
-import { TeacherSchedule } from '@/components/dashboard/TeacherSchedule';
-import { GenderChart } from '@/components/dashboard/GenderChart';
 import { DashboardCalendar } from '@/components/dashboard/DashboardCalendar';
 import { BottomActions } from '@/components/dashboard/BottomActions';
 import { useStudents } from '@/hooks/useStudents';
@@ -22,7 +20,7 @@ interface RegistrarPortalProps {
 
 export const RegistrarPortal = ({ onNavigate, stats }: RegistrarPortalProps) => {
   const { data: students = [] } = useStudents();
-  
+
   // Fetch teachers count
   const { data: teachersData } = useQuery({
     queryKey: ['teachers-count'],
@@ -41,7 +39,7 @@ export const RegistrarPortal = ({ onNavigate, stats }: RegistrarPortalProps) => 
   const attendanceRate = 86;
 
   return (
-    <div className="space-y-0">
+    <div className="space-y-6">
       {/* Header */}
       <DashboardHeader />
 
@@ -61,20 +59,14 @@ export const RegistrarPortal = ({ onNavigate, stats }: RegistrarPortalProps) => 
         {/* Left Column */}
         <div className="lg:col-span-2 space-y-4">
           {/* Calendar and Events Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1">
             <DashboardCalendar />
-            <UpcomingEvents />
-          </div>
-
-          {/* Teacher Schedule and Gender Chart Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <TeacherSchedule />
-            <GenderChart students={students} />
           </div>
         </div>
 
         {/* Right Column */}
         <div className="space-y-4">
+          <StudentBirthdays />
           <StudentOverview students={students} />
         </div>
       </div>

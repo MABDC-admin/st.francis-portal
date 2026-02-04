@@ -13,6 +13,10 @@ interface SchoolTheme {
   pageBg: string;
   accentColor: string;
   primaryHue: string;
+  schoolId: string;
+  region: string;
+  division: string;
+  district: string;
 }
 
 export const SCHOOL_THEMES: Record<SchoolType, SchoolTheme> = {
@@ -27,6 +31,10 @@ export const SCHOOL_THEMES: Record<SchoolType, SchoolTheme> = {
     pageBg: 'bg-gradient-to-br from-emerald-50 to-lime-50 dark:from-emerald-950/20 dark:to-lime-950/20',
     accentColor: '#10b981',
     primaryHue: '152',
+    schoolId: '401234', // Dummy School ID
+    region: 'Region III',
+    division: 'Tarlac',
+    district: 'Capas',
   },
   STFXSA: {
     name: 'STFXSA',
@@ -39,6 +47,10 @@ export const SCHOOL_THEMES: Record<SchoolType, SchoolTheme> = {
     pageBg: 'bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20',
     accentColor: '#3b82f6',
     primaryHue: '217',
+    schoolId: '405678', // Dummy School ID
+    region: 'Region III',
+    division: 'Tarlac',
+    district: 'Capas',
   },
 };
 
@@ -67,9 +79,9 @@ export const SchoolProvider = ({ children }: { children: ReactNode }) => {
   const schoolTheme = SCHOOL_THEMES[selectedSchool];
 
   return (
-    <SchoolContext.Provider value={{ 
-      selectedSchool, 
-      setSelectedSchool, 
+    <SchoolContext.Provider value={{
+      selectedSchool,
+      setSelectedSchool,
       schoolTheme,
       canSwitchSchool,
       setCanSwitchSchool

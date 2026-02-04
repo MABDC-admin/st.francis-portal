@@ -139,6 +139,51 @@ const presetThemes: Record<string, ColorTheme> = {
     pageBg: 'bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/30 dark:to-slate-900/30',
     accentColor: '#9ca3af',
   },
+  aurora: {
+    sidebarBg: 'from-emerald-600 via-teal-600 to-cyan-700',
+    sidebarText: 'text-white',
+    menuActiveBg: 'bg-white/20',
+    menuActiveText: 'text-white',
+    menuHoverBg: 'hover:bg-white/10',
+    pageBg: 'bg-[radial-gradient(circle_at_top_left,_var(--tw-gradient-stops))] from-emerald-50 via-teal-50 to-blue-50 dark:from-emerald-950/20 dark:via-teal-950/20 dark:to-blue-950/20',
+    accentColor: '#10b981',
+  },
+  cosmic: {
+    sidebarBg: 'from-indigo-700 via-purple-700 to-pink-600',
+    sidebarText: 'text-white',
+    menuActiveBg: 'bg-white/20',
+    menuActiveText: 'text-white',
+    menuHoverBg: 'hover:bg-white/10',
+    pageBg: 'bg-[radial-gradient(circle_at_top_left,_var(--tw-gradient-stops))] from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-950/20 dark:via-purple-950/20 dark:to-pink-950/20',
+    accentColor: '#8b5cf6',
+  },
+  sunrise: {
+    sidebarBg: 'from-amber-500 via-orange-600 to-rose-600',
+    sidebarText: 'text-white',
+    menuActiveBg: 'bg-white/20',
+    menuActiveText: 'text-white',
+    menuHoverBg: 'hover:bg-white/10',
+    pageBg: 'bg-[radial-gradient(circle_at_top_left,_var(--tw-gradient-stops))] from-amber-50 via-orange-50 to-rose-50 dark:from-amber-950/20 dark:via-orange-950/20 dark:to-rose-950/20',
+    accentColor: '#f59e0b',
+  },
+  oceania: {
+    sidebarBg: 'from-cyan-600 via-blue-600 to-indigo-700',
+    sidebarText: 'text-white',
+    menuActiveBg: 'bg-white/20',
+    menuActiveText: 'text-white',
+    menuHoverBg: 'hover:bg-white/10',
+    pageBg: 'bg-[radial-gradient(circle_at_top_left,_var(--tw-gradient-stops))] from-cyan-50 via-blue-50 to-indigo-50 dark:from-cyan-950/20 dark:via-blue-950/20 dark:to-indigo-950/20',
+    accentColor: '#3b82f6',
+  },
+  paradise: {
+    sidebarBg: 'from-teal-600 via-emerald-600 to-lime-600',
+    sidebarText: 'text-white',
+    menuActiveBg: 'bg-white/20',
+    menuActiveText: 'text-white',
+    menuHoverBg: 'hover:bg-white/10',
+    pageBg: 'bg-[radial-gradient(circle_at_top_left,_var(--tw-gradient-stops))] from-teal-50 via-emerald-50 to-lime-50 dark:from-teal-950/20 dark:via-emerald-950/20 dark:to-lime-950/20',
+    accentColor: '#14b8a6',
+  },
 };
 
 interface ColorThemeContextType {
@@ -151,8 +196,8 @@ interface ColorThemeContextType {
 const ColorThemeContext = createContext<ColorThemeContextType | undefined>(undefined);
 
 export const ColorThemeProvider = ({ children }: { children: ReactNode }) => {
-  const [currentTheme, setCurrentTheme] = useState<string>('default');
-  const [theme, setTheme] = useState<ColorTheme>(defaultTheme);
+  const [currentTheme, setCurrentTheme] = useState<string>('aurora');
+  const [theme, setTheme] = useState<ColorTheme>(presetThemes['aurora']);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('app-color-theme');

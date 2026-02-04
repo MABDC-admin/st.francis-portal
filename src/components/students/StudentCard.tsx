@@ -126,7 +126,7 @@ export const StudentCard = ({ student, onView, onEdit, onDelete, index }: Studen
         cardTheme.glow
       )} />
       <div className="absolute inset-0 bg-card rounded-xl transition-colors duration-500" />
-      
+
       {/* Gradient Background that blends */}
       <div className={cn(
         "absolute inset-0 bg-gradient-to-b pointer-events-none rounded-xl transition-all duration-500",
@@ -136,103 +136,122 @@ export const StudentCard = ({ student, onView, onEdit, onDelete, index }: Studen
         "absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r transition-all duration-500",
         cardTheme.bar
       )} />
-      
+
       {/* Shimmer sweep effect on hover */}
       <div className="absolute inset-0 overflow-hidden rounded-xl pointer-events-none">
         <div className="absolute inset-0 -translate-x-full opacity-0 group-hover:opacity-100 group-hover:animate-shimmer-sweep bg-gradient-to-r from-transparent via-white/20 to-transparent" />
       </div>
-      
-      <div className="relative p-3">
-      {/* Status Badge & Actions */}
-      <div className="flex justify-between items-start mb-2">
-        <span className={cn(
-          "px-2 py-0.5 rounded-full text-[10px] font-semibold",
-          getStatusColor()
-        )}>
-          Active
-        </span>
-        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-6 w-6"
-            onClick={() => onEdit(student)}
-          >
-            <Pencil className="h-3 w-3" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-6 w-6 text-destructive hover:text-destructive"
-            onClick={() => onDelete(student)}
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
-        </div>
-      </div>
 
-      {/* Profile Section with Hover Preview */}
-      <StudentHoverPreview student={student}>
-        <div 
-          className="flex flex-col items-center text-center cursor-pointer"
-          onClick={() => onView(student)}
-        >
-          {/* Avatar */}
-          <div className="relative mb-2">
-            {student.photo_url ? (
-              <img 
-                src={student.photo_url} 
-                alt={student.student_name}
-                className="h-12 w-12 rounded-full object-cover border-2 border-stat-purple-light"
-              />
-            ) : (
-              <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border-2 border-white/30">
-                <span className="text-base font-bold text-white">
-                  {student.student_name.charAt(0).toUpperCase()}
-                </span>
+      <div className="relative p-3">
+        {/* Status Badge & Actions */}
+        <div className="flex justify-between items-start mb-2">
+          <div className="flex flex-col gap-1 items-start">
+            <span className={cn(
+              "px-2 py-0.5 rounded-full text-[10px] font-semibold",
+              getStatusColor()
+            )}>
+              Active
+            </span>
+            {student.grade_quarters && (
+              <div className="flex gap-1">
+                {(['q1', 'q2', 'q3', 'q4'] as const).map(q => (
+                  <span
+                    key={q}
+                    className={cn(
+                      "px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ring-1 ring-inset",
+                      student.grade_quarters?.[q]
+                        ? "bg-emerald-500 text-white ring-emerald-500/50"
+                        : "bg-white/10 text-white/40 ring-white/10"
+                    )}
+                  >
+                    {q}
+                  </span>
+                ))}
               </div>
             )}
-            <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full bg-stat-green border-2 border-card flex items-center justify-center">
-              <div className="h-1.5 w-1.5 rounded-full bg-white" />
-            </div>
           </div>
-
-          {/* Name & Level */}
-          <h3 className="font-bold text-foreground text-sm mb-0.5 line-clamp-1">
-            {student.student_name}
-          </h3>
-          <p className="text-stat-purple font-medium text-xs mb-2">
-            {student.level}
-          </p>
-
-          {/* Info Grid */}
-          <div className="w-full grid grid-cols-2 gap-2 text-left text-xs border-t border-border pt-2">
-            <div>
-              <p className="text-muted-foreground text-[10px]">LRN</p>
-              <p className="text-foreground font-medium truncate font-mono text-[10px]">
-                {student.lrn}
-              </p>
-            </div>
-            <div>
-              <p className="text-muted-foreground text-[10px]">Age</p>
-              <p className="text-foreground font-medium text-xs">
-                {student.age || '-'}
-              </p>
-            </div>
+          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => onView(student)}
+            >
+              <Eye className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-destructive hover:text-destructive"
+              onClick={() => onDelete(student)}
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
           </div>
         </div>
-      </StudentHoverPreview>
 
-      {/* View Profile Button */}
-      <Button 
-        variant="outline" 
-        size="sm"
-        className="w-full mt-2 h-7 text-xs border-stat-purple text-stat-purple hover:bg-stat-purple hover:text-white transition-colors"
-        onClick={() => onView(student)}
-      >
-        <Eye className="h-3 w-3 mr-1" />
-        View
-      </Button>
+        {/* Profile Section with Hover Preview */}
+        <StudentHoverPreview student={student}>
+          <div
+            className="flex flex-col items-center text-center cursor-pointer"
+            onClick={() => onView(student)}
+          >
+            {/* Avatar */}
+            <div className="relative mb-2">
+              {student.photo_url ? (
+                <img
+                  src={student.photo_url}
+                  alt={student.student_name}
+                  className="h-12 w-12 rounded-full object-cover border-2 border-stat-purple-light"
+                />
+              ) : (
+                <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border-2 border-white/30">
+                  <span className="text-base font-bold text-white">
+                    {student.student_name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              )}
+              <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full bg-stat-green border-2 border-card flex items-center justify-center">
+                <div className="h-1.5 w-1.5 rounded-full bg-white" />
+              </div>
+            </div>
+
+            {/* Name & Level */}
+            <h3 className="font-bold text-foreground text-sm mb-0.5 line-clamp-1">
+              {student.student_name}
+            </h3>
+            <p className="text-stat-purple font-medium text-xs mb-2">
+              {student.level}
+            </p>
+
+            {/* Info Grid */}
+            <div className="w-full grid grid-cols-2 gap-2 text-left text-xs border-t border-border pt-2">
+              <div>
+                <p className="text-muted-foreground text-[10px]">LRN</p>
+                <p className="text-foreground font-medium truncate font-mono text-[10px]">
+                  {student.lrn}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-[10px]">Age</p>
+                <p className="text-foreground font-medium text-xs">
+                  {student.age || '-'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </StudentHoverPreview>
+
+        {/* View Profile Button */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full mt-2 h-7 text-xs border-stat-purple text-stat-purple hover:bg-stat-purple hover:text-white transition-colors"
+          onClick={() => onView(student)}
+        >
+          <Eye className="h-3 w-3 mr-1" />
+          View
+        </Button>
       </div>
     </motion.div>
   );

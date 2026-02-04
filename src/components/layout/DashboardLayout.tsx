@@ -1,27 +1,32 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { motion, Reorder } from 'framer-motion';
-import { 
-  GraduationCap, 
-  Users, 
-  BarChart3, 
-  Upload, 
-  Moon, 
-  Sun,
+import {
   Menu,
-  ShieldAlert,
-  LogOut,
-  Home,
-  BookOpen,
-  UserCircle,
-  Library,
-  Calendar,
-  GripVertical,
-  LucideIcon,
-  FileSpreadsheet,
-  FileText,
-  Building2,
+  Moon,
+  Sun,
+  Search,
   ChevronDown,
-  CalendarDays
+  LogOut,
+  ShieldAlert,
+  GraduationCap,
+  Building2,
+  CalendarDays,
+  GripVertical,
+  UserCircle,
+  Users,
+  BookOpen,
+  FileSpreadsheet,
+  Library,
+  FileText,
+  Upload,
+  ChevronLeft,
+  ChevronRight,
+  LucideIcon,
+  Home,
+  BarChart3,
+  Calendar,
+  Lock,
+  Unlock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/useTheme';
@@ -43,10 +48,24 @@ import { useSchoolSettings } from '@/hooks/useSchoolSettings';
 import { useColorTheme } from '@/hooks/useColorTheme';
 import { ColorThemeSelector } from '@/components/ColorThemeSelector';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  HomeIcon3D,
+  StudentIcon3D,
+  TeacherIcon3D,
+  EnterGradeIcon3D,
+  SubjectsIcon3D,
+  ScheduleIcon3D,
+  EventsIcon3D,
+  EnrollmentIcon3D,
+  ReportsIcon3D,
+  ImportIcon3D,
+  AdminIcon3D,
+  ProfileIcon3D
+} from '@/components/icons/ThreeDIcons';
 
 interface NavItem {
   id: string;
-  icon: LucideIcon;
+  icon: any; // Allow Lucide or Custom 3D icons
   label: string;
 }
 
@@ -56,66 +75,75 @@ interface DashboardLayoutProps {
   onTabChange: (tab: string) => void;
 }
 
-// Icon mapping for serialization
-const iconMap: Record<string, LucideIcon> = {
-  Home, BarChart3, Users, BookOpen, Library, Calendar, GraduationCap, Upload, UserCircle, FileSpreadsheet, FileText
+// Icon mapping for serialization - updated to include 3D icons or generic placeholders
+const iconMap: Record<string, any> = {
+  Home: HomeIcon3D,
+  BarChart3: ReportsIcon3D,
+  Users: StudentIcon3D,
+  BookOpen: TeacherIcon3D,
+  Library: SubjectsIcon3D,
+  Calendar: ScheduleIcon3D,
+  GraduationCap: EnrollmentIcon3D,
+  Upload: ImportIcon3D,
+  UserCircle: ProfileIcon3D,
+  FileSpreadsheet: EnterGradeIcon3D,
+  FileText: ReportsIcon3D
 };
 
 const getNavItemsForRole = (role: string | null): NavItem[] => {
   const baseItems: NavItem[] = [
-    { id: 'portal', icon: Home, label: 'Portal Home' },
+    { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
   ];
 
   switch (role) {
     case 'admin':
       return [
         ...baseItems,
-        { id: 'dashboard', icon: BarChart3, label: 'Dashboard' },
-        { id: 'students', icon: Users, label: 'Students' },
-        { id: 'teachers', icon: BookOpen, label: 'Teachers' },
-        { id: 'grades', icon: FileSpreadsheet, label: 'Grades' },
-        { id: 'subjects', icon: Library, label: 'Subjects' },
-        { id: 'academic-years', icon: Calendar, label: 'Academic Years' },
-        { id: 'subject-enrollment', icon: GraduationCap, label: 'Enrollment' },
-        { id: 'reports', icon: FileText, label: 'Reports' },
-        { id: 'enrollment', icon: GraduationCap, label: 'New Student' },
-        { id: 'import', icon: Upload, label: 'Import CSV' },
+        { id: 'students', icon: StudentIcon3D, label: 'Students' },
+        { id: 'teachers', icon: TeacherIcon3D, label: 'Teachers' },
+        { id: 'grades', icon: EnterGradeIcon3D, label: 'Grades' },
+        { id: 'subjects', icon: SubjectsIcon3D, label: 'Subjects' },
+        { id: 'academic-years', icon: ScheduleIcon3D, label: 'Academic Years' },
+        { id: 'events', icon: EventsIcon3D, label: 'Events' },
+        { id: 'subject-enrollment', icon: EnrollmentIcon3D, label: 'Enrollment' },
+        { id: 'reports', icon: ReportsIcon3D, label: 'Reports' },
+        { id: 'enrollment', icon: EnrollmentIcon3D, label: 'New Student' },
+        { id: 'import', icon: ImportIcon3D, label: 'Import CSV' },
       ];
     case 'registrar':
       return [
         ...baseItems,
-        { id: 'dashboard', icon: BarChart3, label: 'Dashboard' },
-        { id: 'students', icon: Users, label: 'Students' },
-        { id: 'teachers', icon: BookOpen, label: 'Teachers' },
-        { id: 'grades', icon: FileSpreadsheet, label: 'Grades' },
-        { id: 'subjects', icon: Library, label: 'Subjects' },
-        { id: 'subject-enrollment', icon: GraduationCap, label: 'Enrollment' },
-        { id: 'reports', icon: FileText, label: 'Reports' },
-        { id: 'enrollment', icon: GraduationCap, label: 'New Student' },
-        { id: 'import', icon: Upload, label: 'Import CSV' },
+        { id: 'students', icon: StudentIcon3D, label: 'Students' },
+        { id: 'teachers', icon: TeacherIcon3D, label: 'Teachers' },
+        { id: 'grades', icon: EnterGradeIcon3D, label: 'Grades' },
+        { id: 'subjects', icon: SubjectsIcon3D, label: 'Subjects' },
+        { id: 'subject-enrollment', icon: EnrollmentIcon3D, label: 'Enrollment' },
+        { id: 'reports', icon: ReportsIcon3D, label: 'Reports' },
+        { id: 'enrollment', icon: EnrollmentIcon3D, label: 'New Student' },
+        { id: 'import', icon: ImportIcon3D, label: 'Import CSV' },
       ];
     case 'teacher':
       return [
         ...baseItems,
-        { id: 'classes', icon: BookOpen, label: 'My Classes' },
-        { id: 'grades', icon: FileSpreadsheet, label: 'Grades' },
+        { id: 'classes', icon: TeacherIcon3D, label: 'My Classes' },
+        { id: 'grades', icon: EnterGradeIcon3D, label: 'Grades' },
       ];
     case 'student':
       return [
         ...baseItems,
-        { id: 'profile', icon: UserCircle, label: 'My Profile' },
+        { id: 'profile', icon: ProfileIcon3D, label: 'My Profile' },
       ];
     case 'parent':
       return [
         ...baseItems,
-        { id: 'children', icon: Users, label: 'My Children' },
+        { id: 'children', icon: StudentIcon3D, label: 'My Children' },
       ];
     default:
       return baseItems;
   }
 };
 
-const adminItem = { id: 'admin', icon: ShieldAlert, label: 'Admin' };
+const adminItem = { id: 'admin', icon: AdminIcon3D, label: 'Admin' };
 
 const roleColors: Record<string, string> = {
   admin: 'bg-red-500',
@@ -136,8 +164,10 @@ const roleLabels: Record<string, string> = {
 export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardLayoutProps) => {
   const { isDark, toggle } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const { user, role, signOut } = useAuth();
   const [isDragging, setIsDragging] = useState(false);
+  const [isMenuLocked, setIsMenuLocked] = useState(true); // Default to locked
   const { selectedSchool, setSelectedSchool, schoolTheme, setCanSwitchSchool } = useSchool();
   const { academicYears, selectedYearId, selectedYear, setSelectedYearId, isLoading: isLoadingYears } = useAcademicYear();
   const { data: schoolSettings } = useSchoolSettings(selectedSchool);
@@ -155,10 +185,10 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
   const effectiveTheme = hasCustomTheme ? theme : schoolTheme;
 
   const defaultNavItems = getNavItemsForRole(role);
-  
+
   // Load saved menu order from localStorage
   const [navItems, setNavItems] = useState<NavItem[]>(defaultNavItems);
-  
+
   useEffect(() => {
     if (role === 'admin') {
       const savedOrder = localStorage.getItem(`menu-order-${role}`);
@@ -168,7 +198,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
           const reorderedItems = orderIds
             .map(id => defaultNavItems.find(item => item.id === id))
             .filter((item): item is NavItem => item !== undefined);
-          
+
           // Add any new items that weren't in the saved order
           const newItems = defaultNavItems.filter(item => !orderIds.includes(item.id));
           setNavItems([...reorderedItems, ...newItems]);
@@ -181,9 +211,12 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
     } else {
       setNavItems(defaultNavItems);
     }
-  }, [role]);
+  }, [role, activeTab]);
+
+  const toggleSidebar = () => setIsCollapsed(!isCollapsed);
 
   const handleReorder = (newOrder: NavItem[]) => {
+    if (isMenuLocked) return; // Prevent reorder if locked
     setNavItems(newOrder);
     if (role === 'admin') {
       localStorage.setItem(`menu-order-${role}`, JSON.stringify(newOrder.map(item => item.id)));
@@ -194,10 +227,35 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
     return email.substring(0, 2).toUpperCase();
   };
 
+  const navVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.08,
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, x: -20 },
+    visible: {
+      opacity: 1,
+      x: 0,
+      transition: {
+        type: "spring" as const,
+        stiffness: 300,
+        damping: 30
+      }
+    }
+  };
+
   return (
     <div className={cn(
       "min-h-screen bg-background theme-transition",
-      effectiveTheme.pageBg
+      currentTheme === 'pastel'
+        ? "bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-green-100 via-stone-50 to-orange-50 dark:from-green-900/20 dark:via-stone-900 dark:to-orange-900/20"
+        : effectiveTheme.pageBg
     )}>
       {/* Mobile Header */}
       <header className={cn(
@@ -250,293 +308,314 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
             </DropdownMenu>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={toggle} 
-            aria-label="Toggle theme"
-            className="text-inherit hover:bg-white/10"
-          >
-            {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          </Button>
-        </div>
       </header>
 
       {/* Sidebar Overlay */}
-      {sidebarOpen && (
-        <div 
-          className="lg:hidden fixed inset-0 bg-foreground/20 z-40"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      {
+        sidebarOpen && (
+          <div
+            className="lg:hidden fixed inset-0 bg-foreground/20 z-40"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )
+      }
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed left-0 top-0 z-50 h-full w-64 border-r border-border transform transition-all duration-500 lg:translate-x-0 flex flex-col theme-transition",
-        sidebarOpen ? "translate-x-0" : "-translate-x-full",
-        `bg-gradient-to-b ${effectiveTheme.sidebarBg} ${effectiveTheme.sidebarText}`
+        "fixed left-0 top-0 z-50 h-full border-r border-border transform transition-all duration-300 flex flex-col theme-transition",
+        sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+        isCollapsed ? "w-[70px]" : "w-64",
+        currentTheme === 'pastel'
+          ? "bg-white/40 dark:bg-black/20 backdrop-blur-md border-r-white/20 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)]"
+          : currentTheme !== 'default'
+            ? `bg-gradient-to-b ${effectiveTheme.sidebarBg} ${effectiveTheme.sidebarText}`
+            : "bg-gradient-to-b from-success to-success/90 text-white"
       )}>
-        <div className="p-6">
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-3"
+        <div className={cn("p-4 flex items-center justify-between", isCollapsed && "justify-center")}>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className={cn("flex items-center gap-3", isCollapsed && "hidden")}
           >
-            <div className="w-12 h-12 rounded-xl shadow-md overflow-hidden bg-white flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg shadow-sm overflow-hidden bg-white flex items-center justify-center flex-shrink-0">
               {schoolSettings?.logo_url ? (
-                <img src={schoolSettings.logo_url} alt="Logo" className="w-full h-full object-contain p-1" />
+                <img src={schoolSettings.logo_url} alt="Logo" className="w-full h-full object-contain p-0.5" />
               ) : (
                 <div className={cn("w-full h-full flex items-center justify-center bg-gradient-to-br", effectiveTheme.sidebarBg)}>
-                  <GraduationCap className="h-6 w-6 text-white" />
+                  <GraduationCap className="h-4 w-4 text-white" />
                 </div>
               )}
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1">
-                <h1 className="font-bold text-lg truncate text-inherit">
-                  {schoolSettings?.acronym || selectedSchool}
-                </h1>
-              </div>
-              <p className="text-xs text-inherit/70">
-                {roleLabels[role || ''] || 'Loading...'}
-              </p>
-            </div>
+            <h1 className="font-bold text-sm truncate text-inherit">
+              {schoolSettings?.acronym || selectedSchool}
+            </h1>
           </motion.div>
-          
-          {/* School Switcher for Admin/Registrar */}
-          {canSwitch && (
-            <div className="mt-4">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    className="w-full justify-between text-inherit hover:bg-white/10 border border-white/20"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4" />
-                      <span className="text-sm">{selectedSchool}</span>
-                    </div>
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-[200px]">
-                  <DropdownMenuLabel>Switch School Portal</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    onClick={() => setSelectedSchool('MABDC')}
-                    className={selectedSchool === 'MABDC' ? 'bg-emerald-50 dark:bg-emerald-950' : ''}
-                  >
-                    <div className="flex items-center gap-2 flex-1">
-                      <div className="w-3 h-3 rounded-full bg-emerald-500" />
-                      <span>MABDC</span>
-                    </div>
-                    {selectedSchool === 'MABDC' && <span className="text-emerald-500">✓</span>}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => setSelectedSchool('STFXSA')}
-                    className={selectedSchool === 'STFXSA' ? 'bg-blue-50 dark:bg-blue-950' : ''}
-                  >
-                    <div className="flex items-center gap-2 flex-1">
-                      <div className="w-3 h-3 rounded-full bg-blue-500" />
-                      <span>STFXSA</span>
-                    </div>
-                    {selectedSchool === 'STFXSA' && <span className="text-blue-500">✓</span>}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          )}
 
-          {/* Academic Year Switcher */}
-          {canSwitch && (
-            <div className="mt-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    className="w-full justify-between text-inherit hover:bg-white/10 border border-white/20"
-                  >
-                    <div className="flex items-center gap-2">
-                      <CalendarDays className="h-4 w-4" />
-                      {isLoadingYears ? (
-                        <Skeleton className="h-4 w-20 bg-white/20" />
-                      ) : (
-                        <span className="text-sm truncate">{selectedYear?.name || 'Select Year'}</span>
-                      )}
-                    </div>
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-[200px] max-h-[300px] overflow-y-auto">
-                  <DropdownMenuLabel>Academic Year</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {academicYears.map((year) => (
-                    <DropdownMenuItem 
-                      key={year.id}
-                      onClick={() => setSelectedYearId(year.id)}
-                      className={selectedYearId === year.id ? 'bg-primary/10' : ''}
-                    >
-                      <div className="flex items-center gap-2 flex-1">
-                        <CalendarDays className="h-3 w-3 opacity-50" />
-                        <span>{year.name}</span>
-                        {year.is_current && (
-                          <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">Current</Badge>
-                        )}
-                      </div>
-                      {selectedYearId === year.id && <span className="text-primary">✓</span>}
-                    </DropdownMenuItem>
-                  ))}
-                  {academicYears.length === 0 && !isLoadingYears && (
-                    <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                      No academic years found
-                    </div>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSidebar}
+            className="hidden lg:flex h-6 w-6 text-inherit/50 hover:text-inherit hover:bg-black/5 dark:hover:bg-white/10"
+          >
+            {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </Button>
         </div>
 
-        {/* User Info */}
-        {user && (
-          <div className="px-3 pb-4">
+        {/* School Switcher for Admin/Registrar */}
+        {canSwitch && (
+          <div className="mt-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  className="w-full justify-start gap-3 h-auto py-3 hover:bg-white/10"
+                <Button
+                  variant="ghost"
+                  className="w-full justify-between text-inherit hover:bg-white/10 border border-white/20"
                 >
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className={cn("text-white text-xs", roleColors[role || 'student'])}>
-                      {getInitials(user.email || 'U')}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col items-start text-left min-w-0">
-                    <span className="text-sm font-medium truncate max-w-[140px] text-inherit">
-                      {user.email}
-                    </span>
-                    <Badge variant="secondary" className="text-xs capitalize mt-0.5 bg-white/20 text-inherit">
-                      {role || 'Loading...'}
-                    </Badge>
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4" />
+                    <span className="text-sm">{selectedSchool}</span>
                   </div>
+                  <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-56">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuContent align="start" className="w-[200px]">
+                <DropdownMenuLabel>Switch School Portal</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={signOut} className="text-destructive">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign Out
+                <DropdownMenuItem
+                  onClick={() => setSelectedSchool('MABDC')}
+                  className={selectedSchool === 'MABDC' ? 'bg-emerald-50 dark:bg-emerald-950' : ''}
+                >
+                  <div className="flex items-center gap-2 flex-1">
+                    <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                    <span>MABDC</span>
+                  </div>
+                  {selectedSchool === 'MABDC' && <span className="text-emerald-500">✓</span>}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setSelectedSchool('STFXSA')}
+                  className={selectedSchool === 'STFXSA' ? 'bg-blue-50 dark:bg-blue-950' : ''}
+                >
+                  <div className="flex items-center gap-2 flex-1">
+                    <div className="w-3 h-3 rounded-full bg-blue-500" />
+                    <span>STFXSA</span>
+                  </div>
+                  {selectedSchool === 'STFXSA' && <span className="text-blue-500">✓</span>}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         )}
 
-        {role === 'admin' ? (
-          <Reorder.Group 
-            axis="y" 
-            values={navItems} 
-            onReorder={handleReorder}
-            className="px-3 space-y-1 flex-1"
-          >
-            {navItems.map((item) => (
-              <Reorder.Item
-                key={item.id}
-                value={item}
-                onDragStart={() => setIsDragging(true)}
-                onDragEnd={() => setIsDragging(false)}
-                className="list-none"
-                whileDrag={{ scale: 1.02, boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}
-              >
-                <button
-                  onClick={() => {
-                    if (!isDragging) {
-                      onTabChange(item.id);
-                      setSidebarOpen(false);
-                    }
-                  }}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 cursor-grab active:cursor-grabbing",
-                    activeTab === item.id
-                      ? `${effectiveTheme.menuActiveBg} ${effectiveTheme.menuActiveText} shadow-md`
-                      : `text-inherit/80 ${effectiveTheme.menuHoverBg}`
-                  )}
+        {/* Academic Year Switcher */}
+        {canSwitch && (
+          <div className="mt-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-between text-inherit hover:bg-white/10 border border-white/20"
                 >
-                  <GripVertical className="h-4 w-4 opacity-40" />
-                  <item.icon className="h-5 w-5" />
-                  {item.label}
-                </button>
-              </Reorder.Item>
-            ))}
-          </Reorder.Group>
-        ) : (
-          <nav className="px-3 space-y-1 flex-1">
-            {navItems.map((item, index) => (
-              <motion.button
-                key={item.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-                onClick={() => {
-                  onTabChange(item.id);
-                  setSidebarOpen(false);
-                }}
-                className={cn(
-                  "w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200",
-                  activeTab === item.id
-                    ? `${effectiveTheme.menuActiveBg} ${effectiveTheme.menuActiveText} shadow-md`
-                    : `text-inherit/80 ${effectiveTheme.menuHoverBg}`
+                  <div className="flex items-center gap-2">
+                    <CalendarDays className="h-4 w-4" />
+                    {isLoadingYears ? (
+                      <Skeleton className="h-4 w-20 bg-white/20" />
+                    ) : (
+                      <span className="text-sm truncate">{selectedYear?.name || 'Select Year'}</span>
+                    )}
+                  </div>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[200px] max-h-[300px] overflow-y-auto">
+                <DropdownMenuLabel>Academic Year</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {academicYears.map((year) => (
+                  <DropdownMenuItem
+                    key={year.id}
+                    onClick={() => setSelectedYearId(year.id)}
+                    className={selectedYearId === year.id ? 'bg-primary/10' : ''}
+                  >
+                    <div className="flex items-center gap-2 flex-1">
+                      <CalendarDays className="h-3 w-3 opacity-50" />
+                      <span>{year.name}</span>
+                      {year.is_current && (
+                        <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">Current</Badge>
+                      )}
+                    </div>
+                    {selectedYearId === year.id && <span className="text-primary">✓</span>}
+                  </DropdownMenuItem>
+                ))}
+                {academicYears.length === 0 && !isLoadingYears && (
+                  <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                    No academic years found
+                  </div>
                 )}
-              >
-                <item.icon className="h-5 w-5" />
-                {item.label}
-              </motion.button>
-            ))}
-          </nav>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         )}
 
-        {/* Bottom Section - Admin & Theme Toggle */}
+        {/* User Info */}
+
+        {
+          role === 'admin' ? (
+            <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col">
+              {/* Lock Toggle for Admin */}
+              {!isCollapsed && (
+                <div className="px-4 py-2 flex justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsMenuLocked(!isMenuLocked)}
+                    className="h-6 w-6 p-0 text-inherit/50 hover:text-inherit"
+                    title={isMenuLocked ? "Unlock Menu Reordering" : "Lock Menu Reordering"}
+                  >
+                    {isMenuLocked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                  </Button>
+                </div>
+              )}
+
+              <Reorder.Group
+                axis="y"
+                values={navItems}
+                onReorder={handleReorder}
+                className="px-2 space-y-1 flex-1"
+                variants={navVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                {navItems.map((item) => (
+                  <Reorder.Item
+                    key={item.id}
+                    value={item}
+                    dragListener={!isMenuLocked}
+                    onDragStart={() => setIsDragging(true)}
+                    onDragEnd={() => setIsDragging(false)}
+                    className="list-none relative"
+                    whileDrag={{ scale: 1.02, boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}
+                    variants={itemVariants}
+                  >
+                    <motion.button
+                      whileHover={{ x: 5, scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => {
+                        if (!isDragging) {
+                          onTabChange(item.id);
+                          setSidebarOpen(false);
+                        }
+                      }}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-all duration-200 relative overflow-hidden",
+                        !isMenuLocked ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
+                        activeTab === item.id
+                          ? `${effectiveTheme.menuActiveBg} ${effectiveTheme.menuActiveText} shadow-md`
+                          : `text-inherit/80 ${effectiveTheme.menuHoverBg} hover:bg-yellow-400/20 hover:text-yellow-700 dark:hover:text-yellow-300 transition-colors`,
+                        isCollapsed && "justify-center px-2"
+                      )}
+                      title={isCollapsed ? item.label : undefined}
+                    >
+                      {activeTab === item.id && (
+                        <motion.div
+                          layoutId="activeTabBackground"
+                          className="absolute inset-0 bg-white/20 dark:bg-black/20"
+                          initial={false}
+                          transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                        />
+                      )}
+
+                      {!isMenuLocked && (
+                        <GripVertical className={cn("h-4 w-4 opacity-40 flex-shrink-0 z-10", isCollapsed && "hidden")} />
+                      )}
+                      <item.icon className="h-5 w-5 flex-shrink-0 z-10" />
+                      {!isCollapsed && <span className="truncate z-10">{item.label}</span>}
+                    </motion.button>
+                  </Reorder.Item>
+                ))}
+              </Reorder.Group>
+            </div>
+          ) : (
+            <motion.nav
+              className="px-2 space-y-1 flex-1 overflow-y-auto overflow-x-hidden"
+              variants={navVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              {navItems.map((item) => (
+                <motion.button
+                  key={item.id}
+                  variants={itemVariants}
+                  whileHover={{ x: 5, scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    onTabChange(item.id);
+                    setSidebarOpen(false);
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-all duration-200 relative overflow-hidden",
+                    activeTab === item.id
+                      ? `${effectiveTheme.menuActiveBg} ${effectiveTheme.menuActiveText} shadow-md`
+                      : `text-inherit/80 ${effectiveTheme.menuHoverBg} hover:bg-yellow-400/20 hover:text-yellow-700 dark:hover:text-yellow-300 transition-colors`,
+                    isCollapsed && "justify-center px-2"
+                  )}
+                  title={isCollapsed ? item.label : undefined}
+                >
+                  {activeTab === item.id && (
+                    <motion.div
+                      layoutId="activeTabBackground"
+                      className="absolute inset-0 bg-white/20 dark:bg-black/20"
+                      initial={false}
+                      transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                    />
+                  )}
+
+                  <item.icon className="h-5 w-5 flex-shrink-0 z-10" />
+                  {!isCollapsed && <span className="truncate z-10">{item.label}</span>}
+                </motion.button>
+              ))}
+            </motion.nav>
+          )
+        }
+
+        {/* Bottom Section - Admin */}
         <div className="px-3 pb-6 space-y-2">
           {/* Admin Button - Only show for admin role */}
           {role === 'admin' && (
             <motion.button
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 }}
+              variants={itemVariants}
+              initial="hidden"
+              animate="visible"
+              whileHover={{ x: 5, scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => {
                 onTabChange(adminItem.id);
                 setSidebarOpen(false);
               }}
               className={cn(
-                "w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200",
+                "w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 relative overflow-hidden",
                 activeTab === adminItem.id
                   ? "bg-destructive text-destructive-foreground shadow-md"
                   : "text-inherit/80 hover:bg-white/10 hover:text-red-300"
               )}
             >
-              <adminItem.icon className="h-5 w-5" />
-              {adminItem.label}
+              {activeTab === adminItem.id && (
+                <motion.div
+                  layoutId="activeTabBackground"
+                  className="absolute inset-0 bg-white/20 dark:bg-black/20"
+                  initial={false}
+                  transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                />
+              )}
+              <adminItem.icon className="h-5 w-5 z-10" />
+              <span className="z-10">{adminItem.label}</span>
             </motion.button>
           )}
-
-          {/* Theme Toggle - Desktop */}
-          <div className="hidden lg:block">
-            <Button 
-              variant="outline" 
-              className="w-full justify-start gap-3 border-white/20 text-inherit hover:bg-white/10"
-              onClick={toggle}
-            >
-              {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-              {isDark ? 'Light Mode' : 'Dark Mode'}
-            </Button>
-          </div>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="lg:ml-64 pt-16 lg:pt-0 min-h-screen">
+      <main className={cn(
+        "transition-all duration-300 pt-16 lg:pt-0 min-h-screen",
+        isCollapsed ? "lg:pl-[70px]" : "lg:pl-64"
+      )}>
         <div className="p-4 lg:p-8">
           {children}
         </div>

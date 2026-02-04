@@ -25,12 +25,12 @@ interface StudentFormModalProps {
 const LEVELS = ['Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5', 'Level 6'];
 const GENDERS = ['MALE', 'FEMALE'];
 
-export const StudentFormModal = ({ 
-  student, 
-  isOpen, 
-  onClose, 
+export const StudentFormModal = ({
+  student,
+  isOpen,
+  onClose,
   onSubmit,
-  isLoading 
+  isLoading
 }: StudentFormModalProps) => {
   const [formData, setFormData] = useState<StudentFormData>({
     lrn: '',
@@ -91,7 +91,7 @@ export const StudentFormModal = ({
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed inset-4 lg:inset-auto lg:left-1/2 lg:top-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:w-full lg:max-w-2xl lg:max-h-[90vh] bg-card rounded-2xl shadow-lg z-50 overflow-hidden flex flex-col"
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] lg:w-full lg:max-w-2xl lg:max-h-[90vh] bg-card rounded-2xl shadow-lg z-50 overflow-hidden flex flex-col"
           >
             {/* Header */}
             <div className="px-6 py-5 border-b border-border flex items-center justify-between">
@@ -132,8 +132,8 @@ export const StudentFormModal = ({
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="level">Level *</Label>
-                      <Select 
-                        value={formData.level} 
+                      <Select
+                        value={formData.level}
                         onValueChange={(v) => handleChange('level', v)}
                       >
                         <SelectTrigger>
@@ -148,8 +148,8 @@ export const StudentFormModal = ({
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="gender">Gender</Label>
-                      <Select 
-                        value={formData.gender || ''} 
+                      <Select
+                        value={formData.gender || ''}
                         onValueChange={(v) => handleChange('gender', v)}
                       >
                         <SelectTrigger>

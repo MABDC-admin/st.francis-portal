@@ -7,15 +7,15 @@ import { useSchool, SchoolType } from '@/contexts/SchoolContext';
 export const useStudents = (schoolOverride?: SchoolType) => {
   const { selectedSchool } = useSchool();
   const school = schoolOverride || selectedSchool;
-  
+
   return useQuery({
     queryKey: ['students', school],
     queryFn: async (): Promise<Student[]> => {
       let query = supabase
         .from('students')
-        .select('*')
+        .select('*, student_grades(q1_grade, q2_grade, q3_grade, q4_grade)')
         .order('student_name', { ascending: true });
-      
+
       // Filter by school
       if (school === 'STFXSA') {
         query = query.or('school.ilike.%stfxsa%,school.ilike.%st. francis%');
@@ -27,7 +27,25 @@ export const useStudents = (schoolOverride?: SchoolType) => {
       const { data, error } = await query;
 
       if (error) throw error;
-      return data || [];
+
+      // Map the data to include has_grades boolean and quarter indicators
+      return (data || []).map((student: any) => {
+        const grades = student.student_grades || [];
+        const has_grades = grades.length > 0;
+
+        const grade_quarters = {
+          q1: grades.some((g: any) => g.q1_grade !== null),
+          q2: grades.some((g: any) => g.q2_grade !== null),
+          q3: grades.some((g: any) => g.q3_grade !== null),
+          q4: grades.some((g: any) => g.q4_grade !== null),
+        };
+
+        return {
+          ...student,
+          has_grades,
+          grade_quarters
+        };
+      }) as Student[];
     },
   });
 };

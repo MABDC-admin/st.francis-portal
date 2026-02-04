@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Users, GraduationCap, TrendingUp, UserPlus } from 'lucide-react';
@@ -11,7 +11,7 @@ import { StudentProfileModal } from '@/components/students/StudentProfileModal';
 import { StudentFormModal } from '@/components/students/StudentFormModal';
 import { DeleteConfirmModal } from '@/components/students/DeleteConfirmModal';
 import { CSVImport } from '@/components/import/CSVImport';
-import { EnrollmentForm } from '@/components/enrollment/EnrollmentForm';
+import { EnrollmentWizard } from '@/components/enrollment/EnrollmentWizard';
 import { AdminPanel } from '@/components/admin/AdminPanel';
 import { AdminPinModal } from '@/components/admin/AdminPinModal';
 import { Button } from '@/components/ui/button';
@@ -36,40 +36,44 @@ import { EnrollmentManagement } from '@/components/curriculum/EnrollmentManageme
 // Grades and Reports
 import { GradesManagement } from '@/components/grades/GradesManagement';
 import { ReportsManagement } from '@/components/reports/ReportsManagement';
+import { EventsManagement } from '@/components/calendar/EventsManagement';
 
 const Index = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, loading, role } = useAuth();
-  
+
   useEffect(() => {
     if (!loading && !user) {
       navigate('/auth');
     }
   }, [user, loading, navigate]);
 
-  // Handle navigation state (e.g., from StudentProfile back button)
+  const [activeTab, setActiveTab] = useState('portal');
+  const hasInitialized = useRef(false);
+
+  // Handle navigation state and initial role-based tab setting
   useEffect(() => {
-    const state = location.state as { activeTab?: string } | null;
-    if (state?.activeTab) {
-      setActiveTab(state.activeTab);
-      // Clear the state to avoid re-triggering
-      navigate(location.pathname, { replace: true, state: {} });
+    if (!loading && user && role && !hasInitialized.current) {
+      const state = location.state as { activeTab?: string } | null;
+      if (state?.activeTab) {
+        setActiveTab(state.activeTab);
+        // Clear state to avoid re-triggering on unrelated renders, 
+        // but it won't affect our hasInitialized flag
+        navigate(location.pathname, { replace: true, state: {} });
+      } else {
+        setActiveTab('portal');
+      }
+      hasInitialized.current = true;
     }
-  }, [location.state, navigate, location.pathname]);
+  }, [user, loading, role, location.state, navigate, location.pathname]);
 
-  // Set default tab based on role
-  const getDefaultTab = (userRole: string | null) => {
-    return 'portal'; // All roles start at their portal home
-  };
-
-  const [activeTab, setActiveTab] = useState(() => getDefaultTab(role));
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
-  
+
   // Admin state
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
@@ -79,13 +83,6 @@ const Index = () => {
   const createStudent = useCreateStudent();
   const updateStudent = useUpdateStudent();
   const deleteStudent = useDeleteStudent();
-
-  // Update activeTab when role changes
-  useEffect(() => {
-    if (role) {
-      setActiveTab('portal');
-    }
-  }, [role]);
 
   if (loading) {
     return (
@@ -251,7 +248,7 @@ const Index = () => {
             <p className="text-muted-foreground mt-1">Enroll new students</p>
           </motion.div>
 
-          <EnrollmentForm />
+          <EnrollmentWizard />
         </div>
       )}
 
@@ -326,6 +323,11 @@ const Index = () => {
       {/* Reports Management - Admin/Registrar only */}
       {activeTab === 'reports' && hasAdminAccess && (
         <ReportsManagement />
+      )}
+
+      {/* Events Management - Admin/Registrar only */}
+      {activeTab === 'events' && hasAdminAccess && (
+        <EventsManagement />
       )}
 
       {/* Admin Panel - Admin only */}

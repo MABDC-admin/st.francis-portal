@@ -17,6 +17,7 @@ const queryClient = new QueryClient();
 
 // Theme definitions matching SchoolSettings
 const THEME_COLORS: Record<string, Record<string, string>> = {
+  pastel: { primary: '142 40% 60%', secondary: '40 30% 97%', accent: '10 60% 80%' },
   default: { primary: '221 83% 53%', secondary: '210 40% 96%', accent: '210 40% 90%' },
   emerald: { primary: '160 84% 39%', secondary: '152 76% 95%', accent: '152 76% 90%' },
   violet: { primary: '263 70% 50%', secondary: '260 60% 96%', accent: '260 60% 90%' },

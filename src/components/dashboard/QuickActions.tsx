@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
-import { UserPlus, Users, Calendar, FileSpreadsheet } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AdmitStudentIcon3D, AddTeacherIcon3D, ScheduleIcon3D, EnterGradeIcon3D } from '@/components/icons/ThreeDIcons';
 
 interface QuickActionsProps {
   onNavigate: (tab: string) => void;
@@ -9,7 +9,7 @@ interface QuickActionsProps {
 export const QuickActions = ({ onNavigate }: QuickActionsProps) => {
   const actions = [
     {
-      icon: UserPlus,
+      icon: AdmitStudentIcon3D,
       label: 'Admit Student',
       onClick: () => onNavigate('enrollment'),
       bgClass: 'bg-card hover:bg-muted',
@@ -17,7 +17,7 @@ export const QuickActions = ({ onNavigate }: QuickActionsProps) => {
       iconColor: 'text-info',
     },
     {
-      icon: Users,
+      icon: AddTeacherIcon3D,
       label: 'Add Teacher',
       onClick: () => onNavigate('teachers'),
       bgClass: 'bg-card hover:bg-muted',
@@ -25,7 +25,7 @@ export const QuickActions = ({ onNavigate }: QuickActionsProps) => {
       iconColor: 'text-success',
     },
     {
-      icon: Calendar,
+      icon: ScheduleIcon3D,
       label: 'Schedule',
       onClick: () => onNavigate('academic-years'),
       bgClass: 'bg-card hover:bg-muted',
@@ -33,7 +33,7 @@ export const QuickActions = ({ onNavigate }: QuickActionsProps) => {
       iconColor: 'text-warning',
     },
     {
-      icon: FileSpreadsheet,
+      icon: EnterGradeIcon3D,
       label: 'Enter Grades',
       onClick: () => onNavigate('grades'),
       bgClass: 'bg-card hover:bg-muted',
@@ -54,15 +54,31 @@ export const QuickActions = ({ onNavigate }: QuickActionsProps) => {
           key={action.label}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 + index * 0.05 }}
+          transition={{
+            delay: 0.2 + index * 0.05,
+            type: "spring",
+            stiffness: 260,
+            damping: 20
+          }}
+          whileHover={{
+            rotateX: -15,
+            y: -8,
+            scale: 1.02,
+            boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)"
+          }}
+          whileTap={{ scale: 0.98 }}
           onClick={action.onClick}
+          style={{
+            transformOrigin: "top",
+            perspective: "1000px"
+          }}
           className={cn(
-            "rounded-xl p-4 flex flex-col items-center gap-2 transition-all shadow-sm border border-border",
+            "rounded-xl p-4 flex flex-col items-center gap-2 transition-all border border-border",
             action.bgClass
           )}
         >
-          <div className={cn("p-3 rounded-full", action.iconBg)}>
-            <action.icon className={cn("h-6 w-6", action.iconColor)} />
+          <div className={cn("p-2 rounded-full h-12 w-12 flex items-center justify-center", action.iconBg)}>
+            <action.icon className="h-full w-full drop-shadow-sm" />
           </div>
           <span className="text-sm font-medium text-foreground">{action.label}</span>
         </motion.button>

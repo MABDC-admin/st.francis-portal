@@ -1,11 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
-import { 
-  Search, 
-  Edit, 
-  Trash2, 
-  Save, 
-  X, 
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Search,
+  Edit,
+  Trash2,
+  Save,
+  X,
   Plus,
   FileSpreadsheet,
   Loader2,
@@ -72,6 +73,7 @@ interface StudentGrade {
   remarks: string | null;
   student_name?: string;
   student_lrn?: string;
+  student_level?: string;
   subject_code?: string;
   subject_name?: string;
   academic_year?: string;
@@ -115,6 +117,7 @@ interface CSVGradeRow {
 }
 
 export const GradesManagement = () => {
+  const navigate = useNavigate();
   const { selectedSchool } = useSchool();
   const [grades, setGrades] = useState<StudentGrade[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -124,7 +127,7 @@ export const GradesManagement = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLevel, setSelectedLevel] = useState<string>('all');
   const [selectedYear, setSelectedYear] = useState<string>('all');
-  
+
   // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -132,13 +135,16 @@ export const GradesManagement = () => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedGrade, setSelectedGrade] = useState<StudentGrade | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  
+
   // CSV Import state
   const [csvData, setCsvData] = useState<CSVGradeRow[]>([]);
   const [importAcademicYear, setImportAcademicYear] = useState<string>('');
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
+  // Modal level filter state
+  const [modalLevelFilter, setModalLevelFilter] = useState<string>('all');
+
   // Form state
   const [formData, setFormData] = useState({
     student_id: '',
@@ -232,10 +238,10 @@ export const GradesManagement = () => {
     }
   };
 
-  const handleAdd = () => {
+  const handleAdd = (studentId?: string) => {
     const currentYear = academicYears.find(y => y.is_current);
     setFormData({
-      student_id: '',
+      student_id: studentId || '',
       subject_id: '',
       academic_year_id: currentYear?.id || '',
       q1_grade: '',
@@ -244,7 +250,11 @@ export const GradesManagement = () => {
       q4_grade: '',
       remarks: ''
     });
-    setBulkGrades({});
+    if (studentId) {
+      initializeBulkGrades(studentId, currentYear?.id);
+    } else {
+      setBulkGrades({});
+    }
     setIsAddModalOpen(true);
   };
 
@@ -252,10 +262,10 @@ export const GradesManagement = () => {
   const initializeBulkGrades = async (studentId: string, academicYearId?: string) => {
     const student = students.find(s => s.id === studentId);
     if (!student) return;
-    
+
     const studentSubjects = subjects.filter(sub => sub.grade_levels.includes(student.level));
     const initialGrades: Record<string, { q1: string; q2: string; q3: string; q4: string; remarks: string; hasExisting: boolean }> = {};
-    
+
     // Initialize all subjects with empty values
     studentSubjects.forEach(sub => {
       initialGrades[sub.id] = { q1: '', q2: '', q3: '', q4: '', remarks: '', hasExisting: false };
@@ -285,7 +295,7 @@ export const GradesManagement = () => {
         });
       }
     }
-    
+
     setBulkGrades(initialGrades);
   };
 
@@ -328,9 +338,9 @@ export const GradesManagement = () => {
     try {
       const { error } = await supabase
         .from('student_grades')
-        .upsert(gradesToSave, { 
+        .upsert(gradesToSave, {
           onConflict: 'student_id,subject_id,academic_year_id',
-          ignoreDuplicates: false 
+          ignoreDuplicates: false
         });
 
       if (error) throw error;
@@ -417,14 +427,14 @@ export const GradesManagement = () => {
 
   const handleConfirmDelete = async () => {
     if (!selectedGrade) return;
-    
+
     setIsSaving(true);
     try {
       const { error } = await supabase
         .from('student_grades')
         .delete()
         .eq('id', selectedGrade.id);
-      
+
       if (error) throw error;
       toast.success('Grade deleted successfully');
       setIsDeleteDialogOpen(false);
@@ -457,11 +467,11 @@ export const GradesManagement = () => {
         const parsed = results.data.map((row: any) => {
           const lrn = (row.lrn || row.LRN || '').toString().trim();
           const subjectCode = (row.subject_code || row.subject || row.SUBJECT_CODE || row.SUBJECT || '').toString().trim().toUpperCase();
-          
+
           // Find matching student and subject
           const student = students.find(s => s.lrn.toLowerCase() === lrn.toLowerCase());
           const subject = subjects.find(s => s.code.toUpperCase() === subjectCode);
-          
+
           let error = '';
           if (!student) error = 'Student not found';
           else if (!subject) error = 'Subject not found';
@@ -483,9 +493,9 @@ export const GradesManagement = () => {
             error
           };
         });
-        
+
         setCsvData(parsed);
-        
+
         // Set default academic year
         const currentYear = academicYears.find(y => y.is_current);
         if (currentYear) setImportAcademicYear(currentYear.id);
@@ -495,7 +505,7 @@ export const GradesManagement = () => {
         console.error('CSV parse error:', error);
       }
     });
-    
+
     // Reset file input
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -527,13 +537,13 @@ export const GradesManagement = () => {
 
       const { error } = await supabase
         .from('student_grades')
-        .upsert(gradesToInsert, { 
+        .upsert(gradesToInsert, {
           onConflict: 'student_id,subject_id,academic_year_id',
-          ignoreDuplicates: false 
+          ignoreDuplicates: false
         });
 
       if (error) throw error;
-      
+
       toast.success(`Successfully imported ${validRows.length} grades`);
       setIsImportModalOpen(false);
       setCsvData([]);
@@ -583,323 +593,47 @@ export const GradesManagement = () => {
     toast.success(`Exported ${dataToExport.length} grades to CSV`);
   };
 
-  const filteredGrades = grades.filter(grade => {
-    const matchesSearch = 
-      grade.student_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      grade.student_lrn?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      grade.subject_name?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesYear = selectedYear === 'all' || grade.academic_year_id === selectedYear;
-    
-    return matchesSearch && matchesYear;
-  });
+  const filteredGrades = useMemo(() => {
+    if (!searchQuery || searchQuery.trim().length === 0) return [];
 
-  const levels = [...new Set(students.map(s => s.level))].sort();
+    return grades.filter(grade => {
+      const searchTerm = searchQuery.toLowerCase();
+      const matchesSearch =
+        grade.student_name?.toLowerCase().includes(searchTerm) ||
+        grade.student_lrn?.toLowerCase().includes(searchTerm) ||
+        grade.subject_name?.toLowerCase().includes(searchTerm) ||
+        grade.subject_code?.toLowerCase().includes(searchTerm);
+
+      const matchesYear = selectedYear === 'all' || grade.academic_year_id === selectedYear;
+      const matchesLevel = selectedLevel === 'all' || grade.student_level === selectedLevel;
+
+      return matchesSearch && matchesYear && matchesLevel;
+    });
+  }, [grades, searchQuery, selectedYear, selectedLevel]);
+
+  const levelOptions = [...new Set(grades.map(g => g.student_level).filter(Boolean))].sort();
+
+  const filteredMatchingStudents = useMemo(() => {
+    if (!searchQuery || searchQuery.length < 2) return [];
+    const term = searchQuery.toLowerCase();
+    return students.filter(s =>
+      s.student_name.toLowerCase().includes(term) ||
+      s.lrn.toLowerCase().includes(term)
+    ).slice(0, 5); // Limit to top 5 results for clarity
+  }, [searchQuery, students]);
 
   const selectedStudentForAdd = students.find(s => s.id === formData.student_id);
-  const subjectsForStudent = selectedStudentForAdd 
+  const subjectsForStudent = selectedStudentForAdd
     ? subjects.filter(sub => sub.grade_levels.includes(selectedStudentForAdd.level))
     : [];
 
-  // Add Grade Modal - Expanded layout
-  const AddGradeModal = () => (
-    <Dialog open={isAddModalOpen} onOpenChange={() => setIsAddModalOpen(false)}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle>Add Grades</DialogTitle>
-          <DialogDescription>
-            Select a student to see all subjects for their grade level. Enter grades for each quarter.
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
-          {/* Student and Year Selection */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Student</Label>
-              <Select 
-                value={formData.student_id} 
-                onValueChange={(v) => {
-                  setFormData({ ...formData, student_id: v });
-                  initializeBulkGrades(v);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select student" />
-                </SelectTrigger>
-                <SelectContent>
-                  {students.map(s => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.student_name} ({s.lrn}) - {s.level}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+  // Available levels for the modal filter
+  const modalLevelOptions = [...new Set(students.map(s => s.level).filter(Boolean))].sort();
+  // Students filtered by the modal level filter
+  const filteredStudentsForModal = modalLevelFilter === 'all'
+    ? students
+    : students.filter(s => s.level === modalLevelFilter);
 
-            <div className="space-y-2">
-              <Label>Academic Year</Label>
-              <Select 
-                value={formData.academic_year_id} 
-                onValueChange={(v) => {
-                  setFormData({ ...formData, academic_year_id: v });
-                  if (formData.student_id) {
-                    initializeBulkGrades(formData.student_id, v);
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select academic year" />
-                </SelectTrigger>
-                <SelectContent>
-                  {academicYears.map(y => (
-                    <SelectItem key={y.id} value={y.id}>
-                      {y.name} {y.is_current && '(Current)'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Student Info Display */}
-          {selectedStudentForAdd && (
-            <div className="bg-muted/50 rounded-lg p-3 flex items-center gap-4">
-              <div className="flex-1">
-                <p className="font-medium">{selectedStudentForAdd.student_name}</p>
-                <p className="text-sm text-muted-foreground">LRN: {selectedStudentForAdd.lrn} • Level: {selectedStudentForAdd.level}</p>
-              </div>
-              <div className="flex gap-2">
-                <Badge variant="secondary">{subjectsForStudent.length} subjects</Badge>
-                {Object.values(bulkGrades).filter(g => g.hasExisting).length > 0 && (
-                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                    {Object.values(bulkGrades).filter(g => g.hasExisting).length} with existing grades
-                  </Badge>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Subjects Table */}
-          {formData.student_id && subjectsForStudent.length > 0 ? (
-            <div className="flex-1 overflow-auto border rounded-lg">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="sticky top-0 bg-background min-w-[150px]">Subject</TableHead>
-                    <TableHead className="sticky top-0 bg-background text-center w-[80px]">Q1</TableHead>
-                    <TableHead className="sticky top-0 bg-background text-center w-[80px]">Q2</TableHead>
-                    <TableHead className="sticky top-0 bg-background text-center w-[80px]">Q3</TableHead>
-                    <TableHead className="sticky top-0 bg-background text-center w-[80px]">Q4</TableHead>
-                    <TableHead className="sticky top-0 bg-background min-w-[120px]">Remarks</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {subjectsForStudent.map(subject => (
-                    <TableRow key={subject.id} className={bulkGrades[subject.id]?.hasExisting ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div>
-                            <Badge variant="outline" className="mb-1">{subject.code}</Badge>
-                            <p className="text-sm text-muted-foreground">{subject.name}</p>
-                          </div>
-                          {bulkGrades[subject.id]?.hasExisting && (
-                            <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">Existing</Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Input 
-                          type="number" 
-                          min="0" 
-                          max="100" 
-                          step="0.01"
-                          value={bulkGrades[subject.id]?.q1 || ''}
-                          onChange={(e) => updateBulkGrade(subject.id, 'q1', e.target.value)}
-                          placeholder="Q1"
-                          className="w-[70px] text-center"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input 
-                          type="number" 
-                          min="0" 
-                          max="100" 
-                          step="0.01"
-                          value={bulkGrades[subject.id]?.q2 || ''}
-                          onChange={(e) => updateBulkGrade(subject.id, 'q2', e.target.value)}
-                          placeholder="Q2"
-                          className="w-[70px] text-center"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input 
-                          type="number" 
-                          min="0" 
-                          max="100" 
-                          step="0.01"
-                          value={bulkGrades[subject.id]?.q3 || ''}
-                          onChange={(e) => updateBulkGrade(subject.id, 'q3', e.target.value)}
-                          placeholder="Q3"
-                          className="w-[70px] text-center"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input 
-                          type="number" 
-                          min="0" 
-                          max="100" 
-                          step="0.01"
-                          value={bulkGrades[subject.id]?.q4 || ''}
-                          onChange={(e) => updateBulkGrade(subject.id, 'q4', e.target.value)}
-                          placeholder="Q4"
-                          className="w-[70px] text-center"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input 
-                          value={bulkGrades[subject.id]?.remarks || ''}
-                          onChange={(e) => updateBulkGrade(subject.id, 'remarks', e.target.value)}
-                          placeholder="Remarks"
-                          className="min-w-[100px]"
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : formData.student_id ? (
-            <div className="flex-1 flex items-center justify-center text-muted-foreground">
-              No subjects available for this student's grade level.
-            </div>
-          ) : (
-            <div className="flex-1 flex items-center justify-center text-muted-foreground">
-              Select a student to view available subjects and enter grades.
-            </div>
-          )}
-        </div>
-
-        <DialogFooter className="flex-shrink-0 border-t pt-4">
-          <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
-          <Button onClick={handleBulkSave} disabled={isSaving || !formData.student_id}>
-            {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Save Grades
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-
-  // Edit Grade Modal - Single subject form
-  const EditGradeModal = () => (
-    <Dialog open={isEditModalOpen} onOpenChange={() => setIsEditModalOpen(false)}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Edit Grade</DialogTitle>
-          <DialogDescription>
-            Update grades for each quarter. Final grade is calculated automatically.
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="space-y-4">
-          <div className="bg-muted/50 rounded-lg p-3">
-            <p className="font-medium">{selectedGrade?.student_name}</p>
-            <p className="text-sm text-muted-foreground">
-              {selectedGrade?.subject_code} - {selectedGrade?.subject_name}
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Academic Year</Label>
-            <Select 
-              value={formData.academic_year_id} 
-              onValueChange={(v) => setFormData({ ...formData, academic_year_id: v })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select academic year" />
-              </SelectTrigger>
-              <SelectContent>
-                {academicYears.map(y => (
-                  <SelectItem key={y.id} value={y.id}>
-                    {y.name} {y.is_current && '(Current)'}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Q1 Grade</Label>
-              <Input 
-                type="number" 
-                min="0" 
-                max="100" 
-                step="0.01"
-                value={formData.q1_grade}
-                onChange={(e) => setFormData({ ...formData, q1_grade: e.target.value })}
-                placeholder="0-100"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Q2 Grade</Label>
-              <Input 
-                type="number" 
-                min="0" 
-                max="100" 
-                step="0.01"
-                value={formData.q2_grade}
-                onChange={(e) => setFormData({ ...formData, q2_grade: e.target.value })}
-                placeholder="0-100"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Q3 Grade</Label>
-              <Input 
-                type="number" 
-                min="0" 
-                max="100" 
-                step="0.01"
-                value={formData.q3_grade}
-                onChange={(e) => setFormData({ ...formData, q3_grade: e.target.value })}
-                placeholder="0-100"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Q4 Grade</Label>
-              <Input 
-                type="number" 
-                min="0" 
-                max="100" 
-                step="0.01"
-                value={formData.q4_grade}
-                onChange={(e) => setFormData({ ...formData, q4_grade: e.target.value })}
-                placeholder="0-100"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Remarks</Label>
-            <Input 
-              value={formData.remarks}
-              onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-              placeholder="Optional remarks"
-            />
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>Cancel</Button>
-          <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Save
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
 
   return (
     <div className="space-y-6">
@@ -913,7 +647,7 @@ export const GradesManagement = () => {
           <p className="text-muted-foreground mt-1">Manage student grades by subject and quarter</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button onClick={handleAdd} className="w-full sm:w-auto">
+          <Button onClick={() => handleAdd()} className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />
             Add Grade
           </Button>
@@ -941,24 +675,86 @@ export const GradesManagement = () => {
                 className="pl-10"
               />
             </div>
-            <Select value={selectedYear} onValueChange={setSelectedYear}>
-              <SelectTrigger className="w-full sm:w-[200px]">
-                <SelectValue placeholder="Academic Year" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Years</SelectItem>
-                {academicYears.map(y => (
-                  <SelectItem key={y.id} value={y.id}>
-                    {y.name} {y.is_current && '(Current)'}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Select value={selectedLevel} onValueChange={setSelectedLevel}>
+                <SelectTrigger className="w-full sm:w-[160px]">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Grade Level" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Levels</SelectItem>
+                  {levelOptions.map(level => (
+                    <SelectItem key={level} value={level}>{level}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Academic Year" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Years</SelectItem>
+                  {academicYears.map(y => (
+                    <SelectItem key={y.id} value={y.id}>
+                      {y.name} {y.is_current && '(Current)'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Grades Table */}
+      {/* Quick Student Results */}
+      <AnimatePresence>
+        {filteredMatchingStudents.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <Card className="border-primary/20 bg-primary/5 shadow-sm mb-6">
+              <CardHeader className="py-3 px-4">
+                <CardTitle className="text-sm font-bold flex items-center gap-2 text-primary">
+                  <Search className="h-4 w-4" />
+                  Students Found ({filteredMatchingStudents.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {filteredMatchingStudents.map(student => (
+                    <div
+                      key={student.id}
+                      className="bg-white dark:bg-slate-900 border rounded-lg p-3 flex items-center justify-between group hover:border-primary transition-all shadow-xs"
+                    >
+                      <div className="overflow-hidden mr-2">
+                        <p
+                          className="font-bold text-sm truncate hover:text-primary cursor-pointer transition-colors"
+                          onClick={() => navigate(`/student/${student.id}`)}
+                        >
+                          {student.student_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground tabular-nums">LRN: {student.lrn} • {student.level}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2 text-xs font-bold shrink-0 hover:bg-primary hover:text-white"
+                        onClick={() => handleAdd(student.id)}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Give Grades
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -972,9 +768,15 @@ export const GradesManagement = () => {
             <div className="flex items-center justify-center py-10">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
+          ) : !searchQuery || searchQuery.trim().length === 0 ? (
+            <div className="text-center py-20 bg-muted/20 rounded-xl border border-dashed flex flex-col items-center justify-center">
+              <Search className="h-10 w-10 text-muted-foreground mb-4 opacity-20" />
+              <p className="text-muted-foreground font-medium">Search for a student name or LRN to view grades</p>
+              <p className="text-xs text-muted-foreground mt-1">Found students will appear above</p>
+            </div>
           ) : filteredGrades.length === 0 ? (
             <div className="text-center py-10 text-muted-foreground">
-              No grades found. Click "Add Grade" to create one.
+              No matching grades found for "{searchQuery}".
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -996,8 +798,11 @@ export const GradesManagement = () => {
                   {filteredGrades.map((grade) => (
                     <TableRow key={grade.id}>
                       <TableCell>
-                        <div>
-                          <p className="font-medium">{grade.student_name}</p>
+                        <div
+                          className="cursor-pointer group"
+                          onClick={() => navigate(`/student/${grade.student_id}`)}
+                        >
+                          <p className="font-medium group-hover:text-primary transition-colors">{grade.student_name}</p>
                           <p className="text-xs text-muted-foreground">{grade.student_lrn}</p>
                         </div>
                       </TableCell>
@@ -1039,9 +844,335 @@ export const GradesManagement = () => {
         </CardContent>
       </Card>
 
-      {/* Modals */}
-      <AddGradeModal />
-      <EditGradeModal />
+      {/* Add Grade Modal - Expanded layout */}
+      <Dialog open={isAddModalOpen} onOpenChange={() => setIsAddModalOpen(false)}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Add Grades</DialogTitle>
+            <DialogDescription>
+              Select a student to see all subjects for their grade level. Enter grades for each quarter.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
+            {/* Level, Student, and Year Selection */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Grade Level</Label>
+                <Select
+                  value={modalLevelFilter}
+                  onValueChange={(v) => {
+                    setModalLevelFilter(v);
+                    // Clear student selection when level changes
+                    setFormData({ ...formData, student_id: '' });
+                    setBulkGrades({});
+                  }}
+                >
+                  <SelectTrigger>
+                    <Filter className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Filter by level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Levels</SelectItem>
+                    {modalLevelOptions.map(level => (
+                      <SelectItem key={level} value={level}>{level}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Student</Label>
+                <Select
+                  value={formData.student_id}
+                  onValueChange={(v) => {
+                    setFormData({ ...formData, student_id: v });
+                    initializeBulkGrades(v);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select student" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredStudentsForModal.map(s => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.student_name} ({s.lrn}) - {s.level}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Academic Year</Label>
+                <Select
+                  value={formData.academic_year_id}
+                  onValueChange={(v) => {
+                    setFormData({ ...formData, academic_year_id: v });
+                    if (formData.student_id) {
+                      initializeBulkGrades(formData.student_id, v);
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select academic year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {academicYears.map(y => (
+                      <SelectItem key={y.id} value={y.id}>
+                        {y.name} {y.is_current && '(Current)'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Student Info Display */}
+            {selectedStudentForAdd && (
+              <div className="bg-muted/50 rounded-lg p-3 flex items-center gap-4">
+                <div className="flex-1">
+                  <p
+                    className="font-medium hover:text-primary cursor-pointer transition-colors"
+                    onClick={() => navigate(`/student/${selectedStudentForAdd.id}`)}
+                  >
+                    {selectedStudentForAdd.student_name}
+                  </p>
+                  <p className="text-sm text-muted-foreground">LRN: {selectedStudentForAdd.lrn} • Level: {selectedStudentForAdd.level}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Badge variant="secondary">{subjectsForStudent.length} subjects</Badge>
+                  {Object.values(bulkGrades).filter(g => g.hasExisting).length > 0 && (
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                      {Object.values(bulkGrades).filter(g => g.hasExisting).length} with existing grades
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Subjects Table */}
+            {formData.student_id && subjectsForStudent.length > 0 ? (
+              <div className="flex-1 overflow-auto border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="sticky top-0 bg-background min-w-[150px]">Subject</TableHead>
+                      <TableHead className="sticky top-0 bg-background text-center w-[80px]">Q1</TableHead>
+                      <TableHead className="sticky top-0 bg-background text-center w-[80px]">Q2</TableHead>
+                      <TableHead className="sticky top-0 bg-background text-center w-[80px]">Q3</TableHead>
+                      <TableHead className="sticky top-0 bg-background text-center w-[80px]">Q4</TableHead>
+                      <TableHead className="sticky top-0 bg-background min-w-[120px]">Remarks</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {subjectsForStudent.map(subject => (
+                      <TableRow key={subject.id} className={bulkGrades[subject.id]?.hasExisting ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div>
+                              <Badge variant="outline" className="mb-1">{subject.code}</Badge>
+                              <p className="text-sm text-muted-foreground">{subject.name}</p>
+                            </div>
+                            {bulkGrades[subject.id]?.hasExisting && (
+                              <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">Existing</Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            value={bulkGrades[subject.id]?.q1 || ''}
+                            onChange={(e) => updateBulkGrade(subject.id, 'q1', e.target.value)}
+                            placeholder="Q1"
+                            className="w-[70px] text-center"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            value={bulkGrades[subject.id]?.q2 || ''}
+                            onChange={(e) => updateBulkGrade(subject.id, 'q2', e.target.value)}
+                            placeholder="Q2"
+                            className="w-[70px] text-center"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            value={bulkGrades[subject.id]?.q3 || ''}
+                            onChange={(e) => updateBulkGrade(subject.id, 'q3', e.target.value)}
+                            placeholder="Q3"
+                            className="w-[70px] text-center"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            value={bulkGrades[subject.id]?.q4 || ''}
+                            onChange={(e) => updateBulkGrade(subject.id, 'q4', e.target.value)}
+                            placeholder="Q4"
+                            className="w-[70px] text-center"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            value={bulkGrades[subject.id]?.remarks || ''}
+                            onChange={(e) => updateBulkGrade(subject.id, 'remarks', e.target.value)}
+                            placeholder="Remarks"
+                            className="min-w-[100px]"
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : formData.student_id ? (
+              <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                No subjects available for this student's grade level.
+              </div>
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                Select a student to view available subjects and enter grades.
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="flex-shrink-0 border-t pt-4">
+            <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleBulkSave} disabled={isSaving || !formData.student_id}>
+              {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Save Grades
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Grade Modal - Single subject form */}
+      <Dialog open={isEditModalOpen} onOpenChange={() => setIsEditModalOpen(false)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Grade</DialogTitle>
+            <DialogDescription>
+              Update grades for each quarter. Final grade is calculated automatically.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="bg-muted/50 rounded-lg p-3">
+              <p
+                className="font-medium hover:text-primary cursor-pointer transition-colors"
+                onClick={() => navigate(`/student/${selectedGrade?.student_id}`)}
+              >
+                {selectedGrade?.student_name}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {selectedGrade?.subject_code} - {selectedGrade?.subject_name}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Academic Year</Label>
+              <Select
+                value={formData.academic_year_id}
+                onValueChange={(v) => setFormData({ ...formData, academic_year_id: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select academic year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {academicYears.map(y => (
+                    <SelectItem key={y.id} value={y.id}>
+                      {y.name} {y.is_current && '(Current)'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Q1 Grade</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={formData.q1_grade}
+                  onChange={(e) => setFormData({ ...formData, q1_grade: e.target.value })}
+                  placeholder="0-100"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Q2 Grade</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={formData.q2_grade}
+                  onChange={(e) => setFormData({ ...formData, q2_grade: e.target.value })}
+                  placeholder="0-100"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Q3 Grade</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={formData.q3_grade}
+                  onChange={(e) => setFormData({ ...formData, q3_grade: e.target.value })}
+                  placeholder="0-100"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Q4 Grade</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={formData.q4_grade}
+                  onChange={(e) => setFormData({ ...formData, q4_grade: e.target.value })}
+                  placeholder="0-100"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Remarks</Label>
+              <Input
+                value={formData.remarks}
+                onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+                placeholder="Optional remarks"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
@@ -1070,7 +1201,7 @@ export const GradesManagement = () => {
               Upload a CSV file with columns: lrn, subject_code, q1, q2, q3, q4, remarks
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
             {csvData.length === 0 ? (
               <div className="border-2 border-dashed rounded-lg p-8 text-center">
@@ -1120,7 +1251,7 @@ export const GradesManagement = () => {
                     <span>{csvData.length} total</span>
                   </div>
                 </div>
-                
+
                 <div className="flex-1 overflow-auto border rounded-lg">
                   <Table>
                     <TableHeader>
@@ -1174,8 +1305,8 @@ export const GradesManagement = () => {
                   <X className="h-4 w-4 mr-2" />
                   Clear
                 </Button>
-                <Button 
-                  onClick={handleImportGrades} 
+                <Button
+                  onClick={handleImportGrades}
                   disabled={isImporting || csvData.filter(r => r.isValid).length === 0}
                 >
                   {isImporting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}

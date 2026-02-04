@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Loader2, Calendar, Edit, Trash2, Check } from 'lucide-react';
+import { Plus, Loader2, Calendar, Edit, Trash2, Check, CalendarCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -28,11 +28,16 @@ const initialFormState = {
   is_current: false,
 };
 
+import { PromoteStudentsWorkflow } from './PromoteStudentsWorkflow';
+
+// ... existing imports
+
 export const AcademicYearManagement = () => {
   const [years, setYears] = useState<AcademicYear[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPromoteModalOpen, setIsPromoteModalOpen] = useState(false);
   const [editingYear, setEditingYear] = useState<AcademicYear | null>(null);
   const [formData, setFormData] = useState(initialFormState);
 
@@ -42,7 +47,7 @@ export const AcademicYearManagement = () => {
       .from('academic_years')
       .select('*')
       .order('start_date', { ascending: false });
-    
+
     if (!error && data) {
       setYears(data as AcademicYear[]);
     }
@@ -175,13 +180,30 @@ export const AcademicYearManagement = () => {
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Academic Years</h1>
           <p className="text-muted-foreground mt-1">Manage school years and terms</p>
         </div>
-        <Button onClick={() => handleOpenModal()}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Academic Year
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => handleOpenModal()} variant="outline">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Year
+          </Button>
+          <Button onClick={async () => {
+            const { error } = await supabase.functions.invoke('sync-holidays', {
+              body: { year: 2025 }
+            });
+            if (error) toast.error('Failed to sync holidays');
+            else toast.success('Holidays synced successfully');
+          }} variant="outline" className="text-amber-600 border-amber-600 hover:bg-amber-50">
+            <CalendarCheck className="h-4 w-4 mr-2" />
+            Sync Holidays (2025)
+          </Button>
+          <Button onClick={() => setIsPromoteModalOpen(true)} className="bg-amber-600 hover:bg-amber-700 text-white">
+            <Calendar className="h-4 w-4 mr-2" />
+            Start New School Year
+          </Button>
+        </div>
       </motion.div>
 
       <Card>
+        {/* ... existing card content for table */}
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
@@ -305,6 +327,19 @@ export const AcademicYearManagement = () => {
               {editingYear ? 'Update' : 'Add'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Promotion Workflow Modal */}
+      <Dialog open={isPromoteModalOpen} onOpenChange={setIsPromoteModalOpen}>
+        <DialogContent className="max-w-4xl p-0 border-0 bg-transparent shadow-none">
+          <PromoteStudentsWorkflow
+            onClose={() => setIsPromoteModalOpen(false)}
+            onSuccess={() => {
+              fetchYears();
+              // Optionally trigger other refreshes via context if needed
+            }}
+          />
         </DialogContent>
       </Dialog>
     </div>

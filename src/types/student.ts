@@ -17,6 +17,13 @@ export interface Student {
   photo_url: string | null;
   created_at: string;
   updated_at: string;
+  has_grades?: boolean;
+  grade_quarters?: {
+    q1: boolean;
+    q2: boolean;
+    q3: boolean;
+    q4: boolean;
+  };
 }
 
 export interface StudentDocument {
