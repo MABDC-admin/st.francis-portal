@@ -492,6 +492,9 @@ export const StudentTable = ({
             <table className="w-full">
               <thead className="bg-secondary/50">
                 <tr>
+                  <th className="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    LRN
+                  </th>
                   {[
                     { field: 'student_name' as SortField, label: 'Name' },
                     { field: 'level' as SortField, label: 'Level' },
@@ -510,12 +513,6 @@ export const StudentTable = ({
                     </th>
                   ))}
                   <th className="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    LRN
-                  </th>
-                  <th className="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Grade Quarter
-                  </th>
-                  <th className="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     Birthdate
                   </th>
                   <th className="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -533,11 +530,10 @@ export const StudentTable = ({
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i} className="animate-pulse">
+                      <td className="px-4 lg:px-6 py-4"><div className="h-4 bg-muted rounded w-24" /></td>
                       <td className="px-4 lg:px-6 py-4"><div className="h-4 bg-muted rounded w-32" /></td>
                       <td className="px-4 lg:px-6 py-4"><div className="h-4 bg-muted rounded w-20" /></td>
                       <td className="px-4 lg:px-6 py-4"><div className="h-4 bg-muted rounded w-10" /></td>
-                      <td className="px-4 lg:px-6 py-4"><div className="h-4 bg-muted rounded w-16" /></td>
-                      <td className="px-4 lg:px-6 py-4"><div className="h-4 bg-muted rounded w-24" /></td>
                       <td className="px-4 lg:px-6 py-4"><div className="h-4 bg-muted rounded w-16" /></td>
                       <td className="px-4 lg:px-6 py-4"><div className="h-4 bg-muted rounded w-24" /></td>
                       <td className="px-4 lg:px-6 py-4"><div className="h-4 bg-muted rounded w-28" /></td>
@@ -547,7 +543,7 @@ export const StudentTable = ({
                   ))
                 ) : displayedStudents.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-4 lg:px-6 py-12 text-center text-muted-foreground">
+                    <td colSpan={9} className="px-4 lg:px-6 py-12 text-center text-muted-foreground">
                       No students found. {hasActiveFilters && 'Try adjusting your filters.'}
                     </td>
                   </tr>
@@ -561,6 +557,9 @@ export const StudentTable = ({
                       className="hover:bg-secondary/30 transition-colors cursor-pointer"
                       onClick={() => onView(student)}
                     >
+                      <td className="px-4 lg:px-6 py-4 font-mono text-sm text-muted-foreground">
+                        {student.lrn}
+                      </td>
                       <td className="px-4 lg:px-6 py-4">
                         <div className="flex items-center gap-3">
                           {student.photo_url ? (
@@ -589,24 +588,6 @@ export const StudentTable = ({
                       </td>
                       <td className="px-4 lg:px-6 py-4 text-muted-foreground">
                         {student.gender || '-'}
-                      </td>
-                      <td className="px-4 lg:px-6 py-4 font-mono text-sm text-muted-foreground">
-                        {student.lrn}
-                      </td>
-                      <td className="px-4 lg:px-6 py-4">
-                        {student.grade_quarters ? (
-                          <div className="flex gap-1">
-                            {Object.entries(student.grade_quarters)
-                              .filter(([_, value]) => value)
-                              .map(([key]) => (
-                                <span key={key} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-stat-cyan/10 text-stat-cyan">
-                                  {key.toUpperCase()}
-                                </span>
-                              ))}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
-                        )}
                       </td>
                       <td className="px-4 lg:px-6 py-4 text-muted-foreground text-sm">
                         {student.birth_date || '-'}
