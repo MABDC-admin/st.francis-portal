@@ -101,6 +101,50 @@ export type Database = {
         }
         Relationships: []
       }
+      school_events: {
+        Row: {
+          academic_year_id: string | null
+          created_at: string
+          description: string | null
+          event_date: string
+          event_type: string
+          id: string
+          school: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          academic_year_id?: string | null
+          created_at?: string
+          description?: string | null
+          event_date: string
+          event_type?: string
+          id?: string
+          school?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          academic_year_id?: string | null
+          created_at?: string
+          description?: string | null
+          event_date?: string
+          event_type?: string
+          id?: string
+          school?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_events_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_settings: {
         Row: {
           acronym: string | null
