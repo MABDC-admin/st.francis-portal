@@ -1,128 +1,84 @@
 import { motion } from 'framer-motion';
-import { Users, Settings, Shield, Database, FileText, BookOpen, Calendar, GraduationCap, Library } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { GlobalStudentSearch } from '@/components/dashboard/GlobalStudentSearch';
+import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
+import { DashboardStatsRow } from '@/components/dashboard/DashboardStatsRow';
+import { QuickActions } from '@/components/dashboard/QuickActions';
+import { UpcomingEvents } from '@/components/dashboard/UpcomingEvents';
+import { RecentActivities } from '@/components/dashboard/RecentActivities';
+import { StudentOverview } from '@/components/dashboard/StudentOverview';
+import { TeacherSchedule } from '@/components/dashboard/TeacherSchedule';
+import { GenderChart } from '@/components/dashboard/GenderChart';
+import { DashboardCalendar } from '@/components/dashboard/DashboardCalendar';
+import { BottomActions } from '@/components/dashboard/BottomActions';
+import { useStudents } from '@/hooks/useStudents';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 interface AdminPortalProps {
   onNavigate: (tab: string) => void;
 }
 
 export const AdminPortal = ({ onNavigate }: AdminPortalProps) => {
-  const adminModules = [
-    {
-      id: 'users',
-      title: 'User Management',
-      description: 'Manage users, roles, and permissions',
-      icon: Users,
-      color: 'bg-blue-500',
-      action: () => onNavigate('admin'),
+  const { data: students = [] } = useStudents();
+  
+  // Fetch teachers count
+  const { data: teachersData } = useQuery({
+    queryKey: ['teachers-count'],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('teachers')
+        .select('*', { count: 'exact', head: true });
+      return count || 0;
     },
-    {
-      id: 'students',
-      title: 'Student Records',
-      description: 'View and manage all student data',
-      icon: Database,
-      color: 'bg-purple-500',
-      action: () => onNavigate('students'),
-    },
-    {
-      id: 'teachers',
-      title: 'Teachers',
-      description: 'Manage teacher records and accounts',
-      icon: BookOpen,
-      color: 'bg-green-500',
-      action: () => onNavigate('teachers'),
-    },
-    {
-      id: 'subjects',
-      title: 'Course Catalog',
-      description: 'Manage subjects and curriculum',
-      icon: Library,
-      color: 'bg-indigo-500',
-      action: () => onNavigate('subjects'),
-    },
-    {
-      id: 'academic-years',
-      title: 'Academic Years',
-      description: 'Configure school years and terms',
-      icon: Calendar,
-      color: 'bg-amber-500',
-      action: () => onNavigate('academic-years'),
-    },
-    {
-      id: 'subject-enrollment',
-      title: 'Subject Enrollment',
-      description: 'Auto-enroll students to subjects',
-      icon: GraduationCap,
-      color: 'bg-teal-500',
-      action: () => onNavigate('subject-enrollment'),
-    },
-    {
-      id: 'enrollment',
-      title: 'New Student',
-      description: 'Process new student enrollments',
-      icon: FileText,
-      color: 'bg-cyan-500',
-      action: () => onNavigate('enrollment'),
-    },
-    {
-      id: 'import',
-      title: 'Data Import',
-      description: 'Bulk import students from CSV',
-      icon: Database,
-      color: 'bg-orange-500',
-      action: () => onNavigate('import'),
-    },
-    {
-      id: 'security',
-      title: 'Security & Roles',
-      description: 'Manage access control',
-      icon: Shield,
-      color: 'bg-red-500',
-      action: () => onNavigate('admin'),
-    },
-  ];
+  });
+
+  // Calculate stats
+  const totalStudents = students.length;
+  const totalTeachers = teachersData || 38;
+  const levels = [...new Set(students.map(s => s.level))].length;
+  const attendanceRate = 86; // Mock attendance rate
 
   return (
-    <div className="space-y-6">
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"
-      >
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Admin Portal</h1>
-          <p className="text-muted-foreground mt-1">Full system access and management</p>
-        </div>
-        <GlobalStudentSearch />
-      </motion.div>
+    <div className="space-y-0">
+      {/* Header */}
+      <DashboardHeader />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {adminModules.map((module, index) => (
-          <motion.div
-            key={module.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-          >
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full" onClick={module.action}>
-              <CardHeader className="pb-3">
-                <div className={`w-12 h-12 ${module.color} rounded-lg flex items-center justify-center mb-3`}>
-                  <module.icon className="h-6 w-6 text-white" />
-                </div>
-                <CardTitle className="text-lg">{module.title}</CardTitle>
-                <CardDescription>{module.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button variant="outline" className="w-full" onClick={module.action}>
-                  Access Module
-                </Button>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
+      {/* Stats Row */}
+      <DashboardStatsRow
+        totalStudents={totalStudents}
+        totalTeachers={totalTeachers}
+        totalClasses={levels}
+        attendanceRate={attendanceRate}
+      />
+
+      {/* Quick Actions */}
+      <QuickActions onNavigate={onNavigate} />
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Left Column */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Events and Activities Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <UpcomingEvents />
+            <RecentActivities />
+          </div>
+
+          {/* Teacher Schedule and Gender Chart Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <TeacherSchedule />
+            <GenderChart students={students} />
+          </div>
+        </div>
+
+        {/* Right Column */}
+        <div className="space-y-4">
+          <StudentOverview students={students} />
+          <DashboardCalendar />
+        </div>
       </div>
+
+      {/* Bottom Actions */}
+      <BottomActions onNavigate={onNavigate} />
     </div>
   );
 };

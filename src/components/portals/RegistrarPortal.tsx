@@ -1,8 +1,17 @@
 import { motion } from 'framer-motion';
-import { Users, FileText, Upload, FolderOpen, UserPlus, Library, GraduationCap, BookOpen } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { GlobalStudentSearch } from '@/components/dashboard/GlobalStudentSearch';
+import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
+import { DashboardStatsRow } from '@/components/dashboard/DashboardStatsRow';
+import { QuickActions } from '@/components/dashboard/QuickActions';
+import { UpcomingEvents } from '@/components/dashboard/UpcomingEvents';
+import { RecentActivities } from '@/components/dashboard/RecentActivities';
+import { StudentOverview } from '@/components/dashboard/StudentOverview';
+import { TeacherSchedule } from '@/components/dashboard/TeacherSchedule';
+import { GenderChart } from '@/components/dashboard/GenderChart';
+import { DashboardCalendar } from '@/components/dashboard/DashboardCalendar';
+import { BottomActions } from '@/components/dashboard/BottomActions';
+import { useStudents } from '@/hooks/useStudents';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 interface RegistrarPortalProps {
   onNavigate: (tab: string) => void;
@@ -13,112 +22,67 @@ interface RegistrarPortalProps {
 }
 
 export const RegistrarPortal = ({ onNavigate, stats }: RegistrarPortalProps) => {
-  const registrarModules = [
-    {
-      id: 'enrollment',
-      title: 'New Enrollment',
-      description: 'Process new student enrollments',
-      icon: UserPlus,
-      color: 'bg-green-500',
-      action: () => onNavigate('enrollment'),
+  const { data: students = [] } = useStudents();
+  
+  // Fetch teachers count
+  const { data: teachersData } = useQuery({
+    queryKey: ['teachers-count'],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('teachers')
+        .select('*', { count: 'exact', head: true });
+      return count || 0;
     },
-    {
-      id: 'students',
-      title: 'Student Records',
-      description: 'View and manage student profiles',
-      icon: Users,
-      color: 'bg-blue-500',
-      action: () => onNavigate('students'),
-    },
-    {
-      id: 'teachers',
-      title: 'Teachers',
-      description: 'Manage teacher records',
-      icon: BookOpen,
-      color: 'bg-teal-500',
-      action: () => onNavigate('teachers'),
-    },
-    {
-      id: 'subjects',
-      title: 'Subjects',
-      description: 'View course catalog',
-      icon: Library,
-      color: 'bg-indigo-500',
-      action: () => onNavigate('subjects'),
-    },
-    {
-      id: 'subject-enrollment',
-      title: 'Subject Enrollment',
-      description: 'Enroll students to subjects',
-      icon: GraduationCap,
-      color: 'bg-purple-500',
-      action: () => onNavigate('subject-enrollment'),
-    },
-    {
-      id: 'import',
-      title: 'Bulk Import',
-      description: 'Import students from CSV files',
-      icon: Upload,
-      color: 'bg-orange-500',
-      action: () => onNavigate('import'),
-    },
-  ];
+  });
+
+  // Calculate stats
+  const totalStudents = students.length;
+  const totalTeachers = teachersData || 38;
+  const levels = [...new Set(students.map(s => s.level))].length;
+  const attendanceRate = 86;
 
   return (
-    <div className="space-y-6">
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"
-      >
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Registrar Portal</h1>
-          <p className="text-muted-foreground mt-1">Enrollment and student record management</p>
+    <div className="space-y-0">
+      {/* Header */}
+      <DashboardHeader />
+
+      {/* Stats Row */}
+      <DashboardStatsRow
+        totalStudents={totalStudents}
+        totalTeachers={totalTeachers}
+        totalClasses={levels}
+        attendanceRate={attendanceRate}
+      />
+
+      {/* Quick Actions */}
+      <QuickActions onNavigate={onNavigate} />
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Left Column */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Events and Activities Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <UpcomingEvents />
+            <RecentActivities />
+          </div>
+
+          {/* Teacher Schedule and Gender Chart Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <TeacherSchedule />
+            <GenderChart students={students} />
+          </div>
         </div>
-        <GlobalStudentSearch />
-      </motion.div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total Students</CardDescription>
-            <CardTitle className="text-3xl">{stats.totalStudents}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Pending Requirements</CardDescription>
-            <CardTitle className="text-3xl">{stats.pendingEnrollments}</CardTitle>
-          </CardHeader>
-        </Card>
+        {/* Right Column */}
+        <div className="space-y-4">
+          <StudentOverview students={students} />
+          <DashboardCalendar />
+        </div>
       </div>
 
-      {/* Modules */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {registrarModules.map((module, index) => (
-          <motion.div
-            key={module.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-          >
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={module.action}>
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 ${module.color} rounded-lg flex items-center justify-center`}>
-                    <module.icon className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base">{module.title}</CardTitle>
-                    <CardDescription className="text-sm">{module.description}</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
+      {/* Bottom Actions */}
+      <BottomActions onNavigate={onNavigate} />
     </div>
   );
 };
