@@ -1,7 +1,6 @@
-import { Bell, User, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   DropdownMenu,
@@ -13,16 +12,17 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useColorTheme } from '@/hooks/useColorTheme';
 import { ColorThemeSelector } from '@/components/ColorThemeSelector';
+import { useSchool } from '@/contexts/SchoolContext';
 
 export const DashboardHeader = () => {
   const { user, signOut } = useAuth();
   const { currentTheme, selectTheme } = useColorTheme();
+  const { schoolTheme } = useSchool();
 
   return (
     <div className="flex items-center justify-between mb-6">
       <h1 className="text-2xl lg:text-3xl font-bold">
-        <span className="text-foreground">School Management</span>{' '}
-        <span className="text-info font-normal">System</span>
+        <span className="text-foreground">{schoolTheme.fullName}</span>
       </h1>
 
       <div className="flex items-center gap-4">
