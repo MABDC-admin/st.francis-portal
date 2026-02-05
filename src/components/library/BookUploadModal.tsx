@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { Upload, X, FileText, Loader2, Sparkles, ImageIcon } from 'lucide-react';
+import { useState, useRef, useCallback } from 'react';
+import { Upload, X, Loader2, FileText, Plus } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -7,7 +7,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -17,7 +16,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { usePdfToImages, renderFirstPagePreview } from '@/hooks/usePdfToImages';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { BookUploadItem, BookUploadData } from './BookUploadItem';
+import { usePdfToImages } from '@/hooks/usePdfToImages';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -26,20 +27,6 @@ interface BookUploadModalProps {
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
 }
-
-const GRADE_LEVELS = Array.from({ length: 12 }, (_, i) => i + 1);
-
-const SUBJECTS = [
-  'Mathematics',
-  'Science',
-  'English',
-  'Filipino',
-  'Social Studies',
-  'MAPEH',
-  'TLE',
-  'Values Education',
-  'Other',
-];
 
 const SCHOOLS = [
   { value: 'both', label: 'Both Schools' },
@@ -52,118 +39,74 @@ export const BookUploadModal = ({
   onOpenChange,
   onSuccess,
 }: BookUploadModalProps) => {
-  const [title, setTitle] = useState('');
-  const [gradeLevel, setGradeLevel] = useState<string>('');
-  const [subject, setSubject] = useState<string>('');
+  const [books, setBooks] = useState<BookUploadData[]>([]);
   const [school, setSchool] = useState<string>('both');
-  const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [coverPreview, setCoverPreview] = useState<string | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [aiDetected, setAiDetected] = useState(false);
+  const [overallProgress, setOverallProgress] = useState({ current: 0, total: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { progress, processInBrowser, reset } = usePdfToImages();
+  const { processInBrowser } = usePdfToImages();
 
-  // Analyze book cover when file is selected
-  const analyzeBookCover = async (pdfFile: File) => {
-    setIsAnalyzing(true);
-    setAiDetected(false);
+  const generateId = () => Math.random().toString(36).substring(2, 9);
 
-    try {
-      // Render first page preview
-      const { dataUrl, base64 } = await renderFirstPagePreview(pdfFile, 1.5);
-      setCoverPreview(dataUrl);
+  const addFiles = useCallback((files: FileList | File[]) => {
+    const pdfFiles = Array.from(files).filter(
+      (f) => f.type === 'application/pdf'
+    );
 
-      // Call AI to analyze the cover
-      const { data, error } = await supabase.functions.invoke('analyze-book-cover', {
-        body: {
-          imageBase64: base64,
-          filename: pdfFile.name,
-        },
-      });
-
-      if (error) {
-        console.error('AI analysis error:', error);
-        toast.error('Could not analyze cover automatically');
-        return;
-      }
-
-      if (data?.success) {
-        // Auto-fill detected values
-        if (data.title && !title) {
-          setTitle(data.title);
-          setAiDetected(true);
-        }
-        if (data.subject) {
-          const matchedSubject = SUBJECTS.find(
-            (s) => s.toLowerCase() === data.subject.toLowerCase()
-          );
-          if (matchedSubject && !subject) {
-            setSubject(matchedSubject);
-          }
-        }
-        if (data.gradeLevel && !gradeLevel) {
-          setGradeLevel(data.gradeLevel.toString());
-        }
-
-        if (data.title) {
-          toast.success('Book title detected from cover!');
-        }
-      }
-    } catch (err) {
-      console.error('Cover analysis failed:', err);
-      // Silently fail - user can still enter manually
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile && selectedFile.type === 'application/pdf') {
-      setFile(selectedFile);
-      // Set filename as fallback title
-      if (!title) {
-        setTitle(selectedFile.name.replace('.pdf', ''));
-      }
-      // Analyze the cover
-      await analyzeBookCover(selectedFile);
-    } else {
-      toast.error('Please select a PDF file');
-    }
-  };
-
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile && droppedFile.type === 'application/pdf') {
-      setFile(droppedFile);
-      if (!title) {
-        setTitle(droppedFile.name.replace('.pdf', ''));
-      }
-      await analyzeBookCover(droppedFile);
-    } else {
-      toast.error('Please drop a PDF file');
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!file || !title || !gradeLevel) {
-      toast.error('Please fill in all required fields');
+    if (pdfFiles.length === 0) {
+      toast.error('Please select PDF files only');
       return;
     }
 
-    setIsUploading(true);
+    const newBooks: BookUploadData[] = pdfFiles.map((file) => ({
+      id: generateId(),
+      file,
+      title: file.name.replace('.pdf', ''),
+      gradeLevel: '',
+      subject: '',
+      coverPreview: null,
+      coverBase64: null,
+      status: 'pending' as const,
+      aiDetected: false,
+    }));
 
+    setBooks((prev) => [...prev, ...newBooks]);
+  }, []);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      addFiles(e.target.files);
+      e.target.value = '';
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    addFiles(e.dataTransfer.files);
+  };
+
+  const updateBook = useCallback((id: string, updates: Partial<BookUploadData>) => {
+    setBooks((prev) =>
+      prev.map((book) => (book.id === id ? { ...book, ...updates } : book))
+    );
+  }, []);
+
+  const removeBook = useCallback((id: string) => {
+    setBooks((prev) => prev.filter((book) => book.id !== id));
+  }, []);
+
+  const uploadSingleBook = async (book: BookUploadData): Promise<boolean> => {
     try {
-      // 1. Create book record
-      const { data: book, error: bookError } = await supabase
+      updateBook(book.id, { status: 'uploading' });
+
+      // Create book record
+      const { data: bookRecord, error: bookError } = await supabase
         .from('books')
         .insert({
-          title,
-          grade_level: parseInt(gradeLevel),
-          subject: subject || null,
+          title: book.title,
+          grade_level: parseInt(book.gradeLevel),
+          subject: book.subject || null,
           school: school === 'both' ? null : school,
           status: 'processing',
           page_count: 0,
@@ -173,23 +116,20 @@ export const BookUploadModal = ({
 
       if (bookError) throw bookError;
 
-      const bookId = book.id;
+      const bookId = bookRecord.id;
 
-      // 2. Upload source PDF (optional backup)
+      // Upload source PDF
       const pdfPath = `${bookId}/source.pdf`;
       await supabase.storage
         .from('pdf-uploads')
-        .upload(pdfPath, file, { upsert: true });
+        .upload(pdfPath, book.file, { upsert: true });
 
-      await supabase
-        .from('books')
-        .update({ pdf_url: pdfPath })
-        .eq('id', bookId);
+      await supabase.from('books').update({ pdf_url: pdfPath }).eq('id', bookId);
 
-      // 3. Process PDF to images
-      const { numPages, firstPageUrl } = await processInBrowser(bookId, file);
+      // Process PDF to images with progress tracking
+      const { numPages, firstPageUrl } = await processInBrowser(bookId, book.file);
 
-      // 4. Mark book as ready
+      // Mark book as ready
       await supabase
         .from('books')
         .update({
@@ -199,130 +139,83 @@ export const BookUploadModal = ({
         })
         .eq('id', bookId);
 
-      toast.success(`Book "${title}" uploaded successfully with ${numPages} pages`);
-      handleClose();
-      onSuccess();
+      updateBook(book.id, { status: 'done' });
+      return true;
     } catch (error: any) {
-      console.error('Upload error:', error);
-      toast.error(error.message || 'Failed to upload book');
-    } finally {
-      setIsUploading(false);
+      console.error('Upload error for', book.title, error);
+      updateBook(book.id, { status: 'error', error: error.message || 'Upload failed' });
+      return false;
+    }
+  };
+
+  const handleSubmit = async () => {
+    const validBooks = books.filter(
+      (b) => b.status === 'ready' && b.title && b.gradeLevel
+    );
+
+    if (validBooks.length === 0) {
+      toast.error('No valid books to upload. Ensure all books have title and grade level.');
+      return;
+    }
+
+    setIsUploading(true);
+    setOverallProgress({ current: 0, total: validBooks.length });
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < validBooks.length; i++) {
+      setOverallProgress({ current: i + 1, total: validBooks.length });
+      const success = await uploadSingleBook(validBooks[i]);
+      if (success) successCount++;
+      else failCount++;
+    }
+
+    setIsUploading(false);
+
+    if (successCount > 0) {
+      toast.success(`${successCount} book(s) uploaded successfully`);
+      onSuccess();
+    }
+    if (failCount > 0) {
+      toast.error(`${failCount} book(s) failed to upload`);
+    }
+
+    // Remove successful uploads from the list
+    setBooks((prev) => prev.filter((b) => b.status !== 'done'));
+
+    if (books.every((b) => b.status === 'done' || b.status === 'error')) {
+      if (failCount === 0) {
+        handleClose();
+      }
     }
   };
 
   const handleClose = () => {
     if (!isUploading) {
-      setTitle('');
-      setGradeLevel('');
-      setSubject('');
+      setBooks([]);
       setSchool('both');
-      setFile(null);
-      setCoverPreview(null);
-      setIsAnalyzing(false);
-      setAiDetected(false);
-      reset();
+      setOverallProgress({ current: 0, total: 0 });
       onOpenChange(false);
     }
   };
 
-  const progressPercent =
-    progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
+  const readyCount = books.filter(
+    (b) => b.status === 'ready' && b.title && b.gradeLevel
+  ).length;
+  const analyzingCount = books.filter((b) => b.status === 'analyzing').length;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Upload New Book</DialogTitle>
+          <DialogTitle>Upload Books</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Cover Preview */}
-          {coverPreview && (
-            <div className="flex flex-col items-center gap-2">
-              <div className="relative w-32 h-44 rounded-lg overflow-hidden border bg-muted">
-                <img
-                  src={coverPreview}
-                  alt="Cover preview"
-                  className="w-full h-full object-cover"
-                />
-                {isAnalyzing && (
-                  <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
-                    <div className="flex flex-col items-center gap-1">
-                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                      <span className="text-xs text-muted-foreground">Analyzing...</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-              {aiDetected && (
-                <div className="flex items-center gap-1 text-xs text-primary">
-                  <Sparkles className="h-3 w-3" />
-                  <span>AI detected title</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Title */}
+        <div className="flex-1 overflow-hidden flex flex-col gap-4">
+          {/* School Selection */}
           <div className="space-y-2">
-            <Label htmlFor="title" className="flex items-center gap-1">
-              Title *
-              {aiDetected && <Sparkles className="h-3 w-3 text-primary" />}
-            </Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter book title"
-              disabled={isUploading || isAnalyzing}
-            />
-          </div>
-
-          {/* Grade Level */}
-          <div className="space-y-2">
-            <Label>Grade Level *</Label>
-            <Select
-              value={gradeLevel}
-              onValueChange={setGradeLevel}
-              disabled={isUploading || isAnalyzing}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select grade level" />
-              </SelectTrigger>
-              <SelectContent>
-                {GRADE_LEVELS.map((grade) => (
-                  <SelectItem key={grade} value={grade.toString()}>
-                    Grade {grade}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Subject */}
-          <div className="space-y-2">
-            <Label>Subject (Optional)</Label>
-            <Select
-              value={subject}
-              onValueChange={setSubject}
-              disabled={isUploading || isAnalyzing}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select subject" />
-              </SelectTrigger>
-              <SelectContent>
-                {SUBJECTS.map((subj) => (
-                  <SelectItem key={subj} value={subj}>
-                    {subj}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* School */}
-          <div className="space-y-2">
-            <Label>School</Label>
+            <Label>School (applies to all books)</Label>
             <Select
               value={school}
               onValueChange={setSchool}
@@ -341,77 +234,90 @@ export const BookUploadModal = ({
             </Select>
           </div>
 
-          {/* File Upload */}
-          <div className="space-y-2">
-            <Label>PDF File *</Label>
-            <div
-              className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-                file
-                  ? 'border-primary bg-primary/5'
-                  : 'border-muted-foreground/25 hover:border-primary/50'
-              } ${isUploading ? 'pointer-events-none opacity-50' : ''}`}
-              onClick={() => fileInputRef.current?.click()}
-              onDrop={handleDrop}
-              onDragOver={(e) => e.preventDefault()}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf"
-                onChange={handleFileChange}
-                className="hidden"
-                disabled={isUploading}
-              />
-              {file ? (
-                <div className="flex items-center justify-center gap-2 text-primary">
-                  <FileText className="h-5 w-5" />
-                  <span className="font-medium truncate max-w-[200px]">{file.name}</span>
-                  {!isUploading && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setFile(null);
-                        setCoverPreview(null);
-                        setAiDetected(false);
-                      }}
-                      className="p-1 hover:bg-muted rounded"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-2 text-muted-foreground">
-                  <Upload className="h-8 w-8 mx-auto" />
-                  <p className="text-sm">
-                    Click to upload or drag and drop a PDF
-                  </p>
-                </div>
-              )}
-            </div>
+          {/* Drop Zone / Add More */}
+          <div
+            className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+              books.length > 0
+                ? 'border-muted-foreground/25 hover:border-primary/50'
+                : 'border-muted-foreground/25 hover:border-primary/50 py-8'
+            } ${isUploading ? 'pointer-events-none opacity-50' : ''}`}
+            onClick={() => fileInputRef.current?.click()}
+            onDrop={handleDrop}
+            onDragOver={(e) => e.preventDefault()}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf"
+              multiple
+              onChange={handleFileChange}
+              className="hidden"
+              disabled={isUploading}
+            />
+            {books.length === 0 ? (
+              <div className="space-y-2 text-muted-foreground">
+                <Upload className="h-8 w-8 mx-auto" />
+                <p className="text-sm">Click to upload or drag and drop PDFs</p>
+                <p className="text-xs">You can select multiple files</p>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                <Plus className="h-4 w-4" />
+                <span>Add more PDFs</span>
+              </div>
+            )}
           </div>
 
-          {/* Progress */}
-          {isUploading && (
+          {/* Book List */}
+          {books.length > 0 && (
+            <ScrollArea className="flex-1 min-h-0 max-h-[300px]">
+              <div className="space-y-3 pr-4">
+                {books.map((book) => (
+                  <BookUploadItem
+                    key={book.id}
+                    book={book}
+                    onUpdate={updateBook}
+                    onRemove={removeBook}
+                    disabled={isUploading}
+                  />
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+
+          {/* Overall Progress */}
+          {isUploading && overallProgress.total > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  {progress.status === 'rendering'
-                    ? 'Processing pages...'
-                    : progress.status === 'done'
-                    ? 'Complete!'
-                    : 'Preparing...'}
-                </span>
+                <span className="text-muted-foreground">Uploading books...</span>
                 <span className="font-medium">
-                  {progress.done}/{progress.total} pages
+                  {overallProgress.current}/{overallProgress.total}
                 </span>
               </div>
-              <Progress value={progressPercent} className="h-2" />
+              <Progress
+                value={(overallProgress.current / overallProgress.total) * 100}
+                className="h-2"
+              />
+            </div>
+          )}
+
+          {/* Status Summary */}
+          {books.length > 0 && !isUploading && (
+            <div className="text-sm text-muted-foreground">
+              {analyzingCount > 0 && (
+                <span className="flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Analyzing {analyzingCount} book(s)...
+                </span>
+              )}
+              {analyzingCount === 0 && readyCount > 0 && (
+                <span>{readyCount} book(s) ready to upload</span>
+              )}
             </div>
           )}
 
           {/* Actions */}
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-2 pt-2 border-t">
             <Button
               variant="outline"
               onClick={handleClose}
@@ -421,7 +327,7 @@ export const BookUploadModal = ({
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={!file || !title || !gradeLevel || isUploading || isAnalyzing}
+              disabled={readyCount === 0 || isUploading || analyzingCount > 0}
             >
               {isUploading ? (
                 <>
@@ -431,7 +337,7 @@ export const BookUploadModal = ({
               ) : (
                 <>
                   <Upload className="h-4 w-4 mr-2" />
-                  Upload Book
+                  Upload {readyCount > 0 ? `(${readyCount})` : ''}
                 </>
               )}
             </Button>
