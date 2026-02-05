@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Palette, ExternalLink, RefreshCw, LogOut } from 'lucide-react';
+import { Palette, RefreshCw, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { CanvaConnectButton } from './CanvaConnectButton';
 import { CanvaDesignGrid } from './CanvaDesignGrid';
+import { CreateDesignDialog } from './CreateDesignDialog';
 
 interface CanvaConnection {
   connected: boolean;
@@ -183,12 +184,10 @@ export const CanvaStudio = () => {
             <TabsTrigger value="templates">Templates</TabsTrigger>
           </TabsList>
           
-          <Button asChild>
-            <a href="https://www.canva.com/design/create" target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Create in Canva
-            </a>
-          </Button>
+          <CreateDesignDialog onDesignCreated={() => {
+            // Refresh designs after creating a new one
+            window.location.reload();
+          }} />
         </div>
 
         <TabsContent value="designs" className="mt-6">

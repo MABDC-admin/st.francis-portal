@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
-import { ExternalLink, RefreshCw, Image, FileText, Presentation } from 'lucide-react';
+import { ExternalLink, RefreshCw, FileText, Presentation, Eye, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -134,37 +133,59 @@ export const CanvaDesignGrid = ({ type }: CanvaDesignGridProps) => {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {designs.map((design) => (
           <Card key={design.id} className="overflow-hidden group hover:shadow-lg transition-shadow">
-            <a
-              href={design.urls?.edit_url || `https://www.canva.com/design/${design.id}/edit`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block"
-            >
-              <div className="aspect-[4/3] bg-muted relative overflow-hidden">
-                {design.thumbnail?.url ? (
-                  <img
-                    src={design.thumbnail.url}
-                    alt={design.title}
-                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <FileText className="h-12 w-12 text-muted-foreground" />
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                  <ExternalLink className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="aspect-[4/3] bg-muted relative overflow-hidden">
+              {design.thumbnail?.url ? (
+                <img
+                  src={design.thumbnail.url}
+                  alt={design.title}
+                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <FileText className="h-12 w-12 text-muted-foreground" />
                 </div>
-              </div>
-              <CardContent className="p-3">
-                <p className="font-medium text-sm truncate">{design.title || 'Untitled'}</p>
-                {design.updated_at && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Updated {new Date(design.updated_at).toLocaleDateString()}
-                  </p>
+              )}
+              {/* Hover overlay with action buttons */}
+              <div className="absolute inset-0 bg-background/0 group-hover:bg-background/60 transition-colors flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                {design.urls?.edit_url && (
+                  <a
+                    href={design.urls.edit_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 bg-background rounded-full hover:bg-muted transition-colors border"
+                    title="Edit design"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Edit className="h-4 w-4 text-foreground" />
+                  </a>
                 )}
-              </CardContent>
-            </a>
+                {design.urls?.view_url && (
+                  <a
+                    href={design.urls.view_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 bg-background rounded-full hover:bg-muted transition-colors border"
+                    title="View design"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Eye className="h-4 w-4 text-foreground" />
+                  </a>
+                )}
+                {!design.urls?.edit_url && !design.urls?.view_url && (
+                  <span className="text-foreground text-xs px-2 py-1 bg-muted rounded">
+                    No URL available
+                  </span>
+                )}
+              </div>
+            </div>
+            <CardContent className="p-3">
+              <p className="font-medium text-sm truncate">{design.title || 'Untitled'}</p>
+              {design.updated_at && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Updated {new Date(design.updated_at).toLocaleDateString()}
+                </p>
+              )}
+            </CardContent>
           </Card>
         ))}
       </div>

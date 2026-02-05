@@ -108,7 +108,7 @@ serve(async (req) => {
       canvaAuthUrl.searchParams.set('client_id', CANVA_CLIENT_ID);
       canvaAuthUrl.searchParams.set('redirect_uri', redirectUri);
       canvaAuthUrl.searchParams.set('code_challenge', codeChallenge);
-      canvaAuthUrl.searchParams.set('scope', 'design:content:read design:meta:read profile:read');
+      canvaAuthUrl.searchParams.set('scope', 'design:content:read design:content:write design:meta:read profile:read');
       canvaAuthUrl.searchParams.set('state', stateKey); // Only the state key, not sensitive data
 
       console.log('Generated auth URL with state:', stateKey);
