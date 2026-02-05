@@ -92,9 +92,13 @@ export function useAnnotations() {
     if (!canvas) return { x: 0, y: 0 };
     
     const rect = canvas.getBoundingClientRect();
+    // Map from displayed size to internal canvas coordinates
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
     return {
-      x: (e.clientX - rect.left) / zoom,
-      y: (e.clientY - rect.top) / zoom,
+      x: ((e.clientX - rect.left) * scaleX) / zoom,
+      y: ((e.clientY - rect.top) * scaleY) / zoom,
     };
   }, []);
 

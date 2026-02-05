@@ -44,6 +44,7 @@ export const FlipbookViewer = ({
   const [isLoading, setIsLoading] = useState(true);
   const [showMobileThumbnails, setShowMobileThumbnails] = useState(false);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
+  const [isJumping, setIsJumping] = useState(false);
   
   const thumbnailRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
   const imageRef = useRef<HTMLImageElement>(null);
@@ -136,6 +137,15 @@ export const FlipbookViewer = ({
       });
     }
   }, [showMobileThumbnails, currentPage]);
+
+  // Jumping animation for thumbnail icon every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsJumping(true);
+      setTimeout(() => setIsJumping(false), 500);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Re-render annotations when page or zoom changes
   useEffect(() => {
@@ -396,7 +406,7 @@ export const FlipbookViewer = ({
               </Button>
             </div>
             <ScrollArea className="flex-1">
-              <div className="grid grid-cols-2 gap-3 p-3">
+              <div className="grid grid-cols-3 md:grid-cols-4 gap-3 p-3">
                 {pages.map((page) => (
                   <button
                     key={page.id}
@@ -432,13 +442,6 @@ export const FlipbookViewer = ({
 
       {/* Mobile Page Navigation */}
       <div className="lg:hidden flex items-center justify-center gap-4 py-3 border-t bg-card">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowMobileThumbnails(true)}
-        >
-          <LayoutGrid className="h-4 w-4" />
-        </Button>
         <Button variant="outline" size="sm" onClick={goToPrev} disabled={currentPage <= 1}>
           <ChevronLeft className="h-4 w-4 mr-1" />
           Prev
@@ -454,6 +457,14 @@ export const FlipbookViewer = ({
         >
           Next
           <ChevronRight className="h-4 w-4 ml-1" />
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowMobileThumbnails(true)}
+          className={cn(isJumping && 'animate-bounce-subtle')}
+        >
+          <LayoutGrid className="h-4 w-4" />
         </Button>
       </div>
     </motion.div>
