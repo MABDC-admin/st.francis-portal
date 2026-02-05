@@ -91,6 +91,14 @@ export async function renderFirstPagePreview(
   return { blob, dataUrl, base64 };
 }
 
+export interface ProcessProgress {
+  done: number;
+  total: number;
+  status: 'rendering' | 'uploading' | 'done';
+}
+
+export type ProgressCallback = (progress: ProcessProgress) => void;
+
 export function usePdfToImages() {
   const [progress, setProgress] = useState<RenderProgress>({
     total: 0,
@@ -101,7 +109,8 @@ export function usePdfToImages() {
   const processInBrowser = useCallback(
     async (
       bookId: string,
-      pdfFile: File
+      pdfFile: File,
+      onProgress?: ProgressCallback
     ): Promise<{ numPages: number; firstPageUrl: string }> => {
       try {
         // 1. Load PDF document
@@ -110,11 +119,13 @@ export function usePdfToImages() {
         const numPages = pdf.numPages;
 
         setProgress({ total: numPages, done: 0, status: 'rendering' });
+        onProgress?.({ total: numPages, done: 0, status: 'rendering' });
 
         // 2. Delete existing pages (for re-uploads)
         await supabase.from('book_pages').delete().eq('book_id', bookId);
 
         const BATCH_SIZE = 3;
+        let completedPages = 0;
 
         for (let i = 1; i <= numPages; i += BATCH_SIZE) {
           const batchEnd = Math.min(i + BATCH_SIZE - 1, numPages);
@@ -182,11 +193,14 @@ export function usePdfToImages() {
                     .eq('id', bookId);
                 }
 
-                setProgress((p) => ({
-                  ...p,
-                  done: p.done + 1,
-                  status: p.done + 1 === numPages ? 'done' : 'rendering',
-                }));
+                completedPages++;
+                const newProgress = {
+                  total: numPages,
+                  done: completedPages,
+                  status: completedPages === numPages ? 'done' as const : 'rendering' as const,
+                };
+                setProgress((p) => ({ ...p, ...newProgress }));
+                onProgress?.(newProgress);
               })(pageNum)
             );
           }
