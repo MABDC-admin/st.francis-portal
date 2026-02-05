@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.notebook-chat]
 verify_jwt = false
+
+[functions.generate-presentation]
+verify_jwt = false
