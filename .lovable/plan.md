@@ -1,200 +1,255 @@
 
-# Add Emoji/Sticker Tool with Online Search to Book Viewer
+
+# Enhanced Sticker Tool with Multiple Sources & Animated Button
 
 ## Overview
-Add an interactive emoji/sticker feature to the annotation toolbar that allows teachers to:
-1. Search for emojis using a built-in emoji picker
-2. Search for icons/stickers online using an icon API
-3. Place selected emojis/icons on book pages by clicking
-4. Move, resize, and delete placed stickers
+Transform the sticker feature with:
+1. Move the sticker button to the center of the toolbar with an eye-catching animated bouncing rainbow effect
+2. Integrate multiple free sticker libraries (OpenMoji, Fluent Emoji, SVG Repo) as browsable categories
+3. Keep the existing Iconify search and native emoji picker
 
 ---
 
-## Architecture
+## UI Changes
 
-### Approach
-Since the project already has Lovable Cloud enabled, we'll use a combination of:
-1. **Built-in Emoji Picker**: Use `emoji-picker-react` package for native emojis
-2. **Online Icon Search**: Use the free **Iconify API** (no API key required) to search thousands of icons
-3. **Sticker Annotations**: Extend the annotation system to support placed stickers
+### Toolbar Layout (Before vs After)
 
-### UI Flow
 ```text
-Annotation Toolbar:
-[Pencil][Highlight][Rect][Circle][Arrow][Eraser] | [😊 Sticker] | [Colors] | [Undo][Redo][Clear]
-                                                       ↓
-                                             ┌─────────────────────────┐
-                                             │ [Emoji] [Icon Search]   │ ← Tabs
-                                             ├─────────────────────────┤
-                                             │ 🔍 Search...            │
-                                             ├─────────────────────────┤
-                                             │ 😀 😁 😂 🤣 😃 😄 😅    │
-                                             │ 😆 😉 😊 😋 😎 😍 😘    │
-                                             │ ...                     │
-                                             └─────────────────────────┘
+BEFORE:
+[Pencil][Highlight][Rect][Circle][Arrow][Eraser] | [Sticker] | [Colors...] | [Undo][Redo][Clear]
+
+AFTER:
+[Pencil][Highlight][Rect][Circle][Arrow][Eraser] | [Colors...] | [✨ STICKER ✨] | [Undo][Redo][Clear]
+                                                                   ↑
+                                                     Animated rainbow bounce
+                                                     Centered position
+```
+
+### Animated Sticker Button
+- Rainbow gradient background that cycles through colors
+- Subtle bouncing animation
+- Sparkle/glow effect on hover
+- Larger than other tools to draw attention
+
+---
+
+## Sticker Picker Redesign
+
+### New Tab Structure
+
+```text
+┌───────────────────────────────────────────────────────────────┐
+│  [😊 Emojis]  [🎨 OpenMoji]  [✨ Fluent]  [🔍 Search]         │
+├───────────────────────────────────────────────────────────────┤
+│                                                               │
+│  Categories: [All] [Smileys] [Animals] [Food] [Activities]    │
+│                                                               │
+│  🌟 ⭐ 💫 ✨ 🔥 ❤️ 💜 💙 💚 💛 🧡 🤍 🖤 💔                      │
+│  😀 😁 😂 🤣 😃 😄 😅 😆 😉 😊 😋 😎 😍 😘                      │
+│  🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐨 🐯 🦁 🐮 🐷 🐸                      │
+│  ...                                                          │
+└───────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Files to Create/Modify
+## Sticker Sources Integration
 
-| Action | File | Description |
-|--------|------|-------------|
-| Install | `emoji-picker-react` | NPM package for emoji picker |
-| Create | `src/components/library/StickerPicker.tsx` | Main sticker picker component with tabs |
-| Create | `src/components/library/IconSearch.tsx` | Icon search using Iconify API |
-| Modify | `src/hooks/useAnnotations.ts` | Add sticker annotation type and placement logic |
-| Modify | `src/components/library/AnnotationToolbar.tsx` | Add sticker button with popover |
-| Modify | `src/components/library/FlipbookViewer.tsx` | Handle sticker placement on canvas click |
+| Source | Type | CDN URL Pattern | Categories |
+|--------|------|-----------------|------------|
+| Native Emoji | Emoji Picker | `emoji-picker-react` package | All native emojis |
+| OpenMoji | SVG | `https://cdn.jsdelivr.net/npm/openmoji@latest/color/svg/{code}.svg` | Smileys, Animals, Food, etc. |
+| Fluent Emoji | PNG/3D | `https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/{name}/3D/{name}_3d.png` | Modern 3D style |
+| Iconify | SVG | `https://api.iconify.design/search` (existing) | 200k+ icons |
+
+---
+
+## Files to Modify/Create
+
+| Action | File | Changes |
+|--------|------|---------|
+| Modify | `src/components/library/AnnotationToolbar.tsx` | Move sticker button to center, add rainbow animation |
+| Modify | `src/components/library/StickerPicker.tsx` | Add new tabs for OpenMoji, Fluent Emoji |
+| Create | `src/components/library/OpenMojiPicker.tsx` | OpenMoji category browser |
+| Create | `src/components/library/FluentEmojiPicker.tsx` | Fluent Emoji browser |
+| Modify | `src/index.css` | Add rainbow bounce animation keyframes |
 
 ---
 
 ## Technical Implementation
 
-### 1. New Sticker Annotation Type
+### 1. Rainbow Bounce Animation (CSS)
 
-Extend the `Annotation` interface in `useAnnotations.ts`:
-
-```typescript
-export type AnnotationType = 'none' | 'pencil' | 'highlighter' | 'text' | 'rect' | 'circle' | 'arrow' | 'eraser' | 'sticker';
-
-export interface Annotation {
-  id: string;
-  type: Exclude<AnnotationType, 'none' | 'eraser'>;
-  points?: Point[];
-  start?: Point;
-  end?: Point;
-  text?: string;
-  color: string;
-  strokeWidth: number;
-  // New sticker properties
-  sticker?: {
-    type: 'emoji' | 'icon';
-    value: string;      // Emoji character or icon SVG/URL
-    x: number;
-    y: number;
-    size: number;       // Size in pixels
-  };
-}
-```
-
-### 2. StickerPicker Component
-
-A popover with two tabs:
-- **Emoji Tab**: Uses `emoji-picker-react` for native emojis
-- **Icon Tab**: Uses Iconify API to search for icons
-
-```tsx
-// src/components/library/StickerPicker.tsx
-interface StickerPickerProps {
-  onSelect: (sticker: { type: 'emoji' | 'icon'; value: string }) => void;
-}
-
-// Uses Tabs component with:
-// - EmojiPicker from emoji-picker-react
-// - IconSearch component for Iconify API
-```
-
-### 3. IconSearch Component - Iconify API
-
-Iconify provides free access to 200,000+ icons without an API key:
-
-```typescript
-// Search endpoint (no API key needed)
-const searchIcons = async (query: string) => {
-  const response = await fetch(
-    `https://api.iconify.design/search?query=${encodeURIComponent(query)}&limit=50`
-  );
-  return response.json();
-};
-
-// Get icon SVG
-const getIconSvg = (iconName: string) => {
-  return `https://api.iconify.design/${iconName}.svg`;
-};
-```
-
-### 4. Sticker Placement Flow
-
-1. User clicks sticker button in toolbar
-2. Popover opens with emoji/icon picker
-3. User selects an emoji or searches for an icon
-4. Annotation mode changes to `sticker` with selected sticker stored
-5. User clicks on the page to place the sticker
-6. Sticker is rendered on canvas at clicked position
-
-### 5. Rendering Stickers on Canvas
-
-```typescript
-// In renderAnnotations function
-if (ann.sticker) {
-  if (ann.sticker.type === 'emoji') {
-    ctx.font = `${ann.sticker.size}px serif`;
-    ctx.fillText(ann.sticker.value, ann.sticker.x, ann.sticker.y);
-  } else if (ann.sticker.type === 'icon') {
-    // Load and draw icon image
-    const img = new Image();
-    img.src = ann.sticker.value;
-    ctx.drawImage(img, ann.sticker.x, ann.sticker.y, ann.sticker.size, ann.sticker.size);
+```css
+@keyframes rainbow-bounce {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    background-position: 0% 50%;
+  }
+  25% {
+    transform: translateY(-3px) scale(1.05);
+  }
+  50% {
+    transform: translateY(0) scale(1);
+    background-position: 100% 50%;
+  }
+  75% {
+    transform: translateY(-2px) scale(1.03);
   }
 }
+
+@keyframes rainbow-gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.sticker-button-animated {
+  background: linear-gradient(
+    90deg,
+    #ff6b6b, #feca57, #48dbfb, #ff9ff3, #54a0ff, #5f27cd
+  );
+  background-size: 300% 300%;
+  animation: rainbow-gradient 3s ease infinite, rainbow-bounce 2s ease-in-out infinite;
+}
 ```
 
----
+### 2. OpenMoji Integration
 
-## UI Components
+OpenMoji provides 4000+ open-source emojis with consistent design:
 
-### Sticker Button in Toolbar
+```typescript
+// OpenMoji categories with hex codes
+const OPENMOJI_CATEGORIES = {
+  smileys: ['1F600', '1F601', '1F602', '1F923', '1F60A', ...],
+  animals: ['1F436', '1F431', '1F42D', '1F439', ...],
+  food: ['1F34E', '1F34F', '1F350', '1F351', ...],
+  activities: ['26BD', '1F3C0', '1F3C8', '1F3BE', ...],
+  // ... more categories
+};
 
-Add a new button after the eraser tool:
+// CDN URL
+const getOpenMojiUrl = (code: string) => 
+  `https://cdn.jsdelivr.net/npm/openmoji@15.1.0/color/svg/${code}.svg`;
+```
+
+### 3. Fluent Emoji Integration
+
+Microsoft's modern 3D emoji collection:
+
+```typescript
+// Popular Fluent Emoji names
+const FLUENT_EMOJIS = [
+  'grinning-face', 'smiling-face-with-heart-eyes', 'fire',
+  'sparkles', 'star', 'red-heart', 'thumbs-up', ...
+];
+
+// CDN URL pattern
+const getFluentEmojiUrl = (name: string) =>
+  `https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/${name}/3D/${name}_3d.png`;
+```
+
+### 4. Toolbar Restructure
 
 ```tsx
-<Popover>
-  <PopoverTrigger asChild>
-    <Button variant="ghost" size="icon" className="h-8 w-8">
-      <Smile className="h-4 w-4" />  {/* or Sticker icon */}
-    </Button>
-  </PopoverTrigger>
-  <PopoverContent className="w-80 p-0">
-    <StickerPicker onSelect={handleStickerSelect} />
-  </PopoverContent>
-</Popover>
+// New toolbar layout
+<div className="flex items-center justify-between px-4 py-2 border-b bg-card gap-4">
+  {/* Left: Drawing Tools */}
+  <div className="flex items-center gap-4">
+    <ToggleGroup>{/* pencil, highlighter, rect, circle, arrow, eraser */}</ToggleGroup>
+    
+    {/* Color Picker - moved before sticker */}
+    <div className="flex items-center gap-1 border-l pl-4">
+      {ANNOTATION_COLORS.map(c => ...)}
+    </div>
+  </div>
+  
+  {/* Center: Animated Sticker Button */}
+  <Popover>
+    <PopoverTrigger asChild>
+      <Button className="sticker-button-animated h-10 px-4 text-white font-semibold">
+        <Sparkles className="h-4 w-4 mr-2" />
+        Stickers
+      </Button>
+    </PopoverTrigger>
+    <PopoverContent className="w-[400px] p-0">
+      <StickerPicker onSelect={handleStickerSelect} />
+    </PopoverContent>
+  </Popover>
+  
+  {/* Right: Actions */}
+  <div className="flex items-center gap-1">
+    {/* Undo, Redo, Clear */}
+  </div>
+</div>
 ```
 
-### Sticker Picker Tabs
+### 5. Enhanced StickerPicker with 4 Tabs
+
+```tsx
+<Tabs value={activeTab} onValueChange={setActiveTab}>
+  <TabsList className="w-full grid grid-cols-4">
+    <TabsTrigger value="emoji">😊 Emojis</TabsTrigger>
+    <TabsTrigger value="openmoji">🎨 OpenMoji</TabsTrigger>
+    <TabsTrigger value="fluent">✨ Fluent</TabsTrigger>
+    <TabsTrigger value="search">🔍 Search</TabsTrigger>
+  </TabsList>
+  
+  <TabsContent value="emoji">
+    <EmojiPicker {...} />
+  </TabsContent>
+  
+  <TabsContent value="openmoji">
+    <OpenMojiPicker onSelect={...} />
+  </TabsContent>
+  
+  <TabsContent value="fluent">
+    <FluentEmojiPicker onSelect={...} />
+  </TabsContent>
+  
+  <TabsContent value="search">
+    <IconSearch onSelect={...} />
+  </TabsContent>
+</Tabs>
+```
+
+---
+
+## OpenMoji Picker Component
+
+Categories with popular stickers pre-loaded:
 
 ```text
-┌──────────────────────────────────┐
-│  [😊 Emojis]  [🔍 Icons]         │  ← Tabs
-├──────────────────────────────────┤
-│ ┌──────────────────────────────┐ │
-│ │ 🔍 Search emojis...          │ │
-│ └──────────────────────────────┘ │
-│                                  │
-│ 😀 😁 😂 🤣 😃 😄 😅 😆 😉 😊   │
-│ 😋 😎 😍 😘 🥰 😗 😙 🥲 😚 😌   │
-│ 😛 😜 🤪 😝 🤑 🤗 🤭 🤫 🤔 🤐   │
-│ ...                              │
-└──────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│ Category: [All ▼] [Smileys] [People] [Animals] [Nature] │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│ 😀 😃 😄 😁 😆 😅 🤣 😂 🙂 🙃 😉 😊 😇               │
+│ 🥰 😍 🤩 😘 😗 ☺️ 😚 😙 🥲 😋 😛 😜                    │
+│ 🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐻‍❄️ 🐨 🐯 🦁                 │
+│ 🍎 🍊 🍋 🍌 🍉 🍇 🍓 🫐 🍈 🍒 🍑 🥭                    │
+│ ⚽ 🏀 🏈 ⚾ 🥎 🎾 🏐 🏉 🥏 🎱 🪀 🏓                    │
+│ ...                                                     │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## User Interaction Flow
+## Fluent Emoji Picker Component
 
-1. **Select Tool**: Click sticker button → opens picker popover
-2. **Pick Sticker**: Select emoji or search and select icon
-3. **Place Mode**: Cursor changes to show selected sticker
-4. **Click to Place**: Click on page to place sticker at that position
-5. **Repeat or Exit**: Place more or click another tool to exit sticker mode
+Microsoft's beautiful 3D emojis:
 
----
-
-## Dependencies
-
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `emoji-picker-react` | ^4.x | Full-featured emoji picker with search and categories |
+```text
+┌─────────────────────────────────────────────────────────┐
+│ 🔍 Search Fluent emojis...                              │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  [3D Star] [3D Fire] [3D Heart] [3D Sparkles]          │
+│  [3D Thumbs Up] [3D Party] [3D Trophy] [3D Crown]      │
+│  [3D Rocket] [3D Lightning] [3D Rainbow] [3D Sun]      │
+│  ...                                                    │
+└─────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -202,9 +257,11 @@ Add a new button after the eraser tool:
 
 | Feature | Implementation |
 |---------|----------------|
-| Emoji picker | `emoji-picker-react` package with categories and search |
-| Icon search | Iconify API (free, no key required, 200k+ icons) |
-| Toolbar integration | New Sticker button with Popover next to Eraser |
-| Canvas rendering | Draw emojis as text, icons as images |
-| Sticker data | Extended Annotation interface with sticker properties |
-| Placement | Click-to-place after selecting sticker |
+| Button position | Moved to center between colors and actions |
+| Animation | Rainbow gradient + bounce effect with CSS keyframes |
+| Native emojis | Keep existing `emoji-picker-react` |
+| OpenMoji (4000+) | Category-based browser with CDN loading |
+| Fluent Emoji (3000+) | 3D style emojis from Microsoft |
+| Icon search | Keep existing Iconify integration |
+| Sticker types | `emoji`, `openmoji`, `fluent`, `icon` |
+
