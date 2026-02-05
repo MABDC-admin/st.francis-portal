@@ -18,7 +18,7 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { BookUploadItem, BookUploadData } from './BookUploadItem';
-import { usePdfToImages } from '@/hooks/usePdfToImages';
+import { usePdfToImages, ProgressCallback } from '@/hooks/usePdfToImages';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -98,7 +98,7 @@ export const BookUploadModal = ({
 
   const uploadSingleBook = async (book: BookUploadData): Promise<boolean> => {
     try {
-      updateBook(book.id, { status: 'uploading' });
+      updateBook(book.id, { status: 'uploading', progress: { done: 0, total: 0 } });
 
       // Create book record
       const { data: bookRecord, error: bookError } = await supabase
@@ -126,8 +126,13 @@ export const BookUploadModal = ({
 
       await supabase.from('books').update({ pdf_url: pdfPath }).eq('id', bookId);
 
+      // Progress callback for this specific book
+      const onProgress: ProgressCallback = (progress) => {
+        updateBook(book.id, { progress: { done: progress.done, total: progress.total } });
+      };
+
       // Process PDF to images with progress tracking
-      const { numPages, firstPageUrl } = await processInBrowser(bookId, book.file);
+      const { numPages, firstPageUrl } = await processInBrowser(bookId, book.file, onProgress);
 
       // Mark book as ready
       await supabase

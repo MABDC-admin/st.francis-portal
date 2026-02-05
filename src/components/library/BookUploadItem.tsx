@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { renderFirstPagePreview } from '@/hooks/usePdfToImages';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -215,9 +216,18 @@ export const BookUploadItem = ({
 
           {/* Status / Progress */}
           {book.status === 'uploading' && book.progress && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Processing {book.progress.done}/{book.progress.total} pages...</span>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Processing pages...
+                </span>
+                <span>{book.progress.done}/{book.progress.total}</span>
+              </div>
+              <Progress 
+                value={(book.progress.done / book.progress.total) * 100} 
+                className="h-1.5" 
+              />
             </div>
           )}
           {book.status === 'error' && (
