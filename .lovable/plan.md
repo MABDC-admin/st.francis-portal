@@ -1,275 +1,155 @@
 
-# Canva Design Studio Integration for Teachers & Admins
 
-## Overview
-Add a full Canva integration page that allows teachers and administrators to:
-1. Connect their Canva account via OAuth 2.0
-2. Access their existing designs
-3. Create new designs from templates
-4. Build presentations and slideshows
-5. Export and save designs
+# Fix Canva OAuth Authorization URL Implementation
 
----
+## Issues Found
 
-## Architecture
+Based on Canva's documentation, the current implementation has several critical issues:
 
-### How Canva Connect API Works
+### 1. **Code Challenge Method Case** (Critical)
+- **Current**: `code_challenge_method=s256` (lowercase)
+- **Required**: `code_challenge_method=S256` (uppercase S)
+- Canva documentation states: "This must be set to **S256** (SHA-256)"
 
-```text
-┌──────────────────┐     ┌─────────────────────┐     ┌────────────────┐
-│   Your App       │────▶│  Edge Function      │────▶│  Canva API     │
-│   (Frontend)     │     │  (Backend/OAuth)    │     │  (Connect API) │
-└──────────────────┘     └─────────────────────┘     └────────────────┘
-        │                         │
-        │  1. Click "Connect"     │
-        │  ───────────────────▶   │
-        │                         │  2. Redirect to Canva OAuth
-        │                         │  ───────────────────────────▶
-        │                         │
-        │                         │  3. User authorizes
-        │                         │  ◀───────────────────────────
-        │                         │
-        │  4. Get access token    │  4. Exchange code for token
-        │  ◀───────────────────   │  ───────────────────────────▶
-        │                         │
-        │  5. Call Canva APIs     │  5. Make API requests
-        │  ───────────────────▶   │  ───────────────────────────▶
-```
+### 2. **State Parameter Misuse** (Critical Security Issue)
+- **Current**: The `code_verifier` is being stored inside the `state` parameter
+- **Canva Docs**: "The state parameter **must not** be used to store the code_verifier value"
+- **Impact**: This is a security violation and could cause OAuth flow failures
 
-### OAuth 2.0 Flow with PKCE
-Canva uses OAuth 2.0 Authorization Code flow with PKCE (Proof Key for Code Exchange):
+### 3. **Code Verifier Length** (Potential Issue)
+- **Current**: 32 bytes encoded to base64url (~43 characters)
+- **Required**: "between 43 and 128 characters long"
+- **Fix**: Use 96 bytes as shown in Canva's example code
 
-1. **Authorization Request**: Redirect user to Canva with client_id, redirect_uri, code_challenge
-2. **User Consent**: User logs in and authorizes your app
-3. **Callback**: Canva redirects back with authorization code
-4. **Token Exchange**: Backend exchanges code for access/refresh tokens
-5. **API Access**: Use access token for Canva API calls
+### 4. **State Storage**
+- **Current**: Storing user data in the state parameter (visible in URL)
+- **Required**: State should be a high-entropy random string stored server-side
+- **Solution**: Store code_verifier and user info in database, use state as lookup key
 
 ---
 
-## Required Credentials
+## Technical Changes
 
-You'll need these from your Canva Developer Portal:
+### 1. Database Schema Update
+Add a table to temporarily store OAuth state during the authorization flow:
 
-| Credential | Description | Where to Get |
-|------------|-------------|--------------|
-| `CANVA_CLIENT_ID` | Your integration's client ID | Developer Portal → Integration Settings |
-| `CANVA_CLIENT_SECRET` | Your integration's secret (backend only) | Developer Portal → Integration Settings |
-
----
-
-## Database Schema
-
-### New Tables
-
-**canva_connections** - Store user OAuth tokens
 ```sql
-CREATE TABLE public.canva_connections (
+CREATE TABLE public.canva_oauth_states (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  access_token text NOT NULL,
-  refresh_token text NOT NULL,
-  token_expires_at timestamptz NOT NULL,
-  canva_user_id text,
+  state_key text UNIQUE NOT NULL,
+  user_id uuid NOT NULL,
+  code_verifier text NOT NULL,
+  redirect_uri text NOT NULL,
   created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now(),
-  UNIQUE (user_id)
+  expires_at timestamptz DEFAULT (now() + interval '10 minutes')
 );
+
+-- Auto-cleanup expired states
+CREATE INDEX idx_canva_oauth_states_expires ON canva_oauth_states(expires_at);
 ```
 
----
+### 2. Edge Function Updates (canva-auth/index.ts)
 
-## Files to Create/Modify
-
-| Action | File | Description |
-|--------|------|-------------|
-| Create | `supabase/functions/canva-auth/index.ts` | OAuth flow handler |
-| Create | `supabase/functions/canva-api/index.ts` | Proxy for Canva API calls |
-| Create | `src/components/canva/CanvaStudio.tsx` | Main Canva page component |
-| Create | `src/components/canva/CanvaConnectButton.tsx` | OAuth connect button |
-| Create | `src/components/canva/CanvaDesignGrid.tsx` | Display user's designs |
-| Create | `src/components/canva/CanvaTemplateGallery.tsx` | Browse Canva templates |
-| Modify | `src/components/layout/DashboardLayout.tsx` | Add Canva nav item |
-| Modify | `src/pages/Index.tsx` | Add Canva tab handler |
-| Create | `src/components/icons/ThreeDIcons.tsx` | Add Canva icon |
-
----
-
-## Edge Functions
-
-### 1. canva-auth (OAuth Handler)
-
+#### a. Fix code_challenge_method
 ```typescript
-// Endpoints:
-// GET /canva-auth?action=authorize - Start OAuth flow
-// GET /canva-auth?action=callback&code=xxx - Handle callback
-// POST /canva-auth?action=refresh - Refresh token
-// DELETE /canva-auth - Disconnect Canva
+// Change from:
+canvaAuthUrl.searchParams.set('code_challenge_method', 's256');
+// To:
+canvaAuthUrl.searchParams.set('code_challenge_method', 'S256');
 ```
 
-**Key Features**:
-- Generate PKCE code_verifier and code_challenge
-- Store tokens encrypted in database
-- Handle token refresh automatically
-- Secure backend-only token storage
-
-### 2. canva-api (API Proxy)
-
+#### b. Fix code verifier generation
 ```typescript
-// Endpoints (proxied to Canva):
-// GET /canva-api/designs - List user's designs
-// GET /canva-api/designs/:id - Get design details
-// POST /canva-api/designs - Create new design
-// GET /canva-api/templates - Browse templates
-// POST /canva-api/exports - Export design
+// Change from:
+const array = new Uint8Array(32);
+// To (96 bytes for proper length):
+const array = new Uint8Array(96);
+```
+
+#### c. Fix state handling - Store code_verifier in database, not in state
+```typescript
+// Generate state key
+const stateKey = crypto.randomUUID();
+
+// Store in database (not in URL)
+await supabase.from('canva_oauth_states').insert({
+  state_key: stateKey,
+  user_id: userId,
+  code_verifier: codeVerifier,
+  redirect_uri: redirectUri,
+});
+
+// Use only the state key in the URL
+canvaAuthUrl.searchParams.set('state', stateKey);
+```
+
+#### d. Update callback handler
+```typescript
+// Retrieve code_verifier from database using state key
+const { data: stateData } = await supabase
+  .from('canva_oauth_states')
+  .select('*')
+  .eq('state_key', state)
+  .single();
+
+// Delete the state after retrieval (one-time use)
+await supabase.from('canva_oauth_states').delete().eq('state_key', state);
 ```
 
 ---
 
-## UI Components
+## Files to Modify
 
-### CanvaStudio Page Layout
+| File | Changes |
+|------|---------|
+| New Migration | Create `canva_oauth_states` table |
+| `supabase/functions/canva-auth/index.ts` | Fix OAuth flow per Canva spec |
+
+---
+
+## Updated OAuth Flow
 
 ```text
-┌─────────────────────────────────────────────────────────────────────┐
-│  ┌─────────────────────────────────────────────────────────────┐    │
-│  │  🎨 Canva Design Studio                      [Disconnect]   │    │
-│  │  Create beautiful designs, presentations, and more          │    │
-│  └─────────────────────────────────────────────────────────────┘    │
-│                                                                     │
-│  ┌────────────────────────────────────────────────────────────┐     │
-│  │  [My Designs]  [Templates]  [Create New ▼]                 │     │
-│  └────────────────────────────────────────────────────────────┘     │
-│                                                                     │
-│  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐       │
-│  │        │  │        │  │        │  │        │  │        │       │
-│  │Design 1│  │Design 2│  │Design 3│  │Design 4│  │Design 5│       │
-│  │        │  │        │  │        │  │        │  │        │       │
-│  └────────┘  └────────┘  └────────┘  └────────┘  └────────┘       │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-### Not Connected State
-
-```text
-┌─────────────────────────────────────────────────────────────────────┐
-│                                                                     │
-│                        🎨                                          │
-│                                                                     │
-│              Connect Your Canva Account                             │
-│                                                                     │
-│    Access your designs, templates, and create beautiful            │
-│    presentations directly from your school portal.                  │
-│                                                                     │
-│              ┌────────────────────────┐                            │
-│              │  🔗 Connect with Canva │                            │
-│              └────────────────────────┘                            │
-│                                                                     │
-│    ✓ Access your existing designs                                  │
-│    ✓ Create from 250,000+ templates                                │
-│    ✓ Build presentations & slideshows                              │
-│    ✓ Export to PDF, PNG, or video                                  │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
+1. User clicks "Connect with Canva"
+   │
+   ▼
+2. Frontend calls: /canva-auth?action=authorize
+   │
+   ▼
+3. Edge function:
+   - Generates code_verifier (96 bytes, base64url)
+   - Generates code_challenge (SHA-256 hash of verifier, base64url)
+   - Generates state key (random UUID)
+   - Stores {state_key, user_id, code_verifier, redirect_uri} in DB
+   - Returns Canva OAuth URL with state=state_key
+   │
+   ▼
+4. User redirected to Canva, authorizes app
+   │
+   ▼
+5. Canva redirects back with: ?code=xxx&state=state_key
+   │
+   ▼
+6. Frontend calls: /canva-auth?action=callback&code=xxx&state=state_key
+   │
+   ▼
+7. Edge function:
+   - Looks up state_key in DB → gets code_verifier, user_id
+   - Deletes the state record (one-time use)
+   - Exchanges code + code_verifier for tokens
+   - Stores tokens in canva_connections table
+   - Returns success
 ```
 
 ---
 
-## Navigation Integration
+## Implementation Summary
 
-Add "Canva" to the sidebar for admin and teacher roles:
+1. **Create migration** for `canva_oauth_states` table with TTL
+2. **Update edge function** with:
+   - Uppercase `S256` for code_challenge_method
+   - 96-byte code_verifier generation
+   - Database-backed state storage
+   - Proper state verification in callback
+3. **Deploy updated edge function**
 
-```typescript
-// In DashboardLayout.tsx - getNavItemsForRole()
-case 'admin':
-  return [
-    ...baseItems,
-    { id: 'canva', icon: CanvaIcon3D, label: 'Canva Studio' },  // NEW
-    // ... rest of items
-  ];
-
-case 'teacher':
-  return [
-    ...baseItems,
-    { id: 'canva', icon: CanvaIcon3D, label: 'Canva Studio' },  // NEW
-    // ... rest of items
-  ];
-```
-
----
-
-## Canva Connect API Capabilities
-
-Once connected, users can:
-
-| Feature | API Endpoint | Description |
-|---------|--------------|-------------|
-| List Designs | `GET /v1/designs` | View all user designs |
-| Get Design | `GET /v1/designs/:id` | Get design details |
-| Create Design | `POST /v1/designs` | Start new design |
-| Export Design | `POST /v1/exports` | Export to PNG/PDF/etc |
-| List Folders | `GET /v1/folders` | Browse design folders |
-| Browse Templates | `GET /v1/templates` | Access template library |
-
----
-
-## Security Considerations
-
-1. **Tokens stored server-side only**: Access/refresh tokens never exposed to frontend
-2. **PKCE for OAuth**: Prevents authorization code interception
-3. **RLS policies**: Only users can access their own Canva connection
-4. **Token encryption**: Tokens encrypted at rest in database
-5. **Automatic refresh**: Tokens refreshed before expiry
-
----
-
-## Implementation Steps
-
-### Phase 1: Setup & Credentials
-1. Store `CANVA_CLIENT_ID` and `CANVA_CLIENT_SECRET` as secrets
-2. Configure OAuth redirect URL in Canva Developer Portal
-3. Create database table for token storage
-
-### Phase 2: Backend (Edge Functions)
-1. Create `canva-auth` edge function for OAuth flow
-2. Create `canva-api` edge function as API proxy
-3. Implement token refresh logic
-
-### Phase 3: Frontend Components
-1. Create CanvaStudio main page
-2. Build CanvaConnectButton with OAuth flow
-3. Create CanvaDesignGrid for displaying designs
-4. Add CanvaTemplateGallery for browsing templates
-
-### Phase 4: Navigation Integration
-1. Add Canva icon to ThreeDIcons
-2. Add nav item to DashboardLayout
-3. Add tab handler to Index.tsx
-
----
-
-## Prerequisites Before Implementation
-
-Before I can build this integration, you'll need to provide:
-
-1. **Canva Client ID** - From your Canva Developer Portal integration
-2. **Canva Client Secret** - From your Canva Developer Portal integration
-
-Once you have these credentials, I'll:
-1. Securely store them as secrets
-2. Build the OAuth flow
-3. Create the Canva Studio page
-4. Connect everything together
-
----
-
-## Summary
-
-| Component | Technology |
-|-----------|------------|
-| OAuth Flow | Edge Function with PKCE |
-| Token Storage | Encrypted in database with RLS |
-| API Proxy | Edge Function proxying Canva Connect API |
-| Frontend | React components with Tabs for designs/templates |
-| Access Control | Admin and Teacher roles only |
