@@ -65,7 +65,7 @@ export const CreateDesignDialog = ({ onDesignCreated }: CreateDesignDialogProps)
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/canva-api`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/canva-api?endpoint=/designs`,
         {
           method: 'POST',
           headers: {
@@ -73,16 +73,12 @@ export const CreateDesignDialog = ({ onDesignCreated }: CreateDesignDialogProps)
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            endpoint: '/designs',
-            method: 'POST',
-            body: {
-              design_type: {
-                type: 'custom',
-                width: width,
-                height: height,
-              },
-              title: title || `New ${selectedType?.name || 'Design'}`,
+            design_type: {
+              type: 'custom',
+              width: width,
+              height: height,
             },
+            title: title || `New ${selectedType?.name || 'Design'}`,
           }),
         }
       );
