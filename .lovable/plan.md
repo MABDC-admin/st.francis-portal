@@ -1,225 +1,185 @@
 
 
-# Notebook LLM Page Implementation Plan
+# PDF Upload, Summarization & PDF Export for Notebook LLM
 
 ## Overview
 
-This plan creates a new "Notebook LLM" page - a Jupyter-style interface for interacting with Large Language Models. Users can create, organize, and execute cells that contain either markdown text or LLM prompts, with responses displayed inline.
+This feature adds two key capabilities to the Notebook LLM page:
+1. **PDF Upload & Processing**: Users can upload a PDF file, which gets text-extracted and sent to the AI along with their prompt
+2. **PDF Download**: After the AI generates output, users can download the result as a formatted PDF document
 
-## Architecture
-
-The Notebook LLM page will be integrated into the existing dashboard structure and accessible via the sidebar navigation. It will use **Lovable AI** (already configured with `LOVABLE_API_KEY`) for LLM interactions with streaming support.
+## User Flow
 
 ```text
-+------------------------------------------------------------------+
-|  Notebook LLM                                    [+ New Notebook] |
-+------------------------------------------------------------------+
-|  [ My Notebooks ]                                                |
-|  +------------------------------------------------------------+  |
-|  | Notebook: "Lesson Planning Assistant"          [Edit] [Del] |  |
-|  | Created: Feb 5, 2026 | 5 cells                              |  |
-|  +------------------------------------------------------------+  |
-|                                                                  |
-|  When a notebook is opened:                                      |
-|  +------------------------------------------------------------+  |
-|  | Cell 1 - Markdown                              [Run] [Del]  |  |
-|  | +--------------------------------------------------------+ |  |
-|  | | # Lesson Planning for Grade 5 Math                     | |  |
-|  | | This notebook helps create lesson plans...             | |  |
-|  | +--------------------------------------------------------+ |  |
-|  +------------------------------------------------------------+  |
-|  | Cell 2 - LLM Prompt                            [Run] [Del]  |  |
-|  | +--------------------------------------------------------+ |  |
-|  | | Create a 45-minute lesson plan for teaching fractions  | |  |
-|  | | to 5th graders. Include activities and assessment.     | |  |
-|  | +--------------------------------------------------------+ |  |
-|  | Output:                                                     |  |
-|  | +--------------------------------------------------------+ |  |
-|  | | ## Lesson Plan: Introduction to Fractions              | |  |
-|  | | **Duration:** 45 minutes                                | |  |
-|  | | **Objective:** Students will understand...              | |  |
-|  | | (streaming response with markdown rendering)            | |  |
-|  | +--------------------------------------------------------+ |  |
-|  +------------------------------------------------------------+  |
-|  |                    [+ Add Cell]                             |  |
-|  +------------------------------------------------------------+  |
-+------------------------------------------------------------------+
++------------------------------------------------------------+
+| Cell - LLM Prompt                             [Run] [Del]  |
+| +--------------------------------------------------------+ |
+| | Prompt: "Summarize this document"                      | |
+| +--------------------------------------------------------+ |
+| | [Upload PDF] or drag & drop                            | |
+| | [document.pdf - 15 pages] [Remove]                     | |
+| +--------------------------------------------------------+ |
+| Output:                                     [Download PDF] | 
+| +--------------------------------------------------------+ |
+| | ## Document Summary                                    | |
+| | This document covers...                                | |
+| +--------------------------------------------------------+ |
++------------------------------------------------------------+
 ```
 
-## Files to Create/Modify
-
-### New Files
+## Files to Create
 
 | File | Purpose |
 |------|---------|
-| `src/components/notebook/NotebookPage.tsx` | Main page component with notebook list and viewer |
-| `src/components/notebook/NotebookList.tsx` | List/grid of user's notebooks |
-| `src/components/notebook/NotebookEditor.tsx` | Full notebook editor with cells |
-| `src/components/notebook/NotebookCell.tsx` | Individual cell component (markdown or LLM) |
-| `src/components/notebook/CellOutput.tsx` | Renders LLM output with markdown support |
-| `src/components/notebook/CreateNotebookDialog.tsx` | Dialog for creating new notebooks |
-| `src/hooks/useNotebooks.ts` | React Query hooks for notebook CRUD operations |
-| `src/hooks/useLLMChat.ts` | Hook for streaming LLM interactions |
-| `supabase/functions/notebook-chat/index.ts` | Edge function for LLM streaming |
+| `src/components/notebook/PdfUploadZone.tsx` | Drag-and-drop PDF upload with extraction |
+| `src/utils/extractPdfText.ts` | PDF text extraction utility using pdfjs-dist |
+| `src/utils/notebookPdfExport.ts` | Generate downloadable PDF from AI output |
 
-### Files to Modify
+## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/pages/Index.tsx` | Add NotebookPage component and route |
-| `src/components/layout/DashboardLayout.tsx` | Add navigation item for "Notebook LLM" |
-| `src/components/icons/ThreeDIcons.tsx` | Add NotebookIcon3D icon |
-| `supabase/config.toml` | Register the new edge function |
+| `src/components/notebook/NotebookCell.tsx` | Add PDF upload zone and download button |
+| `src/components/notebook/NotebookEditor.tsx` | Pass PDF text when running cells |
+| `src/components/notebook/CellOutput.tsx` | Add download PDF button to output |
+| `src/hooks/useNotebooks.ts` | Add PDF-related fields to interfaces |
+| `supabase/functions/notebook-chat/index.ts` | Handle PDF text context in prompts |
 
-## Database Schema
+## Database Migration
 
-Two new tables will be created:
+Add columns to `notebook_cells` table for storing PDF metadata:
 
-### `notebooks` Table
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | uuid | Primary key |
-| `user_id` | uuid | Owner reference (to auth.users) |
-| `title` | text | Notebook title |
-| `description` | text | Optional description |
-| `school` | text | Associated school (nullable) |
-| `created_at` | timestamp | Creation timestamp |
-| `updated_at` | timestamp | Last modification timestamp |
-
-### `notebook_cells` Table
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | uuid | Primary key |
-| `notebook_id` | uuid | Foreign key to notebooks |
-| `cell_type` | text | 'markdown' or 'llm' |
-| `content` | text | Cell input content |
-| `output` | text | LLM response (for llm cells) |
-| `position` | integer | Order within notebook |
-| `model` | text | LLM model used (optional) |
-| `created_at` | timestamp | Creation timestamp |
-| `updated_at` | timestamp | Last modification timestamp |
-
-### RLS Policies
-- Users can only view/edit their own notebooks and cells
-- Admin users can view all notebooks
+```sql
+ALTER TABLE notebook_cells 
+ADD COLUMN pdf_filename text,
+ADD COLUMN pdf_page_count integer,
+ADD COLUMN pdf_extracted_text text;
+```
 
 ## Component Details
 
-### NotebookPage.tsx
-- Main container with header and content area
-- Manages state: viewing list vs editing a specific notebook
-- Handles navigation between notebooks
+### PdfUploadZone.tsx
 
-### NotebookEditor.tsx
-- Displays all cells in order
-- Supports drag-and-drop reordering (using framer-motion Reorder)
-- "Add Cell" button at the bottom
-- Auto-saves changes with debouncing
+A dedicated component for handling PDF uploads:
+- Drag-and-drop zone with visual feedback
+- File input for browsing
+- Progress indicator during text extraction
+- Display filename and page count when loaded
+- "Remove" button to clear uploaded PDF
+- Uses existing `pdfjs-dist` library (already installed)
 
-### NotebookCell.tsx
-- Toggle between edit and view mode
-- Cell type selector (Markdown/LLM)
-- "Run" button for LLM cells
-- Delete and move controls
-- Keyboard shortcuts (Shift+Enter to run)
+### extractPdfText.ts
 
-### CellOutput.tsx
-- Renders markdown using react-markdown
-- Shows loading spinner during streaming
-- Displays streaming text token-by-token
-- Error handling with retry option
+Utility function to extract text from PDF files:
+- Load PDF using pdfjs-dist
+- Extract text from each page (up to 50 pages)
+- Concatenate with page markers (e.g., "--- Page 1 ---")
+- Truncate to ~100,000 characters for context limits
+- Return extracted text and page count
 
-### useLLMChat.ts Hook
-```text
-Features:
-- Connects to notebook-chat edge function
-- Handles SSE streaming
-- Manages loading/error states
-- Supports cancellation via AbortController
-- Token-by-token rendering
-```
+### notebookPdfExport.ts
 
-## Edge Function: notebook-chat
+Utility to generate a formatted PDF from AI output:
+- Uses existing jsPDF library (already installed)
+- Parse markdown content and convert to PDF format
+- Include notebook title as header
+- Format headings, paragraphs, lists, and code blocks
+- Add timestamp and page numbers
+- Trigger download with appropriate filename
 
-The edge function will:
-1. Accept messages array and optional system prompt
-2. Use Lovable AI Gateway (google/gemini-3-flash-preview model)
-3. Stream responses via SSE
-4. Handle rate limits (429) and payment errors (402)
+### NotebookCell.tsx Updates
 
-## Navigation Integration
+Add PDF upload zone and download functionality:
+- Add `PdfUploadZone` component below the prompt textarea
+- Track PDF state: filename, page count, extracted text
+- Pass PDF data to parent component when running
+- Show "Download PDF" button in output header when output exists
+- Disable download during streaming
 
-Add to sidebar navigation for **admin** and **teacher** roles:
-- Icon: Custom NotebookIcon3D (brain/chat bubble design)
-- Label: "Notebook LLM"
-- Position: After "Canva Studio" in the navigation order
+### CellOutput.tsx Updates
 
-## User Experience Flow
+Add download button prop and rendering:
+- Accept optional `onDownload` callback prop
+- Show download button in output header area
+- Button disabled while streaming
 
-1. **Access**: User clicks "Notebook LLM" in sidebar
-2. **List View**: Shows all user's notebooks with create button
-3. **Create**: Dialog to enter title and optional description
-4. **Edit**: Opens notebook with all cells displayed
-5. **Add Cell**: Button adds new cell at bottom (or between cells)
-6. **Run Cell**: Executes LLM prompt and streams response
-7. **Save**: Auto-saves on blur/change with visual indicator
+### NotebookEditor.tsx Updates
 
-## Technical Considerations
+Handle PDF in the run flow:
+- Receive PDF text from cell component
+- Include PDF text in the request body to edge function
+- Save PDF metadata after successful extraction
 
-### Streaming Implementation
-- Uses SSE (Server-Sent Events) for real-time token streaming
-- Parses `data: ` prefixed lines
-- Handles `[DONE]` signal
-- Updates state incrementally for smooth rendering
+### Edge Function Update
 
-### Markdown Rendering
-- Install `react-markdown` for rendering outputs
-- Install `remark-gfm` for GitHub-flavored markdown support
-- Syntax highlighting for code blocks using `rehype-highlight`
+Modify `notebook-chat/index.ts` to handle PDF context:
+- Accept optional `pdfText` parameter in request body
+- When PDF text is provided, construct context-aware prompt:
+  ```
+  System: "You are analyzing a document provided by the user."
+  
+  User: "[DOCUMENT START]
+  {extracted PDF text}
+  [DOCUMENT END]
+  
+  User's request: {original prompt}"
+  ```
+- Use appropriate model for longer context if needed
 
-### Dependencies to Add
-```text
-- react-markdown (for rendering LLM outputs)
-- remark-gfm (for tables, strikethrough, etc.)
-```
+## Implementation Steps
 
-### Performance
-- Virtualization for notebooks with many cells (future enhancement)
-- Debounced auto-save (500ms delay)
-- Optimistic UI updates
+### Phase 1: Database & Backend
+1. Run migration to add PDF columns to `notebook_cells`
+2. Update edge function to accept and process PDF text
 
-## Role-Based Access
+### Phase 2: PDF Text Extraction
+1. Create `extractPdfText.ts` utility
+2. Create `PdfUploadZone.tsx` component
 
-| Role | Access Level |
-|------|--------------|
-| admin | Full access - create, edit, delete all notebooks |
-| teacher | Full access - create, edit, delete own notebooks |
-| registrar | Read-only access to own notebooks (if created) |
-| student | No access initially (can be enabled later) |
-| parent | No access |
-
-## Implementation Phases
-
-### Phase 1: Core Infrastructure
-1. Create database tables with RLS policies
-2. Create the edge function for LLM chat
-3. Create the NotebookIcon3D icon
-4. Add navigation item to DashboardLayout
-
-### Phase 2: UI Components
-1. Create NotebookPage with list view
-2. Create CreateNotebookDialog
-3. Create NotebookList component
-4. Create useNotebooks hook
-
-### Phase 3: Editor & Cells
-1. Create NotebookEditor component
-2. Create NotebookCell component
-3. Create CellOutput with markdown rendering
-4. Create useLLMChat hook with streaming
+### Phase 3: PDF Download
+1. Create `notebookPdfExport.ts` utility
+2. Update `CellOutput.tsx` with download button
 
 ### Phase 4: Integration
-1. Add page to Index.tsx routing
-2. Test full flow end-to-end
-3. Add drag-and-drop reordering
+1. Update `NotebookCell.tsx` to include upload zone and download
+2. Update `NotebookEditor.tsx` to handle PDF in run flow
+3. Update `useNotebooks.ts` types for PDF fields
+4. Test end-to-end flow
+
+## PDF Text Extraction Flow
+
+```text
+1. User drops/selects PDF file in upload zone
+2. Show loading spinner with "Extracting text..."
+3. Use pdfjs-dist to load the PDF document
+4. Extract text from each page (limit to 50 pages)
+5. Concatenate with page separators
+6. Truncate if exceeds 100,000 characters
+7. Store in component state (pdf_extracted_text)
+8. Display filename and page count
+9. User clicks "Run" to process
+10. Send prompt + PDF text to edge function
+11. Stream response back to output
+12. Show "Download PDF" button when complete
+```
+
+## PDF Export Format
+
+The exported PDF will include:
+- **Header**: Notebook title, generation date
+- **Content**: Formatted markdown output
+  - Headings with appropriate font sizes
+  - Paragraphs with proper spacing
+  - Bullet points and numbered lists
+  - Code blocks in monospace font
+  - Tables with borders
+- **Footer**: Page numbers
+
+## Technical Notes
+
+- **Dependencies**: Uses existing `jspdf` and `pdfjs-dist` libraries (no new installs needed)
+- **File size limit**: 20MB maximum for uploaded PDFs
+- **Text limit**: 100,000 characters max to stay within LLM context limits
+- **Page limit**: Extract from first 50 pages only
+- **Error handling**: Show clear error messages for unsupported/corrupted PDFs
 
