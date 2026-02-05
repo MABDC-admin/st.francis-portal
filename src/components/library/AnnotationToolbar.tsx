@@ -1,7 +1,6 @@
 import {
   Pencil,
   Highlighter,
-  Type,
   Square,
   Circle,
   MoveRight,
@@ -9,7 +8,7 @@ import {
   Undo2,
   Redo2,
   Trash2,
-  Smile,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -61,6 +60,7 @@ export function AnnotationToolbar({
   };
   return (
     <div className="hidden lg:flex items-center justify-between px-4 py-2 border-b bg-card gap-4">
+      {/* Left: Drawing Tools + Colors */}
       <div className="flex items-center gap-4">
         {/* Drawing Tools */}
         <TooltipProvider delayDuration={300}>
@@ -89,37 +89,6 @@ export function AnnotationToolbar({
           </ToggleGroup>
         </TooltipProvider>
 
-        {/* Sticker Tool */}
-        <div className="border-l pl-4">
-          <TooltipProvider delayDuration={300}>
-            <Tooltip>
-              <Popover>
-                <TooltipTrigger asChild>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={mode === 'sticker' ? 'secondary' : 'ghost'}
-                      size="icon"
-                      className={cn('h-8 w-8', mode === 'sticker' && 'bg-secondary')}
-                    >
-                      {pendingSticker?.type === 'emoji' ? (
-                        <span className="text-lg">{pendingSticker.value}</span>
-                      ) : (
-                        <Smile className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <p>Stickers & Emojis</p>
-                </TooltipContent>
-                <PopoverContent className="w-[350px] p-0" align="start">
-                  <StickerPicker onSelect={handleStickerSelect} />
-                </PopoverContent>
-              </Popover>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-
         {/* Color Picker */}
         <div className="flex items-center gap-1 border-l pl-4">
           {ANNOTATION_COLORS.map((c) => (
@@ -137,7 +106,30 @@ export function AnnotationToolbar({
         </div>
       </div>
 
-      {/* Actions */}
+      {/* Center: Animated Sticker Button */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            className={cn(
+              'sticker-button-animated h-10 px-4 text-white font-semibold shadow-lg',
+              'hover:shadow-xl transition-shadow',
+              mode === 'sticker' && 'ring-2 ring-white ring-offset-2 ring-offset-background'
+            )}
+          >
+            {pendingSticker?.type === 'emoji' ? (
+              <span className="text-lg mr-2">{pendingSticker.value}</span>
+            ) : (
+              <Sparkles className="h-4 w-4 mr-2" />
+            )}
+            Stickers
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[400px] p-0" align="center">
+          <StickerPicker onSelect={handleStickerSelect} />
+        </PopoverContent>
+      </Popover>
+
+      {/* Right: Actions */}
       <div className="flex items-center gap-1">
         <TooltipProvider delayDuration={300}>
           <Tooltip>
