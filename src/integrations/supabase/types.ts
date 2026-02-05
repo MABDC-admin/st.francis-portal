@@ -91,6 +91,89 @@ export type Database = {
         }
         Relationships: []
       }
+      book_pages: {
+        Row: {
+          book_id: string
+          created_at: string
+          id: string
+          image_url: string
+          page_number: number
+          thumbnail_url: string | null
+        }
+        Insert: {
+          book_id: string
+          created_at?: string
+          id?: string
+          image_url: string
+          page_number: number
+          thumbnail_url?: string | null
+        }
+        Update: {
+          book_id?: string
+          created_at?: string
+          id?: string
+          image_url?: string
+          page_number?: number
+          thumbnail_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_pages_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      books: {
+        Row: {
+          cover_url: string | null
+          created_at: string
+          grade_level: number
+          id: string
+          is_active: boolean | null
+          page_count: number | null
+          pdf_url: string | null
+          school: string | null
+          status: string
+          subject: string | null
+          title: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          cover_url?: string | null
+          created_at?: string
+          grade_level: number
+          id?: string
+          is_active?: boolean | null
+          page_count?: number | null
+          pdf_url?: string | null
+          school?: string | null
+          status?: string
+          subject?: string | null
+          title: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          cover_url?: string | null
+          created_at?: string
+          grade_level?: number
+          id?: string
+          is_active?: boolean | null
+          page_count?: number | null
+          pdf_url?: string | null
+          school?: string | null
+          status?: string
+          subject?: string | null
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       data_exports: {
         Row: {
           academic_year_id: string | null
