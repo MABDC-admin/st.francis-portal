@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Filter, BookOpen } from 'lucide-react';
+import { Search, Filter, BookOpen, RefreshCw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -13,7 +14,9 @@ import {
 import { FlipbookCard } from './FlipbookCard';
 import { useSchool } from '@/contexts/SchoolContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 interface Flipbook {
   id: string;
@@ -48,6 +51,10 @@ export const LibraryPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGrade, setSelectedGrade] = useState<string>('All Levels');
   const { selectedSchool } = useSchool();
+  const { role } = useAuth();
+  const queryClient = useQueryClient();
+  
+  const isAdmin = role === 'admin';
 
   // Fetch flipbooks from database
   const { data: flipbooks = [], isLoading } = useQuery({
@@ -66,6 +73,23 @@ export const LibraryPage = () => {
       const { data, error } = await query.order('title');
       if (error) throw error;
       return data as Flipbook[];
+    },
+  });
+
+  // Import flipbooks mutation
+  const importMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('import-flipbooks');
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(data.message || `Imported ${data.imported} flipbooks`);
+      queryClient.invalidateQueries({ queryKey: ['flipbooks'] });
+    },
+    onError: (error: any) => {
+      console.error('Import error:', error);
+      toast.error(error.message || 'Failed to import flipbooks');
     },
   });
 
@@ -102,14 +126,30 @@ export const LibraryPage = () => {
     >
       {/* Header */}
       <div className="flex flex-col gap-4">
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-foreground flex items-center gap-2">
-            <BookOpen className="h-8 w-8 text-primary" />
-            Library
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Browse ebooks and learning materials
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl lg:text-3xl font-bold text-foreground flex items-center gap-2">
+              <BookOpen className="h-8 w-8 text-primary" />
+              Library
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Browse ebooks and learning materials
+            </p>
+          </div>
+          
+          {/* Admin Sync Button */}
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => importMutation.mutate()}
+              disabled={importMutation.isPending}
+              className="gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${importMutation.isPending ? 'animate-spin' : ''}`} />
+              {importMutation.isPending ? 'Syncing...' : 'Sync from Flipbooks'}
+            </Button>
+          )}
         </div>
 
         {/* Search and Filter Controls */}
