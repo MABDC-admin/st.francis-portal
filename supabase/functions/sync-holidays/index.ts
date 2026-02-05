@@ -29,10 +29,19 @@ serve(async (req) => {
             }
         )
 
-        const { year } = await req.json() as HolidayRequest;
-
-        if (!year) {
-            throw new Error('Year is required');
+        let year: number;
+        
+        try {
+            const body = await req.text();
+            if (body && body.trim()) {
+                const parsed = JSON.parse(body) as HolidayRequest;
+                year = parsed.year || new Date().getFullYear();
+            } else {
+                year = new Date().getFullYear();
+            }
+        } catch {
+            // If JSON parsing fails, use current year
+            year = new Date().getFullYear();
         }
 
         console.log(`Syncing holidays for year ${year}...`);
