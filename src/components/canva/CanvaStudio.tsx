@@ -30,12 +30,6 @@ export const CanvaStudio = () => {
         return;
       }
 
-      const { data, error } = await supabase.functions.invoke('canva-auth', {
-        body: null,
-        headers: {},
-      });
-
-      // Use query params approach
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/canva-auth?action=status`,
         {
