@@ -393,7 +393,7 @@ export const FlipbookViewer = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="lg:hidden fixed inset-0 z-50 bg-background flex flex-col"
+            className="lg:hidden fixed inset-0 z-[60] bg-background flex flex-col"
           >
             <div className="flex items-center justify-between px-4 py-3 border-b">
               <h3 className="font-semibold">Pages</h3>
