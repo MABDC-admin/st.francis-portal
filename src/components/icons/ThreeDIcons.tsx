@@ -245,3 +245,23 @@ export const LibraryIcon3D = ({ className }: { className?: string }) => (
         <line x1="74" y1="34" x2="74" y2="66" stroke="#F9A8D4" strokeWidth="1" />
     </svg>
 );
+
+export const CanvaIcon3D = ({ className }: { className?: string }) => (
+    <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* Canvas/Easel base */}
+        <path d="M50 85 L30 95 M50 85 L70 95" stroke="#78350F" strokeWidth="4" strokeLinecap="round" />
+        <rect x="15" y="15" width="70" height="65" rx="4" fill="white" stroke="#D1D5DB" strokeWidth="2" />
+        
+        {/* Color palette circles */}
+        <circle cx="30" cy="35" r="8" fill="#EF4444" />
+        <circle cx="50" cy="30" r="8" fill="#F59E0B" />
+        <circle cx="70" cy="35" r="8" fill="#10B981" />
+        <circle cx="35" cy="55" r="8" fill="#3B82F6" />
+        <circle cx="55" cy="60" r="8" fill="#8B5CF6" />
+        <circle cx="70" cy="55" r="8" fill="#EC4899" />
+        
+        {/* Paintbrush */}
+        <path d="M75 20 L85 10" stroke="#78350F" strokeWidth="3" strokeLinecap="round" />
+        <path d="M78 17 L82 25 L75 22 Z" fill="#F59E0B" />
+    </svg>
+);

@@ -14,3 +14,9 @@ verify_jwt = false
 
 [functions.analyze-book-cover]
 verify_jwt = false
+
+[functions.canva-auth]
+verify_jwt = false
+
+[functions.canva-api]
+verify_jwt = false

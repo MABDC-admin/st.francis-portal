@@ -41,6 +41,9 @@ import { EventsManagement } from '@/components/calendar/EventsManagement';
 // Library
 import { LibraryPage } from '@/components/library/LibraryPage';
 
+// Canva
+import { CanvaStudio } from '@/components/canva/CanvaStudio';
+
 const Index = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -336,6 +339,11 @@ const Index = () => {
       {/* Library - All authenticated users */}
       {activeTab === 'library' && (
         <LibraryPage />
+      )}
+
+      {/* Canva Studio - Admin and Teacher only */}
+      {activeTab === 'canva' && (role === 'admin' || role === 'teacher') && (
+        <CanvaStudio />
       )}
 
       {/* Admin Panel - Admin only */}
