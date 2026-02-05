@@ -1,100 +1,102 @@
 
+# Fix Canva OAuth Re-login Issue
 
-# Fix Canva OAuth Authorization URL Implementation
+## Problem Analysis
 
-## Issues Found
+After successfully authorizing with Canva, the user is redirected back to the app but sees the login page or gets logged out. This happens because:
 
-Based on Canva's documentation, the current implementation has several critical issues:
+1. **OAuth callback is in the wrong component**: The callback handling code is in `CanvaStudio.tsx`, but after Canva redirects back to `/`, the `CanvaStudio` component is not mounted (the Index page defaults to `activeTab='portal'`)
 
-### 1. **Code Challenge Method Case** (Critical)
-- **Current**: `code_challenge_method=s256` (lowercase)
-- **Required**: `code_challenge_method=S256` (uppercase S)
-- Canva documentation states: "This must be set to **S256** (SHA-256)"
+2. **Session lost during redirect**: When the browser navigates away to Canva and back, Supabase needs to rehydrate the session. If the callback handler tries to check the session before it's fully rehydrated, it returns `null`
 
-### 2. **State Parameter Misuse** (Critical Security Issue)
-- **Current**: The `code_verifier` is being stored inside the `state` parameter
-- **Canva Docs**: "The state parameter **must not** be used to store the code_verifier value"
-- **Impact**: This is a security violation and could cause OAuth flow failures
+3. **Callback code never executes**: Since `CanvaStudio` isn't rendered on the initial page load, the `useEffect` that handles the OAuth callback never runs
 
-### 3. **Code Verifier Length** (Potential Issue)
-- **Current**: 32 bytes encoded to base64url (~43 characters)
-- **Required**: "between 43 and 128 characters long"
-- **Fix**: Use 96 bytes as shown in Canva's example code
+---
 
-### 4. **State Storage**
-- **Current**: Storing user data in the state parameter (visible in URL)
-- **Required**: State should be a high-entropy random string stored server-side
-- **Solution**: Store code_verifier and user info in database, use state as lookup key
+## Solution
+
+Move the OAuth callback handling to a higher level (Index page or a dedicated callback handler) so it executes regardless of which tab is active.
 
 ---
 
 ## Technical Changes
 
-### 1. Database Schema Update
-Add a table to temporarily store OAuth state during the authorization flow:
+### 1. Handle OAuth callback in Index.tsx
 
-```sql
-CREATE TABLE public.canva_oauth_states (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  state_key text UNIQUE NOT NULL,
-  user_id uuid NOT NULL,
-  code_verifier text NOT NULL,
-  redirect_uri text NOT NULL,
-  created_at timestamptz DEFAULT now(),
-  expires_at timestamptz DEFAULT (now() + interval '10 minutes')
-);
+Add logic to detect Canva OAuth callback parameters (`code` and `state`) and process them at the page level:
 
--- Auto-cleanup expired states
-CREATE INDEX idx_canva_oauth_states_expires ON canva_oauth_states(expires_at);
-```
-
-### 2. Edge Function Updates (canva-auth/index.ts)
-
-#### a. Fix code_challenge_method
 ```typescript
-// Change from:
-canvaAuthUrl.searchParams.set('code_challenge_method', 's256');
-// To:
-canvaAuthUrl.searchParams.set('code_challenge_method', 'S256');
+// In Index.tsx useEffect
+useEffect(() => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const code = urlParams.get('code');
+  const state = urlParams.get('state');
+  
+  if (code && state) {
+    // Handle Canva OAuth callback
+    handleCanvaCallback(code, state);
+  }
+}, []);
 ```
 
-#### b. Fix code verifier generation
+### 2. Create a callback handler function
+
 ```typescript
-// Change from:
-const array = new Uint8Array(32);
-// To (96 bytes for proper length):
-const array = new Uint8Array(96);
+const handleCanvaCallback = async (code: string, state: string) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      // Wait for session to rehydrate
+      toast.info('Completing Canva connection...');
+      return;
+    }
+
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/canva-auth?action=callback&code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      }
+    );
+
+    const result = await response.json();
+    
+    if (response.ok && result.success) {
+      toast.success('Successfully connected to Canva!');
+      setActiveTab('canva'); // Navigate to Canva Studio
+    }
+    
+    // Clean URL
+    window.history.replaceState({}, document.title, window.location.pathname);
+  } catch (error) {
+    toast.error('Failed to complete Canva connection');
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+};
 ```
 
-#### c. Fix state handling - Store code_verifier in database, not in state
+### 3. Wait for session before processing callback
+
+Use the auth loading state to ensure the session is ready:
+
 ```typescript
-// Generate state key
-const stateKey = crypto.randomUUID();
-
-// Store in database (not in URL)
-await supabase.from('canva_oauth_states').insert({
-  state_key: stateKey,
-  user_id: userId,
-  code_verifier: codeVerifier,
-  redirect_uri: redirectUri,
-});
-
-// Use only the state key in the URL
-canvaAuthUrl.searchParams.set('state', stateKey);
+useEffect(() => {
+  if (loading) return; // Wait for auth to complete
+  
+  const urlParams = new URLSearchParams(window.location.search);
+  const code = urlParams.get('code');
+  const state = urlParams.get('state');
+  
+  if (code && state && user) {
+    handleCanvaCallback(code, state);
+  }
+}, [loading, user]);
 ```
 
-#### d. Update callback handler
-```typescript
-// Retrieve code_verifier from database using state key
-const { data: stateData } = await supabase
-  .from('canva_oauth_states')
-  .select('*')
-  .eq('state_key', state)
-  .single();
+### 4. Remove duplicate callback handling from CanvaStudio
 
-// Delete the state after retrieval (one-time use)
-await supabase.from('canva_oauth_states').delete().eq('state_key', state);
-```
+The callback logic in `CanvaStudio.tsx` can be simplified since Index.tsx will handle it.
 
 ---
 
@@ -102,54 +104,43 @@ await supabase.from('canva_oauth_states').delete().eq('state_key', state);
 
 | File | Changes |
 |------|---------|
-| New Migration | Create `canva_oauth_states` table |
-| `supabase/functions/canva-auth/index.ts` | Fix OAuth flow per Canva spec |
+| `src/pages/Index.tsx` | Add OAuth callback detection and handling |
+| `src/components/canva/CanvaStudio.tsx` | Remove redundant callback code, keep only status check |
 
 ---
 
-## Updated OAuth Flow
+## Flow After Fix
 
 ```text
 1. User clicks "Connect with Canva"
    │
    ▼
-2. Frontend calls: /canva-auth?action=authorize
+2. Redirected to Canva for authorization
    │
    ▼
-3. Edge function:
-   - Generates code_verifier (96 bytes, base64url)
-   - Generates code_challenge (SHA-256 hash of verifier, base64url)
-   - Generates state key (random UUID)
-   - Stores {state_key, user_id, code_verifier, redirect_uri} in DB
-   - Returns Canva OAuth URL with state=state_key
+3. Canva redirects back to: /?code=xxx&state=yyy
    │
    ▼
-4. User redirected to Canva, authorizes app
+4. Index.tsx mounts, Auth context rehydrates session
    │
    ▼
-5. Canva redirects back with: ?code=xxx&state=state_key
+5. useEffect detects ?code & ?state params
    │
    ▼
-6. Frontend calls: /canva-auth?action=callback&code=xxx&state=state_key
+6. Calls edge function to exchange code for tokens
    │
    ▼
-7. Edge function:
-   - Looks up state_key in DB → gets code_verifier, user_id
-   - Deletes the state record (one-time use)
-   - Exchanges code + code_verifier for tokens
-   - Stores tokens in canva_connections table
-   - Returns success
+7. On success: clears URL, switches to canva tab, shows toast
+   │
+   ▼
+8. CanvaStudio loads and sees connected status
 ```
 
 ---
 
 ## Implementation Summary
 
-1. **Create migration** for `canva_oauth_states` table with TTL
-2. **Update edge function** with:
-   - Uppercase `S256` for code_challenge_method
-   - 96-byte code_verifier generation
-   - Database-backed state storage
-   - Proper state verification in callback
-3. **Deploy updated edge function**
-
+1. Move OAuth callback handling from CanvaStudio to Index page
+2. Wait for auth loading to complete before processing callback
+3. Auto-navigate to Canva tab after successful connection
+4. Clean up URL parameters after processing
