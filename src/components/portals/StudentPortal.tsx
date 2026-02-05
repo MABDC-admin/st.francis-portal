@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion';
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Bell, Loader2, BookOpen, Award, User, Calendar } from 'lucide-react';
+import { useState, useCallback, useMemo } from 'react';
+import { Bell, Loader2, BookOpen, Award, User, Calendar, LogOut } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { StudentProfileCard } from '@/components/students/StudentProfileCard';
@@ -148,7 +149,7 @@ const useAnnouncements = (school: string | null | undefined) => {
 
 export const StudentPortal = () => {
   // All hooks must be called at the top level, before any conditional returns
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   
   // Use custom hooks for data fetching
@@ -189,15 +190,27 @@ export const StudentPortal = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header with Logout */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between"
       >
-        <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Student Portal</h1>
-        <p className="text-muted-foreground mt-1">
-          Welcome, {displayName}!
-        </p>
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Student Portal</h1>
+          <p className="text-muted-foreground mt-1">
+            Welcome, {displayName}!
+          </p>
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={signOut}
+          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+        >
+          <LogOut className="h-4 w-4 mr-2" />
+          Log out
+        </Button>
       </motion.div>
 
       {/* Quick Stats */}

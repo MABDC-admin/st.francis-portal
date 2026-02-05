@@ -1,14 +1,16 @@
 import { motion } from 'framer-motion';
-import { Users, ClipboardCheck, BookOpen, FileText, MessageSquare, Calendar } from 'lucide-react';
+import { Users, ClipboardCheck, BookOpen, FileText, MessageSquare, Calendar, LogOut } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TeacherPortalProps {
   teacherName?: string;
 }
 
 export const TeacherPortal = ({ teacherName = 'Teacher' }: TeacherPortalProps) => {
+  const { signOut } = useAuth();
   // Placeholder data - will be connected to real data later
   const myClasses = [
     { id: '1', name: 'Grade 6 - Section A', students: 35, subject: 'Mathematics' },
@@ -28,9 +30,21 @@ export const TeacherPortal = ({ teacherName = 'Teacher' }: TeacherPortalProps) =
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between"
       >
-        <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Teacher Portal</h1>
-        <p className="text-muted-foreground mt-1">Welcome back! Manage your classes and students.</p>
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Teacher Portal</h1>
+          <p className="text-muted-foreground mt-1">Welcome back! Manage your classes and students.</p>
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={signOut}
+          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+        >
+          <LogOut className="h-4 w-4 mr-2" />
+          Log out
+        </Button>
       </motion.div>
 
       {/* Quick Actions */}

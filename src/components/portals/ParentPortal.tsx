@@ -1,12 +1,12 @@
 import { motion } from 'framer-motion';
-import { Users, FileText, Bell, MessageSquare, CreditCard, Calendar } from 'lucide-react';
+import { Users, FileText, Bell, MessageSquare, CreditCard, Calendar, LogOut } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 
 export const ParentPortal = () => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
 
   // Placeholder data - will be connected to linked children data
   const linkedChildren = [
@@ -47,9 +47,21 @@ export const ParentPortal = () => {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between"
       >
-        <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Parent Portal</h1>
-        <p className="text-muted-foreground mt-1">Monitor your children's academic progress</p>
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Parent Portal</h1>
+          <p className="text-muted-foreground mt-1">Monitor your children's academic progress</p>
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={signOut}
+          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+        >
+          <LogOut className="h-4 w-4 mr-2" />
+          Log out
+        </Button>
       </motion.div>
 
       {/* Quick Actions */}
