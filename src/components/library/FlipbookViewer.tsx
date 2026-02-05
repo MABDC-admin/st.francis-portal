@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useAnnotations } from '@/hooks/useAnnotations';
 import { AnnotationToolbar } from './AnnotationToolbar';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface BookPage {
   id: string;
@@ -37,7 +38,8 @@ export const FlipbookViewer = ({
   onClose,
 }: FlipbookViewerProps) => {
   const [pages, setPages] = useState<BookPage[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentSpread, setCurrentSpread] = useState(0); // For desktop: spread index (0 = pages 1-2, 1 = pages 3-4, etc.)
+  const [currentPage, setCurrentPage] = useState(1); // For mobile: single page
   const [zoom, setZoom] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
@@ -45,6 +47,11 @@ export const FlipbookViewer = ({
   const [showMobileThumbnails, setShowMobileThumbnails] = useState(false);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const [isJumping, setIsJumping] = useState(false);
+  const [flipDirection, setFlipDirection] = useState<'left' | 'right' | null>(null);
+  const [isFlipping, setIsFlipping] = useState(false);
+  
+  const isMobile = useIsMobile();
+  const isDesktop = !isMobile && typeof window !== 'undefined' && window.innerWidth >= 1024;
   
   const thumbnailRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
   const imageRef = useRef<HTMLImageElement>(null);
@@ -174,13 +181,52 @@ export const FlipbookViewer = ({
     }
   }, [imageSize, zoom, currentPage, renderAnnotations, canvasRef]);
 
+  // Desktop spread calculation
+  const totalSpreads = Math.ceil(pages.length / 2);
+  const leftPageIndex = currentSpread * 2;
+  const rightPageIndex = currentSpread * 2 + 1;
+  const leftPage = pages[leftPageIndex];
+  const rightPage = pages[rightPageIndex];
+
+  const goToPrevSpread = useCallback(() => {
+    if (currentSpread > 0 && !isFlipping) {
+      setFlipDirection('left');
+      setIsFlipping(true);
+      setTimeout(() => {
+        setCurrentSpread((s) => Math.max(0, s - 1));
+        setIsFlipping(false);
+        setFlipDirection(null);
+      }, 300);
+    }
+  }, [currentSpread, isFlipping]);
+
+  const goToNextSpread = useCallback(() => {
+    if (currentSpread < totalSpreads - 1 && !isFlipping) {
+      setFlipDirection('right');
+      setIsFlipping(true);
+      setTimeout(() => {
+        setCurrentSpread((s) => Math.min(totalSpreads - 1, s + 1));
+        setIsFlipping(false);
+        setFlipDirection(null);
+      }, 300);
+    }
+  }, [currentSpread, totalSpreads, isFlipping]);
+
   const goToPrev = useCallback(() => {
-    setCurrentPage((p) => Math.max(1, p - 1));
-  }, []);
+    if (isDesktop) {
+      goToPrevSpread();
+    } else {
+      setCurrentPage((p) => Math.max(1, p - 1));
+    }
+  }, [isDesktop, goToPrevSpread]);
 
   const goToNext = useCallback(() => {
-    setCurrentPage((p) => Math.min(pages.length, p + 1));
-  }, [pages.length]);
+    if (isDesktop) {
+      goToNextSpread();
+    } else {
+      setCurrentPage((p) => Math.min(pages.length, p + 1));
+    }
+  }, [isDesktop, goToNextSpread, pages.length]);
 
   const handleZoomIn = () => {
     setZoom((z) => Math.min(3, z + 0.25));
@@ -195,6 +241,16 @@ export const FlipbookViewer = ({
       document.documentElement.requestFullscreen?.();
     } else {
       document.exitFullscreen?.();
+    }
+  };
+
+  // Navigate to specific page from thumbnail
+  const goToPage = (pageNumber: number) => {
+    if (isDesktop) {
+      const spreadIndex = Math.floor((pageNumber - 1) / 2);
+      setCurrentSpread(spreadIndex);
+    } else {
+      setCurrentPage(pageNumber);
     }
   };
 
@@ -251,7 +307,14 @@ export const FlipbookViewer = ({
         <div className="flex items-center gap-1">
           {/* Page indicator */}
           <span className="text-sm text-muted-foreground mr-2">
-            {currentPage} / {pages.length}
+            {isDesktop ? (
+              <>
+                {leftPageIndex + 1}
+                {rightPage ? `-${rightPageIndex + 1}` : ''} / {pages.length}
+              </>
+            ) : (
+              <>{currentPage} / {pages.length}</>
+            )}
           </span>
 
           {/* Zoom controls */}
@@ -309,27 +372,33 @@ export const FlipbookViewer = ({
             >
               <div className="h-full overflow-y-auto scrollbar-wide">
                 <div className="p-3 space-y-3">
-                  {pages.map((page) => (
-                    <button
-                      key={page.id}
-                      onClick={() => setCurrentPage(page.page_number)}
-                      className={cn(
-                        'w-full rounded-lg overflow-hidden border-2 transition-colors',
-                        currentPage === page.page_number
-                          ? 'border-primary'
-                          : 'border-transparent hover:border-muted-foreground/30'
-                      )}
-                    >
-                      <img
-                        src={page.thumbnail_url || page.image_url}
-                        alt={`Page ${page.page_number}`}
-                        className="w-full aspect-[3/4] object-cover"
-                      />
-                      <p className="text-xs text-center py-1.5 bg-muted/50 font-medium">
-                        {page.page_number}
-                      </p>
-                    </button>
-                  ))}
+                  {pages.map((page) => {
+                    const isInCurrentSpread = isDesktop && 
+                      (page.page_number === leftPageIndex + 1 || page.page_number === rightPageIndex + 1);
+                    const isCurrentMobile = !isDesktop && currentPage === page.page_number;
+                    
+                    return (
+                      <button
+                        key={page.id}
+                        onClick={() => goToPage(page.page_number)}
+                        className={cn(
+                          'w-full rounded-lg overflow-hidden border-2 transition-colors',
+                          (isInCurrentSpread || isCurrentMobile)
+                            ? 'border-primary'
+                            : 'border-transparent hover:border-muted-foreground/30'
+                        )}
+                      >
+                        <img
+                          src={page.thumbnail_url || page.image_url}
+                          alt={`Page ${page.page_number}`}
+                          className="w-full aspect-[3/4] object-cover"
+                        />
+                        <p className="text-xs text-center py-1.5 bg-muted/50 font-medium">
+                          {page.page_number}
+                        </p>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </motion.div>
@@ -340,6 +409,65 @@ export const FlipbookViewer = ({
         <div className="flex-1 relative flex items-center justify-center overflow-auto bg-muted/20">
           {isLoading ? (
             <div className="text-muted-foreground">Loading pages...</div>
+          ) : isDesktop && leftPage ? (
+            /* Desktop: 2-Page Spread with Flip Animation */
+            <div
+              className="relative flex items-center justify-center gap-1"
+              style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
+            >
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentSpread}
+                  initial={{ 
+                    rotateY: flipDirection === 'right' ? -15 : flipDirection === 'left' ? 15 : 0,
+                    opacity: 0.5,
+                    scale: 0.95
+                  }}
+                  animate={{ 
+                    rotateY: 0,
+                    opacity: 1,
+                    scale: 1
+                  }}
+                  exit={{ 
+                    rotateY: flipDirection === 'right' ? 15 : flipDirection === 'left' ? -15 : 0,
+                    opacity: 0.5,
+                    scale: 0.95
+                  }}
+                  transition={{ duration: 0.3, ease: 'easeInOut' }}
+                  className="flex items-center justify-center gap-1 perspective-1000"
+                  style={{ transformStyle: 'preserve-3d' }}
+                >
+                  {/* Left Page */}
+                  <div className="relative shadow-lg bg-white">
+                    <img
+                      src={leftPage.image_url}
+                      alt={`Page ${leftPageIndex + 1}`}
+                      className="max-h-[calc(100vh-200px)] w-auto"
+                      draggable={false}
+                    />
+                    {/* Page curl effect */}
+                    <div className="absolute inset-y-0 right-0 w-4 bg-gradient-to-l from-black/5 to-transparent pointer-events-none" />
+                  </div>
+                  
+                  {/* Right Page */}
+                  {rightPage && (
+                    <div className="relative shadow-lg bg-white">
+                      <img
+                        src={rightPage.image_url}
+                        alt={`Page ${rightPageIndex + 1}`}
+                        className="max-h-[calc(100vh-200px)] w-auto"
+                        draggable={false}
+                      />
+                      {/* Page curl effect */}
+                      <div className="absolute inset-y-0 left-0 w-4 bg-gradient-to-r from-black/5 to-transparent pointer-events-none" />
+                    </div>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+              
+              {/* Center spine shadow */}
+              <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-2 bg-gradient-to-r from-black/10 via-black/5 to-black/10 pointer-events-none z-10" />
+            </div>
           ) : currentPageData ? (
             <div
               ref={containerRef}
@@ -377,7 +505,7 @@ export const FlipbookViewer = ({
             size="icon"
             className="absolute left-4 top-1/2 -translate-y-1/2 opacity-70 hover:opacity-100"
             onClick={goToPrev}
-            disabled={currentPage <= 1}
+            disabled={isDesktop ? currentSpread <= 0 || isFlipping : currentPage <= 1}
           >
             <ChevronLeft className="h-6 w-6" />
           </Button>
@@ -387,7 +515,7 @@ export const FlipbookViewer = ({
             size="icon"
             className="absolute right-4 top-1/2 -translate-y-1/2 opacity-70 hover:opacity-100"
             onClick={goToNext}
-            disabled={currentPage >= pages.length}
+            disabled={isDesktop ? currentSpread >= totalSpreads - 1 || isFlipping : currentPage >= pages.length}
           >
             <ChevronRight className="h-6 w-6" />
           </Button>
