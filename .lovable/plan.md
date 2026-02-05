@@ -1,201 +1,170 @@
 
-# Enhance FlipbookViewer: Bigger Sidebar + Annotation Tools
+# Fix Annotation Alignment + Enhanced Mobile Thumbnail View
 
-## Overview
-Two enhancements for the desktop FlipbookViewer:
-1. **Bigger sidebar** - Increase width from 160px to 220px with larger thumbnails and a wider, more visible scrollbar
-2. **Annotation tools** - Add a toolbar with drawing/annotation capabilities (pencil, highlighter, text, shapes, eraser)
+## Issues to Fix
 
----
+### 1. Mouse Pointer Alignment Problem
 
-## 1. Bigger Desktop Sidebar
+**Root Cause**: The canvas coordinate calculation doesn't account for the mismatch between:
+- The CSS `transform: scale(zoom)` on the parent container
+- The canvas's internal pixel dimensions
+- The actual rendered image size in the DOM
 
-### Changes
-- Increase sidebar width from `160px` to `220px`
-- Make thumbnails larger for better visibility
-- Add custom scrollbar styling (wider track ~12px, more visible thumb)
-- Increase thumbnail padding and spacing
-
-### Before/After
-
-| Current | New |
-|---------|-----|
-| Width: 160px | Width: 220px |
-| Thumbnail padding: p-2 | Thumbnail padding: p-3 |
-| Scrollbar: default (~8px) | Scrollbar: 12px with visible thumb |
-
----
-
-## 2. Annotation Tools Toolbar
-
-### Features
-| Tool | Icon | Function |
-|------|------|----------|
-| Pencil | `Pencil` | Freehand drawing |
-| Highlighter | `Highlighter` | Semi-transparent highlight |
-| Text | `Type` | Add text annotations |
-| Rectangle | `Square` | Draw rectangles |
-| Circle | `Circle` | Draw circles/ellipses |
-| Arrow | `MoveRight` | Draw arrows |
-| Eraser | `Eraser` | Remove annotations |
-| Undo | `Undo2` | Undo last action |
-| Redo | `Redo2` | Redo action |
-| Clear | `Trash2` | Clear all annotations on page |
-| Color Picker | Color dots | Select annotation color |
-
-### UI Layout
+**Current Flow (Broken)**:
 ```text
-+----------------------------------------------------------+
-| [Book Title]                    [Page] [Zoom] [FS] [X]   |
-+----------------------------------------------------------+
-| Sidebar  |  [Pencil][Highlight][Text][Rect][Circle][...] | <- Annotation toolbar
-| (220px)  |  +----------------------------------------+   |
-|          |  |                                        |   |
-| [Thumb]  |  |       Page Image                       |   |
-| [Thumb]  |  |       + Canvas Overlay                 |   |
-| [Thumb]  |  |       (for drawing)                    |   |
-|          |  |                                        |   |
-|          |  +----------------------------------------+   |
-|          |           [<]              [>]                |
-+----------------------------------------------------------+
+Container has: transform: scale(zoom)
+Canvas has: width/height = imageSize * zoom (internal pixels)
+Canvas CSS: inset-0, w-full, h-full (stretches to match image)
+
+When clicking:
+- getBoundingClientRect() returns scaled dimensions
+- Dividing by zoom doesn't correctly map to canvas internal coords
 ```
 
-### Technical Implementation
+**Solution**: Use the image's actual displayed dimensions (clientWidth/clientHeight) instead of natural dimensions, and properly account for the CSS transform scaling.
 
-**Canvas Overlay Approach:**
-- Add a `<canvas>` element positioned absolutely over the page image
-- Canvas matches the image dimensions and scales with zoom
-- Use Canvas 2D API for drawing operations
-- Store annotations per page in component state
+### 2. Thumbnail Grid Layout
 
-**State Structure:**
-```tsx
-interface Annotation {
-  id: string;
-  type: 'pencil' | 'highlighter' | 'text' | 'rect' | 'circle' | 'arrow';
-  points?: { x: number; y: number }[];  // For pencil/highlighter
-  start?: { x: number; y: number };     // For shapes
-  end?: { x: number; y: number };       // For shapes
-  text?: string;                        // For text annotations
-  color: string;
-  strokeWidth: number;
-}
+| Device | Current | New |
+|--------|---------|-----|
+| Mobile (<768px) | 2 columns | 3 columns |
+| Tablet (768px-1024px) | 2 columns | 4 columns |
 
-interface PageAnnotations {
-  [pageNumber: number]: Annotation[];
-}
-```
+### 3. Thumbnail Icon Position
 
-**New State Variables:**
-```tsx
-const [annotationMode, setAnnotationMode] = useState<'none' | 'pencil' | 'highlighter' | 'text' | 'rect' | 'circle' | 'arrow' | 'eraser'>('none');
-const [annotationColor, setAnnotationColor] = useState('#FF0000');
-const [annotations, setAnnotations] = useState<PageAnnotations>({});
-const [isDrawing, setIsDrawing] = useState(false);
-const [currentPath, setCurrentPath] = useState<{ x: number; y: number }[]>([]);
-const [history, setHistory] = useState<PageAnnotations[]>([]);
-const [historyIndex, setHistoryIndex] = useState(-1);
-const canvasRef = useRef<HTMLCanvasElement>(null);
-```
+Current order: `[Grid Icon] [Prev] [Page Count] [Next]`
+New order: `[Prev] [Page Count] [Next] [Animated Grid Icon]`
 
-**Drawing Logic:**
-- `onMouseDown` - Start drawing, record starting point
-- `onMouseMove` - Continue path if drawing
-- `onMouseUp` - Finish annotation, save to state
-- Render all annotations for current page on canvas
+### 4. Jumping Animation
+
+Add a subtle "bounce" animation that triggers every 5 seconds using CSS keyframes + a JavaScript interval to toggle the animation class.
 
 ---
 
 ## Files to Modify
 
-| Action | File |
-|--------|------|
-| Modify | `src/components/library/FlipbookViewer.tsx` |
+| File | Changes |
+|------|---------|
+| `src/hooks/useAnnotations.ts` | Fix coordinate calculation to use displayed image size |
+| `src/components/library/FlipbookViewer.tsx` | Update thumbnail grid, move icon, add animation |
+| `src/index.css` | Add bounce/jump keyframe animation |
 
 ---
 
-## Detailed Changes to FlipbookViewer.tsx
+## Technical Changes
 
-### 1. New Imports
+### 1. Fix `useAnnotations.ts` - Coordinate Calculation
+
+The `getCanvasCoordinates` function needs to properly map mouse position to canvas internal coordinates:
+
 ```tsx
-import {
-  Pencil,
-  Highlighter,
-  Type,
-  Square,
-  Circle,
-  MoveRight,
-  Eraser,
-  Undo2,
-  Redo2,
-  Trash2,
-} from 'lucide-react';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+// Current (broken):
+const getCanvasCoordinates = (e, zoom) => {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (e.clientX - rect.left) / zoom,
+    y: (e.clientY - rect.top) / zoom,
+  };
+};
+
+// Fixed: Account for canvas internal dimensions vs displayed size
+const getCanvasCoordinates = (e, zoom) => {
+  const canvas = canvasRef.current;
+  const rect = canvas.getBoundingClientRect();
+  
+  // Map from displayed size to internal canvas coordinates
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  
+  return {
+    x: ((e.clientX - rect.left) * scaleX) / zoom,
+    y: ((e.clientY - rect.top) * scaleY) / zoom,
+  };
+};
 ```
 
-### 2. New State Variables
-- `annotationMode` - Current active tool
-- `annotationColor` - Selected color
-- `annotations` - Per-page annotation data
-- `isDrawing` - Mouse/touch state
-- `currentPath` - Current stroke being drawn
-- `history` / `historyIndex` - For undo/redo
-- `canvasRef` - Reference to drawing canvas
+### 2. Update `FlipbookViewer.tsx`
 
-### 3. Sidebar Changes
-- Update width from 160 to 220 in motion.div animate
-- Add custom scrollbar class with wider track
-- Increase padding from p-2 to p-3
-
-### 4. Add Annotation Toolbar (Desktop Only)
-- Position below header, above the main content area
-- Show tool buttons as a ToggleGroup
-- Include color picker (preset color dots)
-- Add undo/redo/clear buttons on the right
-
-### 5. Canvas Overlay
-- Add `<canvas>` element positioned over the page image
-- Handle mouse events for drawing
-- Re-render canvas when annotations or page changes
-- Scale canvas properly with zoom
-
-### 6. Drawing Functions
-- `startDrawing()` - Begin stroke
-- `draw()` - Continue stroke
-- `stopDrawing()` - Finish and save annotation
-- `renderAnnotations()` - Draw all annotations to canvas
-- `undo()` / `redo()` - History navigation
-- `clearAnnotations()` - Remove all from current page
-
----
-
-## Color Options
+**Thumbnail Grid Classes**:
 ```tsx
-const colors = [
-  '#EF4444', // Red
-  '#F97316', // Orange
-  '#EAB308', // Yellow
-  '#22C55E', // Green
-  '#3B82F6', // Blue
-  '#8B5CF6', // Purple
-  '#000000', // Black
-];
+// Current:
+<div className="grid grid-cols-2 gap-3 p-3">
+
+// New - Responsive columns:
+<div className="grid grid-cols-3 md:grid-cols-4 gap-3 p-3">
+```
+
+**Mobile Navigation Reorder**:
+```tsx
+// Current order:
+[LayoutGrid] [Prev] [count] [Next]
+
+// New order:
+[Prev] [count] [Next] [LayoutGrid with animation]
+```
+
+**Add Animation State**:
+```tsx
+const [isJumping, setIsJumping] = useState(false);
+
+useEffect(() => {
+  const interval = setInterval(() => {
+    setIsJumping(true);
+    setTimeout(() => setIsJumping(false), 500);
+  }, 5000);
+  return () => clearInterval(interval);
+}, []);
+```
+
+**Apply Animation Class**:
+```tsx
+<Button
+  variant="outline"
+  size="sm"
+  onClick={() => setShowMobileThumbnails(true)}
+  className={cn(isJumping && 'animate-bounce-subtle')}
+>
+  <LayoutGrid className="h-4 w-4" />
+</Button>
+```
+
+### 3. Add Animation to `index.css`
+
+```css
+@keyframes bounce-subtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.animate-bounce-subtle {
+  animation: bounce-subtle 0.5s ease-in-out;
+}
 ```
 
 ---
 
-## Note on Persistence
-This implementation stores annotations in component state (session only). For persistent annotations, a future enhancement could save to the database in a `book_annotations` table.
+## Updated Mobile Navigation Layout
+
+```text
+Before:
++--------------------------------------------------+
+| [Grid] [< Prev]  3/20  [Next >]                  |
++--------------------------------------------------+
+
+After:
++--------------------------------------------------+
+| [< Prev]  3/20  [Next >]  [Grid (bouncing)]      |
++--------------------------------------------------+
+```
 
 ---
 
 ## Summary
 
-| Enhancement | Details |
-|-------------|---------|
-| Sidebar width | 160px -> 220px |
-| Scrollbar | Wider (12px), more visible |
-| Annotation tools | Pencil, Highlighter, Text, Shapes, Eraser |
-| Color picker | 7 preset colors |
-| Undo/Redo | History-based |
-| Canvas overlay | Positioned over page image, scales with zoom |
+| Change | Description |
+|--------|-------------|
+| Fix alignment | Correct coordinate mapping in useAnnotations.ts |
+| 3 columns mobile | `grid-cols-3` for screens < 768px |
+| 4 columns tablet | `md:grid-cols-4` for screens >= 768px |
+| Icon position | Move LayoutGrid button to right of "Next" |
+| Bounce animation | CSS keyframe + 5-second interval trigger |
