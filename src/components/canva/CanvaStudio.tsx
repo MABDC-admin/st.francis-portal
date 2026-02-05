@@ -56,48 +56,7 @@ export const CanvaStudio = () => {
 
   useEffect(() => {
     checkConnection();
-
-    // Handle OAuth callback
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    const state = urlParams.get('state');
-    
-    if (code && state) {
-      handleOAuthCallback(code, state);
-    }
   }, []);
-
-  const handleOAuthCallback = async (code: string, state: string) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/canva-auth?action=callback&code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      const result = await response.json();
-      
-      if (response.ok && result.success) {
-        toast.success('Successfully connected to Canva!');
-        // Clean URL
-        window.history.replaceState({}, document.title, window.location.pathname);
-        checkConnection();
-      } else {
-        throw new Error(result.error || 'Failed to connect');
-      }
-    } catch (error) {
-      console.error('OAuth callback error:', error);
-      toast.error('Failed to connect to Canva');
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  };
 
   const handleDisconnect = async () => {
     try {

@@ -19,6 +19,8 @@ import { useStudents, useCreateStudent, useUpdateStudent, useDeleteStudent } fro
 import { Student, StudentFormData } from '@/types/student';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchool } from '@/contexts/SchoolContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 // Portal Components
 import { AdminPortal } from '@/components/portals/AdminPortal';
@@ -47,13 +49,68 @@ import { CanvaStudio } from '@/components/canva/CanvaStudio';
 const Index = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, loading, role } = useAuth();
+  const { user, loading, role, session } = useAuth();
 
+  // Redirect to auth if not logged in
   useEffect(() => {
     if (!loading && !user) {
       navigate('/auth');
     }
   }, [user, loading, navigate]);
+
+  // Handle Canva OAuth callback at page level
+  const handleCanvaOAuthCallback = async (code: string, state: string) => {
+    try {
+      // Get current session
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      if (!currentSession) {
+        toast.error('Session expired. Please log in and try again.');
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return;
+      }
+
+      toast.info('Completing Canva connection...');
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/canva-auth?action=callback&code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${currentSession.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
+        toast.success('Successfully connected to Canva!');
+        setActiveTab('canva'); // Navigate to Canva Studio
+      } else {
+        throw new Error(result.error || 'Failed to connect');
+      }
+    } catch (error) {
+      console.error('Canva OAuth callback error:', error);
+      toast.error('Failed to complete Canva connection');
+    } finally {
+      // Clean URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  };
+
+  // Detect Canva OAuth callback parameters
+  useEffect(() => {
+    if (loading) return; // Wait for auth to complete
+    if (!user) return; // Must be logged in
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    const state = urlParams.get('state');
+    
+    if (code && state) {
+      handleCanvaOAuthCallback(code, state);
+    }
+  }, [loading, user]);
 
   const [activeTab, setActiveTab] = useState('portal');
   const hasInitialized = useRef(false);
