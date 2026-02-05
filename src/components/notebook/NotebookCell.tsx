@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Play, Trash2, GripVertical, FileText, Bot, Loader2, Download } from 'lucide-react';
+import { Play, Trash2, GripVertical, FileText, Bot, Loader2, Download, Presentation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { CellOutput } from './CellOutput';
 import { PdfUploadZone } from './PdfUploadZone';
+import { PresentationCell } from './PresentationCell';
 import { NotebookCell as NotebookCellType } from '@/hooks/useNotebooks';
 import { ExtractedPdfResult } from '@/utils/extractPdfText';
 import { exportNotebookToPdf } from '@/utils/notebookPdfExport';
@@ -29,9 +30,11 @@ interface NotebookCellProps {
   streamingOutput?: string;
   onContentChange: (content: string) => void;
   onSave: (content: string) => void;
-  onTypeChange: (type: 'markdown' | 'llm') => void;
+  onTypeChange: (type: 'markdown' | 'llm' | 'presentation') => void;
   onDelete: () => void;
   onRun: (pdfText?: string, pdfFilename?: string) => void;
+  onRunPresentation?: (topic: string, slideCount: number, style: string) => void;
+  onSavePresentation?: (content: string, slideCount: number, style: string) => void;
 }
 
 export function NotebookCell({
@@ -43,6 +46,8 @@ export function NotebookCell({
   onTypeChange,
   onDelete,
   onRun,
+  onRunPresentation,
+  onSavePresentation,
 }: NotebookCellProps) {
   const [localContent, setLocalContent] = useState(cell.content);
   const [isFocused, setIsFocused] = useState(false);
@@ -132,6 +137,29 @@ export function NotebookCell({
   const displayOutput = isRunning ? streamingOutput : cell.output;
   const canDownload = !isRunning && !!cell.output;
 
+  // Render PresentationCell for presentation type
+  if (cell.cell_type === 'presentation') {
+    return (
+      <PresentationCell
+        cell={cell}
+        isRunning={isRunning}
+        streamingOutput={streamingOutput}
+        onContentChange={onContentChange}
+        onSave={(content, slideCount, style) => {
+          if (onSavePresentation) {
+            onSavePresentation(content, slideCount, style);
+          }
+        }}
+        onDelete={onDelete}
+        onRun={(topic, slideCount, style) => {
+          if (onRunPresentation) {
+            onRunPresentation(topic, slideCount, style);
+          }
+        }}
+      />
+    );
+  }
+
   return (
     <motion.div
       layout
@@ -157,10 +185,15 @@ export function NotebookCell({
                   <FileText className="h-3.5 w-3.5" />
                   <span className="text-xs">Markdown</span>
                 </>
-              ) : (
+              ) : cell.cell_type === 'llm' ? (
                 <>
                   <Bot className="h-3.5 w-3.5" />
                   <span className="text-xs">LLM Prompt</span>
+                </>
+              ) : (
+                <>
+                  <Presentation className="h-3.5 w-3.5" />
+                  <span className="text-xs">Presentation</span>
                 </>
               )}
             </Button>
@@ -173,6 +206,10 @@ export function NotebookCell({
             <DropdownMenuItem onClick={() => onTypeChange('llm')}>
               <Bot className="h-4 w-4 mr-2" />
               LLM Prompt
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onTypeChange('presentation')}>
+              <Presentation className="h-4 w-4 mr-2" />
+              Presentation
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

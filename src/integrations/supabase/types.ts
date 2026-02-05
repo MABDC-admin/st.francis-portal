@@ -343,6 +343,8 @@ export type Database = {
           pdf_filename: string | null
           pdf_page_count: number | null
           position: number
+          presentation_slide_count: number | null
+          presentation_style: string | null
           updated_at: string
         }
         Insert: {
@@ -357,6 +359,8 @@ export type Database = {
           pdf_filename?: string | null
           pdf_page_count?: number | null
           position?: number
+          presentation_slide_count?: number | null
+          presentation_style?: string | null
           updated_at?: string
         }
         Update: {
@@ -371,6 +375,8 @@ export type Database = {
           pdf_filename?: string | null
           pdf_page_count?: number | null
           position?: number
+          presentation_slide_count?: number | null
+          presentation_style?: string | null
           updated_at?: string
         }
         Relationships: [

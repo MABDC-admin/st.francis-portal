@@ -16,7 +16,7 @@ export interface Notebook {
 export interface NotebookCell {
   id: string;
   notebook_id: string;
-  cell_type: 'markdown' | 'llm';
+  cell_type: 'markdown' | 'llm' | 'presentation';
   content: string;
   output: string | null;
   position: number;
@@ -24,6 +24,8 @@ export interface NotebookCell {
   pdf_filename: string | null;
   pdf_page_count: number | null;
   pdf_extracted_text: string | null;
+  presentation_slide_count: number | null;
+  presentation_style: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -42,20 +44,24 @@ export interface UpdateNotebookData {
 
 export interface CreateCellData {
   notebook_id: string;
-  cell_type: 'markdown' | 'llm';
+  cell_type: 'markdown' | 'llm' | 'presentation';
   content?: string;
   position: number;
+  presentation_slide_count?: number;
+  presentation_style?: string;
 }
 
 export interface UpdateCellData {
   id: string;
   content?: string;
   output?: string;
-  cell_type?: 'markdown' | 'llm';
+  cell_type?: 'markdown' | 'llm' | 'presentation';
   model?: string;
   pdf_filename?: string;
   pdf_page_count?: number;
   pdf_extracted_text?: string;
+  presentation_slide_count?: number;
+  presentation_style?: string;
 }
 
 // Fetch all notebooks for the current user
@@ -203,6 +209,8 @@ export function useCreateCell() {
           cell_type: data.cell_type,
           content: data.content || '',
           position: data.position,
+          presentation_slide_count: data.presentation_slide_count,
+          presentation_style: data.presentation_style,
         })
         .select()
         .single();

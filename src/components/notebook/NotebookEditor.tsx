@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, Reorder } from 'framer-motion';
-import { Plus, Save, Check } from 'lucide-react';
+import { Plus, Save, Check, Presentation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -71,12 +71,16 @@ export function NotebookEditor({ notebookId }: NotebookEditorProps) {
     }
   }, [debouncedTitle, notebookId, data?.notebook]);
 
-  const handleAddCell = async (type: 'markdown' | 'llm') => {
+  const handleAddCell = async (type: 'markdown' | 'llm' | 'presentation') => {
     const position = cells.length;
     const newCell = await createCell.mutateAsync({
       notebook_id: notebookId,
       cell_type: type,
       position,
+      ...(type === 'presentation' && {
+        presentation_slide_count: 8,
+        presentation_style: 'modern',
+      }),
     });
     setCells([...cells, newCell]);
   };
@@ -92,7 +96,7 @@ export function NotebookEditor({ notebookId }: NotebookEditorProps) {
     await updateCell.mutateAsync({ id: cellId, content });
   }, [updateCell]);
 
-  const handleCellTypeChange = useCallback(async (cellId: string, type: 'markdown' | 'llm') => {
+  const handleCellTypeChange = useCallback(async (cellId: string, type: 'markdown' | 'llm' | 'presentation') => {
     setCells((prev) =>
       prev.map((c) => (c.id === cellId ? { ...c, cell_type: type } : c))
     );
@@ -217,6 +221,103 @@ export function NotebookEditor({ notebookId }: NotebookEditorProps) {
     }
   }, [cells, updateCell]);
 
+  // Handle running presentation cells
+  const handleRunPresentationCell = useCallback(async (cellId: string, topic: string, slideCount: number, style: string) => {
+    setRunningCellId(cellId);
+    setStreamingOutput((prev) => ({ ...prev, [cellId]: '' }));
+
+    try {
+      const { data: session } = await (await import('@/integrations/supabase/client')).supabase.auth.getSession();
+      if (!session.session) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-presentation`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ topic, slideCount, style }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No response body');
+
+      const decoder = new TextDecoder();
+      let fullOutput = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          const trimmedLine = line.trim();
+          if (!trimmedLine || !trimmedLine.startsWith('data: ')) continue;
+
+          const data = trimmedLine.slice(6);
+          if (data === '[DONE]') continue;
+
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.content || '';
+            if (content) {
+              fullOutput += content;
+              setStreamingOutput((prev) => ({ ...prev, [cellId]: fullOutput }));
+            }
+          } catch {
+            // Skip malformed JSON
+          }
+        }
+      }
+
+      // Save the final output
+      await updateCell.mutateAsync({ 
+        id: cellId, 
+        output: fullOutput,
+        content: topic,
+        presentation_slide_count: slideCount,
+        presentation_style: style,
+      });
+      setCells((prev) =>
+        prev.map((c) => (c.id === cellId ? { 
+          ...c, 
+          output: fullOutput,
+          content: topic,
+          presentation_slide_count: slideCount,
+          presentation_style: style,
+        } : c))
+      );
+    } catch (error) {
+      console.error('Error running presentation cell:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setStreamingOutput((prev) => ({ ...prev, [cellId]: `Error: ${errorMessage}` }));
+    } finally {
+      setRunningCellId(null);
+    }
+  }, [updateCell]);
+
+  // Handle saving presentation cell settings
+  const handleSavePresentationCell = useCallback(async (cellId: string, content: string, slideCount: number, style: string) => {
+    await updateCell.mutateAsync({ 
+      id: cellId, 
+      content, 
+      presentation_slide_count: slideCount,
+      presentation_style: style,
+    });
+  }, [updateCell]);
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -269,6 +370,8 @@ export function NotebookEditor({ notebookId }: NotebookEditorProps) {
               onTypeChange={(type) => handleCellTypeChange(cell.id, type)}
               onDelete={() => handleDeleteCell(cell.id)}
               onRun={(pdfText, pdfFilename) => handleRunCell(cell.id, pdfText, pdfFilename)}
+              onRunPresentation={(topic, slideCount, style) => handleRunPresentationCell(cell.id, topic, slideCount, style)}
+              onSavePresentation={(content, slideCount, style) => handleSavePresentationCell(cell.id, content, slideCount, style)}
             />
           </Reorder.Item>
         ))}
@@ -298,6 +401,16 @@ export function NotebookEditor({ notebookId }: NotebookEditorProps) {
         >
           <Plus className="h-4 w-4 mr-1" />
           LLM Prompt
+        </Button>
+        <span className="text-muted-foreground">|</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleAddCell('presentation')}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <Presentation className="h-4 w-4 mr-1" />
+          Presentation
         </Button>
       </motion.div>
     </div>
