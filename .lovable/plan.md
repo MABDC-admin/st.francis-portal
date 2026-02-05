@@ -1,191 +1,158 @@
 
-# Library Integration Plan
+# Cross-Project Integration Plan: Flipbooks API Sync
 
-## Overview
-Integrate the Flipbooks project (from another Lovable project) into this system by:
-1. Replacing the Attendance widget with a Library widget
-2. Creating a Library page with flipbook content filtered by grade level
-3. Implementing role-based access (students see grade-appropriate content, staff see all)
+## The Challenge
+The Flipbooks project (`edu-flip-library.lovable.app`) is a separate Lovable project with its own database. To integrate it here, we need to create an API bridge between the two projects.
 
 ---
 
-## Part 1: Replace Attendance Widget with Library Widget
+## Integration Architecture
 
-### File: `src/components/dashboard/DashboardStatsRow.tsx`
-
-**Current State:** 4th widget shows "Attendance" with a percentage  
-**New State:** 4th widget shows "Library" with a link/count
-
-**Changes:**
-- Replace the Attendance stat with a Library stat
-- Add a click handler to navigate to the Library page
-- Update the icon to a book/library icon
-
-### File: `src/components/icons/ThreeDIcons.tsx`
-- Add a new `LibraryIcon3D` component for the widget
-
-### File: `src/components/portals/AdminPortal.tsx`
-- Update DashboardStatsRow props (remove attendanceRate, add libraryAction)
-
----
-
-## Part 2: Database Schema for Flipbooks
-
-Since the Flipbooks project is in a separate Lovable account, we have two integration options:
-
-### Option A: External Link Integration (Simpler)
-- Store flipbook metadata (title, grade level, external URL) in this system
-- Link opens the external Flipbooks project in a new tab
-- Content is managed in the Flipbooks project
-
-### Option B: Full Data Import (More Complex)
-- Copy flipbook data into this system's database
-- Store PDFs in this system's storage
-- Requires ongoing sync between projects
-
-**Recommended: Option A** - External Link Integration
-
-### Database Table: `flipbooks`
-```sql
-CREATE TABLE public.flipbooks (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  title TEXT NOT NULL,
-  description TEXT,
-  cover_image_url TEXT,
-  flipbook_url TEXT NOT NULL, -- External URL to the flipbook
-  grade_levels TEXT[] NOT NULL, -- Array of grade levels (e.g., ['Grade 1', 'Grade 2'])
-  school TEXT, -- 'MABDC', 'STFXSA', or NULL for both
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Enable RLS
-ALTER TABLE public.flipbooks ENABLE ROW LEVEL SECURITY;
-
--- Policy: Anyone authenticated can view active flipbooks
-CREATE POLICY "Users can view flipbooks"
-  ON public.flipbooks FOR SELECT
-  TO authenticated
-  USING (is_active = true);
-
--- Policy: Admins can manage flipbooks
-CREATE POLICY "Admins can manage flipbooks"
-  ON public.flipbooks FOR ALL
-  TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
+```text
+┌─────────────────────────┐         ┌─────────────────────────┐
+│   REGISTRAR SYSTEM      │         │   FLIPBOOKS PROJECT     │
+│   (Current Project)     │         │   (edu-flip-library)    │
+├─────────────────────────┤         ├─────────────────────────┤
+│                         │  HTTPS  │                         │
+│   Library Page  ───────────────►  │   sync-flipbooks        │
+│                         │  (API)  │   Edge Function         │
+│   flipbooks table ◄─────────────  │                         │
+│   (cached metadata)     │  JSON   │   flipbooks table       │
+│                         │         │   (source data)         │
+└─────────────────────────┘         └─────────────────────────┘
 ```
 
 ---
 
-## Part 3: Library Page Component
+## What You Need to Do in the Flipbooks Project
 
-### New File: `src/components/library/LibraryPage.tsx`
+### Step 1: Create a Sync API Edge Function
 
-**Features:**
-- Grid display of flipbook covers/cards
-- Grade level filter dropdown
-- Search by title
-- Click to open flipbook in new tab (or embedded iframe)
+In your **Flipbooks project**, create a new edge function called `sync-flipbooks`:
 
-**Role-Based Filtering Logic:**
+**File:** `supabase/functions/sync-flipbooks/index.ts`
+
 ```typescript
-// Students: Filter by their grade level only
-if (role === 'student' && student?.level) {
-  query = query.contains('grade_levels', [student.level]);
-}
+import { createClient } from "npm:@supabase/supabase-js@2";
 
-// Teachers, Registrars, Admins: See all flipbooks
-// No additional filter needed
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key',
+};
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    // Validate API key
+    const apiKey = req.headers.get('x-api-key');
+    const expectedKey = Deno.env.get('SYNC_API_KEY');
+    
+    if (!apiKey || apiKey !== expectedKey) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Create Supabase client with service role
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Fetch all flipbooks (adjust table/column names to match your schema)
+    const { data: flipbooks, error } = await supabase
+      .from('flipbooks') // or 'books' - whatever your table is named
+      .select('*')
+      .eq('is_active', true);
+
+    if (error) throw error;
+
+    return new Response(JSON.stringify({ flipbooks }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  } catch (error) {
+    console.error('Sync error:', error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+});
 ```
 
-**UI Layout:**
-```
-+------------------------------------------+
-|  Library                    [Filter: All ▼] |
-|  Browse ebooks for your grade level         |
-+------------------------------------------+
-|  +--------+  +--------+  +--------+      |
-|  |  📚    |  |  📚    |  |  📚    |      |
-|  | Cover  |  | Cover  |  | Cover  |      |
-|  | Grade 1|  | Grade 2|  | Grade 3|      |
-|  +--------+  +--------+  +--------+      |
-+------------------------------------------+
+### Step 2: Add to Flipbooks config.toml
+
+```toml
+[functions.sync-flipbooks]
+verify_jwt = false
 ```
 
-### New File: `src/components/library/FlipbookCard.tsx`
-- Card component showing cover, title, grade level badges
-- Click opens the flipbook URL
+### Step 3: Set the SYNC_API_KEY Secret
+
+In the Flipbooks project, add a secret called `SYNC_API_KEY` with a secure random value (e.g., `flipbook-sync-key-2025-xyz123`).
 
 ---
 
-## Part 4: Navigation Integration
+## What I Will Implement in This Project
 
-### File: `src/components/layout/DashboardLayout.tsx`
+### Step 1: Create Import Edge Function
 
-Add "Library" navigation item for all roles:
-```typescript
-// In getNavItemsForRole function
-{ id: 'library', icon: BookOpen, label: 'Library' }
-```
+Create `supabase/functions/import-flipbooks/index.ts` that:
+- Calls the Flipbooks project's sync-flipbooks API
+- Upserts the data into our local flipbooks table
+- Uses the same `SYNC_API_KEY` for authentication
 
-### File: `src/pages/Index.tsx`
+### Step 2: Add Sync Button to Library Page
 
-Add route handling for Library:
-```typescript
-{activeTab === 'library' && <LibraryPage />}
-```
+Add an "Import from Flipbooks" button (admin-only) that:
+- Triggers the import edge function
+- Shows a toast with results
+- Refreshes the library grid
 
----
+### Step 3: Update Library to Use Imported Data
 
-## Part 5: Widget Click Action
-
-### File: `src/components/dashboard/DashboardStatsRow.tsx`
-
-Make the Library widget clickable:
-```typescript
-<motion.div
-  onClick={() => onNavigate?.('library')}
-  className="cursor-pointer hover:scale-105 transition-transform"
-  // ... existing props
->
-```
+The existing `LibraryPage.tsx` already queries our `flipbooks` table, so once imported, books will appear automatically.
 
 ---
 
-## Files to Create
-- `src/components/library/LibraryPage.tsx`
-- `src/components/library/FlipbookCard.tsx`
+## Required Information from You
 
-## Files to Modify
-- `src/components/dashboard/DashboardStatsRow.tsx` - Replace Attendance with Library
-- `src/components/icons/ThreeDIcons.tsx` - Add LibraryIcon3D
-- `src/components/portals/AdminPortal.tsx` - Update props
-- `src/components/portals/RegistrarPortal.tsx` - Add Library widget
-- `src/components/layout/DashboardLayout.tsx` - Add Library nav item
-- `src/pages/Index.tsx` - Add Library tab handler
+To proceed, I need to know:
 
-## Database Migration
-- Create `flipbooks` table with RLS policies
+1. **What is your flipbooks table structure?**
+   - Table name (e.g., `flipbooks`, `books`, `ebooks`)
+   - Column names (title, cover_url, pdf_url, grade_levels, etc.)
 
----
+2. **What is the public flipbook viewer URL format?**
+   - Example: `https://edu-flip-library.lovable.app/flipbook/{id}`
+   - This is where users go to read the book
 
-## Integration with External Flipbooks Project
-
-To populate the Library, you will need to:
-1. **Manually add flipbook entries** via an admin interface (to be created)
-2. **Or provide the external flipbook URLs** for me to add to the database
-
-The flipbook URL should be the public link from your Flipbooks project (similar to Heyzine's shared links).
+3. **Do you want to use the same SYNC_API_KEY?**
+   - I see you already have `SYNC_API_KEY` configured in this project
+   - We can use the same key if you set it in Flipbooks project too
 
 ---
 
-## Summary
+## Alternative: Direct Database Query (Same Supabase Account)
 
-| Role | Library Access |
-|------|---------------|
-| Student | Only flipbooks matching their grade level |
-| Teacher | All flipbooks |
-| Registrar | All flipbooks |
-| Admin | All flipbooks + can manage/add flipbooks |
-| Parent | Flipbooks matching their children's grade levels |
+If both projects share the **same Supabase project/database**, we don't need an API - we can query the flipbooks table directly! 
+
+**Are both Lovable projects connected to the same Supabase backend?** If yes, the integration is much simpler - we just query the existing flipbooks table directly.
+
+---
+
+## Summary of Steps
+
+| Step | Where | Action |
+|------|-------|--------|
+| 1 | Flipbooks Project | Create `sync-flipbooks` edge function |
+| 2 | Flipbooks Project | Add `SYNC_API_KEY` secret |
+| 3 | This Project | Create `import-flipbooks` edge function |
+| 4 | This Project | Add admin sync button to Library |
+| 5 | Test | Click sync, verify books appear |
+
