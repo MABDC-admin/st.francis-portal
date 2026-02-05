@@ -60,7 +60,8 @@ import {
   ReportsIcon3D,
   ImportIcon3D,
   AdminIcon3D,
-  ProfileIcon3D
+  ProfileIcon3D,
+  LibraryIcon3D
 } from '@/components/icons/ThreeDIcons';
 
 interface NavItem {
@@ -106,6 +107,7 @@ const getNavItemsForRole = (role: string | null): NavItem[] => {
         { id: 'academic-years', icon: ScheduleIcon3D, label: 'Academic Years' },
         { id: 'events', icon: EventsIcon3D, label: 'Events' },
         { id: 'subject-enrollment', icon: EnrollmentIcon3D, label: 'Enrollment' },
+        { id: 'library', icon: LibraryIcon3D, label: 'Library' },
         { id: 'reports', icon: ReportsIcon3D, label: 'Reports' },
         { id: 'enrollment', icon: EnrollmentIcon3D, label: 'New Student' },
         { id: 'import', icon: ImportIcon3D, label: 'Import CSV' },
@@ -118,6 +120,7 @@ const getNavItemsForRole = (role: string | null): NavItem[] => {
         { id: 'grades', icon: EnterGradeIcon3D, label: 'Grades' },
         { id: 'subjects', icon: SubjectsIcon3D, label: 'Subjects' },
         { id: 'subject-enrollment', icon: EnrollmentIcon3D, label: 'Enrollment' },
+        { id: 'library', icon: LibraryIcon3D, label: 'Library' },
         { id: 'reports', icon: ReportsIcon3D, label: 'Reports' },
         { id: 'enrollment', icon: EnrollmentIcon3D, label: 'New Student' },
         { id: 'import', icon: ImportIcon3D, label: 'Import CSV' },
@@ -127,16 +130,19 @@ const getNavItemsForRole = (role: string | null): NavItem[] => {
         ...baseItems,
         { id: 'classes', icon: TeacherIcon3D, label: 'My Classes' },
         { id: 'grades', icon: EnterGradeIcon3D, label: 'Grades' },
+        { id: 'library', icon: LibraryIcon3D, label: 'Library' },
       ];
     case 'student':
       return [
         ...baseItems,
         { id: 'profile', icon: ProfileIcon3D, label: 'My Profile' },
+        { id: 'library', icon: LibraryIcon3D, label: 'Library' },
       ];
     case 'parent':
       return [
         ...baseItems,
         { id: 'children', icon: StudentIcon3D, label: 'My Children' },
+        { id: 'library', icon: LibraryIcon3D, label: 'Library' },
       ];
     default:
       return baseItems;

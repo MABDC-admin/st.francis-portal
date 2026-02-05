@@ -1,8 +1,7 @@
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
-import { useEffect, useState } from 'react';
-import { Users, BookOpen, Building, ClipboardCheck } from 'lucide-react';
+import { useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { StudentIcon3D, TeacherIcon3D, ClassesIcon3D, AttendanceIcon3D } from '@/components/icons/ThreeDIcons';
+import { StudentIcon3D, TeacherIcon3D, ClassesIcon3D, LibraryIcon3D } from '@/components/icons/ThreeDIcons';
 
 const AnimatedCounter = ({ value, duration = 3 }: { value: number | string, duration?: number }) => {
   const numericValue = typeof value === 'string' ? parseFloat(value) : value;
@@ -29,14 +28,16 @@ interface DashboardStatsRowProps {
   totalStudents: number;
   totalTeachers: number;
   totalClasses: number;
-  attendanceRate: number;
+  libraryCount?: number;
+  onLibraryClick?: () => void;
 }
 
 export const DashboardStatsRow = ({
   totalStudents,
   totalTeachers,
   totalClasses,
-  attendanceRate
+  libraryCount = 0,
+  onLibraryClick
 }: DashboardStatsRowProps) => {
   const stats = [
     {
@@ -58,11 +59,12 @@ export const DashboardStatsRow = ({
       icon: ClassesIcon3D,
     },
     {
-      value: `${attendanceRate}%`,
-      label: 'Attendance',
-      sublabel: 'Gen 00%',
-      bgClass: 'bg-destructive',
-      icon: AttendanceIcon3D,
+      value: libraryCount,
+      label: 'Library',
+      sublabel: 'Browse Flipbooks',
+      bgClass: 'bg-purple-500',
+      icon: LibraryIcon3D,
+      onClick: onLibraryClick,
     },
   ];
 
@@ -78,9 +80,11 @@ export const DashboardStatsRow = ({
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: index * 0.1 }}
+          onClick={stat.onClick}
           className={cn(
             "rounded-xl p-4 text-white flex items-center justify-between gap-3 shadow-md overflow-hidden relative",
-            stat.bgClass
+            stat.bgClass,
+            stat.onClick && "cursor-pointer hover:scale-[1.02] transition-transform"
           )}
         >
           {/* Glassy background effect for icon container */}

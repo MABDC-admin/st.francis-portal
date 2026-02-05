@@ -38,6 +38,9 @@ import { GradesManagement } from '@/components/grades/GradesManagement';
 import { ReportsManagement } from '@/components/reports/ReportsManagement';
 import { EventsManagement } from '@/components/calendar/EventsManagement';
 
+// Library
+import { LibraryPage } from '@/components/library/LibraryPage';
+
 const Index = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -328,6 +331,11 @@ const Index = () => {
       {/* Events Management - Admin/Registrar only */}
       {activeTab === 'events' && hasAdminAccess && (
         <EventsManagement />
+      )}
+
+      {/* Library - All authenticated users */}
+      {activeTab === 'library' && (
+        <LibraryPage />
       )}
 
       {/* Admin Panel - Admin only */}
