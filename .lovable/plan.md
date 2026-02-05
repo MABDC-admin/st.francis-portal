@@ -1,156 +1,174 @@
 
-# Dashboard UI Theme Switcher with AI Image Analysis
+# Add iMac/iOS Style Theme as Third Dashboard Option
 
 ## Overview
 
-This plan uses **Gemini 3 Pro** to analyze the uploaded reference image and extract precise design specifications (colors, shadows, gradients, border-radius values, etc.) to create a pixel-perfect "Classic Blue" theme that users can switch to. All dashboard elements remain identical in functionality - only the visual styling changes.
+This plan adds an **"Apple Style"** theme as a **third option** in the existing dashboard layout switcher, alongside "Modern" and "Classic Blue". The new theme follows Apple's Human Interface Guidelines (HIG) with:
+
+- **Translucent sidebar** with vibrancy/blur effect
+- **SF Pro-inspired typography** with clean, light weights
+- **Large rounded corners** (20px radius)
+- **Subtle shadows** with minimal elevation
+- **iOS color palette** (#007AFF blue, #34C759 green, etc.)
+- **SF Symbols-style outlined icons**
+- **Light gray backgrounds** (#F5F5F7)
+
+All existing themes and functionality remain unchanged.
 
 ---
 
 ## Architecture
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│                      User Interface                              │
-├─────────────────────────────────────────────────────────────────┤
-│  [Header]  School Name    [Theme Color] [UI Layout] [Avatar]    │
-│                              🎨           📐                     │
-│            existing         existing    NEW SWITCHER             │
-├─────────────────────────────────────────────────────────────────┤
-│  Dashboard Layout Context                                        │
-│  └── layoutStyle: 'modern' | 'classicBlue'                      │
-│  └── Persisted to localStorage                                   │
-├─────────────────────────────────────────────────────────────────┤
-│  Component Variants (via className props)                        │
-│  └── All existing components receive variant styling             │
-│  └── NO structural changes - same data, same hooks               │
-└─────────────────────────────────────────────────────────────────┘
+Current State:
+┌─────────────────────────────────────────┐
+│  DashboardLayoutSwitcher                │
+│  └── "Modern" | "Classic Blue"          │
+└─────────────────────────────────────────┘
+
+New State:
+┌─────────────────────────────────────────┐
+│  DashboardLayoutSwitcher                │
+│  └── "Modern" | "Classic Blue" | "Apple"│
+└─────────────────────────────────────────┘
 ```
 
 ---
 
 ## Implementation Steps
 
-### Step 1: Create Edge Function for AI Image Analysis
+### Step 1: Extend Layout Type and Context
 
-Create `supabase/functions/analyze-ui-design/index.ts` that uses **Gemini 3 Pro** to analyze the uploaded image and extract:
+Update `src/contexts/DashboardLayoutContext.tsx`:
 
-| Design Token | Description |
-|--------------|-------------|
-| `pageBackground` | Gradient direction, colors (hex), blur/texture |
-| `cardBackground` | Glassmorphism values (bg opacity, blur, shadow) |
-| `statsCards` | Individual colors for each stat card (green, blue, yellow, red) |
-| `calendarHeader` | Gradient colors for calendar widget header |
-| `borderRadius` | Corner radius values (px/rem) |
-| `shadows` | Box-shadow specifications |
-| `typography` | Font weights, sizes for headers/labels |
+| Change | Description |
+|--------|-------------|
+| Add `'apple'` to `LayoutStyle` type | `type LayoutStyle = 'modern' \| 'classicBlue' \| 'apple'` |
+| Add `AppleTheme` interface | Define Apple-specific design tokens |
+| Add default Apple theme values | iOS colors, blur values, radii |
+| Apply Apple CSS variables in useEffect | When `layoutStyle === 'apple'` |
 
-The AI will return a structured JSON with exact CSS values.
+### Step 2: Create Apple-Style Icons Component
 
-### Step 2: Create Dashboard Layout Context
+Create `src/components/icons/AppleStyleIcons.tsx`:
 
-Create `src/contexts/DashboardLayoutContext.tsx`:
+All icons follow SF Symbols design language:
+- **Stroke width**: 1.5px
+- **Stroke caps/joins**: Round
+- **Fill**: None (outlined style)
+- **ViewBox**: 0 0 24 24
 
-```typescript
-interface DashboardLayoutContextType {
-  layoutStyle: 'modern' | 'classicBlue';
-  setLayoutStyle: (style: 'modern' | 'classicBlue') => void;
-  classicTheme: ClassicBlueTheme | null; // AI-extracted theme
-}
-```
+Icons to create:
+| Icon | Description |
+|------|-------------|
+| `AppleStudentIcon` | Person outline with backpack |
+| `AppleTeacherIcon` | Book with person |
+| `AppleClassesIcon` | Building outline |
+| `AppleLibraryIcon` | Books stack outline |
+| `AppleHomeIcon` | House outline |
+| `AppleCalendarIcon` | Calendar grid outline |
+| `AppleGradesIcon` | Checklist with checkmark |
+| `AppleAdmitIcon` | Person with plus |
+| `AppleScheduleIcon` | Clock outline |
 
-- Persists selection to `localStorage`
-- Stores AI-extracted theme values for the Classic Blue design
-
-### Step 3: Add UI Layout Switcher Component
-
-Create `src/components/dashboard/DashboardLayoutSwitcher.tsx`:
-
-- Appears as a grid/layout icon next to the existing ColorThemeSelector
-- Opens a popover with two visual options: "Modern" and "Classic Blue"
-- Shows mini-preview thumbnails of each layout style
-- Triggers theme switch on selection
-
-### Step 4: Define Classic Blue Theme CSS Variables
+### Step 3: Add Apple Theme CSS Styles
 
 Add to `src/index.css`:
 
 ```css
-.dashboard-classic-blue {
-  --classic-page-bg: linear-gradient(135deg, #4F46E5 0%, #2563EB 50%, #0EA5E9 100%);
-  --classic-card-bg: rgba(255, 255, 255, 0.9);
-  --classic-card-blur: 12px;
-  --classic-card-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  --classic-card-radius: 1.5rem;
+/* Apple/iOS Dashboard Theme */
+.dashboard-apple {
+  /* Page Background */
+  --apple-page-bg: linear-gradient(180deg, #F5F5F7 0%, #FFFFFF 100%);
   
-  /* Stats card colors from reference */
-  --classic-stat-green: #22C55E;
-  --classic-stat-blue: #3B82F6;
-  --classic-stat-yellow: #EAB308;
-  --classic-stat-red: #EF4444;
+  /* Card Styling */
+  --apple-card-bg: rgba(255, 255, 255, 0.95);
+  --apple-card-radius: 20px;
+  --apple-card-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  --apple-card-border: 1px solid rgba(0, 0, 0, 0.06);
   
-  /* Calendar header gradient */
-  --classic-calendar-header: linear-gradient(135deg, #3B82F6, #1D4ED8);
+  /* Sidebar (Vibrancy Effect) */
+  --apple-sidebar-bg: rgba(255, 255, 255, 0.72);
+  --apple-sidebar-blur: 20px;
+  
+  /* iOS Accent Colors */
+  --apple-accent: #007AFF;
+  --apple-accent-light: rgba(0, 122, 255, 0.1);
+  
+  /* Stats Card Colors (iOS Palette) */
+  --apple-stat-green: #34C759;
+  --apple-stat-blue: #007AFF;
+  --apple-stat-orange: #FF9500;
+  --apple-stat-red: #FF3B30;
 }
 ```
 
-### Step 5: Update Dashboard Components with Variant Support
+### Step 4: Update Dashboard Layout Switcher
 
-Modify these components to accept a `variant` prop:
+Update `src/components/dashboard/DashboardLayoutSwitcher.tsx`:
 
-| Component | Classic Blue Changes |
-|-----------|---------------------|
-| `DashboardStatsRow.tsx` | Use `--classic-stat-*` colors, enhanced shadows |
-| `QuickActions.tsx` | White glassmorphism cards with colored icons |
-| `BottomActions.tsx` | Third card uses classic blue accent |
-| `DashboardCalendar.tsx` | Blue gradient header instead of purple |
-| `StudentBirthdays.tsx` | White card with glassmorphism |
-| `StudentOverview.tsx` | White card with stronger shadow |
-| `DashboardHeader.tsx` | Add layout switcher button |
+| Change | Description |
+|--------|-------------|
+| Add Apple option to `layouts` array | With Apple logo icon and light gray preview |
+| Update trigger icon logic | Show Apple icon when `layoutStyle === 'apple'` |
+| Add Apple preview thumbnail | Light gray gradient with rounded elements |
 
-Example pattern for variant styling:
+### Step 5: Update Sidebar for Apple Theme
 
-```typescript
-// In DashboardStatsRow.tsx
-const statCardClass = cn(
-  "rounded-xl p-4 text-white flex items-center justify-between",
-  variant === 'classicBlue' 
-    ? "shadow-lg rounded-2xl" // Enhanced for classic
-    : "shadow-md"             // Current modern style
-);
-```
+Update `src/components/layout/DashboardLayout.tsx`:
 
-### Step 6: Update AdminPortal with Conditional Styling
+| Change | Description |
+|--------|-------------|
+| Import `useDashboardLayout` | Access current layout style |
+| Add Apple sidebar styling | Translucent white with `backdrop-blur: 20px` |
+| Pill-shaped active states | Rounded active menu item background |
+| Use Apple icons when variant is 'apple' | Conditionally render outlined icons |
+| Adjust spacing | Larger padding for Apple style |
 
-Modify `src/components/portals/AdminPortal.tsx`:
+### Step 6: Update Dashboard Components
+
+Update each component to support the `'apple'` variant:
+
+**DashboardStatsRow.tsx**
+- Larger border radius (20px)
+- Softer shadows
+- iOS color palette
+- Optional: Use Apple-style icons
+
+**QuickActions.tsx**
+- White cards with subtle shadows
+- Outlined icons
+- Subtle hover effects (no 3D tilt)
+- 16px border radius
+
+**BottomActions.tsx**
+- Consistent card styling
+- iOS blue accent for primary action
+- Outlined icons
+
+**DashboardCalendar.tsx**
+- Light gray header instead of gradient
+- iOS blue for today indicator
+- Larger touch targets
+
+### Step 7: Update AdminPortal
+
+Update `src/components/portals/AdminPortal.tsx`:
 
 ```typescript
 const { layoutStyle } = useDashboardLayout();
+const isClassic = layoutStyle === 'classicBlue';
+const isApple = layoutStyle === 'apple';
 
 return (
   <div className={cn(
     "space-y-6",
-    layoutStyle === 'classicBlue' && "dashboard-classic-blue"
+    isClassic && "dashboard-classic-blue dashboard-page-bg",
+    isApple && "dashboard-apple"
   )}>
-    {/* Same components, different styling via CSS class */}
-    <DashboardHeader />
-    <DashboardStatsRow variant={layoutStyle} ... />
-    <QuickActions variant={layoutStyle} ... />
-    {/* ... rest of components */}
+    {/* Components with variant prop */}
   </div>
 );
-```
-
-### Step 7: Add Provider to App.tsx
-
-Wrap the app with `DashboardLayoutProvider`:
-
-```typescript
-<DashboardLayoutProvider>
-  <ColorThemeProvider>
-    {/* existing providers */}
-  </ColorThemeProvider>
-</DashboardLayoutProvider>
 ```
 
 ---
@@ -159,111 +177,122 @@ Wrap the app with `DashboardLayoutProvider`:
 
 | File | Action | Description |
 |------|--------|-------------|
-| `supabase/functions/analyze-ui-design/index.ts` | Create | Gemini Pro image analysis for design extraction |
-| `src/contexts/DashboardLayoutContext.tsx` | Create | Layout style state management |
-| `src/components/dashboard/DashboardLayoutSwitcher.tsx` | Create | UI toggle component |
-| `src/index.css` | Modify | Add `.dashboard-classic-blue` CSS class |
-| `src/components/dashboard/DashboardHeader.tsx` | Modify | Add layout switcher button |
-| `src/components/dashboard/DashboardStatsRow.tsx` | Modify | Add `variant` prop support |
-| `src/components/dashboard/QuickActions.tsx` | Modify | Add `variant` prop support |
-| `src/components/dashboard/BottomActions.tsx` | Modify | Add `variant` prop support |
-| `src/components/dashboard/DashboardCalendar.tsx` | Modify | Add `variant` prop for header color |
-| `src/components/dashboard/StudentBirthdays.tsx` | Modify | Add `variant` prop support |
-| `src/components/dashboard/StudentOverview.tsx` | Modify | Add `variant` prop support |
-| `src/components/portals/AdminPortal.tsx` | Modify | Apply layout class and pass variant |
-| `src/App.tsx` | Modify | Add DashboardLayoutProvider |
-| `supabase/config.toml` | Modify | Register new edge function |
+| `src/contexts/DashboardLayoutContext.tsx` | Modify | Add 'apple' to LayoutStyle, add AppleTheme interface |
+| `src/components/icons/AppleStyleIcons.tsx` | Create | SF Symbols-style outlined icons |
+| `src/index.css` | Modify | Add `.dashboard-apple` CSS class |
+| `src/components/dashboard/DashboardLayoutSwitcher.tsx` | Modify | Add Apple theme option |
+| `src/components/layout/DashboardLayout.tsx` | Modify | Apple sidebar vibrancy styling |
+| `src/components/dashboard/DashboardStatsRow.tsx` | Modify | Add 'apple' variant support |
+| `src/components/dashboard/QuickActions.tsx` | Modify | Add 'apple' variant support |
+| `src/components/dashboard/BottomActions.tsx` | Modify | Add 'apple' variant support |
+| `src/components/dashboard/DashboardCalendar.tsx` | Modify | Add 'apple' variant for header |
+| `src/components/portals/AdminPortal.tsx` | Modify | Apply apple theme class |
 
 ---
 
-## AI Image Analysis Prompt
+## Apple Design Specifications
 
-The edge function will send this prompt to Gemini 3 Pro:
+### Color Palette (iOS System Colors)
+| Color | Hex | Usage |
+|-------|-----|-------|
+| Blue | #007AFF | Primary accent, links, buttons |
+| Green | #34C759 | Success, students stat |
+| Orange | #FF9500 | Warning, classes stat |
+| Red | #FF3B30 | Error, library stat |
+| Gray | #F5F5F7 | Page backgrounds |
+| White | #FFFFFF | Cards, surfaces |
 
-```text
-Analyze this dashboard UI design image and extract EXACT design specifications as JSON:
+### Typography
+| Element | Weight | Size |
+|---------|--------|------|
+| Titles | 600 (Semibold) | 1.25rem |
+| Body | 400 (Regular) | 1rem |
+| Labels | 500 (Medium) | 0.875rem |
+| Captions | 400 (Regular) | 0.75rem |
 
-{
-  "pageBackground": {
-    "type": "gradient",
-    "direction": "135deg",
-    "colors": ["#hex1", "#hex2", "#hex3"]
-  },
-  "cards": {
-    "backgroundColor": "rgba(255,255,255,0.9)",
-    "backdropBlur": "12px",
-    "borderRadius": "24px",
-    "boxShadow": "0 8px 32px rgba(0,0,0,0.12)"
-  },
-  "statsCards": {
-    "students": { "color": "#hex", "iconBg": "rgba()" },
-    "teachers": { "color": "#hex", "iconBg": "rgba()" },
-    "classes": { "color": "#hex", "iconBg": "rgba()" },
-    "library": { "color": "#hex", "iconBg": "rgba()" }
-  },
-  "calendarHeader": {
-    "gradient": "linear-gradient(135deg, #hex1, #hex2)"
-  },
-  "typography": {
-    "headerWeight": 700,
-    "statNumberSize": "2rem"
-  }
-}
-```
+### Spacing & Radii
+| Element | Value |
+|---------|-------|
+| Card radius | 20px |
+| Button radius | 12px |
+| Icon containers | 16px |
+| Card padding | 24px |
+| Gap between cards | 16px |
+
+### Shadows
+| Element | Value |
+|---------|-------|
+| Cards | `0 2px 12px rgba(0, 0, 0, 0.04)` |
+| Elevated | `0 4px 20px rgba(0, 0, 0, 0.08)` |
+| Hover | `0 8px 24px rgba(0, 0, 0, 0.1)` |
+
+### Animations
+| Property | Value |
+|----------|-------|
+| Duration | 200-300ms |
+| Easing | `cubic-bezier(0.25, 0.1, 0.25, 1)` |
+| Scale on hover | 1.02 (subtle) |
+| No 3D rotations | Flat, clean transitions |
 
 ---
 
 ## Visual Comparison
 
 ```text
-MODERN (Current)                    CLASSIC BLUE (New)
-┌──────────────────────┐            ┌──────────────────────┐
-│ ▒▒▒ Gradient BG ▒▒▒  │            │ 🔵 Blue Gradient BG  │
-│                      │            │                      │
-│ ┌────┐┌────┐┌────┐   │            │ ┌────┐┌────┐┌────┐   │
-│ │ 🟢 ││ 🔵 ││ 🟡 │   │ ──SAME──▶ │ │ 🟢 ││ 🔵 ││ 🟡 │   │
-│ └────┘└────┘└────┘   │   DATA    │ └────┘└────┘└────┘   │
-│                      │            │                      │
-│ ┌─────────────────┐  │            │ ┌─────────────────┐  │
-│ │ Calendar (purple)│  │            │ │ Calendar (blue) │  │
-│ └─────────────────┘  │            │ └─────────────────┘  │
-│                      │            │                      │
-│ Normal shadows       │            │ Stronger shadows     │
-│ Current card style   │            │ Glassmorphism cards  │
-└──────────────────────┘            └──────────────────────┘
+MODERN (Existing)         CLASSIC BLUE (Existing)      APPLE (New)
+┌──────────────────┐     ┌──────────────────┐         ┌──────────────────┐
+│ Theme gradient   │     │ Blue gradient    │         │ Light gray #F5F5F7│
+│                  │     │                  │         │                  │
+│ ┌────┐ ┌────┐    │     │ ┌────┐ ┌────┐    │         │ ┌────┐ ┌────┐    │
+│ │3D  │ │3D  │    │     │ │Vivid│ │Vivid│    │         │ │ ○  │ │ ○  │    │
+│ │Icon│ │Icon│    │     │ │Card│ │Card│    │         │ │Line│ │Line│    │
+│ └────┘ └────┘    │     │ └────┘ └────┘    │         │ └────┘ └────┘    │
+│                  │     │                  │         │                  │
+│ Gradient sidebar │     │ Blue sidebar     │         │ Frosted sidebar  │
+│ Standard shadow  │     │ Strong shadow    │         │ Subtle shadow    │
+│ 12px radius      │     │ 24px radius      │         │ 20px radius      │
+└──────────────────┘     └──────────────────┘         └──────────────────┘
 ```
 
 ---
 
-## Technical Details
+## Technical Implementation Notes
 
-### Edge Function Flow
+### Vibrancy Effect for Sidebar
+```css
+.apple-sidebar {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+```
 
-1. User uploads image → stored temporarily or passed as base64
-2. Edge function calls Gemini 3 Pro with image + extraction prompt
-3. AI returns structured JSON with design tokens
-4. Frontend stores tokens in context
-5. CSS variables updated dynamically based on tokens
+### Conditional Icon Rendering
+```typescript
+// In DashboardLayout.tsx
+const iconComponent = layoutStyle === 'apple' 
+  ? AppleStyleIcons[item.id] 
+  : ThreeDIcons[item.id];
+```
 
-### Theme Persistence
+### Variant Prop Pattern
+```typescript
+// Components accept variant and apply conditional styling
+const isApple = variant === 'apple';
 
-- Layout choice saved to `localStorage` as `dashboard-layout-style`
-- AI-extracted theme cached to avoid re-analysis
-- Falls back to default Classic Blue values if AI fails
-
-### No Data Changes
-
-- All hooks (`useStudents`, `useQuery`, etc.) remain unchanged
-- All component logic stays identical
-- Only `className` props receive conditional values
-- Existing ColorThemeContext continues to work for sidebar colors
+<div className={cn(
+  "base-styles",
+  isApple && "apple-specific-styles"
+)}>
+```
 
 ---
 
 ## Benefits
 
-1. **AI-Powered Accuracy**: Gemini Pro extracts exact colors/values from the reference image
-2. **Zero Data Impact**: Same functionality, different visuals
-3. **Extensible**: Can add more UI themes later using same pattern
-4. **User Preference**: Choice persisted across sessions
-5. **Performance**: CSS-only changes, no component re-renders for theme switch
+1. **No Breaking Changes**: Modern and Classic Blue remain untouched
+2. **Extensible Pattern**: Easy to add more themes later
+3. **Familiar UX**: Apple users feel at home
+4. **Clean Aesthetic**: Minimalist design reduces visual clutter
+5. **Accessibility**: High contrast and clear typography
+6. **Performance**: CSS-only changes, no extra re-renders
