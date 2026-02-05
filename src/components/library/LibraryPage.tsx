@@ -1,9 +1,11 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Filter, BookOpen, Plus } from 'lucide-react';
+import { Search, Filter, BookOpen, Plus, Eye, EyeOff } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -11,13 +13,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { BookCard } from './BookCard';
 import { BookUploadModal } from './BookUploadModal';
+import { BookEditModal } from './BookEditModal';
 import { FlipbookViewer } from './FlipbookViewer';
 import { useSchool } from '@/contexts/SchoolContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 interface Book {
   id: string;
@@ -44,6 +58,10 @@ export const LibraryPage = () => {
   const [selectedGrade, setSelectedGrade] = useState<string>('all');
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [editingBook, setEditingBook] = useState<Book | null>(null);
+  const [deletingBook, setDeletingBook] = useState<Book | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const { selectedSchool } = useSchool();
   const { role } = useAuth();
@@ -51,16 +69,18 @@ export const LibraryPage = () => {
 
   const isAdmin = role === 'admin';
   const isRegistrar = role === 'registrar';
-  const canUpload = isAdmin || isRegistrar;
+  const canManage = isAdmin || isRegistrar;
 
   // Fetch books from database
   const { data: books = [], isLoading } = useQuery({
-    queryKey: ['books', selectedSchool],
+    queryKey: ['books', selectedSchool, showInactive],
     queryFn: async () => {
-      let query = supabase
-        .from('books')
-        .select('*')
-        .eq('is_active', true);
+      let query = supabase.from('books').select('*');
+
+      // Only show active books unless admin wants to see inactive
+      if (!showInactive) {
+        query = query.eq('is_active', true);
+      }
 
       // Filter by school - show books for this school or books for both (null)
       if (selectedSchool) {
@@ -101,6 +121,41 @@ export const LibraryPage = () => {
     queryClient.invalidateQueries({ queryKey: ['books'] });
   };
 
+  const handleToggleActive = async (book: Book) => {
+    const { error } = await supabase
+      .from('books')
+      .update({ is_active: !book.is_active })
+      .eq('id', book.id);
+
+    if (error) {
+      toast.error('Failed to update book status');
+    } else {
+      toast.success(book.is_active ? 'Book deactivated' : 'Book activated');
+      queryClient.invalidateQueries({ queryKey: ['books'] });
+    }
+  };
+
+  const handleDeleteBook = async () => {
+    if (!deletingBook) return;
+
+    setIsDeleting(true);
+    
+    // First delete book pages
+    await supabase.from('book_pages').delete().eq('book_id', deletingBook.id);
+    
+    // Then delete the book
+    const { error } = await supabase.from('books').delete().eq('id', deletingBook.id);
+
+    if (error) {
+      toast.error('Failed to delete book: ' + error.message);
+    } else {
+      toast.success('Book deleted successfully');
+      queryClient.invalidateQueries({ queryKey: ['books'] });
+    }
+    setIsDeleting(false);
+    setDeletingBook(null);
+  };
+
   return (
     <>
       <motion.div
@@ -121,15 +176,26 @@ export const LibraryPage = () => {
               </p>
             </div>
 
-            {/* Upload Button (Admin/Registrar only) */}
-            {canUpload && (
-              <Button
-                onClick={() => setShowUploadModal(true)}
+            {/* Admin Controls */}
+            {canManage && (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="show-inactive"
+                    checked={showInactive}
+                    onCheckedChange={setShowInactive}
+                  />
+                  <Label htmlFor="show-inactive" className="text-sm text-muted-foreground">
+                    Show inactive
+                  </Label>
+                </div>
+                <Button onClick={() => setShowUploadModal(true)}
                 className="gap-2"
               >
                 <Plus className="h-4 w-4" />
                 Upload Book
               </Button>
+              </div>
             )}
           </div>
 
@@ -214,6 +280,10 @@ export const LibraryPage = () => {
                 book={book}
                 index={index}
                 onClick={() => setSelectedBook(book)}
+                onEdit={() => setEditingBook(book)}
+                onToggleActive={() => handleToggleActive(book)}
+                onDelete={() => setDeletingBook(book)}
+                canManage={canManage}
               />
             ))}
           </motion.div>
@@ -230,11 +300,11 @@ export const LibraryPage = () => {
             <p className="text-muted-foreground max-w-md">
               {searchQuery || selectedGrade !== 'all'
                 ? 'Try adjusting your search or filter criteria.'
-                : canUpload
+                : canManage
                 ? 'Upload your first book to get started!'
                 : 'There are no books available yet. Check back later!'}
             </p>
-            {canUpload && !searchQuery && selectedGrade === 'all' && (
+            {canManage && !searchQuery && selectedGrade === 'all' && (
               <Button
                 onClick={() => setShowUploadModal(true)}
                 className="mt-4 gap-2"
@@ -260,6 +330,37 @@ export const LibraryPage = () => {
         onOpenChange={setShowUploadModal}
         onSuccess={handleUploadSuccess}
       />
+
+      {/* Edit Modal */}
+      <BookEditModal
+        book={editingBook}
+        open={!!editingBook}
+        onOpenChange={(open) => !open && setEditingBook(null)}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['books'] })}
+      />
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deletingBook} onOpenChange={(open) => !open && setDeletingBook(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Book</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deletingBook?.title}"? This action cannot
+              be undone and will remove all pages associated with this book.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteBook}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              Delete Book
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Flipbook Viewer */}
       <AnimatePresence>

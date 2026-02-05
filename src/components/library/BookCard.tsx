@@ -1,7 +1,15 @@
 import { motion } from 'framer-motion';
-import { BookOpen, Loader2 } from 'lucide-react';
+import { BookOpen, Loader2, MoreVertical, Pencil, Trash2, Eye, EyeOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
 interface Book {
@@ -20,9 +28,21 @@ interface BookCardProps {
   book: Book;
   index: number;
   onClick: () => void;
+  onEdit?: () => void;
+  onToggleActive?: () => void;
+  onDelete?: () => void;
+  canManage?: boolean;
 }
 
-export const BookCard = ({ book, index, onClick }: BookCardProps) => {
+export const BookCard = ({ 
+  book, 
+  index, 
+  onClick, 
+  onEdit,
+  onToggleActive,
+  onDelete,
+  canManage = false,
+}: BookCardProps) => {
   const isProcessing = book.status === 'processing';
   const hasError = book.status === 'error';
 
@@ -38,7 +58,8 @@ export const BookCard = ({ book, index, onClick }: BookCardProps) => {
           'hover:shadow-lg hover:scale-[1.02] hover:-translate-y-1',
           'bg-card border-border',
           isProcessing && 'opacity-70',
-          hasError && 'border-destructive/50'
+          hasError && 'border-destructive/50',
+          !book.is_active && 'opacity-60'
         )}
         onClick={isProcessing ? undefined : onClick}
       >
@@ -76,8 +97,18 @@ export const BookCard = ({ book, index, onClick }: BookCardProps) => {
             </div>
           )}
 
+          {/* Inactive Overlay */}
+          {!book.is_active && !isProcessing && !hasError && (
+            <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
+              <Badge variant="secondary" className="bg-muted">
+                <EyeOff className="h-3 w-3 mr-1" />
+                Inactive
+              </Badge>
+            </div>
+          )}
+
           {/* Hover Overlay */}
-          {!isProcessing && !hasError && (
+          {!isProcessing && !hasError && book.is_active && (
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors duration-300 flex items-center justify-center">
               <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center gap-2 text-white bg-primary/90 px-3 py-2 rounded-lg">
                 <BookOpen className="h-4 w-4" />
@@ -86,8 +117,45 @@ export const BookCard = ({ book, index, onClick }: BookCardProps) => {
             </div>
           )}
 
-          {/* Grade Level Badge */}
-          <div className="absolute top-2 right-2">
+          {/* Grade Level Badge & Actions */}
+          <div className="absolute top-2 right-2 flex items-center gap-1">
+            {canManage && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="h-6 w-6 bg-background/90 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <MoreVertical className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenuItem onClick={onEdit}>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={onToggleActive}>
+                    {book.is_active ? (
+                      <>
+                        <EyeOff className="h-4 w-4 mr-2" />
+                        Deactivate
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="h-4 w-4 mr-2" />
+                        Activate
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={onDelete} className="text-destructive">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             <Badge
               variant="secondary"
               className="text-[10px] px-1.5 py-0.5 bg-background/90 backdrop-blur-sm"

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Trash2, AlertTriangle, Loader2, Database, RefreshCcw, Users, Settings, Building2, Activity, Shield } from 'lucide-react';
+import { Trash2, AlertTriangle, Loader2, Database, RefreshCcw, Users, Settings, Building2, Activity, Shield, School } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,6 +8,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { UserManagement } from './UserManagement';
 import { SchoolSettings } from './SchoolSettings';
+import { SchoolManagement } from './SchoolManagement';
 import { ActivityLogs } from './ActivityLogs';
 import { PermissionManagement } from './PermissionManagement';
 
@@ -55,7 +56,7 @@ export const AdminPanel = () => {
       </div>
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 lg:w-[700px]">
+        <TabsList className="grid w-full grid-cols-6 lg:w-[840px]">
           <TabsTrigger value="users" className="gap-2">
             <Users className="h-4 w-4" />
             <span className="hidden sm:inline">Users</span>
@@ -64,13 +65,17 @@ export const AdminPanel = () => {
             <Shield className="h-4 w-4" />
             <span className="hidden sm:inline">Permissions</span>
           </TabsTrigger>
+          <TabsTrigger value="schools" className="gap-2">
+            <School className="h-4 w-4" />
+            <span className="hidden sm:inline">Schools</span>
+          </TabsTrigger>
           <TabsTrigger value="logs" className="gap-2">
             <Activity className="h-4 w-4" />
             <span className="hidden sm:inline">Logs</span>
           </TabsTrigger>
-          <TabsTrigger value="school" className="gap-2">
+          <TabsTrigger value="settings" className="gap-2">
             <Building2 className="h-4 w-4" />
-            <span className="hidden sm:inline">School</span>
+            <span className="hidden sm:inline">Settings</span>
           </TabsTrigger>
           <TabsTrigger value="system" className="gap-2">
             <Settings className="h-4 w-4" />
@@ -86,11 +91,15 @@ export const AdminPanel = () => {
           <PermissionManagement />
         </TabsContent>
 
+        <TabsContent value="schools" className="mt-6">
+          <SchoolManagement />
+        </TabsContent>
+
         <TabsContent value="logs" className="mt-6">
           <ActivityLogs />
         </TabsContent>
 
-        <TabsContent value="school" className="mt-6">
+        <TabsContent value="settings" className="mt-6">
           <SchoolSettings />
         </TabsContent>
         
