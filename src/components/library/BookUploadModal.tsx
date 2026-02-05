@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { Upload, X, FileText, Loader2 } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Upload, X, FileText, Loader2, Sparkles, ImageIcon } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { usePdfToImages } from '@/hooks/usePdfToImages';
+import { usePdfToImages, renderFirstPagePreview } from '@/hooks/usePdfToImages';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -58,23 +58,83 @@ export const BookUploadModal = ({
   const [school, setSchool] = useState<string>('both');
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [aiDetected, setAiDetected] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { progress, processInBrowser, reset } = usePdfToImages();
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Analyze book cover when file is selected
+  const analyzeBookCover = async (pdfFile: File) => {
+    setIsAnalyzing(true);
+    setAiDetected(false);
+
+    try {
+      // Render first page preview
+      const { dataUrl, base64 } = await renderFirstPagePreview(pdfFile, 1.5);
+      setCoverPreview(dataUrl);
+
+      // Call AI to analyze the cover
+      const { data, error } = await supabase.functions.invoke('analyze-book-cover', {
+        body: {
+          imageBase64: base64,
+          filename: pdfFile.name,
+        },
+      });
+
+      if (error) {
+        console.error('AI analysis error:', error);
+        toast.error('Could not analyze cover automatically');
+        return;
+      }
+
+      if (data?.success) {
+        // Auto-fill detected values
+        if (data.title && !title) {
+          setTitle(data.title);
+          setAiDetected(true);
+        }
+        if (data.subject) {
+          const matchedSubject = SUBJECTS.find(
+            (s) => s.toLowerCase() === data.subject.toLowerCase()
+          );
+          if (matchedSubject && !subject) {
+            setSubject(matchedSubject);
+          }
+        }
+        if (data.gradeLevel && !gradeLevel) {
+          setGradeLevel(data.gradeLevel.toString());
+        }
+
+        if (data.title) {
+          toast.success('Book title detected from cover!');
+        }
+      }
+    } catch (err) {
+      console.error('Cover analysis failed:', err);
+      // Silently fail - user can still enter manually
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile && selectedFile.type === 'application/pdf') {
       setFile(selectedFile);
+      // Set filename as fallback title
       if (!title) {
         setTitle(selectedFile.name.replace('.pdf', ''));
       }
+      // Analyze the cover
+      await analyzeBookCover(selectedFile);
     } else {
       toast.error('Please select a PDF file');
     }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     const droppedFile = e.dataTransfer.files[0];
     if (droppedFile && droppedFile.type === 'application/pdf') {
@@ -82,6 +142,7 @@ export const BookUploadModal = ({
       if (!title) {
         setTitle(droppedFile.name.replace('.pdf', ''));
       }
+      await analyzeBookCover(droppedFile);
     } else {
       toast.error('Please drop a PDF file');
     }
@@ -156,6 +217,9 @@ export const BookUploadModal = ({
       setSubject('');
       setSchool('both');
       setFile(null);
+      setCoverPreview(null);
+      setIsAnalyzing(false);
+      setAiDetected(false);
       reset();
       onOpenChange(false);
     }
@@ -166,21 +230,51 @@ export const BookUploadModal = ({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Upload New Book</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Cover Preview */}
+          {coverPreview && (
+            <div className="flex flex-col items-center gap-2">
+              <div className="relative w-32 h-44 rounded-lg overflow-hidden border bg-muted">
+                <img
+                  src={coverPreview}
+                  alt="Cover preview"
+                  className="w-full h-full object-cover"
+                />
+                {isAnalyzing && (
+                  <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-1">
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                      <span className="text-xs text-muted-foreground">Analyzing...</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              {aiDetected && (
+                <div className="flex items-center gap-1 text-xs text-primary">
+                  <Sparkles className="h-3 w-3" />
+                  <span>AI detected title</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Title */}
           <div className="space-y-2">
-            <Label htmlFor="title">Title *</Label>
+            <Label htmlFor="title" className="flex items-center gap-1">
+              Title *
+              {aiDetected && <Sparkles className="h-3 w-3 text-primary" />}
+            </Label>
             <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Enter book title"
-              disabled={isUploading}
+              disabled={isUploading || isAnalyzing}
             />
           </div>
 
@@ -190,7 +284,7 @@ export const BookUploadModal = ({
             <Select
               value={gradeLevel}
               onValueChange={setGradeLevel}
-              disabled={isUploading}
+              disabled={isUploading || isAnalyzing}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select grade level" />
@@ -211,7 +305,7 @@ export const BookUploadModal = ({
             <Select
               value={subject}
               onValueChange={setSubject}
-              disabled={isUploading}
+              disabled={isUploading || isAnalyzing}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select subject" />
@@ -239,7 +333,7 @@ export const BookUploadModal = ({
               </SelectTrigger>
               <SelectContent>
                 {SCHOOLS.map((s) => (
-                  <SelectItem key={s.value || 'both'} value={s.value}>
+                  <SelectItem key={s.value} value={s.value}>
                     {s.label}
                   </SelectItem>
                 ))}
@@ -271,12 +365,14 @@ export const BookUploadModal = ({
               {file ? (
                 <div className="flex items-center justify-center gap-2 text-primary">
                   <FileText className="h-5 w-5" />
-                  <span className="font-medium">{file.name}</span>
+                  <span className="font-medium truncate max-w-[200px]">{file.name}</span>
                   {!isUploading && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         setFile(null);
+                        setCoverPreview(null);
+                        setAiDetected(false);
                       }}
                       className="p-1 hover:bg-muted rounded"
                     >
@@ -325,7 +421,7 @@ export const BookUploadModal = ({
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={!file || !title || !gradeLevel || isUploading}
+              disabled={!file || !title || !gradeLevel || isUploading || isAnalyzing}
             >
               {isUploading ? (
                 <>

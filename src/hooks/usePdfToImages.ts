@@ -44,6 +44,53 @@ async function renderPageToBlob(
   });
 }
 
+/**
+ * Renders the first page of a PDF for preview and AI analysis
+ */
+export async function renderFirstPagePreview(
+  pdfFile: File,
+  scale: number = 1.5
+): Promise<{ blob: Blob; dataUrl: string; base64: string }> {
+  const arrayBuffer = await pdfFile.arrayBuffer();
+  const pdf = await (pdfjsLib as any).getDocument({ data: arrayBuffer }).promise;
+  
+  const page = await pdf.getPage(1);
+  const viewport = page.getViewport({ scale });
+
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d')!;
+  canvas.width = Math.floor(viewport.width);
+  canvas.height = Math.floor(viewport.height);
+
+  await page.render({
+    canvasContext: context,
+    viewport,
+  }).promise;
+
+  // Create blob
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (b) => {
+        if (b) resolve(b);
+        else reject(new Error('Failed to create blob'));
+      },
+      'image/png',
+      0.9
+    );
+  });
+
+  // Create data URL for preview
+  const dataUrl = canvas.toDataURL('image/png', 0.9);
+  
+  // Create base64 for AI analysis (same as dataUrl but cleaner extraction)
+  const base64 = dataUrl;
+
+  canvas.remove();
+  pdf.destroy();
+
+  return { blob, dataUrl, base64 };
+}
+
 export function usePdfToImages() {
   const [progress, setProgress] = useState<RenderProgress>({
     total: 0,

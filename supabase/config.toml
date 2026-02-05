@@ -12,5 +12,5 @@ verify_jwt = false
 [functions.process-pdf]
 verify_jwt = false
 
-[functions.import-flipbooks]
+[functions.analyze-book-cover]
 verify_jwt = false
