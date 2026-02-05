@@ -28,11 +28,22 @@ export const AdminPortal = ({ onNavigate }: AdminPortalProps) => {
     },
   });
 
+  // Fetch flipbooks count
+  const { data: flipbooksCount = 0 } = useQuery({
+    queryKey: ['flipbooks-count'],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('flipbooks')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true);
+      return count || 0;
+    },
+  });
+
   // Calculate stats
   const totalStudents = students.length;
-  const totalTeachers = teachersData || 38;
+  const totalTeachers = teachersData || 0;
   const levels = [...new Set(students.map(s => s.level))].length;
-  const attendanceRate = 86; // Mock attendance rate
 
   return (
     <div className="space-y-6">
@@ -44,7 +55,8 @@ export const AdminPortal = ({ onNavigate }: AdminPortalProps) => {
         totalStudents={totalStudents}
         totalTeachers={totalTeachers}
         totalClasses={levels}
-        attendanceRate={attendanceRate}
+        libraryCount={flipbooksCount}
+        onLibraryClick={() => onNavigate('library')}
       />
 
       {/* Quick Actions */}

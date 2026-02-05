@@ -226,3 +226,22 @@ export const ProfileIcon3D = ({ className }: { className?: string }) => (
         <path d="M25 80 C25 65 35 55 50 55 C65 55 75 65 75 80 V85 H25 V80Z" fill="#3B82F6" stroke="#1D4ED8" strokeWidth="2" />
     </svg>
 );
+
+export const LibraryIcon3D = ({ className }: { className?: string }) => (
+    <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* Bookshelf */}
+        <rect x="15" y="25" width="70" height="55" fill="#8B5CF6" stroke="#6D28D9" strokeWidth="2" rx="3" />
+        
+        {/* Books */}
+        <rect x="22" y="32" width="10" height="40" fill="#EF4444" stroke="#B91C1C" strokeWidth="1" rx="1" />
+        <rect x="34" y="35" width="8" height="37" fill="#3B82F6" stroke="#1D4ED8" strokeWidth="1" rx="1" />
+        <rect x="44" y="30" width="12" height="42" fill="#10B981" stroke="#059669" strokeWidth="1" rx="1" />
+        <rect x="58" y="33" width="9" height="39" fill="#F59E0B" stroke="#D97706" strokeWidth="1" rx="1" />
+        <rect x="69" y="28" width="10" height="44" fill="#EC4899" stroke="#BE185D" strokeWidth="1" rx="1" />
+        
+        {/* Book spines details */}
+        <line x1="27" y1="38" x2="27" y2="65" stroke="#FCA5A5" strokeWidth="1" />
+        <line x1="50" y1="36" x2="50" y2="66" stroke="#34D399" strokeWidth="1" />
+        <line x1="74" y1="34" x2="74" y2="66" stroke="#F9A8D4" strokeWidth="1" />
+    </svg>
+);

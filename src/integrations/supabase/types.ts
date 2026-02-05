@@ -145,6 +145,45 @@ export type Database = {
           },
         ]
       }
+      flipbooks: {
+        Row: {
+          cover_image_url: string | null
+          created_at: string | null
+          description: string | null
+          flipbook_url: string
+          grade_levels: string[]
+          id: string
+          is_active: boolean | null
+          school: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          cover_image_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          flipbook_url: string
+          grade_levels: string[]
+          id?: string
+          is_active?: boolean | null
+          school?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          cover_image_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          flipbook_url?: string
+          grade_levels?: string[]
+          id?: string
+          is_active?: boolean | null
+          school?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
