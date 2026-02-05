@@ -11,7 +11,7 @@ const CANVA_CLIENT_SECRET = Deno.env.get('CANVA_CLIENT_SECRET');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-// Base64URL encode for PKCE
+// Base64URL encode for PKCE (RFC 4648)
 function base64URLEncode(buffer: Uint8Array): string {
   return btoa(String.fromCharCode(...buffer))
     .replace(/\+/g, '-')
@@ -19,19 +19,26 @@ function base64URLEncode(buffer: Uint8Array): string {
     .replace(/=+$/, '');
 }
 
-// Generate code verifier for PKCE
+// Generate code verifier for PKCE (96 bytes as per Canva example)
 function generateCodeVerifier(): string {
-  const array = new Uint8Array(32);
+  const array = new Uint8Array(96);
   crypto.getRandomValues(array);
   return base64URLEncode(array);
 }
 
-// Generate code challenge from verifier
+// Generate code challenge from verifier (SHA-256 hash, base64url encoded)
 async function generateCodeChallenge(verifier: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(verifier);
   const digest = await crypto.subtle.digest('SHA-256', data);
   return base64URLEncode(new Uint8Array(digest));
+}
+
+// Generate high-entropy state key
+function generateStateKey(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return base64URLEncode(array);
 }
 
 serve(async (req) => {
@@ -72,34 +79,43 @@ serve(async (req) => {
         throw new Error('redirect_uri is required');
       }
 
-      // Generate PKCE values
+      // Generate PKCE values (96 bytes for code_verifier as per Canva docs)
       const codeVerifier = generateCodeVerifier();
       const codeChallenge = await generateCodeChallenge(codeVerifier);
-      const state = crypto.randomUUID();
+      
+      // Generate high-entropy state key (NOT storing code_verifier in state)
+      const stateKey = generateStateKey();
 
-      // Store code verifier temporarily (in a simple way - could use Redis/cache in production)
-      // For now, we'll encode it in the state
-      const stateData = JSON.stringify({
-        userId,
-        codeVerifier,
-        redirectUri,
-        nonce: state
-      });
-      const encodedState = btoa(stateData);
+      // Store code_verifier securely in database (not in URL/state)
+      const { error: insertError } = await supabase
+        .from('canva_oauth_states')
+        .insert({
+          state_key: stateKey,
+          user_id: userId,
+          code_verifier: codeVerifier,
+          redirect_uri: redirectUri,
+        });
 
-      // Build Canva authorization URL (matching Canva's exact format)
+      if (insertError) {
+        console.error('Failed to store OAuth state:', insertError);
+        throw new Error('Failed to initialize OAuth flow');
+      }
+
+      // Build Canva authorization URL per Canva's specification
       const canvaAuthUrl = new URL('https://www.canva.com/api/oauth/authorize');
-      canvaAuthUrl.searchParams.set('code_challenge_method', 's256');
+      canvaAuthUrl.searchParams.set('code_challenge_method', 'S256'); // Must be uppercase S256
       canvaAuthUrl.searchParams.set('response_type', 'code');
       canvaAuthUrl.searchParams.set('client_id', CANVA_CLIENT_ID);
       canvaAuthUrl.searchParams.set('redirect_uri', redirectUri);
       canvaAuthUrl.searchParams.set('code_challenge', codeChallenge);
       canvaAuthUrl.searchParams.set('scope', 'design:content:read design:meta:read design:content:write folder:read asset:read asset:write profile:read');
-      canvaAuthUrl.searchParams.set('state', encodedState);
+      canvaAuthUrl.searchParams.set('state', stateKey); // Only the state key, not sensitive data
+
+      console.log('Generated auth URL with state:', stateKey);
 
       return new Response(JSON.stringify({
         authUrl: canvaAuthUrl.toString(),
-        state: encodedState
+        state: stateKey
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -114,15 +130,31 @@ serve(async (req) => {
         throw new Error('Missing code or state parameter');
       }
 
-      // Decode state to get verifier and user info
-      let stateData;
-      try {
-        stateData = JSON.parse(atob(state));
-      } catch {
-        throw new Error('Invalid state parameter');
+      // Retrieve code_verifier from database using state key
+      const { data: stateData, error: fetchError } = await supabase
+        .from('canva_oauth_states')
+        .select('*')
+        .eq('state_key', state)
+        .single();
+
+      if (fetchError || !stateData) {
+        console.error('Failed to retrieve OAuth state:', fetchError);
+        throw new Error('Invalid or expired state parameter');
       }
 
-      const { userId: stateUserId, codeVerifier, redirectUri } = stateData;
+      // Check if state has expired
+      if (new Date(stateData.expires_at) < new Date()) {
+        // Clean up expired state
+        await supabase.from('canva_oauth_states').delete().eq('state_key', state);
+        throw new Error('OAuth state has expired. Please try again.');
+      }
+
+      const { user_id: stateUserId, code_verifier: codeVerifier, redirect_uri: redirectUri } = stateData;
+
+      // Delete the state record (one-time use)
+      await supabase.from('canva_oauth_states').delete().eq('state_key', state);
+
+      console.log('Exchanging code for tokens with verifier length:', codeVerifier.length);
 
       // Exchange code for tokens
       const tokenResponse = await fetch('https://api.canva.com/rest/v1/oauth/token', {
