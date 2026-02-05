@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.canva-api]
 verify_jwt = false
+
+[functions.notebook-chat]
+verify_jwt = false

@@ -46,6 +46,9 @@ import { LibraryPage } from '@/components/library/LibraryPage';
 // Canva
 import { CanvaStudio } from '@/components/canva/CanvaStudio';
 
+// Notebook LLM
+import { NotebookPage } from '@/components/notebook/NotebookPage';
+
 const Index = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -401,6 +404,11 @@ const Index = () => {
       {/* Canva Studio - Admin and Teacher only */}
       {activeTab === 'canva' && (role === 'admin' || role === 'teacher') && (
         <CanvaStudio />
+      )}
+
+      {/* Notebook LLM - Admin and Teacher only */}
+      {activeTab === 'notebook' && (role === 'admin' || role === 'teacher') && (
+        <NotebookPage />
       )}
 
       {/* Admin Panel - Admin only */}

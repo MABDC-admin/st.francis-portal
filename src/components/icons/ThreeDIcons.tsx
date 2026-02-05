@@ -265,3 +265,29 @@ export const CanvaIcon3D = ({ className }: { className?: string }) => (
         <path d="M78 17 L82 25 L75 22 Z" fill="#F59E0B" />
     </svg>
 );
+
+export const NotebookIcon3D = ({ className }: { className?: string }) => (
+    <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* Notebook body */}
+        <rect x="20" y="15" width="60" height="70" rx="4" fill="#3B82F6" stroke="#1D4ED8" strokeWidth="2" />
+        
+        {/* Spiral binding */}
+        <circle cx="20" cy="25" r="3" fill="#374151" />
+        <circle cx="20" cy="40" r="3" fill="#374151" />
+        <circle cx="20" cy="55" r="3" fill="#374151" />
+        <circle cx="20" cy="70" r="3" fill="#374151" />
+        
+        {/* Page lines */}
+        <line x1="30" y1="30" x2="70" y2="30" stroke="white" strokeWidth="2" opacity="0.6" />
+        <line x1="30" y1="42" x2="70" y2="42" stroke="white" strokeWidth="2" opacity="0.6" />
+        <line x1="30" y1="54" x2="70" y2="54" stroke="white" strokeWidth="2" opacity="0.6" />
+        <line x1="30" y1="66" x2="55" y2="66" stroke="white" strokeWidth="2" opacity="0.6" />
+        
+        {/* AI/Brain icon */}
+        <circle cx="72" cy="72" r="16" fill="#10B981" stroke="#059669" strokeWidth="2" />
+        <path d="M65 72 C65 68 68 65 72 65 C76 65 79 68 79 72 C79 76 76 79 72 79 C68 79 65 76 65 72" stroke="white" strokeWidth="2" fill="none" />
+        <circle cx="69" cy="70" r="1.5" fill="white" />
+        <circle cx="75" cy="70" r="1.5" fill="white" />
+        <path d="M69 75 Q72 78 75 75" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+    </svg>
+);

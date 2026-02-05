@@ -330,6 +330,80 @@ export type Database = {
         }
         Relationships: []
       }
+      notebook_cells: {
+        Row: {
+          cell_type: string
+          content: string
+          created_at: string
+          id: string
+          model: string | null
+          notebook_id: string
+          output: string | null
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          cell_type?: string
+          content?: string
+          created_at?: string
+          id?: string
+          model?: string | null
+          notebook_id: string
+          output?: string | null
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          cell_type?: string
+          content?: string
+          created_at?: string
+          id?: string
+          model?: string | null
+          notebook_id?: string
+          output?: string | null
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notebook_cells_notebook_id_fkey"
+            columns: ["notebook_id"]
+            isOneToOne: false
+            referencedRelation: "notebooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notebooks: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          school: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          school?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          school?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

@@ -62,7 +62,8 @@ import {
   AdminIcon3D,
   ProfileIcon3D,
   LibraryIcon3D,
-  CanvaIcon3D
+  CanvaIcon3D,
+  NotebookIcon3D
 } from '@/components/icons/ThreeDIcons';
 
 interface NavItem {
@@ -110,6 +111,7 @@ const getNavItemsForRole = (role: string | null): NavItem[] => {
         { id: 'subject-enrollment', icon: EnrollmentIcon3D, label: 'Enrollment' },
         { id: 'library', icon: LibraryIcon3D, label: 'Library' },
         { id: 'canva', icon: CanvaIcon3D, label: 'Canva Studio' },
+        { id: 'notebook', icon: NotebookIcon3D, label: 'Notebook LLM' },
         { id: 'reports', icon: ReportsIcon3D, label: 'Reports' },
         { id: 'enrollment', icon: EnrollmentIcon3D, label: 'New Student' },
         { id: 'import', icon: ImportIcon3D, label: 'Import CSV' },
@@ -134,6 +136,7 @@ const getNavItemsForRole = (role: string | null): NavItem[] => {
         { id: 'grades', icon: EnterGradeIcon3D, label: 'Grades' },
         { id: 'library', icon: LibraryIcon3D, label: 'Library' },
         { id: 'canva', icon: CanvaIcon3D, label: 'Canva Studio' },
+        { id: 'notebook', icon: NotebookIcon3D, label: 'Notebook LLM' },
       ];
     case 'student':
       return [
