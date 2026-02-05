@@ -77,8 +77,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Flipbooks project URL - call their sync-flipbooks API
-    const flipbooksApiUrl = 'https://hxuglqtqpbjlvggutdlf.supabase.co/functions/v1/sync-flipbooks';
+    // Flipbooks project URL - call their sync-books API
+    const flipbooksApiUrl = 'https://kpzpuiiagtwajyrfmuzl.supabase.co/functions/v1/sync-books';
     
     console.log('Fetching from external API:', flipbooksApiUrl);
 
