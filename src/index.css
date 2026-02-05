@@ -339,26 +339,11 @@
   animation: bounce-subtle 0.5s ease-in-out;
 }
 
-/* Rainbow bounce animation for sticker button */
+/* Rainbow animation for sticker button */
 @keyframes rainbow-gradient {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
-}
-
-@keyframes sticker-bounce {
-  0%, 100% {
-    transform: translateY(0) scale(1);
-  }
-  25% {
-    transform: translateY(-3px) scale(1.02);
-  }
-  50% {
-    transform: translateY(0) scale(1);
-  }
-  75% {
-    transform: translateY(-2px) scale(1.01);
-  }
 }
 
 .sticker-button-animated {
@@ -373,13 +358,12 @@
     hsl(0, 85%, 60%)
   );
   background-size: 300% 300%;
-  animation: rainbow-gradient 4s ease infinite, sticker-bounce 2.5s ease-in-out infinite;
+  animation: rainbow-gradient 4s ease infinite;
   border: none;
 }
 
 .sticker-button-animated:hover {
   animation: rainbow-gradient 2s ease infinite;
-  transform: scale(1.05);
 }
 
 /* Print styles */
