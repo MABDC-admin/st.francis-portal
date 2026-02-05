@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Users, GraduationCap, TrendingUp, UserPlus } from 'lucide-react';
+import { Users, GraduationCap, TrendingUp, UserPlus, BookUser } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { Charts } from '@/components/dashboard/Charts';
@@ -203,7 +203,7 @@ const Index = () => {
               title="Total Students"
               value={totalStudents}
               subtitle="Enrolled students"
-              icon={Users}
+              icon={BookUser}
               variant="purple"
               delay={0}
             />
