@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { GoogleGenerativeAI } from "npm:@google/generative-ai@0.21.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -35,8 +36,17 @@ Deno.serve(async (req) => {
     }
 
     // Initialize Supabase client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error("Missing Supabase environment variables");
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -55,7 +65,7 @@ Deno.serve(async (req) => {
 
     // Parse request body
     const body: RequestBody = await req.json();
-    const { messages, systemPrompt, model = "google/gemini-2.5-flash" } = body;
+    const { messages, systemPrompt } = body;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return new Response(
@@ -64,111 +74,71 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get API key for Lovable AI Gateway
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!lovableApiKey) {
-      console.error("LOVABLE_API_KEY not configured");
+    // Get Gemini API key (using LOVABLE_API_KEY or a dedicated GEMINI_API_KEY)
+    const apiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
+    if (!apiKey) {
+      console.error("No AI API key configured");
       return new Response(
-        JSON.stringify({ error: "AI service not configured" }),
+        JSON.stringify({ error: "AI service not configured. Please add GEMINI_API_KEY secret." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Prepare messages with optional system prompt
-    const formattedMessages: Message[] = [];
+    console.log(`Sending ${messages.length} messages to Gemini`);
+
+    // Initialize Google Generative AI
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    // Build conversation history for Gemini
+    const history: { role: "user" | "model"; parts: { text: string }[] }[] = [];
+    
+    // Add system prompt as first user message if provided
     if (systemPrompt) {
-      formattedMessages.push({ role: "system", content: systemPrompt });
-    }
-    formattedMessages.push(...messages);
-
-    console.log(`Sending ${formattedMessages.length} messages to ${model}`);
-
-    // Call Lovable AI Gateway with streaming
-    const response = await fetch("https://ai.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${lovableApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: formattedMessages,
-        stream: true,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`AI Gateway error: ${response.status} - ${errorText}`);
-      
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please upgrade your plan." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      return new Response(
-        JSON.stringify({ error: "AI service error" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      history.push({
+        role: "user",
+        parts: [{ text: `System instructions: ${systemPrompt}` }]
+      });
+      history.push({
+        role: "model",
+        parts: [{ text: "I understand. I will follow these instructions." }]
+      });
     }
 
-    // Stream the response back using SSE
+    // Convert messages to Gemini format
+    for (let i = 0; i < messages.length - 1; i++) {
+      const msg = messages[i];
+      if (msg.role === "system") continue;
+      history.push({
+        role: msg.role === "user" ? "user" : "model",
+        parts: [{ text: msg.content }]
+      });
+    }
+
+    // Get the last user message
+    const lastMessage = messages[messages.length - 1];
+    
+    // Create chat and generate streaming response
+    const chat = model.startChat({ history });
+    const result = await chat.sendMessageStream(lastMessage.content);
+
+    // Stream the response using SSE
     const encoder = new TextEncoder();
-    const decoder = new TextDecoder();
 
     const stream = new ReadableStream({
       async start(controller) {
-        const reader = response.body?.getReader();
-        if (!reader) {
-          controller.close();
-          return;
-        }
-
         try {
-          let buffer = "";
-          
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n");
-            buffer = lines.pop() || "";
-
-            for (const line of lines) {
-              const trimmedLine = line.trim();
-              if (!trimmedLine || !trimmedLine.startsWith("data: ")) continue;
-              
-              const data = trimmedLine.slice(6);
-              if (data === "[DONE]") {
-                controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-                continue;
-              }
-
-              try {
-                const parsed = JSON.parse(data);
-                const content = parsed.choices?.[0]?.delta?.content || "";
-                if (content) {
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
-                }
-              } catch {
-                // Skip malformed JSON
-              }
+          for await (const chunk of result.stream) {
+            const text = chunk.text();
+            if (text) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: text })}\n\n`));
             }
           }
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         } catch (error) {
-          console.error("Stream processing error:", error);
+          console.error("Stream error:", error);
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: "Stream error" })}\n\n`));
         } finally {
-          reader.releaseLock();
           controller.close();
         }
       },
@@ -185,7 +155,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error("Error in notebook-chat function:", error);
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
+      JSON.stringify({ error: error instanceof Error ? error.message : "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
