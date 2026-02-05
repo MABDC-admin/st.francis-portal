@@ -89,7 +89,7 @@ Make it engaging, informative, and visually appealing. Research suggests that th
     console.log(`Generating ${actualSlideCount}-slide presentation about: ${topic}`);
 
     // Call the AI API
-    const response = await fetch('https://api.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
