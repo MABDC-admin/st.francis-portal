@@ -158,7 +158,7 @@ const handler = async (req: Request): Promise<Response> => {
         try {
           // Use LRN and school to generate email
           const email = generateEmail(student.lrn, student.school);
-          const password = generatePassword();
+          const password = "123456"; // Unified student password
 
           // Create user
           const { data: userData, error: userError } = await supabaseAdmin.auth.admin.createUser({
@@ -287,7 +287,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       const generatedEmail = generateEmail(studentLrn, studentSchool);
-      const generatedPassword = generatePassword();
+      const generatedPassword = "123456"; // Unified student password
 
       const { data: userData, error: userError } = await supabaseAdmin.auth.admin.createUser({
         email: generatedEmail,
@@ -341,7 +341,7 @@ const handler = async (req: Request): Promise<Response> => {
         );
       }
 
-      const newPassword = generatePassword();
+      const newPassword = "123456"; // Unified student password
 
       // Update password in auth
       const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
