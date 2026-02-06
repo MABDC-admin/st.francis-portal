@@ -350,6 +350,22 @@ const handler = async (req: Request): Promise<Response> => {
 
       if (updateError) {
         console.error("Error resetting password:", updateError);
+        
+        // If user not found, the credential is orphaned - delete it and return helpful message
+        if (updateError.message?.includes("User not found") || updateError.status === 404) {
+          // Delete orphaned credential
+          await supabaseAdmin.from("user_credentials").delete().eq("id", credentialId);
+          console.log(`Deleted orphaned credential: ${credentialId}`);
+          
+          return new Response(
+            JSON.stringify({ 
+              error: "Account no longer exists. Credential has been removed. Please recreate the student account.",
+              orphaned: true 
+            }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
         return new Response(
           JSON.stringify({ error: updateError.message }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
