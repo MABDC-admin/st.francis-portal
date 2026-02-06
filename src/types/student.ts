@@ -4,6 +4,8 @@ export interface Student {
   student_name: string;
   level: string;
   school: string | null;
+  school_id: string;
+  academic_year_id: string;
   birth_date: string | null;
   age: number | null;
   gender: string | null;

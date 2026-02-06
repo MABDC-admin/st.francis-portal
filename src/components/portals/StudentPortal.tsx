@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useState, useCallback, useMemo } from 'react';
-import { Bell, Loader2, BookOpen, Award, User, Calendar, LogOut } from 'lucide-react';
+import { Bell, Loader2, BookOpen, Award, User, Calendar, LogOut, LayoutDashboard, ClipboardList, GraduationCap, CheckCircle, BookMarked } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,14 @@ import {
   getGradeColorClass,
   GradeRecord
 } from '@/utils/gradeComputation';
+
+// Import new tab components
+import { StudentDashboard } from './student/StudentDashboard';
+import { StudentScheduleTab } from './student/StudentScheduleTab';
+import { StudentAttendanceTab } from './student/StudentAttendanceTab';
+import { StudentAssignmentsTab } from './student/StudentAssignmentsTab';
+import { StudentExamsTab } from './student/StudentExamsTab';
+import { StudentAnnouncementsTab } from './student/StudentAnnouncementsTab';
 
 // Custom hook for fetching student data
 const useStudentData = (userId: string | undefined) => {
@@ -124,47 +132,15 @@ const useStudentSubjects = (studentId: string | undefined) => {
   });
 };
 
-// Custom hook for fetching announcements
-const useAnnouncements = (school: string | null | undefined) => {
-  return useQuery({
-    queryKey: ['announcements', school],
-    queryFn: async () => {
-      const today = new Date().toISOString().split('T')[0];
-      
-      let query = supabase
-        .from('school_events')
-        .select('id, title, event_date, event_type, description')
-        .gte('event_date', today)
-        .order('event_date', { ascending: true })
-        .limit(5);
-
-      if (school) {
-        query = query.or(`school.eq.${school},school.is.null`);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error fetching announcements:', error);
-        return [];
-      }
-
-      return data || [];
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-};
-
 export const StudentPortal = () => {
   // All hooks must be called at the top level, before any conditional returns
   const { user, signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState('dashboard');
   
   // Use custom hooks for data fetching
   const { data: student, isLoading: isLoadingStudent } = useStudentData(user?.id);
   const { data: grades = [], isLoading: isLoadingGrades } = useStudentGrades(student?.id);
   const { data: subjects = [], isLoading: isLoadingSubjects } = useStudentSubjects(student?.id);
-  const { data: announcements = [], isLoading: isLoadingAnnouncements } = useAnnouncements(student?.school);
 
   // Memoize student name for display
   const displayName = useMemo(() => {
@@ -220,6 +196,11 @@ export const StudentPortal = () => {
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Student Portal</h1>
           <p className="text-muted-foreground mt-1">
             Welcome, {displayName}!
+            {student && (
+              <span className="ml-2 text-sm">
+                • {student.level} • {student.school}
+              </span>
+            )}
           </p>
         </div>
         <Button 
@@ -233,197 +214,67 @@ export const StudentPortal = () => {
         </Button>
       </motion.div>
 
-      {/* Quick Stats */}
-      {student && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-4"
-        >
-          <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-200/50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-full bg-blue-500/20">
-                  <User className="h-5 w-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Level</p>
-                  <p className="font-semibold">{student.level}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-200/50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-full bg-green-500/20">
-                  <BookOpen className="h-5 w-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Subjects</p>
-                  <p className="font-semibold">{subjects.length}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* General Average Card - DepEd Compliant */}
-          <Card className={`bg-gradient-to-br ${
-            generalAverages?.annual && isPassing(generalAverages.annual)
-              ? 'from-purple-500/10 to-purple-600/5 border-purple-200/50'
-              : generalAverages?.annual
-                ? 'from-red-500/10 to-red-600/5 border-red-200/50'
-                : 'from-gray-500/10 to-gray-600/5 border-gray-200/50'
-          }`}>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-full ${
-                  generalAverages?.annual && isPassing(generalAverages.annual)
-                    ? 'bg-purple-500/20'
-                    : generalAverages?.annual
-                      ? 'bg-red-500/20'
-                      : 'bg-gray-500/20'
-                }`}>
-                  <Award className={`h-5 w-5 ${
-                    generalAverages?.annual && isPassing(generalAverages.annual)
-                      ? 'text-purple-600'
-                      : generalAverages?.annual
-                        ? 'text-red-600'
-                        : 'text-gray-600'
-                  }`} />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Gen. Average</p>
-                  <p className={`font-semibold ${
-                    generalAverages?.annual && isPassing(generalAverages.annual)
-                      ? 'text-purple-600'
-                      : generalAverages?.annual
-                        ? 'text-red-600'
-                        : ''
-                  }`}>
-                    {generalAverages?.annual?.toFixed(2) || 'N/A'}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-orange-500/10 to-orange-600/5 border-orange-200/50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-full bg-orange-500/20">
-                  <Calendar className="h-5 w-5 text-orange-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Events</p>
-                  <p className="font-semibold">{announcements.length}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
-
-      {/* Quarterly General Averages - DepEd Compliant */}
-      {generalAverages && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-        >
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Award className="h-5 w-5" />
-                Quarterly General Averages
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                {(['q1', 'q2', 'q3', 'q4'] as const).map((quarter) => {
-                  const avg = generalAverages[quarter];
-                  const passing = isPassing(avg);
-                  return (
-                    <div
-                      key={quarter}
-                      className={`p-4 rounded-lg text-center transition-colors ${
-                        avg === null
-                          ? 'bg-muted/50'
-                          : passing
-                            ? 'bg-green-50 border border-green-200 dark:bg-green-950/30 dark:border-green-800'
-                            : 'bg-red-50 border border-red-200 dark:bg-red-950/30 dark:border-red-800'
-                      }`}
-                    >
-                      <p className="text-xs text-muted-foreground uppercase font-medium">
-                        {quarter.toUpperCase()}
-                      </p>
-                      <p className={`text-xl font-bold ${
-                        avg === null
-                          ? 'text-muted-foreground'
-                          : passing
-                            ? 'text-green-600 dark:text-green-400'
-                            : 'text-red-600 dark:text-red-400'
-                      }`}>
-                        {avg?.toFixed(2) || '-'}
-                      </p>
-                      {avg !== null && (
-                        <Badge 
-                          variant={passing ? 'default' : 'destructive'} 
-                          className="mt-1 text-xs"
-                        >
-                          {passing ? 'Passed' : 'Failed'}
-                        </Badge>
-                      )}
-                    </div>
-                  );
-                })}
-                {/* Annual/Final Average */}
-                <div
-                  className={`p-4 rounded-lg text-center transition-colors ${
-                    generalAverages.annual === null
-                      ? 'bg-muted/50'
-                      : isPassing(generalAverages.annual)
-                        ? 'bg-purple-50 border-2 border-purple-300 dark:bg-purple-950/30 dark:border-purple-700'
-                        : 'bg-red-50 border-2 border-red-300 dark:bg-red-950/30 dark:border-red-700'
-                  }`}
-                >
-                  <p className="text-xs text-muted-foreground uppercase font-medium">
-                    Final
-                  </p>
-                  <p className={`text-xl font-bold ${
-                    generalAverages.annual === null
-                      ? 'text-muted-foreground'
-                      : isPassing(generalAverages.annual)
-                        ? 'text-purple-600 dark:text-purple-400'
-                        : 'text-red-600 dark:text-red-400'
-                  }`}>
-                    {generalAverages.annual?.toFixed(2) || '-'}
-                  </p>
-                  {generalAverages.annual !== null && (
-                    <Badge 
-                      variant={isPassing(generalAverages.annual) ? 'default' : 'destructive'} 
-                      className="mt-1 text-xs"
-                    >
-                      {getGradeDescriptor(generalAverages.annual)}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
-
-      {/* Main Content Tabs */}
+      {/* Main Content Tabs - Enhanced with new tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="mb-6 flex-wrap">
-          <TabsTrigger value="profile">My Profile</TabsTrigger>
-          <TabsTrigger value="grades">My Grades</TabsTrigger>
-          <TabsTrigger value="subjects">My Subjects</TabsTrigger>
-          <TabsTrigger value="announcements">Announcements</TabsTrigger>
+        <TabsList className="mb-6 flex-wrap h-auto gap-1">
+          <TabsTrigger value="dashboard" className="gap-1.5">
+            <LayoutDashboard className="h-4 w-4" />
+            <span className="hidden sm:inline">Dashboard</span>
+          </TabsTrigger>
+          <TabsTrigger value="profile" className="gap-1.5">
+            <User className="h-4 w-4" />
+            <span className="hidden sm:inline">Profile</span>
+          </TabsTrigger>
+          <TabsTrigger value="grades" className="gap-1.5">
+            <Award className="h-4 w-4" />
+            <span className="hidden sm:inline">Grades</span>
+          </TabsTrigger>
+          <TabsTrigger value="subjects" className="gap-1.5">
+            <BookOpen className="h-4 w-4" />
+            <span className="hidden sm:inline">Subjects</span>
+          </TabsTrigger>
+          <TabsTrigger value="schedule" className="gap-1.5">
+            <Calendar className="h-4 w-4" />
+            <span className="hidden sm:inline">Schedule</span>
+          </TabsTrigger>
+          <TabsTrigger value="attendance" className="gap-1.5">
+            <CheckCircle className="h-4 w-4" />
+            <span className="hidden sm:inline">Attendance</span>
+          </TabsTrigger>
+          <TabsTrigger value="assignments" className="gap-1.5">
+            <ClipboardList className="h-4 w-4" />
+            <span className="hidden sm:inline">Assignments</span>
+          </TabsTrigger>
+          <TabsTrigger value="exams" className="gap-1.5">
+            <GraduationCap className="h-4 w-4" />
+            <span className="hidden sm:inline">Exams</span>
+          </TabsTrigger>
+          <TabsTrigger value="announcements" className="gap-1.5">
+            <Bell className="h-4 w-4" />
+            <span className="hidden sm:inline">Announcements</span>
+          </TabsTrigger>
         </TabsList>
+
+        {/* Dashboard Tab - NEW */}
+        <TabsContent value="dashboard">
+          {student ? (
+            <StudentDashboard
+              studentId={student.id}
+              gradeLevel={student.level}
+              schoolId={student.school_id}
+              academicYearId={student.academic_year_id}
+              grades={grades}
+            />
+          ) : (
+            <Card>
+              <CardContent className="py-10 text-center">
+                <p className="text-muted-foreground">
+                  Student profile not found. Please contact your administrator.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
 
         {/* Profile Tab */}
         <TabsContent value="profile">
@@ -445,12 +296,98 @@ export const StudentPortal = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
           >
+            {/* Quarterly General Averages */}
+            {generalAverages && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Award className="h-5 w-5" />
+                    Quarterly General Averages
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                    {(['q1', 'q2', 'q3', 'q4'] as const).map((quarter) => {
+                      const avg = generalAverages[quarter];
+                      const passing = isPassing(avg);
+                      return (
+                        <div
+                          key={quarter}
+                          className={`p-4 rounded-lg text-center transition-colors ${
+                            avg === null
+                              ? 'bg-muted/50'
+                              : passing
+                                ? 'bg-green-50 border border-green-200 dark:bg-green-950/30 dark:border-green-800'
+                                : 'bg-red-50 border border-red-200 dark:bg-red-950/30 dark:border-red-800'
+                          }`}
+                        >
+                          <p className="text-xs text-muted-foreground uppercase font-medium">
+                            {quarter.toUpperCase()}
+                          </p>
+                          <p className={`text-xl font-bold ${
+                            avg === null
+                              ? 'text-muted-foreground'
+                              : passing
+                                ? 'text-green-600 dark:text-green-400'
+                                : 'text-red-600 dark:text-red-400'
+                          }`}>
+                            {avg?.toFixed(2) || '-'}
+                          </p>
+                          {avg !== null && (
+                            <Badge 
+                              variant={passing ? 'default' : 'destructive'} 
+                              className="mt-1 text-xs"
+                            >
+                              {passing ? 'Passed' : 'Failed'}
+                            </Badge>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {/* Annual/Final Average */}
+                    <div
+                      className={`p-4 rounded-lg text-center transition-colors ${
+                        generalAverages.annual === null
+                          ? 'bg-muted/50'
+                          : isPassing(generalAverages.annual)
+                            ? 'bg-purple-50 border-2 border-purple-300 dark:bg-purple-950/30 dark:border-purple-700'
+                            : 'bg-red-50 border-2 border-red-300 dark:bg-red-950/30 dark:border-red-700'
+                      }`}
+                    >
+                      <p className="text-xs text-muted-foreground uppercase font-medium">
+                        Final
+                      </p>
+                      <p className={`text-xl font-bold ${
+                        generalAverages.annual === null
+                          ? 'text-muted-foreground'
+                          : isPassing(generalAverages.annual)
+                            ? 'text-purple-600 dark:text-purple-400'
+                            : 'text-red-600 dark:text-red-400'
+                      }`}>
+                        {generalAverages.annual?.toFixed(2) || '-'}
+                      </p>
+                      {generalAverages.annual !== null && (
+                        <Badge 
+                          variant={isPassing(generalAverages.annual) ? 'default' : 'destructive'} 
+                          className="mt-1 text-xs"
+                        >
+                          {getGradeDescriptor(generalAverages.annual)}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Subject Grades Table */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Award className="h-5 w-5" />
-                  My Grades
+                  Subject Grades
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -568,59 +505,99 @@ export const StudentPortal = () => {
           </motion.div>
         </TabsContent>
 
-        {/* Announcements Tab */}
-        <TabsContent value="announcements">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
+        {/* Schedule Tab - NEW */}
+        <TabsContent value="schedule">
+          {student ? (
+            <StudentScheduleTab
+              gradeLevel={student.level}
+              schoolId={student.school_id}
+              academicYearId={student.academic_year_id}
+            />
+          ) : (
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Bell className="h-5 w-5" />
-                  School Announcements
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoadingAnnouncements ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : announcements.length > 0 ? (
-                  <div className="space-y-3">
-                    {announcements.map((item: any) => (
-                      <motion.div 
-                        key={item.id} 
-                        className="flex items-center justify-between p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
-                        whileHover={{ scale: 1.01 }}
-                      >
-                        <div>
-                          <p className="font-medium">{item.title}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date(item.event_date).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
-                            })}
-                          </p>
-                          {item.description && (
-                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                              {item.description}
-                            </p>
-                          )}
-                        </div>
-                        <Badge variant="outline">{item.event_type}</Badge>
-                      </motion.div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-center text-muted-foreground py-8">
-                    No upcoming announcements.
-                  </p>
-                )}
+              <CardContent className="py-10 text-center">
+                <p className="text-muted-foreground">
+                  Schedule data not available.
+                </p>
               </CardContent>
             </Card>
-          </motion.div>
+          )}
+        </TabsContent>
+
+        {/* Attendance Tab - NEW */}
+        <TabsContent value="attendance">
+          {student ? (
+            <StudentAttendanceTab
+              studentId={student.id}
+              schoolId={student.school_id}
+              academicYearId={student.academic_year_id}
+            />
+          ) : (
+            <Card>
+              <CardContent className="py-10 text-center">
+                <p className="text-muted-foreground">
+                  Attendance data not available.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Assignments Tab - NEW */}
+        <TabsContent value="assignments">
+          {student ? (
+            <StudentAssignmentsTab
+              studentId={student.id}
+              gradeLevel={student.level}
+              schoolId={student.school_id}
+              academicYearId={student.academic_year_id}
+            />
+          ) : (
+            <Card>
+              <CardContent className="py-10 text-center">
+                <p className="text-muted-foreground">
+                  Assignment data not available.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Exams Tab - NEW */}
+        <TabsContent value="exams">
+          {student ? (
+            <StudentExamsTab
+              gradeLevel={student.level}
+              schoolId={student.school_id}
+              academicYearId={student.academic_year_id}
+            />
+          ) : (
+            <Card>
+              <CardContent className="py-10 text-center">
+                <p className="text-muted-foreground">
+                  Exam schedule not available.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Announcements Tab - ENHANCED */}
+        <TabsContent value="announcements">
+          {student ? (
+            <StudentAnnouncementsTab
+              schoolId={student.school_id}
+              gradeLevel={student.level}
+            />
+          ) : (
+            <Card>
+              <CardContent className="py-10 text-center">
+                <p className="text-muted-foreground">
+                  Announcements not available.
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>
