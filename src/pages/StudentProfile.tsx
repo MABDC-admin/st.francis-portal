@@ -30,6 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { AnimatedStudentAvatar } from '@/components/students/AnimatedStudentAvatar';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -664,12 +665,12 @@ const StudentProfile = () => {
                   className="hidden"
                   onChange={handlePhotoUpload}
                 />
-                <Avatar className="h-16 w-16 border-4 border-white/30 shadow-lg">
-                  <AvatarImage src={student.photo_url || ''} alt={student.student_name} />
-                  <AvatarFallback className="text-xl font-bold text-white bg-white/20 backdrop-blur-sm">
-                    {student.student_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                  </AvatarFallback>
-                </Avatar>
+                <AnimatedStudentAvatar
+                  photoUrl={student.photo_url}
+                  name={student.student_name}
+                  size="5xl"
+                  borderColor="rgba(255,255,255,0.3)"
+                />
                 <button
                   onClick={() => photoInputRef.current?.click()}
                   disabled={isUploadingPhoto}
