@@ -49,6 +49,8 @@ export const FlipbookViewer = ({
   const [isJumping, setIsJumping] = useState(false);
   const [flipDirection, setFlipDirection] = useState<'left' | 'right' | null>(null);
   const [isFlipping, setIsFlipping] = useState(false);
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right');
+  const [isDragOver, setIsDragOver] = useState(false);
   
   const isMobile = useIsMobile();
   const isDesktop = !isMobile && typeof window !== 'undefined' && window.innerWidth >= 1024;
@@ -217,6 +219,7 @@ export const FlipbookViewer = ({
     if (isDesktop) {
       goToPrevSpread();
     } else {
+      setSlideDirection('left');
       setCurrentPage((p) => Math.max(1, p - 1));
     }
   }, [isDesktop, goToPrevSpread]);
@@ -225,6 +228,7 @@ export const FlipbookViewer = ({
     if (isDesktop) {
       goToNextSpread();
     } else {
+      setSlideDirection('right');
       setCurrentPage((p) => Math.min(pages.length, p + 1));
     }
   }, [isDesktop, goToNextSpread, pages.length]);
@@ -286,8 +290,19 @@ export const FlipbookViewer = ({
     e.dataTransfer.dropEffect = 'copy';
   };
 
+  const handleDragEnter = (e: React.DragEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
   const handleDrop = (e: React.DragEvent<HTMLCanvasElement>) => {
     e.preventDefault();
+    setIsDragOver(false);
     
     const stickerData = e.dataTransfer.getData('application/sticker');
     if (!stickerData) return;
@@ -309,6 +324,22 @@ export const FlipbookViewer = ({
     } catch (error) {
       console.error('Failed to parse sticker data:', error);
     }
+  };
+
+  // Mobile slide animation variants
+  const slideVariants = {
+    enter: (direction: 'left' | 'right') => ({
+      x: direction === 'right' ? 100 : -100,
+      opacity: 0,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+    },
+    exit: (direction: 'left' | 'right') => ({
+      x: direction === 'right' ? -100 : 100,
+      opacity: 0,
+    }),
   };
 
   const currentPageData = pages[currentPage - 1];
@@ -501,34 +532,47 @@ export const FlipbookViewer = ({
               <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-2 bg-gradient-to-r from-black/10 via-black/5 to-black/10 pointer-events-none z-10" />
             </div>
           ) : currentPageData ? (
-            <div
-              ref={containerRef}
-              className="relative transition-transform duration-200"
-              style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
-            >
-              <img
-                ref={imageRef}
-                src={currentPageData.image_url}
-                alt={`Page ${currentPage}`}
-                className="max-h-[calc(100vh-180px)] w-auto shadow-lg"
-                draggable={false}
-                onLoad={handleImageLoad}
-              />
-              {/* Canvas Overlay for Annotations */}
-              <canvas
-                ref={canvasRef}
-                className={cn(
-                  'absolute inset-0 w-full h-full',
-                  annotationMode !== 'none' ? (annotationMode === 'sticker' ? 'cursor-copy' : 'cursor-crosshair') : ''
-                )}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
-                onDragOver={handleDragOver}
-                onDrop={handleDrop}
-              />
-            </div>
+            <AnimatePresence mode="wait" custom={slideDirection}>
+              <motion.div
+                key={currentPage}
+                ref={containerRef}
+                custom={slideDirection}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.25, ease: 'easeInOut' }}
+                className="relative"
+                style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
+              >
+                <img
+                  ref={imageRef}
+                  src={currentPageData.image_url}
+                  alt={`Page ${currentPage}`}
+                  className="max-h-[calc(100vh-180px)] w-auto shadow-lg"
+                  draggable={false}
+                  onLoad={handleImageLoad}
+                />
+                {/* Canvas Overlay for Annotations */}
+                <canvas
+                  ref={canvasRef}
+                  className={cn(
+                    'absolute inset-0 w-full h-full z-10',
+                    annotationMode !== 'none' ? (annotationMode === 'sticker' ? 'cursor-copy' : 'cursor-crosshair') : '',
+                    isDragOver && 'ring-2 ring-primary ring-inset'
+                  )}
+                  style={{ pointerEvents: 'auto' }}
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseUp}
+                  onDragEnter={handleDragEnter}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                />
+              </motion.div>
+            </AnimatePresence>
           ) : (
             <div className="text-muted-foreground">No pages available</div>
           )}

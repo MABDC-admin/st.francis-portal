@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {
   Pencil,
   Highlighter,
@@ -54,10 +55,24 @@ export function AnnotationToolbar({
   onStickerSelect,
   pendingSticker,
 }: AnnotationToolbarProps) {
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Global dragend listener to reset state
+  useEffect(() => {
+    const handleDragEnd = () => setIsDragging(false);
+    window.addEventListener('dragend', handleDragEnd);
+    return () => window.removeEventListener('dragend', handleDragEnd);
+  }, []);
+
   const handleStickerSelect = (sticker: StickerData) => {
     onStickerSelect?.(sticker);
     onModeChange('sticker');
   };
+
+  const handleDragStart = () => {
+    setIsDragging(true);
+  };
+
   return (
     <div className="hidden lg:flex items-center justify-between px-4 py-2 border-b bg-card gap-4">
       {/* Left: Drawing Tools + Colors */}
@@ -124,8 +139,19 @@ export function AnnotationToolbar({
             Stickers
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[400px] p-0" align="center">
-          <StickerPicker onSelect={handleStickerSelect} />
+        <PopoverContent 
+          className="w-[400px] p-0" 
+          align="center"
+          onInteractOutside={(e) => {
+            if (isDragging) {
+              e.preventDefault();
+            }
+          }}
+        >
+          <StickerPicker 
+            onSelect={handleStickerSelect} 
+            onDragStart={handleDragStart}
+          />
         </PopoverContent>
       </Popover>
 
