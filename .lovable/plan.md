@@ -1,352 +1,177 @@
 
-
-# AI-Powered Library Search with OCR Indexing
+# Auto AI Indexing on Book Upload
 
 ## Overview
 
-This feature adds a powerful AI-powered search system to the library that:
-1. **Background OCR Indexing**: Automatically scans all book pages using AI vision to extract text, topics, and lessons
-2. **Full-Text Search**: Enables keyword-based search across all indexed content
-3. **Direct Page Navigation**: When users click a search result, opens the flipbook directly at the matching page
+This implementation will:
+1. **Optimize the OCR edge function** to focus only on topics, chapters, and lessons (skip full OCR text extraction)
+2. **Auto-trigger AI indexing** immediately after a book upload completes (status becomes 'ready')
+3. **Start indexing all existing books** that have `index_status: 'pending'`
 
 ---
 
-## System Architecture
+## Architecture
 
 ```text
-+--------------------+     +----------------------+     +------------------+
-|   Library Page     |     |   Edge Function      |     |   Database       |
-|                    |     |   (ocr-index-book)   |     |                  |
-| [Search Bar]       |---->|   - Fetch pages      |---->| book_page_index  |
-| [AI Search Button] |     |   - OCR via Gemini   |     | - extracted_text |
-|                    |     |   - Extract topics   |     | - topics[]       |
-+--------------------+     |   - Save to DB       |     | - keywords[]     |
-         |                 +----------------------+     +------------------+
-         |                                                      |
-         v                                                      v
-+--------------------+     +----------------------+     +------------------+
-| Search Results     |     |   Edge Function      |     |   Query          |
-| Page               |<----|   (search-books)     |<----| Full-text search |
-|                    |     |   - Search index     |     | with ranking     |
-| [Book Card + Page] |     |   - Return matches   |     |                  |
-+--------------------+     +----------------------+     +------------------+
+Book Upload Complete (status: 'ready')
          |
          v
-+--------------------+
-| Flipbook Viewer    |
-| Opens at Page X    |
-+--------------------+
++------------------+
+| BookUploadModal  |  After successful upload
+| uploadSingleBook |  triggers startIndexing()
++------------------+
+         |
+         v
++------------------+     +----------------------+
+| ocr-index-book   |---->| AI Gateway (Gemini)  |
+| Edge Function    |     | Vision Analysis      |
++------------------+     +----------------------+
+         |
+         v
++------------------+
+| book_page_index  |
+| - topics[]       |
+| - keywords[]     |  (No full OCR text)
+| - chapter_title  |
+| - summary        |
++------------------+
 ```
 
 ---
 
-## Database Schema Changes
+## Changes Required
 
-### New Table: `book_page_index`
+### 1. Edge Function: Optimize for Topics/Chapters Only
 
-| Column | Type | Description |
-|--------|------|-------------|
-| id | uuid | Primary key |
-| book_id | uuid | Foreign key to books |
-| page_id | uuid | Foreign key to book_pages |
-| page_number | integer | Page number |
-| extracted_text | text | Full OCR text from the page |
-| topics | text[] | AI-detected topics/lessons |
-| keywords | text[] | Searchable keywords |
-| chapter_title | text | Detected chapter/section title |
-| summary | text | Brief AI summary of page content |
-| indexed_at | timestamptz | When indexing completed |
-| index_status | text | pending, processing, completed, error |
+**File**: `supabase/functions/ocr-index-book/index.ts`
 
-### Index for Full-Text Search
+Update the AI prompt to focus ONLY on:
+- Topics and lessons (main focus)
+- Chapter titles
+- Section headers
+- Key concepts/keywords
+- Brief summary
 
-```sql
--- GIN index for full-text search
-CREATE INDEX idx_book_page_index_fts ON book_page_index 
-USING gin(to_tsvector('english', extracted_text || ' ' || array_to_string(topics, ' ') || ' ' || array_to_string(keywords, ' ')));
-```
+Skip full OCR text extraction to save tokens and processing time.
 
-### Update Books Table
-
-Add `index_status` column to track overall book indexing progress:
-- `pending` - Not yet indexed
-- `indexing` - Currently being indexed
-- `indexed` - Fully indexed
-- `error` - Indexing failed
-
----
-
-## Edge Functions
-
-### 1. `ocr-index-book` - Background OCR Processing
-
-**Purpose**: Processes all pages of a book for OCR indexing in the background
-
-**Process Flow**:
-1. Receive book_id and optional page range
-2. Fetch all pages for the book from `book_pages`
-3. For each page (sequentially to avoid rate limits):
-   - Call Lovable AI Gateway with the page image
-   - Extract: full text, topics, keywords, chapter title, summary
-   - Save to `book_page_index` table
-4. Update book `index_status` when complete
-
-**AI Prompt Strategy**:
+**Updated Prompt**:
 ```text
-Analyze this textbook/book page image and extract:
-1. All visible text (OCR) - preserve formatting
-2. Topics/Lessons mentioned (e.g., "Photosynthesis", "Chapter 5: Fractions")
-3. Keywords for search (10-20 words)
-4. Chapter/Section title if visible
-5. 1-2 sentence summary of the page content
+Analyze this textbook/book page and extract ONLY:
+1. Topics/Lessons visible (e.g., "Lesson 1: Photosynthesis", "Chapter 5: Fractions")
+2. Chapter/Section title if visible
+3. Key concepts and keywords (5-10 terms)
+4. Brief 1-sentence summary of the lesson/topic
 
-Return as JSON.
+Do NOT extract full text. Focus on educational structure.
 ```
 
-### 2. `search-books` - Search API
+**Updated max_tokens**: Reduce from 4000 to 1500 (lighter extraction)
 
-**Purpose**: Search across all indexed content and return matching pages
+### 2. BookUploadModal: Auto-Trigger Indexing After Upload
 
-**Features**:
-- Full-text search using PostgreSQL tsvector
-- Ranking by relevance
-- Highlight matching text snippets
-- Group results by book
+**File**: `src/components/library/BookUploadModal.tsx`
 
-**Response Format**:
+After a book successfully uploads and status becomes 'ready':
+1. Import `useBookIndexing` hook
+2. Call `startIndexing(bookId)` immediately after upload completes
+
+```typescript
+// In uploadSingleBook function, after book status is 'ready':
+await startIndexing(bookId);
+toast.success(`Book uploaded! AI indexing started for ${book.title}`);
+```
+
+### 3. LibraryPage: Auto-Index Pending Books on Load
+
+**File**: `src/components/library/LibraryPage.tsx`
+
+Update the existing `useEffect` to actually trigger indexing for books with `index_status: 'pending'`:
+
+```typescript
+useEffect(() => {
+  const indexPendingBooks = async () => {
+    for (const book of books) {
+      if (book.status === 'ready' && (!book.index_status || book.index_status === 'pending')) {
+        // Start indexing with a small delay between each
+        await startIndexing(book.id);
+        await new Promise(r => setTimeout(r, 2000)); // 2s gap between books
+      }
+    }
+  };
+  
+  if (books.length > 0 && !isIndexing) {
+    indexPendingBooks();
+  }
+}, [books]); // Run once when books load
+```
+
+### 4. Show Indexing Toast/Status
+
+Add visual feedback when auto-indexing starts:
+- Toast notification: "AI is now scanning your books for topics and lessons..."
+- Badge on book cards showing "Scanning..." status
+
+---
+
+## Technical Details
+
+### Optimized AI Prompt (Edge Function)
+
 ```json
 {
-  "results": [
+  "role": "user",
+  "content": [
     {
-      "book_id": "...",
-      "book_title": "Grammar Essentials",
-      "cover_url": "...",
-      "matches": [
-        {
-          "page_number": 45,
-          "page_id": "...",
-          "snippet": "...the **keyword** appears in this context...",
-          "topics": ["Verb Tenses", "Past Perfect"],
-          "relevance_score": 0.95
-        }
-      ]
-    }
+      "type": "text", 
+      "text": "Analyze this textbook page. Extract ONLY:\n1. Topic/Lesson name (e.g., 'Lesson 3: Plant Cells')\n2. Chapter title if visible\n3. Key concepts (5-10 keywords)\n4. 1-sentence summary\n\nReturn JSON: {\"topics\": [], \"chapter_title\": null, \"keywords\": [], \"summary\": \"\"}"
+    },
+    { "type": "image_url", "image_url": { "url": imageUrl } }
   ]
 }
 ```
 
----
+### Auto-Index Trigger Points
 
-## Frontend Components
+| Trigger | Location | Action |
+|---------|----------|--------|
+| After upload | BookUploadModal.tsx | `startIndexing(bookId)` called after status: 'ready' |
+| On library load | LibraryPage.tsx | Index all books with `index_status: 'pending'` |
+| Manual trigger | BookCard menu | Existing "Index for AI Search" option |
 
-### 1. Enhanced Library Search Bar
+### Rate Limiting Protection
 
-Replace existing simple search with AI-powered version:
-
-```text
-+-------------------------------------------------------+
-| [Search icon] Search topics, lessons, content...   [AI] |
-+-------------------------------------------------------+
-        |                                            |
-        v                                            v
-    Basic filter                            Trigger AI search
-    (title/subject)                         (opens results page)
-```
-
-**Features**:
-- Debounced input for type-ahead suggestions
-- "AI Search" button triggers full content search
-- Visual indicator showing which books are indexed
-- Quick topic suggestions based on indexed content
-
-### 2. Search Results Page
-
-New component: `src/components/library/SearchResultsView.tsx`
-
-```text
-+------------------------------------------------------------------+
-| Library > Search Results for "photosynthesis"                     |
-|                                                                   |
-| Found 23 matches in 4 books                                       |
-+------------------------------------------------------------------+
-|                                                                   |
-| [Book Cover] Science Grade 7                                      |
-|   Page 45: "...process of photosynthesis converts..."            |
-|   Page 46: "...chlorophyll is essential for photosynthesis..."   |
-|   Page 52: "...photosynthesis equation: 6CO2 + 6H2O..."          |
-|   [Open Book]                                                     |
-|                                                                   |
-| [Book Cover] Biology Essentials                                   |
-|   Page 12: "...introduction to photosynthesis and..."            |
-|   [Open Book]                                                     |
-|                                                                   |
-+------------------------------------------------------------------+
-```
-
-**Features**:
-- Grouped by book with expand/collapse
-- Highlighted keyword matches in snippets
-- Click on page opens flipbook at that page
-- Filter by grade level, subject
-- Sort by relevance or page number
-
-### 3. FlipbookViewer Enhancement
-
-Add prop to open at specific page:
-
-```typescript
-interface FlipbookViewerProps {
-  bookId: string;
-  bookTitle: string;
-  onClose: () => void;
-  initialPage?: number;  // NEW: Start at this page
-}
-```
-
-### 4. Indexing Status Indicator
-
-On book cards and in admin view:
-
-```text
-+------------------+
-| [Book Cover]     |
-| Book Title       |
-| [AI Indexed] ✓   |  <-- Badge showing index status
-+------------------+
-```
-
-Admin can trigger re-indexing or see indexing progress.
+- 800ms delay between pages (existing)
+- 2000ms delay between books when batch processing
+- Retry with 5s delay on 429 errors (existing)
 
 ---
 
-## Background Indexing Strategy
+## Files to Modify
 
-### When to Index
-
-1. **After Book Upload**: Automatically queue for indexing when a book's status becomes `ready`
-2. **Batch Processing**: Process during off-peak hours to save API credits
-3. **On-Demand**: Admin can trigger indexing for specific books
-
-### Processing Flow
-
-```text
-Book Uploaded --> Status: 'ready'
-       |
-       v
-+------------------+
-| Indexing Queue   |  (Check every 5 minutes)
-| - Book A [new]   |
-| - Book B [retry] |
-+------------------+
-       |
-       v
-+------------------+
-| Process Book     |
-| - 1 page/500ms   |  (Rate limit protection)
-| - Save progress  |
-| - Resume on fail |
-+------------------+
-       |
-       v
-Book index_status: 'indexed'
-```
-
-### Rate Limit Handling
-
-- Process 1 page every 500-1000ms
-- If rate limited (429), wait and retry
-- Save progress so indexing can resume
-- Use `waitUntil` for background processing
+| File | Changes |
+|------|---------|
+| `supabase/functions/ocr-index-book/index.ts` | Optimize prompt for topics/chapters only, reduce max_tokens |
+| `src/components/library/BookUploadModal.tsx` | Add `useBookIndexing` hook, call `startIndexing` after upload |
+| `src/components/library/LibraryPage.tsx` | Activate auto-indexing useEffect for pending books |
 
 ---
 
-## Implementation Steps
+## User Experience
 
-### Step 1: Database Migration
-
-Create `book_page_index` table with full-text search index and add `index_status` to `books` table.
-
-### Step 2: OCR Edge Function
-
-Create `supabase/functions/ocr-index-book/index.ts`:
-- Accept book_id
-- Process pages sequentially
-- Use Gemini 2.5 Flash for vision OCR
-- Extract text, topics, keywords
-- Save to database
-
-### Step 3: Search Edge Function
-
-Create `supabase/functions/search-books/index.ts`:
-- Accept search query
-- Use PostgreSQL full-text search
-- Return ranked results with snippets
-- Group by book
-
-### Step 4: Library Page Updates
-
-Modify `src/components/library/LibraryPage.tsx`:
-- Add AI search button
-- Add search mode toggle
-- Integrate with search results view
-
-### Step 5: Search Results Component
-
-Create `src/components/library/SearchResultsView.tsx`:
-- Display search results grouped by book
-- Highlight matching text
-- Navigate to specific page in flipbook
-
-### Step 6: FlipbookViewer Update
-
-Update to accept `initialPage` prop and navigate there on load.
-
-### Step 7: Indexing Status UI
-
-Add visual indicators for indexing status on book cards.
-
-### Step 8: Background Indexing Hook
-
-Create `src/hooks/useBookIndexing.ts`:
-- Monitor books needing indexing
-- Trigger indexing after upload
-- Track progress
+1. **User uploads a book** → Upload completes → "AI indexing started for [Book Title]" toast appears
+2. **Library page loads** → System detects 5 pending books → Starts indexing sequentially with progress indicators
+3. **BookCard badges** → Show "Indexing 23%" during processing, "AI Indexed" when complete
+4. **AI Search** → Works immediately for indexed content (topics, lessons, chapters)
 
 ---
 
-## File Changes Summary
+## Immediate Action
 
-| File | Action | Description |
-|------|--------|-------------|
-| New migration | Create | `book_page_index` table + indexes |
-| `supabase/functions/ocr-index-book/index.ts` | Create | Background OCR processing |
-| `supabase/functions/search-books/index.ts` | Create | Full-text search API |
-| `src/components/library/LibraryPage.tsx` | Modify | Add AI search bar and mode |
-| `src/components/library/SearchResultsView.tsx` | Create | Search results display |
-| `src/components/library/BookCard.tsx` | Modify | Add index status badge |
-| `src/components/library/FlipbookViewer.tsx` | Modify | Add initialPage prop |
-| `src/hooks/useBookSearch.ts` | Create | Search hook |
-| `src/hooks/useBookIndexing.ts` | Create | Indexing status hook |
-| `supabase/config.toml` | Modify | Add new edge functions |
+Once implemented, the system will immediately start indexing the 5 existing books:
+1. Realistic MATH Scaling Greater Heights (0 pages - processing)
+2. Achieve Creative Experiences and Skills in MAPEH (359 pages)
+3. Computers for Digital Learners (299 pages)  
+4. Grammar Essentials (165 pages)
+5. EVERYDAY LIFE IN WORLD LITERATURE (267 pages)
 
----
-
-## User Flow Example
-
-1. **User opens Library**: Sees books with "AI Indexed" badges
-2. **User types "photosynthesis" in search**: Type-ahead shows suggestions
-3. **User clicks "AI Search" button**: Full content search initiated
-4. **Search Results appear**: Shows all matching pages across books
-5. **User clicks "Page 45 - Science Grade 7"**: Flipbook opens at page 45
-6. **Keyword highlighted**: User sees the matching content immediately
-
----
-
-## Benefits
-
-1. **Deep Content Search**: Find content inside books, not just by title
-2. **Topic Discovery**: AI extracts lesson topics for easy navigation
-3. **Time Savings**: Students find relevant pages instantly
-4. **Automatic Processing**: No manual tagging required
-5. **Scalable**: Works with any number of books
-
+Total: ~1,090 pages to index across 4 ready books.
