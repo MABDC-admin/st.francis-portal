@@ -1,100 +1,60 @@
 
-# Filter Library Books by Student Grade Level
+# Remove Redundant "My Profile" Sidebar Item for Students
 
-## Overview
+## The Problem
 
-When a student logs in to access the Library, they will only see books matching their grade level. This ensures students see age-appropriate content and declutters the library view. Admin and registrar users will continue to see all books with the grade filter option.
+The student portal currently has **duplicate navigation** for "My Profile":
 
-## Current Behavior
+| Location | Items |
+|----------|-------|
+| **Sidebar** | Portal Home, My Profile, Library |
+| **StudentPortal Tabs** | My Profile, My Grades, My Subjects, Announcements |
 
-- All authenticated users see all books in the library
-- Grade filter dropdown is available for manual filtering
-- No automatic filtering based on the logged-in student's grade
+This creates confusion because:
+1. "My Profile" in the sidebar doesn't lead anywhere useful (no handler in Index.tsx)
+2. "My Profile" tab already exists inside the StudentPortal
+3. Students don't need two different ways to access the same content
 
-## Changes
+## The Solution
 
-### 1. Fetch Student Grade Level for Library Filtering
+Remove "My Profile" from the sidebar navigation for students. The StudentPortal component already has comprehensive tabbed navigation including profile, grades, subjects, and announcements.
 
-The LibraryPage component will fetch the student's grade level when a student user is viewing the library.
+### After the Change
 
-**Data Flow:**
-1. Check if the current user role is "student"
-2. If student, fetch their record from `user_credentials` -> `students` (same pattern as StudentPortal)
-3. Extract the numeric grade level from the student's `level` field (e.g., "Level 3" -> 3)
-4. Auto-set the grade filter and hide the dropdown
+| Location | Items |
+|----------|-------|
+| **Sidebar** | Portal Home, Library |
+| **StudentPortal Tabs** | My Profile, My Grades, My Subjects, Announcements |
 
-### 2. Grade Level Parsing
+## Technical Changes
 
-Student levels come in various formats:
-- "Level 3" -> Grade 3
-- "Kinder 1" / "Kinder 2" -> May not have matching books (handled gracefully)
-- "Grade 1" -> Grade 1
+### File: `src/components/layout/DashboardLayout.tsx`
 
-A utility function will parse these strings to extract the numeric grade:
-- Extract number from "Level X" format
-- Handle "Kinder" as special case (no books or Grade 0)
-- Fall back to showing all books if parsing fails
+Update the student navigation items in the `getNavItemsForRole` function:
 
-### 3. UI Changes for Students
-
-| Element | Admin/Registrar | Student |
-|---------|-----------------|---------|
-| Grade filter dropdown | Visible | Hidden |
-| "All Grades" option | Available | Not applicable |
-| Books shown | All (or filtered) | Only their grade level |
-| AI Search | Available | Available (auto-filtered to grade) |
-
-### File Modified
-
-`src/components/library/LibraryPage.tsx`:
-- Add query to fetch student data when role is "student"
-- Add utility function to parse level string to grade number
-- Auto-set `selectedGrade` based on student level
-- Conditionally hide the grade filter dropdown for students
-- Update the empty state message for students
-
-## Technical Details
-
-```text
-Student Login Flow:
-┌─────────────────┐
-│ Student logs in │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────────────────┐
-│ LibraryPage detects         │
-│ role === 'student'          │
-└────────┬────────────────────┘
-         │
-         ▼
-┌─────────────────────────────┐
-│ Fetch student data via      │
-│ user_credentials + students │
-└────────┬────────────────────┘
-         │
-         ▼
-┌─────────────────────────────┐
-│ Parse level: "Level 3" -> 3 │
-└────────┬────────────────────┘
-         │
-         ▼
-┌─────────────────────────────┐
-│ Filter books where          │
-│ grade_level === 3           │
-│ (auto-applied, no dropdown) │
-└─────────────────────────────┘
+**Before (lines 188-193):**
+```typescript
+case 'student':
+  return [
+    ...baseItems,
+    { id: 'profile', icon: ProfileIcon3D, label: 'My Profile' },
+    { id: 'library', icon: LibraryIcon3D, label: 'Library' },
+  ];
 ```
 
-## Edge Cases
+**After:**
+```typescript
+case 'student':
+  return [
+    ...baseItems,
+    { id: 'library', icon: LibraryIcon3D, label: 'Library' },
+  ];
+```
 
-- **Kinder students**: Will see a friendly "no books for your level" message
-- **Invalid level format**: Falls back to showing all books with a warning
-- **Missing student record**: Falls back to showing all books
+## Result
 
-## Both Schools Covered
+Students will see a clean, non-redundant sidebar with just:
+- **Portal Home** - Opens the StudentPortal with tabs for Profile, Grades, Subjects, Announcements
+- **Library** - Opens the grade-filtered library
 
-The filtering works for both MABDC and STFXSA since:
-- The school filter is already applied via `selectedSchool` from SchoolContext
-- Student grade filtering is an additional layer on top
-- Books with `school = null` (shared) are still shown if they match the grade
+The comprehensive student experience remains intact through the StudentPortal tabs, which is the proper place for these features.
