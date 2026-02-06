@@ -132,10 +132,9 @@ const getFluentEmojiUrlFlat = (folderName: string) => {
 
 interface FluentEmojiPickerProps {
   onSelect: (iconUrl: string) => void;
-  onDragStart?: (sticker: { type: 'emoji' | 'icon'; value: string }) => void;
 }
 
-export function FluentEmojiPicker({ onSelect, onDragStart }: FluentEmojiPickerProps) {
+export function FluentEmojiPicker({ onSelect }: FluentEmojiPickerProps) {
   const [activeCategory, setActiveCategory] = useState<CategoryKey>('popular');
   const [searchQuery, setSearchQuery] = useState('');
   const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
@@ -147,13 +146,6 @@ export function FluentEmojiPicker({ onSelect, onDragStart }: FluentEmojiPickerPr
 
   const handleImageError = (name: string) => {
     setFailedImages(prev => new Set([...prev, name]));
-  };
-
-  const handleDragStart = (e: React.DragEvent, url: string) => {
-    const sticker = { type: 'icon' as const, value: url };
-    e.dataTransfer.setData('application/sticker', JSON.stringify(sticker));
-    e.dataTransfer.effectAllowed = 'copy';
-    onDragStart?.(sticker);
   };
 
   // Get all emojis for search
@@ -223,14 +215,12 @@ export function FluentEmojiPicker({ onSelect, onDragStart }: FluentEmojiPickerPr
               <button
                 key={item.name}
                 onClick={() => onSelect(url)}
-                draggable
-                onDragStart={(e) => handleDragStart(e, url)}
                 className={cn(
-                  'relative aspect-square p-2 rounded-lg hover:bg-muted transition-colors cursor-grab active:cursor-grabbing',
+                  'relative aspect-square p-2 rounded-lg hover:bg-muted transition-colors cursor-pointer',
                   'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1',
                   'flex flex-col items-center justify-center gap-1'
                 )}
-                title={`${item.name} - drag to place`}
+                title={item.name}
               >
                 {!isLoaded && (
                   <Skeleton className="absolute inset-2 rounded" />

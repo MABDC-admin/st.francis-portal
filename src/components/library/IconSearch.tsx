@@ -10,10 +10,9 @@ interface IconResult {
 
 interface IconSearchProps {
   onSelect: (iconUrl: string) => void;
-  onDragStart?: (sticker: { type: 'emoji' | 'icon'; value: string }) => void;
 }
 
-export function IconSearch({ onSelect, onDragStart }: IconSearchProps) {
+export function IconSearch({ onSelect }: IconSearchProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<IconResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -57,14 +56,6 @@ export function IconSearch({ onSelect, onDragStart }: IconSearchProps) {
     onSelect(iconUrl);
   };
 
-  const handleDragStart = (e: React.DragEvent, icon: IconResult) => {
-    const iconUrl = `https://api.iconify.design/${icon.prefix}/${icon.name}.svg`;
-    const sticker = { type: 'icon' as const, value: iconUrl };
-    e.dataTransfer.setData('application/sticker', JSON.stringify(sticker));
-    e.dataTransfer.effectAllowed = 'copy';
-    onDragStart?.(sticker);
-  };
-
   return (
     <div className="flex flex-col h-[300px]">
       <div className="p-3 border-b">
@@ -90,10 +81,8 @@ export function IconSearch({ onSelect, onDragStart }: IconSearchProps) {
               <button
                 key={`${icon.prefix}:${icon.name}-${index}`}
                 onClick={() => handleSelect(icon)}
-                draggable
-                onDragStart={(e) => handleDragStart(e, icon)}
-                className="p-2 rounded-lg hover:bg-muted transition-colors flex items-center justify-center cursor-grab active:cursor-grabbing"
-                title={`${icon.prefix}:${icon.name} - drag to place`}
+                className="p-2 rounded-lg hover:bg-muted transition-colors flex items-center justify-center cursor-pointer"
+                title={`${icon.prefix}:${icon.name}`}
               >
                 <img
                   src={`https://api.iconify.design/${icon.prefix}/${icon.name}.svg`}

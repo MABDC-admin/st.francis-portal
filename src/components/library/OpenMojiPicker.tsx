@@ -49,10 +49,9 @@ const getOpenMojiUrl = (code: string) =>
 
 interface OpenMojiPickerProps {
   onSelect: (iconUrl: string) => void;
-  onDragStart?: (sticker: { type: 'emoji' | 'icon'; value: string }) => void;
 }
 
-export function OpenMojiPicker({ onSelect, onDragStart }: OpenMojiPickerProps) {
+export function OpenMojiPicker({ onSelect }: OpenMojiPickerProps) {
   const [activeCategory, setActiveCategory] = useState<keyof typeof OPENMOJI_CATEGORIES>('popular');
   const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
@@ -63,13 +62,6 @@ export function OpenMojiPicker({ onSelect, onDragStart }: OpenMojiPickerProps) {
 
   const handleImageError = (code: string) => {
     setFailedImages(prev => new Set([...prev, code]));
-  };
-
-  const handleDragStart = (e: React.DragEvent, url: string) => {
-    const sticker = { type: 'icon' as const, value: url };
-    e.dataTransfer.setData('application/sticker', JSON.stringify(sticker));
-    e.dataTransfer.effectAllowed = 'copy';
-    onDragStart?.(sticker);
   };
 
   const categories = Object.entries(OPENMOJI_CATEGORIES);
@@ -108,13 +100,11 @@ export function OpenMojiPicker({ onSelect, onDragStart }: OpenMojiPickerProps) {
               <button
                 key={code}
                 onClick={() => onSelect(url)}
-                draggable
-                onDragStart={(e) => handleDragStart(e, url)}
                 className={cn(
-                  'relative w-10 h-10 p-1 rounded-md hover:bg-muted transition-colors cursor-grab active:cursor-grabbing',
+                  'relative w-10 h-10 p-1 rounded-md hover:bg-muted transition-colors cursor-pointer',
                   'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1'
                 )}
-                title={`OpenMoji ${code} - drag to place`}
+                title={`OpenMoji ${code}`}
               >
                 {!isLoaded && (
                   <Skeleton className="absolute inset-1 rounded" />

@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useAnnotations } from '@/hooks/useAnnotations';
 import { AnnotationToolbar } from './AnnotationToolbar';
+import { StickerOverlay, PlacedSticker } from './StickerOverlay';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface BookPage {
@@ -52,13 +53,15 @@ export const FlipbookViewer = ({
   const [flipDirection, setFlipDirection] = useState<'left' | 'right' | null>(null);
   const [isFlipping, setIsFlipping] = useState(false);
   const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right');
-  const [isDragOver, setIsDragOver] = useState(false);
+  const [placedStickers, setPlacedStickers] = useState<Map<number, PlacedSticker[]>>(new Map());
+  const [containerRect, setContainerRect] = useState<DOMRect | null>(null);
   
   const isMobile = useIsMobile();
   const isDesktop = !isMobile && typeof window !== 'undefined' && window.innerWidth >= 1024;
   
   const thumbnailRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
   const imageRef = useRef<HTMLImageElement>(null);
+  const pageContainerRef = useRef<HTMLDivElement>(null);
 
   const {
     annotationMode,
@@ -286,47 +289,72 @@ export const FlipbookViewer = ({
     renderAnnotations(currentPage, zoom);
   };
 
-  // Handle drag-and-drop for stickers
-  const handleDragOver = (e: React.DragEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
-  };
-
-  const handleDragEnter = (e: React.DragEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    setIsDragOver(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    setIsDragOver(false);
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    setIsDragOver(false);
+  // Handle sticker placement from click
+  const handleStickerPlace = useCallback((sticker: { type: 'emoji' | 'icon'; value: string }) => {
+    if (!pageContainerRef.current) return;
     
-    const stickerData = e.dataTransfer.getData('application/sticker');
-    if (!stickerData) return;
+    const rect = pageContainerRef.current.getBoundingClientRect();
+    setContainerRect(rect);
     
-    try {
-      const sticker = JSON.parse(stickerData) as { type: 'emoji' | 'icon'; value: string };
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-      
-      const x = (e.clientX - rect.left) * scaleX;
-      const y = (e.clientY - rect.top) * scaleY;
-      
-      placeStickerAtPosition(sticker, currentPage, x, y, zoom);
-      renderAnnotations(currentPage, zoom);
-    } catch (error) {
-      console.error('Failed to parse sticker data:', error);
+    // Place sticker in center of visible area
+    const centerX = (rect.width / 2) / zoom;
+    const centerY = (rect.height / 2) / zoom;
+    
+    const newSticker: PlacedSticker = {
+      id: crypto.randomUUID(),
+      type: sticker.type,
+      value: sticker.value,
+      x: centerX - 24, // offset by half the default size
+      y: centerY - 24,
+      size: 48,
+    };
+    
+    setPlacedStickers(prev => {
+      const pageStickers = prev.get(currentPage) || [];
+      const updated = new Map(prev);
+      updated.set(currentPage, [...pageStickers, newSticker]);
+      return updated;
+    });
+    
+    setPendingSticker(null);
+    setAnnotationMode('none');
+  }, [currentPage, zoom, setPendingSticker, setAnnotationMode]);
+
+  // Update sticker position or size
+  const handleStickerUpdate = useCallback((id: string, updates: Partial<PlacedSticker>) => {
+    setPlacedStickers(prev => {
+      const pageStickers = prev.get(currentPage) || [];
+      const updated = new Map(prev);
+      updated.set(currentPage, pageStickers.map(s => 
+        s.id === id ? { ...s, ...updates } : s
+      ));
+      return updated;
+    });
+  }, [currentPage]);
+
+  // Remove sticker
+  const handleStickerRemove = useCallback((id: string) => {
+    setPlacedStickers(prev => {
+      const pageStickers = prev.get(currentPage) || [];
+      const updated = new Map(prev);
+      updated.set(currentPage, pageStickers.filter(s => s.id !== id));
+      return updated;
+    });
+  }, [currentPage]);
+
+  // Update container rect when page container changes
+  useEffect(() => {
+    if (pageContainerRef.current) {
+      setContainerRect(pageContainerRef.current.getBoundingClientRect());
     }
-  };
+  }, [currentPage, zoom, viewMode]);
+
+  // Auto-place sticker when one is selected in sticker mode
+  useEffect(() => {
+    if (pendingSticker && annotationMode === 'sticker') {
+      handleStickerPlace(pendingSticker);
+    }
+  }, [pendingSticker, annotationMode, handleStickerPlace]);
 
   // Mobile slide animation variants
   const slideVariants = {
@@ -615,54 +643,82 @@ export const FlipbookViewer = ({
               </div>
             </div>
           ) : isDesktop && viewMode === 'single' && currentPageData ? (
-            /* Desktop: Single Page View with Slide Animation */
-            <AnimatePresence mode="wait" custom={slideDirection}>
-              <motion.div
-                key={currentPage}
-                ref={containerRef}
-                custom={slideDirection}
-                variants={slideVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{ duration: 0.25, ease: 'easeInOut' }}
-                className="relative"
-                style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
-              >
-                <img
-                  ref={imageRef}
-                  src={currentPageData.image_url}
-                  alt={`Page ${currentPage}`}
-                  className="max-h-[calc(100vh-200px)] w-auto shadow-lg"
-                  draggable={false}
-                  onLoad={handleImageLoad}
-                />
-                {/* Canvas Overlay for Annotations */}
-                <canvas
-                  ref={canvasRef}
-                  className={cn(
-                    'absolute inset-0 w-full h-full z-10',
-                    annotationMode !== 'none' ? (annotationMode === 'sticker' ? 'cursor-copy' : 'cursor-crosshair') : '',
-                    isDragOver && 'ring-2 ring-primary ring-inset'
-                  )}
-                  style={{ pointerEvents: 'auto' }}
-                  onMouseDown={handleMouseDown}
-                  onMouseMove={handleMouseMove}
-                  onMouseUp={handleMouseUp}
-                  onMouseLeave={handleMouseUp}
-                  onDragEnter={handleDragEnter}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                />
-              </motion.div>
-            </AnimatePresence>
+            /* Desktop: Single Page View with Slide Animation and Zoom Controls */
+            <div className="relative flex flex-col items-center">
+              {/* Zoom Controls for Single Page View */}
+              <div className="absolute top-4 right-4 z-30 flex items-center gap-2 bg-card/90 backdrop-blur-sm rounded-lg p-2 shadow-lg border">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleZoomOut}>
+                  <ZoomOut className="h-4 w-4" />
+                </Button>
+                <span className="text-sm w-12 text-center font-medium">
+                  {Math.round(zoom * 100)}%
+                </span>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleZoomIn}>
+                  <ZoomIn className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              <AnimatePresence mode="wait" custom={slideDirection}>
+                <motion.div
+                  key={currentPage}
+                  ref={(el) => {
+                    if (containerRef) containerRef.current = el;
+                    pageContainerRef.current = el;
+                  }}
+                  custom={slideDirection}
+                  variants={slideVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  className="relative"
+                  style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
+                >
+                  <img
+                    ref={imageRef}
+                    src={currentPageData.image_url}
+                    alt={`Page ${currentPage}`}
+                    className="max-h-[calc(100vh-200px)] w-auto shadow-lg"
+                    draggable={false}
+                    onLoad={handleImageLoad}
+                  />
+                  {/* Canvas Overlay for Annotations */}
+                  <canvas
+                    ref={canvasRef}
+                    className={cn(
+                      'absolute inset-0 w-full h-full z-10',
+                      annotationMode !== 'none' && annotationMode !== 'sticker' ? 'cursor-crosshair' : ''
+                    )}
+                    style={{ pointerEvents: annotationMode !== 'none' && annotationMode !== 'sticker' ? 'auto' : 'none' }}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                  />
+                  
+                  {/* Sticker Overlays */}
+                  {(placedStickers.get(currentPage) || []).map((sticker) => (
+                    <StickerOverlay
+                      key={sticker.id}
+                      sticker={sticker}
+                      containerRect={containerRect}
+                      zoom={zoom}
+                      onUpdate={handleStickerUpdate}
+                      onRemove={handleStickerRemove}
+                    />
+                  ))}
+                </motion.div>
+              </AnimatePresence>
+            </div>
           ) : currentPageData ? (
             /* Mobile/Tablet: Single Page View with Slide Animation */
             <AnimatePresence mode="wait" custom={slideDirection}>
               <motion.div
                 key={currentPage}
-                ref={containerRef}
+                ref={(el) => {
+                  if (containerRef) containerRef.current = el;
+                  pageContainerRef.current = el;
+                }}
                 custom={slideDirection}
                 variants={slideVariants}
                 initial="enter"
@@ -685,19 +741,26 @@ export const FlipbookViewer = ({
                   ref={canvasRef}
                   className={cn(
                     'absolute inset-0 w-full h-full z-10',
-                    annotationMode !== 'none' ? (annotationMode === 'sticker' ? 'cursor-copy' : 'cursor-crosshair') : '',
-                    isDragOver && 'ring-2 ring-primary ring-inset'
+                    annotationMode !== 'none' && annotationMode !== 'sticker' ? 'cursor-crosshair' : ''
                   )}
-                  style={{ pointerEvents: 'auto' }}
+                  style={{ pointerEvents: annotationMode !== 'none' && annotationMode !== 'sticker' ? 'auto' : 'none' }}
                   onMouseDown={handleMouseDown}
                   onMouseMove={handleMouseMove}
                   onMouseUp={handleMouseUp}
                   onMouseLeave={handleMouseUp}
-                  onDragEnter={handleDragEnter}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
                 />
+                
+                {/* Sticker Overlays */}
+                {(placedStickers.get(currentPage) || []).map((sticker) => (
+                  <StickerOverlay
+                    key={sticker.id}
+                    sticker={sticker}
+                    containerRect={containerRect}
+                    zoom={zoom}
+                    onUpdate={handleStickerUpdate}
+                    onRemove={handleStickerRemove}
+                  />
+                ))}
               </motion.div>
             </AnimatePresence>
           ) : (

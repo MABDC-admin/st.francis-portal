@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Pencil,
   Highlighter,
@@ -64,22 +64,9 @@ export function AnnotationToolbar({
   viewMode = 'spread',
   onViewModeChange,
 }: AnnotationToolbarProps) {
-  const [isDragging, setIsDragging] = useState(false);
-
-  // Global dragend listener to reset state
-  useEffect(() => {
-    const handleDragEnd = () => setIsDragging(false);
-    window.addEventListener('dragend', handleDragEnd);
-    return () => window.removeEventListener('dragend', handleDragEnd);
-  }, []);
-
   const handleStickerSelect = (sticker: StickerData) => {
     onStickerSelect?.(sticker);
     onModeChange('sticker');
-  };
-
-  const handleDragStart = () => {
-    setIsDragging(true);
   };
 
   return (
@@ -172,15 +159,9 @@ export function AnnotationToolbar({
           <PopoverContent 
             className="w-[400px] p-0" 
             align="center"
-            onInteractOutside={(e) => {
-              if (isDragging) {
-                e.preventDefault();
-              }
-            }}
           >
             <StickerPicker 
               onSelect={handleStickerSelect} 
-              onDragStart={handleDragStart}
             />
           </PopoverContent>
         </Popover>

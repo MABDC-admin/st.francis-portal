@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { IconSearch } from './IconSearch';
@@ -13,10 +13,9 @@ export interface StickerData {
 
 interface StickerPickerProps {
   onSelect: (sticker: StickerData) => void;
-  onDragStart?: (sticker: StickerData) => void;
 }
 
-export function StickerPicker({ onSelect, onDragStart }: StickerPickerProps) {
+export function StickerPicker({ onSelect }: StickerPickerProps) {
   const [activeTab, setActiveTab] = useState('emoji');
 
   const handleEmojiClick = (emojiData: EmojiClickData) => {
@@ -32,12 +31,6 @@ export function StickerPicker({ onSelect, onDragStart }: StickerPickerProps) {
       value: iconUrl,
     });
   };
-
-  const handleDragStart = useCallback((e: React.DragEvent, sticker: StickerData) => {
-    e.dataTransfer.setData('application/sticker', JSON.stringify(sticker));
-    e.dataTransfer.effectAllowed = 'copy';
-    onDragStart?.(sticker);
-  }, [onDragStart]);
 
   return (
     <div className="w-full">
@@ -74,15 +67,15 @@ export function StickerPicker({ onSelect, onDragStart }: StickerPickerProps) {
         </TabsContent>
 
         <TabsContent value="openmoji" className="mt-0">
-          <OpenMojiPicker onSelect={handleIconSelect} onDragStart={onDragStart} />
+          <OpenMojiPicker onSelect={handleIconSelect} />
         </TabsContent>
 
         <TabsContent value="fluent" className="mt-0">
-          <FluentEmojiPicker onSelect={handleIconSelect} onDragStart={onDragStart} />
+          <FluentEmojiPicker onSelect={handleIconSelect} />
         </TabsContent>
 
         <TabsContent value="icons" className="mt-0">
-          <IconSearch onSelect={handleIconSelect} onDragStart={onDragStart} />
+          <IconSearch onSelect={handleIconSelect} />
         </TabsContent>
       </Tabs>
     </div>
