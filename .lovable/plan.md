@@ -1,174 +1,122 @@
 
-# Add iMac/iOS Style Theme as Third Dashboard Option
+
+# Fix Flip Animation and Emoji Drag-and-Drop
 
 ## Overview
 
-This plan adds an **"Apple Style"** theme as a **third option** in the existing dashboard layout switcher, alongside "Modern" and "Classic Blue". The new theme follows Apple's Human Interface Guidelines (HIG) with:
+This plan addresses two issues in the Flipbook Viewer:
 
-- **Translucent sidebar** with vibrancy/blur effect
-- **SF Pro-inspired typography** with clean, light weights
-- **Large rounded corners** (20px radius)
-- **Subtle shadows** with minimal elevation
-- **iOS color palette** (#007AFF blue, #34C759 green, etc.)
-- **SF Symbols-style outlined icons**
-- **Light gray backgrounds** (#F5F5F7)
+1. **Mobile Flip Animation**: The mobile/single-page view lacks page-turn animation when navigating. Currently, pages just appear instantly without any transition effect.
 
-All existing themes and functionality remain unchanged.
+2. **Emoji Drag-and-Drop Not Working**: Stickers/emojis cannot be dragged from the picker and dropped onto the book page. The drag-and-drop handlers exist but the canvas isn't properly receiving drop events.
 
 ---
 
-## Architecture
+## Issue Analysis
+
+### Issue 1: Missing Mobile Flip Animation
+
+**Current State** (lines 503-531 in FlipbookViewer.tsx):
+```text
+Mobile view renders a simple <div> with scale transform:
+├── No AnimatePresence wrapper
+├── No motion.div animation
+├── Page changes happen instantly
+└── No visual feedback during navigation
+```
+
+**Desktop State** (lines 444-502):
+```text
+Desktop spread uses framer-motion:
+├── AnimatePresence with mode="wait"
+├── motion.div with rotateY, opacity, scale
+├── 3D perspective flip effect
+└── Smooth 300ms transitions
+```
+
+### Issue 2: Drag-and-Drop Not Working
+
+**Root Causes Identified**:
+
+| Problem | Location | Description |
+|---------|----------|-------------|
+| No pointer-events on canvas | Line 518-530 | Canvas only sets cursor style, no explicit `pointer-events: auto` |
+| Canvas behind image in stacking | Line 518 | Canvas is `absolute inset-0` but may not intercept drag events |
+| Missing dragover/drop propagation | Lines 284-312 | Drop handler exists but canvas isn't receiving events |
+| Popover closes before drag completes | AnnotationToolbar.tsx | Popover may close on mousedown, canceling the drag |
+
+The main issue is that when dragging from the Popover, the Popover closes (unmounts) before the drop completes, which cancels the drag operation entirely.
+
+---
+
+## Implementation Plan
+
+### Step 1: Add Mobile Page Flip Animation
+
+Update `src/components/library/FlipbookViewer.tsx`:
+
+Add an `AnimatePresence` wrapper and `motion.div` to the mobile/tablet single-page view with a page-flip animation:
 
 ```text
-Current State:
-┌─────────────────────────────────────────┐
-│  DashboardLayoutSwitcher                │
-│  └── "Modern" | "Classic Blue"          │
-└─────────────────────────────────────────┘
-
-New State:
-┌─────────────────────────────────────────┐
-│  DashboardLayoutSwitcher                │
-│  └── "Modern" | "Classic Blue" | "Apple"│
-└─────────────────────────────────────────┘
+Changes to mobile view (lines 503-531):
+├── Wrap with <AnimatePresence mode="wait">
+├── Replace <div> with <motion.div key={currentPage}>
+├── Add slide/flip animation variants:
+│   ├── initial: opacity 0, x offset based on direction
+│   ├── animate: opacity 1, x 0
+│   └── exit: opacity 0, x offset opposite direction
+├── Track navigation direction (prev/next)
+└── Apply 250ms transition with easeInOut
 ```
 
----
+**Animation Style Options**:
+- **Slide**: Pages slide left/right like a carousel
+- **Flip**: 3D rotation like turning a physical page
+- **Fade-Slide**: Combination of opacity and slight horizontal movement
 
-## Implementation Steps
+Recommended: **Slide animation** for mobile (simpler, more performant) and **3D flip** for desktop (already exists).
 
-### Step 1: Extend Layout Type and Context
+### Step 2: Fix Drag-and-Drop - Keep Popover Open During Drag
 
-Update `src/contexts/DashboardLayoutContext.tsx`:
+Update `src/components/library/AnnotationToolbar.tsx`:
 
-| Change | Description |
-|--------|-------------|
-| Add `'apple'` to `LayoutStyle` type | `type LayoutStyle = 'modern' \| 'classicBlue' \| 'apple'` |
-| Add `AppleTheme` interface | Define Apple-specific design tokens |
-| Add default Apple theme values | iOS colors, blur values, radii |
-| Apply Apple CSS variables in useEffect | When `layoutStyle === 'apple'` |
+The Popover closes when you start dragging because it detects the mousedown/pointer event as an outside click. We need to prevent it from closing during drag operations.
 
-### Step 2: Create Apple-Style Icons Component
-
-Create `src/components/icons/AppleStyleIcons.tsx`:
-
-All icons follow SF Symbols design language:
-- **Stroke width**: 1.5px
-- **Stroke caps/joins**: Round
-- **Fill**: None (outlined style)
-- **ViewBox**: 0 0 24 24
-
-Icons to create:
-| Icon | Description |
-|------|-------------|
-| `AppleStudentIcon` | Person outline with backpack |
-| `AppleTeacherIcon` | Book with person |
-| `AppleClassesIcon` | Building outline |
-| `AppleLibraryIcon` | Books stack outline |
-| `AppleHomeIcon` | House outline |
-| `AppleCalendarIcon` | Calendar grid outline |
-| `AppleGradesIcon` | Checklist with checkmark |
-| `AppleAdmitIcon` | Person with plus |
-| `AppleScheduleIcon` | Clock outline |
-
-### Step 3: Add Apple Theme CSS Styles
-
-Add to `src/index.css`:
-
-```css
-/* Apple/iOS Dashboard Theme */
-.dashboard-apple {
-  /* Page Background */
-  --apple-page-bg: linear-gradient(180deg, #F5F5F7 0%, #FFFFFF 100%);
-  
-  /* Card Styling */
-  --apple-card-bg: rgba(255, 255, 255, 0.95);
-  --apple-card-radius: 20px;
-  --apple-card-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
-  --apple-card-border: 1px solid rgba(0, 0, 0, 0.06);
-  
-  /* Sidebar (Vibrancy Effect) */
-  --apple-sidebar-bg: rgba(255, 255, 255, 0.72);
-  --apple-sidebar-blur: 20px;
-  
-  /* iOS Accent Colors */
-  --apple-accent: #007AFF;
-  --apple-accent-light: rgba(0, 122, 255, 0.1);
-  
-  /* Stats Card Colors (iOS Palette) */
-  --apple-stat-green: #34C759;
-  --apple-stat-blue: #007AFF;
-  --apple-stat-orange: #FF9500;
-  --apple-stat-red: #FF3B30;
-}
+```text
+Changes to AnnotationToolbar.tsx:
+├── Add state: isDragging to track drag operation
+├── Pass onDragStart to StickerPicker to set isDragging=true
+├── Use Popover's modal prop or onInteractOutside
+├── Prevent close during drag: onInteractOutside={(e) => isDragging && e.preventDefault()}
+└── Reset isDragging on dragend (via window event listener)
 ```
 
-### Step 4: Update Dashboard Layout Switcher
+### Step 3: Ensure Canvas Receives Drop Events
 
-Update `src/components/dashboard/DashboardLayoutSwitcher.tsx`:
+Update `src/components/library/FlipbookViewer.tsx`:
 
-| Change | Description |
-|--------|-------------|
-| Add Apple option to `layouts` array | With Apple logo icon and light gray preview |
-| Update trigger icon logic | Show Apple icon when `layoutStyle === 'apple'` |
-| Add Apple preview thumbnail | Light gray gradient with rounded elements |
+```text
+Changes to canvas element:
+├── Add explicit style={{ pointerEvents: 'auto' }}
+├── Ensure canvas is above image in z-index
+├── Add visual drop feedback (optional):
+│   ├── Track isDragOver state
+│   └── Add border/highlight when dragging over
+└── Ensure onDragOver calls e.preventDefault() (already exists)
+```
 
-### Step 5: Update Sidebar for Apple Theme
+### Step 4: Update StickerPicker to Support Drag Callbacks
 
-Update `src/components/layout/DashboardLayout.tsx`:
+Update `src/components/library/StickerPicker.tsx`:
 
-| Change | Description |
-|--------|-------------|
-| Import `useDashboardLayout` | Access current layout style |
-| Add Apple sidebar styling | Translucent white with `backdrop-blur: 20px` |
-| Pill-shaped active states | Rounded active menu item background |
-| Use Apple icons when variant is 'apple' | Conditionally render outlined icons |
-| Adjust spacing | Larger padding for Apple style |
+Pass through drag event handlers to child components:
 
-### Step 6: Update Dashboard Components
-
-Update each component to support the `'apple'` variant:
-
-**DashboardStatsRow.tsx**
-- Larger border radius (20px)
-- Softer shadows
-- iOS color palette
-- Optional: Use Apple-style icons
-
-**QuickActions.tsx**
-- White cards with subtle shadows
-- Outlined icons
-- Subtle hover effects (no 3D tilt)
-- 16px border radius
-
-**BottomActions.tsx**
-- Consistent card styling
-- iOS blue accent for primary action
-- Outlined icons
-
-**DashboardCalendar.tsx**
-- Light gray header instead of gradient
-- iOS blue for today indicator
-- Larger touch targets
-
-### Step 7: Update AdminPortal
-
-Update `src/components/portals/AdminPortal.tsx`:
-
-```typescript
-const { layoutStyle } = useDashboardLayout();
-const isClassic = layoutStyle === 'classicBlue';
-const isApple = layoutStyle === 'apple';
-
-return (
-  <div className={cn(
-    "space-y-6",
-    isClassic && "dashboard-classic-blue dashboard-page-bg",
-    isApple && "dashboard-apple"
-  )}>
-    {/* Components with variant prop */}
-  </div>
-);
+```text
+Changes:
+├── Add onDragEnd prop to interface
+├── Pass onDragEnd to OpenMojiPicker, FluentEmojiPicker, IconSearch
+├── Each picker calls onDragEnd when drag ends
+└── This signals to parent that popover can close
 ```
 
 ---
@@ -177,122 +125,156 @@ return (
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/contexts/DashboardLayoutContext.tsx` | Modify | Add 'apple' to LayoutStyle, add AppleTheme interface |
-| `src/components/icons/AppleStyleIcons.tsx` | Create | SF Symbols-style outlined icons |
-| `src/index.css` | Modify | Add `.dashboard-apple` CSS class |
-| `src/components/dashboard/DashboardLayoutSwitcher.tsx` | Modify | Add Apple theme option |
-| `src/components/layout/DashboardLayout.tsx` | Modify | Apple sidebar vibrancy styling |
-| `src/components/dashboard/DashboardStatsRow.tsx` | Modify | Add 'apple' variant support |
-| `src/components/dashboard/QuickActions.tsx` | Modify | Add 'apple' variant support |
-| `src/components/dashboard/BottomActions.tsx` | Modify | Add 'apple' variant support |
-| `src/components/dashboard/DashboardCalendar.tsx` | Modify | Add 'apple' variant for header |
-| `src/components/portals/AdminPortal.tsx` | Modify | Apply apple theme class |
+| `src/components/library/FlipbookViewer.tsx` | Modify | Add mobile flip animation, fix canvas drop handling |
+| `src/components/library/AnnotationToolbar.tsx` | Modify | Keep popover open during drag operations |
+| `src/components/library/StickerPicker.tsx` | Modify | Add drag event callbacks |
+| `src/components/library/OpenMojiPicker.tsx` | Modify | Add onDragEnd callback |
+| `src/components/library/FluentEmojiPicker.tsx` | Modify | Add onDragEnd callback |
+| `src/components/library/IconSearch.tsx` | Modify | Add onDragEnd callback |
 
 ---
 
-## Apple Design Specifications
+## Technical Details
 
-### Color Palette (iOS System Colors)
-| Color | Hex | Usage |
-|-------|-----|-------|
-| Blue | #007AFF | Primary accent, links, buttons |
-| Green | #34C759 | Success, students stat |
-| Orange | #FF9500 | Warning, classes stat |
-| Red | #FF3B30 | Error, library stat |
-| Gray | #F5F5F7 | Page backgrounds |
-| White | #FFFFFF | Cards, surfaces |
+### Mobile Flip Animation Implementation
 
-### Typography
-| Element | Weight | Size |
-|---------|--------|------|
-| Titles | 600 (Semibold) | 1.25rem |
-| Body | 400 (Regular) | 1rem |
-| Labels | 500 (Medium) | 0.875rem |
-| Captions | 400 (Regular) | 0.75rem |
-
-### Spacing & Radii
-| Element | Value |
-|---------|-------|
-| Card radius | 20px |
-| Button radius | 12px |
-| Icon containers | 16px |
-| Card padding | 24px |
-| Gap between cards | 16px |
-
-### Shadows
-| Element | Value |
-|---------|-------|
-| Cards | `0 2px 12px rgba(0, 0, 0, 0.04)` |
-| Elevated | `0 4px 20px rgba(0, 0, 0, 0.08)` |
-| Hover | `0 8px 24px rgba(0, 0, 0, 0.1)` |
-
-### Animations
-| Property | Value |
-|----------|-------|
-| Duration | 200-300ms |
-| Easing | `cubic-bezier(0.25, 0.1, 0.25, 1)` |
-| Scale on hover | 1.02 (subtle) |
-| No 3D rotations | Flat, clean transitions |
-
----
-
-## Visual Comparison
-
-```text
-MODERN (Existing)         CLASSIC BLUE (Existing)      APPLE (New)
-┌──────────────────┐     ┌──────────────────┐         ┌──────────────────┐
-│ Theme gradient   │     │ Blue gradient    │         │ Light gray #F5F5F7│
-│                  │     │                  │         │                  │
-│ ┌────┐ ┌────┐    │     │ ┌────┐ ┌────┐    │         │ ┌────┐ ┌────┐    │
-│ │3D  │ │3D  │    │     │ │Vivid│ │Vivid│    │         │ │ ○  │ │ ○  │    │
-│ │Icon│ │Icon│    │     │ │Card│ │Card│    │         │ │Line│ │Line│    │
-│ └────┘ └────┘    │     │ └────┘ └────┘    │         │ └────┘ └────┘    │
-│                  │     │                  │         │                  │
-│ Gradient sidebar │     │ Blue sidebar     │         │ Frosted sidebar  │
-│ Standard shadow  │     │ Strong shadow    │         │ Subtle shadow    │
-│ 12px radius      │     │ 24px radius      │         │ 20px radius      │
-└──────────────────┘     └──────────────────┘         └──────────────────┘
-```
-
----
-
-## Technical Implementation Notes
-
-### Vibrancy Effect for Sidebar
-```css
-.apple-sidebar {
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-}
-```
-
-### Conditional Icon Rendering
 ```typescript
-// In DashboardLayout.tsx
-const iconComponent = layoutStyle === 'apple' 
-  ? AppleStyleIcons[item.id] 
-  : ThreeDIcons[item.id];
+// Track navigation direction
+const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right');
+
+// Update direction when navigating
+const goToNext = () => {
+  setSlideDirection('right');
+  setCurrentPage(p => Math.min(pages.length, p + 1));
+};
+
+const goToPrev = () => {
+  setSlideDirection('left');
+  setCurrentPage(p => Math.max(1, p - 1));
+};
+
+// Animation variants
+const slideVariants = {
+  enter: (direction: 'left' | 'right') => ({
+    x: direction === 'right' ? 100 : -100,
+    opacity: 0,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+  },
+  exit: (direction: 'left' | 'right') => ({
+    x: direction === 'right' ? -100 : 100,
+    opacity: 0,
+  }),
+};
+
+// In JSX
+<AnimatePresence mode="wait" custom={slideDirection}>
+  <motion.div
+    key={currentPage}
+    custom={slideDirection}
+    variants={slideVariants}
+    initial="enter"
+    animate="center"
+    exit="exit"
+    transition={{ duration: 0.25, ease: 'easeInOut' }}
+  >
+    {/* Page content */}
+  </motion.div>
+</AnimatePresence>
 ```
 
-### Variant Prop Pattern
+### Popover Drag Fix Implementation
+
 ```typescript
-// Components accept variant and apply conditional styling
-const isApple = variant === 'apple';
+// In AnnotationToolbar
+const [isDragging, setIsDragging] = useState(false);
 
-<div className={cn(
-  "base-styles",
-  isApple && "apple-specific-styles"
-)}>
+// Global dragend listener to reset state
+useEffect(() => {
+  const handleDragEnd = () => setIsDragging(false);
+  window.addEventListener('dragend', handleDragEnd);
+  return () => window.removeEventListener('dragend', handleDragEnd);
+}, []);
+
+<Popover>
+  <PopoverContent 
+    onInteractOutside={(e) => {
+      if (isDragging) {
+        e.preventDefault();
+      }
+    }}
+  >
+    <StickerPicker 
+      onSelect={handleStickerSelect}
+      onDragStart={() => setIsDragging(true)}
+    />
+  </PopoverContent>
+</Popover>
 ```
+
+### Canvas Drop Zone Enhancement
+
+```typescript
+// Add visual feedback during drag
+const [isDragOver, setIsDragOver] = useState(false);
+
+const handleDragEnter = (e: React.DragEvent) => {
+  e.preventDefault();
+  setIsDragOver(true);
+};
+
+const handleDragLeave = (e: React.DragEvent) => {
+  e.preventDefault();
+  setIsDragOver(false);
+};
+
+const handleDrop = (e: React.DragEvent) => {
+  e.preventDefault();
+  setIsDragOver(false);
+  // ... existing drop logic
+};
+
+<canvas
+  className={cn(
+    'absolute inset-0 w-full h-full z-10',
+    isDragOver && 'ring-2 ring-primary ring-inset'
+  )}
+  style={{ pointerEvents: 'auto' }}
+  onDragEnter={handleDragEnter}
+  onDragOver={handleDragOver}
+  onDragLeave={handleDragLeave}
+  onDrop={handleDrop}
+/>
+```
+
+---
+
+## Expected Behavior After Fix
+
+### Mobile Flip Animation
+1. User taps "Next" button
+2. Current page slides out to the left with fade
+3. New page slides in from the right with fade
+4. Animation duration: 250ms
+5. Works for both Next and Previous navigation
+
+### Drag-and-Drop Stickers
+1. User opens Stickers popover
+2. User drags emoji/icon from picker
+3. Popover stays open during drag
+4. User drops sticker onto book page
+5. Canvas shows visual feedback (ring) during drag over
+6. Sticker appears at drop location
+7. Popover can then be closed manually
 
 ---
 
 ## Benefits
 
-1. **No Breaking Changes**: Modern and Classic Blue remain untouched
-2. **Extensible Pattern**: Easy to add more themes later
-3. **Familiar UX**: Apple users feel at home
-4. **Clean Aesthetic**: Minimalist design reduces visual clutter
-5. **Accessibility**: High contrast and clear typography
-6. **Performance**: CSS-only changes, no extra re-renders
+1. **Better UX**: Smooth page transitions make the reader feel more like a physical book
+2. **Intuitive Interaction**: Drag-and-drop is a natural way to place stickers
+3. **Visual Feedback**: Users see clearly where stickers will be placed
+4. **Cross-Platform**: Works on both desktop and mobile/tablet views
+
