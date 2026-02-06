@@ -205,6 +205,8 @@ export const StudentPortal = ({ activeSection = 'dashboard' }: StudentPortalProp
             schoolId={student.school_id}
             academicYearId={student.academic_year_id}
             grades={grades}
+            studentName={student.student_name}
+            studentPhotoUrl={student.photo_url}
           />
         ) : (
           <Card>

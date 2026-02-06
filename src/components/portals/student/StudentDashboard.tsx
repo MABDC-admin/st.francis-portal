@@ -21,6 +21,7 @@ import {
   getGradeDescriptor,
 } from '@/utils/gradeComputation';
 import { DAY_NAMES, EXAM_TYPE_COLORS, PRIORITY_COLORS } from '@/types/studentPortal';
+import { AnimatedStudentAvatar } from '@/components/students/AnimatedStudentAvatar';
 
 interface StudentDashboardProps {
   studentId: string;
@@ -29,6 +30,8 @@ interface StudentDashboardProps {
   academicYearId: string;
   grades: any[];
   schedule?: any[];
+  studentName?: string;
+  studentPhotoUrl?: string | null;
 }
 
 export const StudentDashboard = ({
@@ -37,6 +40,8 @@ export const StudentDashboard = ({
   schoolId,
   academicYearId,
   grades,
+  studentName,
+  studentPhotoUrl,
 }: StudentDashboardProps) => {
   const { attendance, assignments, exams, announcements, isLoading } = useStudentDashboardStats(
     studentId,
@@ -75,6 +80,22 @@ export const StudentDashboard = ({
 
   return (
     <div className="space-y-6">
+      {/* Student Avatar Header */}
+      {studentName && (
+        <div className="flex items-center gap-4">
+          <AnimatedStudentAvatar
+            photoUrl={studentPhotoUrl || null}
+            name={studentName}
+            size="4xl"
+            borderColor="hsl(var(--primary) / 0.3)"
+          />
+          <div>
+            <h2 className="text-xl font-bold text-foreground">{studentName}</h2>
+            <p className="text-muted-foreground">{gradeLevel}</p>
+          </div>
+        </div>
+      )}
+
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {/* General Average */}
