@@ -236,11 +236,12 @@ const Index = () => {
       case 'teacher':
         return <TeacherPortal />;
       case 'student':
-        return <StudentPortal />;
+        // Student portal dashboard is now rendered here directly
+        return <StudentPortal activeSection="dashboard" />;
       case 'parent':
         return <ParentPortal />;
       default:
-        return <StudentPortal />;
+        return <StudentPortal activeSection="dashboard" />;
     }
   };
 
@@ -417,6 +418,32 @@ const Index = () => {
       {/* Admin Panel - Admin only */}
       {activeTab === 'admin' && role === 'admin' && isAdminUnlocked && (
         <AdminPanel />
+      )}
+
+      {/* Student Portal Sections - Student only */}
+      {activeTab === 'student-profile' && role === 'student' && (
+        <StudentPortal activeSection="profile" />
+      )}
+      {activeTab === 'student-grades' && role === 'student' && (
+        <StudentPortal activeSection="grades" />
+      )}
+      {activeTab === 'student-subjects' && role === 'student' && (
+        <StudentPortal activeSection="subjects" />
+      )}
+      {activeTab === 'student-attendance' && role === 'student' && (
+        <StudentPortal activeSection="attendance" />
+      )}
+      {activeTab === 'student-schedule' && role === 'student' && (
+        <StudentPortal activeSection="schedule" />
+      )}
+      {activeTab === 'student-assignments' && role === 'student' && (
+        <StudentPortal activeSection="assignments" />
+      )}
+      {activeTab === 'student-exams' && role === 'student' && (
+        <StudentPortal activeSection="exams" />
+      )}
+      {activeTab === 'student-announcements' && role === 'student' && (
+        <StudentPortal activeSection="announcements" />
       )}
 
       {/* Attendance Management - Admin/Registrar/Teacher */}

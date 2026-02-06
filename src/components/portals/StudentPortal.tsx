@@ -1,10 +1,9 @@
 import { motion } from 'framer-motion';
-import { useState, useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Bell, Loader2, BookOpen, Award, User, Calendar, LogOut, LayoutDashboard, ClipboardList, GraduationCap, CheckCircle, BookMarked } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { StudentProfileCard } from '@/components/students/StudentProfileCard';
 import { supabase } from '@/integrations/supabase/client';
@@ -132,10 +131,12 @@ const useStudentSubjects = (studentId: string | undefined) => {
   });
 };
 
-export const StudentPortal = () => {
-  // All hooks must be called at the top level, before any conditional returns
+interface StudentPortalProps {
+  activeSection?: 'dashboard' | 'profile' | 'grades' | 'subjects' | 'schedule' | 'attendance' | 'assignments' | 'exams' | 'announcements';
+}
+
+export const StudentPortal = ({ activeSection = 'dashboard' }: StudentPortalProps) => {
   const { user, signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState('dashboard');
   
   // Use custom hooks for data fetching
   const { data: student, isLoading: isLoadingStudent } = useStudentData(user?.id);
@@ -148,11 +149,6 @@ export const StudentPortal = () => {
     if (user?.email) return user.email.split('@')[0];
     return 'Student';
   }, [student?.student_name, user?.email]);
-
-  // Handle tab navigation
-  const handleTabChange = useCallback((tab: string) => {
-    setActiveTab(tab);
-  }, []);
 
   // Compute General Averages per quarter and annual (DepEd Compliant)
   const generalAverages = useMemo(() => {
@@ -184,115 +180,56 @@ export const StudentPortal = () => {
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Header with Logout */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
-      >
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Student Portal</h1>
-          <p className="text-muted-foreground mt-1">
-            Welcome, {displayName}!
-            {student && (
-              <span className="ml-2 text-sm">
-                • {student.level} • {student.school}
-              </span>
-            )}
-          </p>
-        </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={signOut}
-          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-        >
-          <LogOut className="h-4 w-4 mr-2" />
-          Log out
-        </Button>
-      </motion.div>
+  // Section title mapping
+  const sectionTitles: Record<string, string> = {
+    dashboard: 'Dashboard',
+    profile: 'My Profile',
+    grades: 'My Grades',
+    subjects: 'My Subjects',
+    schedule: 'Class Schedule',
+    attendance: 'Attendance Record',
+    assignments: 'Assignments',
+    exams: 'Exam Schedule',
+    announcements: 'Announcements',
+  };
 
-      {/* Main Content Tabs - Enhanced with new tabs */}
-      <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="mb-6 flex-wrap h-auto gap-1">
-          <TabsTrigger value="dashboard" className="gap-1.5">
-            <LayoutDashboard className="h-4 w-4" />
-            <span className="hidden sm:inline">Dashboard</span>
-          </TabsTrigger>
-          <TabsTrigger value="profile" className="gap-1.5">
-            <User className="h-4 w-4" />
-            <span className="hidden sm:inline">Profile</span>
-          </TabsTrigger>
-          <TabsTrigger value="grades" className="gap-1.5">
-            <Award className="h-4 w-4" />
-            <span className="hidden sm:inline">Grades</span>
-          </TabsTrigger>
-          <TabsTrigger value="subjects" className="gap-1.5">
-            <BookOpen className="h-4 w-4" />
-            <span className="hidden sm:inline">Subjects</span>
-          </TabsTrigger>
-          <TabsTrigger value="schedule" className="gap-1.5">
-            <Calendar className="h-4 w-4" />
-            <span className="hidden sm:inline">Schedule</span>
-          </TabsTrigger>
-          <TabsTrigger value="attendance" className="gap-1.5">
-            <CheckCircle className="h-4 w-4" />
-            <span className="hidden sm:inline">Attendance</span>
-          </TabsTrigger>
-          <TabsTrigger value="assignments" className="gap-1.5">
-            <ClipboardList className="h-4 w-4" />
-            <span className="hidden sm:inline">Assignments</span>
-          </TabsTrigger>
-          <TabsTrigger value="exams" className="gap-1.5">
-            <GraduationCap className="h-4 w-4" />
-            <span className="hidden sm:inline">Exams</span>
-          </TabsTrigger>
-          <TabsTrigger value="announcements" className="gap-1.5">
-            <Bell className="h-4 w-4" />
-            <span className="hidden sm:inline">Announcements</span>
-          </TabsTrigger>
-        </TabsList>
+  // Render the content based on activeSection
+  const renderContent = () => {
+    switch (activeSection) {
+      case 'dashboard':
+        return student ? (
+          <StudentDashboard
+            studentId={student.id}
+            gradeLevel={student.level}
+            schoolId={student.school_id}
+            academicYearId={student.academic_year_id}
+            grades={grades}
+          />
+        ) : (
+          <Card>
+            <CardContent className="py-10 text-center">
+              <p className="text-muted-foreground">
+                Student profile not found. Please contact your administrator.
+              </p>
+            </CardContent>
+          </Card>
+        );
 
-        {/* Dashboard Tab - NEW */}
-        <TabsContent value="dashboard">
-          {student ? (
-            <StudentDashboard
-              studentId={student.id}
-              gradeLevel={student.level}
-              schoolId={student.school_id}
-              academicYearId={student.academic_year_id}
-              grades={grades}
-            />
-          ) : (
-            <Card>
-              <CardContent className="py-10 text-center">
-                <p className="text-muted-foreground">
-                  Student profile not found. Please contact your administrator.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
+      case 'profile':
+        return student ? (
+          <StudentProfileCard student={student} showPhotoUpload={false} showEditButton={false} />
+        ) : (
+          <Card>
+            <CardContent className="py-10 text-center">
+              <p className="text-muted-foreground">
+                Student profile not found. Please contact your administrator.
+              </p>
+            </CardContent>
+          </Card>
+        );
 
-        {/* Profile Tab */}
-        <TabsContent value="profile">
-          {student ? (
-            <StudentProfileCard student={student} showPhotoUpload={false} showEditButton={false} />
-          ) : (
-            <Card>
-              <CardContent className="py-10 text-center">
-                <p className="text-muted-foreground">
-                  Student profile not found. Please contact your administrator.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        {/* Grades Tab */}
-        <TabsContent value="grades">
+      case 'grades':
+        return (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -457,10 +394,10 @@ export const StudentPortal = () => {
               </CardContent>
             </Card>
           </motion.div>
-        </TabsContent>
+        );
 
-        {/* Subjects Tab */}
-        <TabsContent value="subjects">
+      case 'subjects':
+        return (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -503,103 +440,132 @@ export const StudentPortal = () => {
               </CardContent>
             </Card>
           </motion.div>
-        </TabsContent>
+        );
 
-        {/* Schedule Tab - NEW */}
-        <TabsContent value="schedule">
-          {student ? (
-            <StudentScheduleTab
-              gradeLevel={student.level}
-              schoolId={student.school_id}
-              academicYearId={student.academic_year_id}
-            />
-          ) : (
-            <Card>
-              <CardContent className="py-10 text-center">
-                <p className="text-muted-foreground">
-                  Schedule data not available.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
+      case 'schedule':
+        return student ? (
+          <StudentScheduleTab
+            gradeLevel={student.level}
+            schoolId={student.school_id}
+            academicYearId={student.academic_year_id}
+          />
+        ) : (
+          <Card>
+            <CardContent className="py-10 text-center">
+              <p className="text-muted-foreground">
+                Schedule data not available.
+              </p>
+            </CardContent>
+          </Card>
+        );
 
-        {/* Attendance Tab - NEW */}
-        <TabsContent value="attendance">
-          {student ? (
-            <StudentAttendanceTab
-              studentId={student.id}
-              schoolId={student.school_id}
-              academicYearId={student.academic_year_id}
-            />
-          ) : (
-            <Card>
-              <CardContent className="py-10 text-center">
-                <p className="text-muted-foreground">
-                  Attendance data not available.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
+      case 'attendance':
+        return student ? (
+          <StudentAttendanceTab
+            studentId={student.id}
+            schoolId={student.school_id}
+            academicYearId={student.academic_year_id}
+          />
+        ) : (
+          <Card>
+            <CardContent className="py-10 text-center">
+              <p className="text-muted-foreground">
+                Attendance data not available.
+              </p>
+            </CardContent>
+          </Card>
+        );
 
-        {/* Assignments Tab - NEW */}
-        <TabsContent value="assignments">
-          {student ? (
-            <StudentAssignmentsTab
-              studentId={student.id}
-              gradeLevel={student.level}
-              schoolId={student.school_id}
-              academicYearId={student.academic_year_id}
-            />
-          ) : (
-            <Card>
-              <CardContent className="py-10 text-center">
-                <p className="text-muted-foreground">
-                  Assignment data not available.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
+      case 'assignments':
+        return student ? (
+          <StudentAssignmentsTab
+            studentId={student.id}
+            gradeLevel={student.level}
+            schoolId={student.school_id}
+            academicYearId={student.academic_year_id}
+          />
+        ) : (
+          <Card>
+            <CardContent className="py-10 text-center">
+              <p className="text-muted-foreground">
+                Assignment data not available.
+              </p>
+            </CardContent>
+          </Card>
+        );
 
-        {/* Exams Tab - NEW */}
-        <TabsContent value="exams">
-          {student ? (
-            <StudentExamsTab
-              gradeLevel={student.level}
-              schoolId={student.school_id}
-              academicYearId={student.academic_year_id}
-            />
-          ) : (
-            <Card>
-              <CardContent className="py-10 text-center">
-                <p className="text-muted-foreground">
-                  Exam schedule not available.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
+      case 'exams':
+        return student ? (
+          <StudentExamsTab
+            gradeLevel={student.level}
+            schoolId={student.school_id}
+            academicYearId={student.academic_year_id}
+          />
+        ) : (
+          <Card>
+            <CardContent className="py-10 text-center">
+              <p className="text-muted-foreground">
+                Exam schedule not available.
+              </p>
+            </CardContent>
+          </Card>
+        );
 
-        {/* Announcements Tab - ENHANCED */}
-        <TabsContent value="announcements">
-          {student ? (
-            <StudentAnnouncementsTab
-              schoolId={student.school_id}
-              gradeLevel={student.level}
-            />
-          ) : (
-            <Card>
-              <CardContent className="py-10 text-center">
-                <p className="text-muted-foreground">
-                  Announcements not available.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-      </Tabs>
+      case 'announcements':
+        return student ? (
+          <StudentAnnouncementsTab
+            schoolId={student.school_id}
+            gradeLevel={student.level}
+          />
+        ) : (
+          <Card>
+            <CardContent className="py-10 text-center">
+              <p className="text-muted-foreground">
+                Announcements not available.
+              </p>
+            </CardContent>
+          </Card>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header with Logout */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between"
+      >
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
+            {sectionTitles[activeSection] || 'Student Portal'}
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Welcome, {displayName}!
+            {student && (
+              <span className="ml-2 text-sm">
+                • {student.level} • {student.school}
+              </span>
+            )}
+          </p>
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={signOut}
+          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+        >
+          <LogOut className="h-4 w-4 mr-2" />
+          Log out
+        </Button>
+      </motion.div>
+
+      {/* Content */}
+      {renderContent()}
     </div>
   );
 };

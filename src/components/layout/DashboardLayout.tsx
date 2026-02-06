@@ -49,6 +49,7 @@ import { useSchoolSettings } from '@/hooks/useSchoolSettings';
 import { useColorTheme } from '@/hooks/useColorTheme';
 import { ColorThemeSelector } from '@/components/ColorThemeSelector';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   HomeIcon3D,
   StudentIcon3D,
@@ -86,8 +87,16 @@ import {
 
 interface NavItem {
   id: string;
-  icon: any; // Allow Lucide or Custom 3D icons
+  icon: any;
   label: string;
+}
+
+interface NavGroup {
+  id: string;
+  icon: any;
+  label: string;
+  items?: NavItem[];
+  isCollapsible?: boolean;
 }
 
 interface DashboardLayoutProps {
@@ -99,6 +108,7 @@ interface DashboardLayoutProps {
 // Icon mapping for 3D icons
 const icon3DMap: Record<string, any> = {
   portal: HomeIcon3D,
+  dashboard: HomeIcon3D,
   students: StudentIcon3D,
   teachers: TeacherIcon3D,
   grades: EnterGradeIcon3D,
@@ -116,11 +126,30 @@ const icon3DMap: Record<string, any> = {
   classes: TeacherIcon3D,
   children: StudentIcon3D,
   admin: AdminIcon3D,
+  'student-records': StudentIcon3D,
+  academics: EnterGradeIcon3D,
+  'school-management': TeacherIcon3D,
+  resources: LibraryIcon3D,
+  'my-records': ProfileIcon3D,
+  'attendance-mgmt': ScheduleIcon3D,
+  'schedule-mgmt': ScheduleIcon3D,
+  'assignment-mgmt': ReportsIcon3D,
+  'exam-mgmt': ReportsIcon3D,
+  'announcement-mgmt': EventsIcon3D,
+  'student-schedule': ScheduleIcon3D,
+  'student-attendance': ScheduleIcon3D,
+  'student-assignments': ReportsIcon3D,
+  'student-exams': ReportsIcon3D,
+  'student-announcements': EventsIcon3D,
+  'student-grades': EnterGradeIcon3D,
+  'student-subjects': SubjectsIcon3D,
+  'student-profile': ProfileIcon3D,
 };
 
 // Icon mapping for Apple style icons
 const iconAppleMap: Record<string, any> = {
   portal: AppleHomeIcon,
+  dashboard: AppleHomeIcon,
   students: AppleStudentIcon,
   teachers: AppleTeacherIcon,
   grades: AppleGradesIcon,
@@ -138,80 +167,201 @@ const iconAppleMap: Record<string, any> = {
   classes: AppleTeacherIcon,
   children: AppleStudentIcon,
   admin: AppleAdminIcon,
+  'student-records': AppleStudentIcon,
+  academics: AppleGradesIcon,
+  'school-management': AppleTeacherIcon,
+  resources: AppleLibraryIcon,
+  'my-records': AppleProfileIcon,
+  'attendance-mgmt': AppleScheduleIcon,
+  'schedule-mgmt': AppleScheduleIcon,
+  'assignment-mgmt': AppleReportsIcon,
+  'exam-mgmt': AppleReportsIcon,
+  'announcement-mgmt': AppleEventsIcon,
+  'student-schedule': AppleScheduleIcon,
+  'student-attendance': AppleScheduleIcon,
+  'student-assignments': AppleReportsIcon,
+  'student-exams': AppleReportsIcon,
+  'student-announcements': AppleEventsIcon,
+  'student-grades': AppleGradesIcon,
+  'student-subjects': AppleSubjectsIcon,
+  'student-profile': AppleProfileIcon,
 };
 
-const getNavItemsForRole = (role: string | null): NavItem[] => {
-  const baseItems: NavItem[] = [
-    { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
-  ];
-
+// Hierarchical navigation structure for each role
+const getNavGroupsForRole = (role: string | null): NavGroup[] => {
   switch (role) {
     case 'admin':
       return [
-        ...baseItems,
-        { id: 'students', icon: StudentIcon3D, label: 'Students' },
-        { id: 'enrollment', icon: EnrollmentIcon3D, label: 'New Student' },
-        { id: 'import', icon: ImportIcon3D, label: 'Import CSV' },
-        { id: 'attendance-mgmt', icon: ScheduleIcon3D, label: 'Attendance' },
-        { id: 'grades', icon: EnterGradeIcon3D, label: 'Grades' },
-        { id: 'subjects', icon: SubjectsIcon3D, label: 'Subjects' },
-        { id: 'subject-enrollment', icon: EnrollmentIcon3D, label: 'Subject Enrollment' },
-        { id: 'schedule-mgmt', icon: ScheduleIcon3D, label: 'Schedules' },
-        { id: 'assignment-mgmt', icon: ReportsIcon3D, label: 'Assignments' },
-        { id: 'exam-mgmt', icon: ReportsIcon3D, label: 'Exams' },
-        { id: 'teachers', icon: TeacherIcon3D, label: 'Teachers' },
-        { id: 'events', icon: EventsIcon3D, label: 'Events' },
-        { id: 'announcement-mgmt', icon: EventsIcon3D, label: 'Announcements' },
-        { id: 'academic-years', icon: ScheduleIcon3D, label: 'Academic Years' },
-        { id: 'library', icon: LibraryIcon3D, label: 'Library' },
-        { id: 'canva', icon: CanvaIcon3D, label: 'Canva Studio' },
-        { id: 'notebook', icon: NotebookIcon3D, label: 'Notebook LLM' },
+        { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
+        {
+          id: 'student-records',
+          icon: StudentIcon3D,
+          label: 'Student Records',
+          isCollapsible: true,
+          items: [
+            { id: 'students', icon: StudentIcon3D, label: 'Students' },
+            { id: 'enrollment', icon: EnrollmentIcon3D, label: 'New Student' },
+            { id: 'import', icon: ImportIcon3D, label: 'Import CSV' },
+            { id: 'attendance-mgmt', icon: ScheduleIcon3D, label: 'Attendance' },
+          ]
+        },
+        {
+          id: 'academics',
+          icon: EnterGradeIcon3D,
+          label: 'Academics',
+          isCollapsible: true,
+          items: [
+            { id: 'grades', icon: EnterGradeIcon3D, label: 'Grades' },
+            { id: 'subjects', icon: SubjectsIcon3D, label: 'Subjects' },
+            { id: 'subject-enrollment', icon: EnrollmentIcon3D, label: 'Subject Enrollment' },
+            { id: 'schedule-mgmt', icon: ScheduleIcon3D, label: 'Schedules' },
+            { id: 'assignment-mgmt', icon: ReportsIcon3D, label: 'Assignments' },
+            { id: 'exam-mgmt', icon: ReportsIcon3D, label: 'Exams' },
+          ]
+        },
+        {
+          id: 'school-management',
+          icon: TeacherIcon3D,
+          label: 'School Management',
+          isCollapsible: true,
+          items: [
+            { id: 'teachers', icon: TeacherIcon3D, label: 'Teachers' },
+            { id: 'events', icon: EventsIcon3D, label: 'Events' },
+            { id: 'announcement-mgmt', icon: EventsIcon3D, label: 'Announcements' },
+            { id: 'academic-years', icon: ScheduleIcon3D, label: 'Academic Years' },
+          ]
+        },
+        {
+          id: 'resources',
+          icon: LibraryIcon3D,
+          label: 'Resources',
+          isCollapsible: true,
+          items: [
+            { id: 'library', icon: LibraryIcon3D, label: 'Library' },
+            { id: 'canva', icon: CanvaIcon3D, label: 'Canva Studio' },
+            { id: 'notebook', icon: NotebookIcon3D, label: 'Notebook LLM' },
+          ]
+        },
         { id: 'reports', icon: ReportsIcon3D, label: 'Reports' },
       ];
     case 'registrar':
       return [
-        ...baseItems,
-        { id: 'students', icon: StudentIcon3D, label: 'Students' },
-        { id: 'enrollment', icon: EnrollmentIcon3D, label: 'New Student' },
-        { id: 'import', icon: ImportIcon3D, label: 'Import CSV' },
-        { id: 'attendance-mgmt', icon: ScheduleIcon3D, label: 'Attendance' },
-        { id: 'grades', icon: EnterGradeIcon3D, label: 'Grades' },
-        { id: 'subjects', icon: SubjectsIcon3D, label: 'Subjects' },
-        { id: 'subject-enrollment', icon: EnrollmentIcon3D, label: 'Subject Enrollment' },
-        { id: 'schedule-mgmt', icon: ScheduleIcon3D, label: 'Schedules' },
-        { id: 'assignment-mgmt', icon: ReportsIcon3D, label: 'Assignments' },
-        { id: 'exam-mgmt', icon: ReportsIcon3D, label: 'Exams' },
-        { id: 'teachers', icon: TeacherIcon3D, label: 'Teachers' },
-        { id: 'events', icon: EventsIcon3D, label: 'Events' },
-        { id: 'announcement-mgmt', icon: EventsIcon3D, label: 'Announcements' },
-        { id: 'library', icon: LibraryIcon3D, label: 'Library' },
+        { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
+        {
+          id: 'student-records',
+          icon: StudentIcon3D,
+          label: 'Student Records',
+          isCollapsible: true,
+          items: [
+            { id: 'students', icon: StudentIcon3D, label: 'Students' },
+            { id: 'enrollment', icon: EnrollmentIcon3D, label: 'New Student' },
+            { id: 'import', icon: ImportIcon3D, label: 'Import CSV' },
+            { id: 'attendance-mgmt', icon: ScheduleIcon3D, label: 'Attendance' },
+          ]
+        },
+        {
+          id: 'academics',
+          icon: EnterGradeIcon3D,
+          label: 'Academics',
+          isCollapsible: true,
+          items: [
+            { id: 'grades', icon: EnterGradeIcon3D, label: 'Grades' },
+            { id: 'subjects', icon: SubjectsIcon3D, label: 'Subjects' },
+            { id: 'subject-enrollment', icon: EnrollmentIcon3D, label: 'Subject Enrollment' },
+            { id: 'schedule-mgmt', icon: ScheduleIcon3D, label: 'Schedules' },
+            { id: 'assignment-mgmt', icon: ReportsIcon3D, label: 'Assignments' },
+            { id: 'exam-mgmt', icon: ReportsIcon3D, label: 'Exams' },
+          ]
+        },
+        {
+          id: 'school-management',
+          icon: TeacherIcon3D,
+          label: 'School Management',
+          isCollapsible: true,
+          items: [
+            { id: 'teachers', icon: TeacherIcon3D, label: 'Teachers' },
+            { id: 'events', icon: EventsIcon3D, label: 'Events' },
+            { id: 'announcement-mgmt', icon: EventsIcon3D, label: 'Announcements' },
+          ]
+        },
+        {
+          id: 'resources',
+          icon: LibraryIcon3D,
+          label: 'Resources',
+          isCollapsible: true,
+          items: [
+            { id: 'library', icon: LibraryIcon3D, label: 'Library' },
+          ]
+        },
         { id: 'reports', icon: ReportsIcon3D, label: 'Reports' },
       ];
     case 'teacher':
       return [
-        ...baseItems,
-        { id: 'grades', icon: EnterGradeIcon3D, label: 'Grades' },
-        { id: 'attendance-mgmt', icon: ScheduleIcon3D, label: 'Attendance' },
-        { id: 'schedule-mgmt', icon: ScheduleIcon3D, label: 'Schedules' },
-        { id: 'assignment-mgmt', icon: ReportsIcon3D, label: 'Assignments' },
-        { id: 'exam-mgmt', icon: ReportsIcon3D, label: 'Exams' },
-        { id: 'library', icon: LibraryIcon3D, label: 'Library' },
-        { id: 'canva', icon: CanvaIcon3D, label: 'Canva Studio' },
-        { id: 'notebook', icon: NotebookIcon3D, label: 'Notebook LLM' },
+        { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
+        {
+          id: 'academics',
+          icon: EnterGradeIcon3D,
+          label: 'Academics',
+          isCollapsible: true,
+          items: [
+            { id: 'grades', icon: EnterGradeIcon3D, label: 'Grades' },
+            { id: 'attendance-mgmt', icon: ScheduleIcon3D, label: 'Attendance' },
+            { id: 'schedule-mgmt', icon: ScheduleIcon3D, label: 'Schedules' },
+            { id: 'assignment-mgmt', icon: ReportsIcon3D, label: 'Assignments' },
+            { id: 'exam-mgmt', icon: ReportsIcon3D, label: 'Exams' },
+          ]
+        },
+        {
+          id: 'resources',
+          icon: LibraryIcon3D,
+          label: 'Resources',
+          isCollapsible: true,
+          items: [
+            { id: 'library', icon: LibraryIcon3D, label: 'Library' },
+            { id: 'canva', icon: CanvaIcon3D, label: 'Canva Studio' },
+            { id: 'notebook', icon: NotebookIcon3D, label: 'Notebook LLM' },
+          ]
+        },
       ];
     case 'student':
       return [
-        ...baseItems,
+        { id: 'portal', icon: HomeIcon3D, label: 'Dashboard' },
+        {
+          id: 'my-records',
+          icon: ProfileIcon3D,
+          label: 'My Records',
+          isCollapsible: true,
+          items: [
+            { id: 'student-profile', icon: ProfileIcon3D, label: 'Profile' },
+            { id: 'student-grades', icon: EnterGradeIcon3D, label: 'Grades' },
+            { id: 'student-subjects', icon: SubjectsIcon3D, label: 'Subjects' },
+            { id: 'student-attendance', icon: ScheduleIcon3D, label: 'Attendance' },
+          ]
+        },
+        {
+          id: 'academics',
+          icon: EnterGradeIcon3D,
+          label: 'Academics',
+          isCollapsible: true,
+          items: [
+            { id: 'student-schedule', icon: ScheduleIcon3D, label: 'Schedule' },
+            { id: 'student-assignments', icon: ReportsIcon3D, label: 'Assignments' },
+            { id: 'student-exams', icon: ReportsIcon3D, label: 'Exams' },
+          ]
+        },
         { id: 'library', icon: LibraryIcon3D, label: 'Library' },
+        { id: 'student-announcements', icon: EventsIcon3D, label: 'Announcements' },
       ];
     case 'parent':
       return [
-        ...baseItems,
+        { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
         { id: 'children', icon: StudentIcon3D, label: 'My Children' },
         { id: 'library', icon: LibraryIcon3D, label: 'Library' },
       ];
     default:
-      return baseItems;
+      return [
+        { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
+      ];
   }
 };
 
@@ -238,18 +388,30 @@ const roleLabels: Record<string, string> = {
   parent: 'Parent',
 };
 
+// Check if any item in a group is active
+const isGroupActive = (group: NavGroup, activeTab: string): boolean => {
+  if (group.id === activeTab) return true;
+  if (group.items) {
+    return group.items.some(item => item.id === activeTab);
+  }
+  return false;
+};
+
 export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardLayoutProps) => {
   const { isDark, toggle } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { user, role, signOut } = useAuth();
   const [isDragging, setIsDragging] = useState(false);
-  const [isMenuLocked, setIsMenuLocked] = useState(true); // Default to locked
+  const [isMenuLocked, setIsMenuLocked] = useState(true);
   const { selectedSchool, setSelectedSchool, schoolTheme, setCanSwitchSchool } = useSchool();
   const { academicYears, selectedYearId, selectedYear, setSelectedYearId, isLoading: isLoadingYears } = useAcademicYear();
   const { data: schoolSettings } = useSchoolSettings(selectedSchool);
   const { theme, currentTheme, selectTheme } = useColorTheme();
   const { layoutStyle } = useDashboardLayout();
+
+  // Track open groups
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   // Check if Apple theme is active
   const isAppleTheme = layoutStyle === 'apple';
@@ -265,43 +427,23 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
   const hasCustomTheme = currentTheme !== 'default';
   const effectiveTheme = hasCustomTheme ? theme : schoolTheme;
 
-  const defaultNavItems = getNavItemsForRole(role);
+  const navGroups = getNavGroupsForRole(role);
 
-  // Load saved menu order from localStorage
-  const [navItems, setNavItems] = useState<NavItem[]>(defaultNavItems);
-
+  // Initialize open groups based on active tab
   useEffect(() => {
-    if (role === 'admin') {
-      const savedOrder = localStorage.getItem(`menu-order-${role}`);
-      if (savedOrder) {
-        try {
-          const orderIds = JSON.parse(savedOrder) as string[];
-          const reorderedItems = orderIds
-            .map(id => defaultNavItems.find(item => item.id === id))
-            .filter((item): item is NavItem => item !== undefined);
-
-          // Add any new items that weren't in the saved order
-          const newItems = defaultNavItems.filter(item => !orderIds.includes(item.id));
-          setNavItems([...reorderedItems, ...newItems]);
-        } catch {
-          setNavItems(defaultNavItems);
-        }
-      } else {
-        setNavItems(defaultNavItems);
+    const newOpenGroups: Record<string, boolean> = {};
+    navGroups.forEach(group => {
+      if (group.isCollapsible && isGroupActive(group, activeTab)) {
+        newOpenGroups[group.id] = true;
       }
-    } else {
-      setNavItems(defaultNavItems);
-    }
-  }, [role, activeTab]);
+    });
+    setOpenGroups(prev => ({ ...prev, ...newOpenGroups }));
+  }, [activeTab, role]);
 
   const toggleSidebar = () => setIsCollapsed(!isCollapsed);
 
-  const handleReorder = (newOrder: NavItem[]) => {
-    if (isMenuLocked) return; // Prevent reorder if locked
-    setNavItems(newOrder);
-    if (role === 'admin') {
-      localStorage.setItem(`menu-order-${role}`, JSON.stringify(newOrder.map(item => item.id)));
-    }
+  const toggleGroup = (groupId: string) => {
+    setOpenGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));
   };
 
   const getInitials = (email: string) => {
@@ -313,7 +455,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.08,
+        staggerChildren: 0.05,
       }
     }
   };
@@ -329,6 +471,140 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
         damping: 30
       }
     }
+  };
+
+  // Render a single nav item (for both standalone and grouped items)
+  const renderNavItem = (item: NavItem, isNested: boolean = false) => {
+    const IconComponent = getIconForItem(item.id, isAppleTheme);
+    const isActive = activeTab === item.id;
+
+    return (
+      <motion.button
+        key={item.id}
+        variants={itemVariants}
+        whileHover={isAppleTheme ? { scale: 1.01 } : { x: isNested ? 3 : 5, scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        onClick={() => {
+          onTabChange(item.id);
+          setSidebarOpen(false);
+        }}
+        className={cn(
+          "w-full flex items-center gap-3 font-medium transition-all duration-200 relative overflow-hidden",
+          isNested ? "px-3 py-2 text-sm" : "px-3 py-2.5",
+          isAppleTheme
+            ? cn(
+                "rounded-xl",
+                isActive
+                  ? "bg-[#007AFF] text-white shadow-sm"
+                  : "text-gray-700 hover:bg-black/5"
+              )
+            : cn(
+                "rounded-lg",
+                isActive
+                  ? `${effectiveTheme.menuActiveBg} ${effectiveTheme.menuActiveText} shadow-md`
+                  : `text-inherit/80 ${effectiveTheme.menuHoverBg} hover:bg-yellow-400/20 hover:text-yellow-700 dark:hover:text-yellow-300 transition-colors`
+              ),
+          isCollapsed && "justify-center px-2"
+        )}
+        title={isCollapsed ? item.label : undefined}
+      >
+        {isActive && !isAppleTheme && (
+          <motion.div
+            layoutId="activeTabBackground"
+            className="absolute inset-0 bg-white/20 dark:bg-black/20"
+            initial={false}
+            transition={{ type: "spring", stiffness: 350, damping: 30 }}
+          />
+        )}
+        <IconComponent className={cn(
+          isNested ? "h-4 w-4" : "h-5 w-5",
+          "flex-shrink-0 z-10",
+          isAppleTheme && !isActive && "text-gray-500"
+        )} />
+        {!isCollapsed && <span className={cn("truncate z-10", isAppleTheme && "text-[13px]")}>{item.label}</span>}
+      </motion.button>
+    );
+  };
+
+  // Render a collapsible group
+  const renderNavGroup = (group: NavGroup) => {
+    if (!group.isCollapsible || !group.items) {
+      return renderNavItem({ id: group.id, icon: group.icon, label: group.label });
+    }
+
+    const IconComponent = getIconForItem(group.id, isAppleTheme);
+    const isOpen = openGroups[group.id] || false;
+    const hasActiveChild = group.items.some(item => item.id === activeTab);
+
+    if (isCollapsed) {
+      // In collapsed mode, show first item of group or expand on hover
+      return (
+        <div key={group.id} className="relative group">
+          <motion.button
+            variants={itemVariants}
+            className={cn(
+              "w-full flex items-center justify-center px-2 py-2.5 rounded-lg transition-all duration-200",
+              hasActiveChild
+                ? isAppleTheme
+                  ? "bg-[#007AFF] text-white"
+                  : `${effectiveTheme.menuActiveBg} ${effectiveTheme.menuActiveText}`
+                : "text-inherit/80 hover:bg-white/10"
+            )}
+            title={group.label}
+          >
+            <IconComponent className="h-5 w-5" />
+          </motion.button>
+        </div>
+      );
+    }
+
+    return (
+      <Collapsible
+        key={group.id}
+        open={isOpen}
+        onOpenChange={() => toggleGroup(group.id)}
+      >
+        <CollapsibleTrigger asChild>
+          <motion.button
+            variants={itemVariants}
+            whileHover={isAppleTheme ? { scale: 1.01 } : { x: 3 }}
+            className={cn(
+              "w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-200",
+              isAppleTheme
+                ? cn(
+                    hasActiveChild ? "bg-black/5" : "hover:bg-black/5",
+                    "text-gray-700"
+                  )
+                : cn(
+                    hasActiveChild ? "bg-white/10" : "hover:bg-white/10",
+                    "text-inherit/80"
+                  )
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <IconComponent className={cn(
+                "h-5 w-5 flex-shrink-0",
+                isAppleTheme && "text-gray-500"
+              )} />
+              <span className={cn("font-medium", isAppleTheme && "text-[13px]")}>{group.label}</span>
+            </div>
+            <ChevronDown className={cn(
+              "h-4 w-4 transition-transform duration-200",
+              isOpen && "rotate-180"
+            )} />
+          </motion.button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="overflow-hidden">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="ml-4 pl-2 border-l border-white/20 space-y-0.5 mt-1"
+          >
+            {group.items.map(item => renderNavItem(item, true))}
+          </motion.div>
+        </CollapsibleContent>
+      </Collapsible>
+    );
   };
 
   return (
@@ -392,14 +668,12 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
       </header>
 
       {/* Sidebar Overlay */}
-      {
-        sidebarOpen && (
-          <div
-            className="lg:hidden fixed inset-0 bg-foreground/20 z-40"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )
-      }
+      {sidebarOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-foreground/20 z-40"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
       {/* Sidebar */}
       <aside className={cn(
@@ -445,8 +719,8 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
         </div>
 
         {/* School Switcher for Admin/Registrar */}
-        {canSwitch && (
-          <div className="mt-4">
+        {canSwitch && !isCollapsed && (
+          <div className="px-3 mt-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -489,8 +763,8 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
         )}
 
         {/* Academic Year Switcher */}
-        {canSwitch && (
-          <div className="mt-2">
+        {canSwitch && !isCollapsed && (
+          <div className="px-3 mt-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -537,203 +811,60 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
           </div>
         )}
 
-        {/* User Info */}
-
-        {
-          role === 'admin' ? (
-            <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col">
-              {/* Lock Toggle for Admin */}
-              {!isCollapsed && (
-                <div className="px-4 py-2 flex justify-end">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsMenuLocked(!isMenuLocked)}
-                    className="h-6 w-6 p-0 text-inherit/50 hover:text-inherit"
-                    title={isMenuLocked ? "Unlock Menu Reordering" : "Lock Menu Reordering"}
-                  >
-                    {isMenuLocked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
-                  </Button>
-                </div>
-              )}
-
-              <Reorder.Group
-                axis="y"
-                values={navItems}
-                onReorder={handleReorder}
-                className="px-2 space-y-1 flex-1"
-                variants={navVariants}
-                initial="hidden"
-                animate="visible"
-              >
-                {navItems.map((item) => {
-                  const IconComponent = getIconForItem(item.id, isAppleTheme);
-                  return (
-                  <Reorder.Item
-                    key={item.id}
-                    value={item}
-                    dragListener={!isMenuLocked}
-                    onDragStart={() => setIsDragging(true)}
-                    onDragEnd={() => setIsDragging(false)}
-                    className="list-none relative"
-                    whileDrag={{ scale: 1.02, boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}
-                    variants={itemVariants}
-                  >
-                    <motion.button
-                      whileHover={isAppleTheme ? { scale: 1.01 } : { x: 5, scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => {
-                        if (!isDragging) {
-                          onTabChange(item.id);
-                          setSidebarOpen(false);
-                        }
-                      }}
-                      className={cn(
-                        "w-full flex items-center gap-3 px-3 py-2.5 font-medium transition-all duration-200 relative overflow-hidden",
-                        !isMenuLocked ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
-                        isAppleTheme
-                          ? cn(
-                              "rounded-xl",
-                              activeTab === item.id
-                                ? "bg-[#007AFF] text-white shadow-sm"
-                                : "text-gray-700 hover:bg-black/5"
-                            )
-                          : cn(
-                              "rounded-lg",
-                              activeTab === item.id
-                                ? `${effectiveTheme.menuActiveBg} ${effectiveTheme.menuActiveText} shadow-md`
-                                : `text-inherit/80 ${effectiveTheme.menuHoverBg} hover:bg-yellow-400/20 hover:text-yellow-700 dark:hover:text-yellow-300 transition-colors`
-                            ),
-                        isCollapsed && "justify-center px-2"
-                      )}
-                      title={isCollapsed ? item.label : undefined}
-                    >
-                      {activeTab === item.id && !isAppleTheme && (
-                        <motion.div
-                          layoutId="activeTabBackground"
-                          className="absolute inset-0 bg-white/20 dark:bg-black/20"
-                          initial={false}
-                          transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                        />
-                      )}
-
-                      {!isMenuLocked && (
-                        <GripVertical className={cn("h-4 w-4 opacity-40 flex-shrink-0 z-10", isCollapsed && "hidden")} />
-                      )}
-                      <IconComponent className={cn(
-                        "h-5 w-5 flex-shrink-0 z-10",
-                        isAppleTheme && activeTab !== item.id && "text-gray-500"
-                      )} />
-                      {!isCollapsed && <span className={cn("truncate z-10", isAppleTheme && "text-[13px]")}>{item.label}</span>}
-                    </motion.button>
-                  </Reorder.Item>
-                  );
-                })}
-              </Reorder.Group>
-            </div>
-          ) : (
-            <motion.nav
-              className="px-2 space-y-1 flex-1 overflow-y-auto overflow-x-hidden"
-              variants={navVariants}
-              initial="hidden"
-              animate="visible"
-            >
-              {navItems.map((item) => {
-                const IconComponent = getIconForItem(item.id, isAppleTheme);
-                return (
-                <motion.button
-                  key={item.id}
-                  variants={itemVariants}
-                  whileHover={isAppleTheme ? { scale: 1.01 } : { x: 5, scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    onTabChange(item.id);
-                    setSidebarOpen(false);
-                  }}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 font-medium transition-all duration-200 relative overflow-hidden",
-                    isAppleTheme
-                      ? cn(
-                          "rounded-xl",
-                          activeTab === item.id
-                            ? "bg-[#007AFF] text-white shadow-sm"
-                            : "text-gray-700 hover:bg-black/5"
-                        )
-                      : cn(
-                          "rounded-lg",
-                          activeTab === item.id
-                            ? `${effectiveTheme.menuActiveBg} ${effectiveTheme.menuActiveText} shadow-md`
-                            : `text-inherit/80 ${effectiveTheme.menuHoverBg} hover:bg-yellow-400/20 hover:text-yellow-700 dark:hover:text-yellow-300 transition-colors`
-                        ),
-                    isCollapsed && "justify-center px-2"
-                  )}
-                  title={isCollapsed ? item.label : undefined}
-                >
-                  {activeTab === item.id && !isAppleTheme && (
-                    <motion.div
-                      layoutId="activeTabBackground"
-                      className="absolute inset-0 bg-white/20 dark:bg-black/20"
-                      initial={false}
-                      transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                    />
-                  )}
-
-                  <IconComponent className={cn(
-                    "h-5 w-5 flex-shrink-0 z-10",
-                    isAppleTheme && activeTab !== item.id && "text-gray-500"
-                  )} />
-                  {!isCollapsed && <span className={cn("truncate z-10", isAppleTheme && "text-[13px]")}>{item.label}</span>}
-                </motion.button>
-                );
-              })}
-            </motion.nav>
-          )
-        }
+        {/* Navigation */}
+        <motion.nav
+          className="px-2 space-y-1 flex-1 overflow-y-auto overflow-x-hidden mt-4"
+          variants={navVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          {navGroups.map((group) => renderNavGroup(group))}
+        </motion.nav>
 
         {/* Bottom Section - Admin */}
         <div className="px-3 pb-6 space-y-2">
           {/* Admin Button - Only show for admin role */}
-          {role === 'admin' && (() => {
+          {role === 'admin' && !isCollapsed && (() => {
             const AdminIconComponent = getIconForItem('admin', isAppleTheme);
             return (
-            <motion.button
-              variants={itemVariants}
-              initial="hidden"
-              animate="visible"
-              whileHover={isAppleTheme ? { scale: 1.01 } : { x: 5, scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => {
-                onTabChange(adminItem.id);
-                setSidebarOpen(false);
-              }}
-              className={cn(
-                "w-full flex items-center gap-3 px-4 py-3 font-medium transition-all duration-200 relative overflow-hidden",
-                isAppleTheme
-                  ? cn(
-                      "rounded-xl",
-                      activeTab === adminItem.id
-                        ? "bg-[#FF3B30] text-white shadow-sm"
-                        : "text-[#FF3B30] hover:bg-[#FF3B30]/10"
-                    )
-                  : cn(
-                      "rounded-lg",
-                      activeTab === adminItem.id
-                        ? "bg-destructive text-destructive-foreground shadow-md"
-                        : "text-inherit/80 hover:bg-white/10 hover:text-red-300"
-                    )
-              )}
-            >
-              {activeTab === adminItem.id && !isAppleTheme && (
-                <motion.div
-                  layoutId="activeTabBackground"
-                  className="absolute inset-0 bg-white/20 dark:bg-black/20"
-                  initial={false}
-                  transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                />
-              )}
-              <AdminIconComponent className="h-5 w-5 z-10" />
-              <span className={cn("z-10", isAppleTheme && "text-[13px]")}>{adminItem.label}</span>
-            </motion.button>
+              <motion.button
+                variants={itemVariants}
+                initial="hidden"
+                animate="visible"
+                whileHover={isAppleTheme ? { scale: 1.01 } : { x: 5, scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  onTabChange(adminItem.id);
+                  setSidebarOpen(false);
+                }}
+                className={cn(
+                  "w-full flex items-center gap-3 px-4 py-3 font-medium transition-all duration-200 relative overflow-hidden",
+                  isAppleTheme
+                    ? cn(
+                        "rounded-xl",
+                        activeTab === adminItem.id
+                          ? "bg-[#FF3B30] text-white shadow-sm"
+                          : "text-[#FF3B30] hover:bg-[#FF3B30]/10"
+                      )
+                    : cn(
+                        "rounded-lg",
+                        activeTab === adminItem.id
+                          ? "bg-destructive text-destructive-foreground shadow-md"
+                          : "text-inherit/80 hover:bg-white/10 hover:text-red-300"
+                      )
+                )}
+              >
+                {activeTab === adminItem.id && !isAppleTheme && (
+                  <motion.div
+                    layoutId="activeTabBackground"
+                    className="absolute inset-0 bg-white/20 dark:bg-black/20"
+                    initial={false}
+                    transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                  />
+                )}
+                <AdminIconComponent className="h-5 w-5 z-10" />
+                <span className={cn("z-10", isAppleTheme && "text-[13px]")}>{adminItem.label}</span>
+              </motion.button>
             );
           })()}
         </div>
