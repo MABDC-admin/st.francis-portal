@@ -49,7 +49,7 @@ async function renderPageToBlob(
  */
 export async function renderFirstPagePreview(
   pdfFile: File,
-  scale: number = 1.5
+  scale: number = 2.0
 ): Promise<{ blob: Blob; dataUrl: string; base64: string }> {
   const arrayBuffer = await pdfFile.arrayBuffer();
   const pdf = await (pdfjsLib as any).getDocument({ data: arrayBuffer }).promise;
@@ -137,8 +137,8 @@ export function usePdfToImages() {
                 // 3. Render High-Res PNG (Scale 2.0)
                 const pngBlob = await renderPageToBlob(pdf, pNum, 2.0);
 
-                // 4. Render Thumbnail (Scale 0.3)
-                const thumbBlob = await renderPageToBlob(pdf, pNum, 0.3);
+                // 4. Render Thumbnail (Scale 0.5 for better quality)
+                const thumbBlob = await renderPageToBlob(pdf, pNum, 0.5);
 
                 // 5. Upload to Storage
                 const imagePath = `${bookId}/page-${pNum}.png`;
