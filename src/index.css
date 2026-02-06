@@ -330,6 +330,47 @@
   animation: shimmer-sweep 1.5s ease-in-out infinite;
 }
 
+/* Avatar idle animations */
+@keyframes avatar-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-2px) rotate(-1deg); }
+  75% { transform: translateY(1px) rotate(1deg); }
+}
+
+@keyframes avatar-blink {
+  0%, 45%, 55%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.1); }
+}
+
+@keyframes avatar-look {
+  0%, 100% { transform: translateX(0); }
+  30% { transform: translateX(2px); }
+  70% { transform: translateX(-2px); }
+}
+
+.animate-avatar-float {
+  animation: avatar-float 4s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-avatar-blink {
+  animation: avatar-blink 4s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.animate-avatar-look {
+  animation: avatar-look 6s ease-in-out infinite;
+}
+
+/* Accessibility: Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .animate-avatar-float,
+  .animate-avatar-blink,
+  .animate-avatar-look {
+    animation: none;
+  }
+}
+
 @keyframes bounce-subtle {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-4px); }

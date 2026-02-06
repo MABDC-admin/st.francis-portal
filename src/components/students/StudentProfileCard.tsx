@@ -16,6 +16,7 @@ import { Student } from '@/types/student';
 import { useUploadStudentPhoto } from '@/hooks/useStudentDocuments';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { AnimatedStudentAvatar } from './AnimatedStudentAvatar';
 
 interface StudentProfileCardProps {
   student: Student;
@@ -160,19 +161,13 @@ export const StudentProfileCard = ({
                   onChange={handlePhotoUpload}
                 />
               )}
-              {student.photo_url ? (
-                <img 
-                  src={student.photo_url} 
-                  alt={student.student_name}
-                  className="h-16 w-16 rounded-full object-cover border-4 border-white/30 shadow-lg"
-                />
-              ) : (
-                <div className="h-16 w-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border-4 border-white/30 shadow-lg">
-                  <span className="text-xl font-bold text-white">
-                    {student.student_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                  </span>
-                </div>
-              )}
+              <AnimatedStudentAvatar
+                photoUrl={student.photo_url}
+                name={student.student_name}
+                size="lg"
+                borderColor="rgba(255,255,255,0.3)"
+                className="shadow-lg"
+              />
               {showPhotoUpload && (
                 <button
                   onClick={() => photoInputRef.current?.click()}

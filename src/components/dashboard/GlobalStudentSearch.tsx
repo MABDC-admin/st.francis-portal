@@ -4,9 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, User, X, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchool } from '@/contexts/SchoolContext';
+import { AnimatedStudentAvatar } from '@/components/students/AnimatedStudentAvatar';
 
 interface Student {
   id: string;
@@ -136,15 +136,12 @@ export const GlobalStudentSearch = () => {
                     className="w-full flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors text-left"
                     whileHover={{ x: 4 }}
                   >
-                    <Avatar className="h-10 w-10 border-2" style={{ borderColor: schoolTheme.accentColor }}>
-                      <AvatarImage src={student.photo_url || undefined} alt={student.student_name} />
-                      <AvatarFallback 
-                        className="text-xs font-medium text-white"
-                        style={{ backgroundColor: schoolTheme.accentColor }}
-                      >
-                        {getInitials(student.student_name)}
-                      </AvatarFallback>
-                    </Avatar>
+                    <AnimatedStudentAvatar
+                      photoUrl={student.photo_url}
+                      name={student.student_name}
+                      size="sm"
+                      borderColor={schoolTheme.accentColor}
+                    />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{student.student_name}</p>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">

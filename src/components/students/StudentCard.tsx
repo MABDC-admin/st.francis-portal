@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Student } from '@/types/student';
 import { cn } from '@/lib/utils';
 import { StudentHoverPreview } from './StudentHoverPreview';
+import { AnimatedStudentAvatar } from './AnimatedStudentAvatar';
 
 interface StudentCardProps {
   student: Student;
@@ -74,19 +75,11 @@ export const StudentCard = ({ student, onView, onEdit, onDelete, index }: Studen
           >
             {/* Avatar */}
             <div className="relative mb-2">
-              {student.photo_url ? (
-                <img
-                  src={student.photo_url}
-                  alt={student.student_name}
-                  className="h-12 w-12 rounded-full object-cover border-2 border-border"
-                />
-              ) : (
-                <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center border-2 border-border">
-                  <span className="text-base font-bold text-muted-foreground">
-                    {student.student_name.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-              )}
+              <AnimatedStudentAvatar
+                photoUrl={student.photo_url}
+                name={student.student_name}
+                size="md"
+              />
               <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full bg-stat-green border-2 border-card flex items-center justify-center">
                 <div className="h-1.5 w-1.5 rounded-full bg-white" />
               </div>

@@ -1,6 +1,7 @@
 import { Student } from '@/types/student';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { Phone, MapPin, GraduationCap, Calendar, User, BookOpen } from 'lucide-react';
+import { AnimatedStudentAvatar } from './AnimatedStudentAvatar';
 
 interface StudentHoverPreviewProps {
   student: Student;
@@ -17,19 +18,12 @@ export const StudentHoverPreview = ({ student, children }: StudentHoverPreviewPr
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-600 to-lime-400 p-4 rounded-t-md">
           <div className="flex items-center gap-3">
-            {student.photo_url ? (
-              <img 
-                src={student.photo_url} 
-                alt={student.student_name}
-                className="h-14 w-14 rounded-full object-cover border-2 border-white/50"
-              />
-            ) : (
-              <div className="h-14 w-14 rounded-full bg-white/20 flex items-center justify-center border-2 border-white/50">
-                <span className="text-xl font-bold text-white">
-                  {student.student_name.charAt(0).toUpperCase()}
-                </span>
-              </div>
-            )}
+            <AnimatedStudentAvatar
+              photoUrl={student.photo_url}
+              name={student.student_name}
+              size="lg"
+              borderColor="rgba(255,255,255,0.5)"
+            />
             <div className="flex-1 min-w-0">
               <h4 className="font-bold text-white text-sm truncate">
                 {student.student_name}
