@@ -334,7 +334,7 @@ export const StudentTable = ({
         {viewMode === 'cards' ? (
           /* Card View */
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {isLoading ? (
                 Array.from({ length: 12 }).map((_, i) => (
                   <div key={i} className="bg-secondary/50 rounded-xl h-48 animate-pulse" />

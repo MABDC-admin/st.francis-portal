@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { X, Printer, User, Calendar, BookOpen, GraduationCap, FileDown, Loader2, Calculator } from 'lucide-react';
+import { X, Printer, User, BookOpen, GraduationCap, FileDown, Loader2, Calculator } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,6 +9,7 @@ import { StudentProfileCard } from './StudentProfileCard';
 import { DocumentsManager } from './DocumentsManager';
 import { StudentSubjectsManager } from './StudentSubjectsManager';
 import { TransmutationManager } from './TransmutationManager';
+import { AnimatedStudentAvatar } from './AnimatedStudentAvatar';
 import { generateSF1 } from '@/utils/sf1Generator';
 import { generateAnnex1 } from '@/utils/annex1Generator';
 import { generateSF9 } from '@/utils/sf9Generator';
@@ -158,20 +159,13 @@ export const StudentProfileModal = ({ student, isOpen, onClose }: StudentProfile
               }}
             >
               <div className="flex items-center gap-4">
-                {/* Avatar */}
-                {student.photo_url ? (
-                  <img
-                    src={student.photo_url}
-                    alt={student.student_name}
-                    className="h-12 w-12 rounded-full object-cover border-2 border-white/30"
-                  />
-                ) : (
-                  <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border-2 border-white/30">
-                    <span className="text-lg font-bold text-white">
-                      {student.student_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                    </span>
-                  </div>
-                )}
+                {/* Animated Avatar */}
+                <AnimatedStudentAvatar
+                  photoUrl={student.photo_url}
+                  name={student.student_name}
+                  size="md"
+                  borderColor="rgba(255,255,255,0.3)"
+                />
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-lg font-bold text-white">{student.student_name}</h2>
