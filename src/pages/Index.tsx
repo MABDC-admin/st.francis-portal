@@ -49,6 +49,9 @@ import { CanvaStudio } from '@/components/canva/CanvaStudio';
 // Notebook LLM
 import { NotebookPage } from '@/components/notebook/NotebookPage';
 
+// Management CRUD Components
+import { AttendanceManagement, ScheduleManagement, AssignmentManagement, ExamScheduleManagement, AnnouncementManagement } from '@/components/management';
+
 const Index = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -414,6 +417,31 @@ const Index = () => {
       {/* Admin Panel - Admin only */}
       {activeTab === 'admin' && role === 'admin' && isAdminUnlocked && (
         <AdminPanel />
+      )}
+
+      {/* Attendance Management - Admin/Registrar/Teacher */}
+      {activeTab === 'attendance-mgmt' && (role === 'admin' || role === 'registrar' || role === 'teacher') && (
+        <AttendanceManagement />
+      )}
+
+      {/* Schedule Management - Admin/Registrar */}
+      {activeTab === 'schedule-mgmt' && hasAdminAccess && (
+        <ScheduleManagement />
+      )}
+
+      {/* Assignment Management - Admin/Registrar/Teacher */}
+      {activeTab === 'assignment-mgmt' && (role === 'admin' || role === 'registrar' || role === 'teacher') && (
+        <AssignmentManagement />
+      )}
+
+      {/* Exam Schedule Management - Admin/Registrar/Teacher */}
+      {activeTab === 'exam-mgmt' && (role === 'admin' || role === 'registrar' || role === 'teacher') && (
+        <ExamScheduleManagement />
+      )}
+
+      {/* Announcement Management - Admin/Registrar */}
+      {activeTab === 'announcement-mgmt' && hasAdminAccess && (
+        <AnnouncementManagement />
       )}
 
       {/* Modals */}
