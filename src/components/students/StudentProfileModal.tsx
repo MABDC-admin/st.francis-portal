@@ -163,7 +163,7 @@ export const StudentProfileModal = ({ student, isOpen, onClose }: StudentProfile
                 <AnimatedStudentAvatar
                   photoUrl={student.photo_url}
                   name={student.student_name}
-                  size="xl"
+                  size="4xl"
                   borderColor="rgba(255,255,255,0.3)"
                 />
                 <div>

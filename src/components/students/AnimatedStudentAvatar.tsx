@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 interface AnimatedStudentAvatarProps {
   photoUrl: string | null;
   name: string;
-  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl';
   className?: string;
   enableAnimation?: boolean;
   borderColor?: string;
@@ -16,6 +16,9 @@ const sizeMap = {
   md: 'h-12 w-12',
   lg: 'h-16 w-16',
   xl: 'h-24 w-24',
+  '2xl': 'h-32 w-32',
+  '3xl': 'h-40 w-40',
+  '4xl': 'h-48 w-48',
 };
 
 const textSizeMap = {
@@ -24,6 +27,9 @@ const textSizeMap = {
   md: 'text-base',
   lg: 'text-xl',
   xl: 'text-3xl',
+  '2xl': 'text-4xl',
+  '3xl': 'text-5xl',
+  '4xl': 'text-6xl',
 };
 
 const eyeSizeMap = {
@@ -32,6 +38,9 @@ const eyeSizeMap = {
   md: { eye: 'h-2 w-2', pupil: 'h-1 w-1' },
   lg: { eye: 'h-2.5 w-2.5', pupil: 'h-1 w-1' },
   xl: { eye: 'h-3.5 w-3.5', pupil: 'h-1.5 w-1.5' },
+  '2xl': { eye: 'h-4 w-4', pupil: 'h-2 w-2' },
+  '3xl': { eye: 'h-5 w-5', pupil: 'h-2.5 w-2.5' },
+  '4xl': { eye: 'h-6 w-6', pupil: 'h-3 w-3' },
 };
 
 const getInitials = (name: string) => {
