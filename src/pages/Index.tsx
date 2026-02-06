@@ -142,7 +142,7 @@ const Index = () => {
 
   // Admin state
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
-  const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
+  const [isAdminUnlocked, setIsAdminUnlocked] = useState(true); // PIN disabled temporarily
   const [pendingTab, setPendingTab] = useState<string | null>(null);
 
   const { data: students = [], isLoading } = useStudents();
