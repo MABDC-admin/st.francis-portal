@@ -78,7 +78,7 @@ export const StudentCard = ({ student, onView, onEdit, onDelete, index }: Studen
               <AnimatedStudentAvatar
                 photoUrl={student.photo_url}
                 name={student.student_name}
-                size="md"
+                size="xl"
               />
               <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full bg-stat-green border-2 border-card flex items-center justify-center">
                 <div className="h-1.5 w-1.5 rounded-full bg-white" />
