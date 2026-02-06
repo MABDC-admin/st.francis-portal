@@ -36,6 +36,29 @@ import { useBookSearch } from '@/hooks/useBookSearch';
 import { useBookIndexing } from '@/hooks/useBookIndexing';
 import { toast } from 'sonner';
 
+// Utility function to parse student level string to numeric grade
+const parseStudentLevel = (levelStr: string | null | undefined): number | null => {
+  if (!levelStr) return null;
+  
+  const normalized = levelStr.toLowerCase().trim();
+  
+  // Handle "Kinder" levels - map to grade 0 or null
+  if (normalized.includes('kinder')) {
+    return 0; // Kinder students get grade 0
+  }
+  
+  // Extract number from strings like "Level 3", "Grade 5", "3", etc.
+  const match = normalized.match(/\d+/);
+  if (match) {
+    const grade = parseInt(match[0], 10);
+    if (grade >= 1 && grade <= 12) {
+      return grade;
+    }
+  }
+  
+  return null;
+};
+
 interface Book {
   id: string;
   title: string;
@@ -69,12 +92,61 @@ export const LibraryPage = () => {
   const [showSearchResults, setShowSearchResults] = useState(false);
   
   const { selectedSchool } = useSchool();
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const queryClient = useQueryClient();
 
   const isAdmin = role === 'admin';
   const isRegistrar = role === 'registrar';
+  const isStudent = role === 'student';
   const canManage = isAdmin || isRegistrar;
+
+  // Fetch student data when the user is a student
+  const { data: studentData } = useQuery({
+    queryKey: ['student-for-library', user?.id],
+    queryFn: async () => {
+      if (!user?.id || !isStudent) return null;
+      
+      // First get the student_id from user_credentials
+      const { data: credential, error: credError } = await supabase
+        .from('user_credentials')
+        .select('student_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (credError || !credential?.student_id) {
+        console.warn('Could not find student credentials for library filtering');
+        return null;
+      }
+      
+      // Then get the student's level
+      const { data: student, error: studentError } = await supabase
+        .from('students')
+        .select('level, school_id')
+        .eq('id', credential.student_id)
+        .maybeSingle();
+      
+      if (studentError || !student) {
+        console.warn('Could not find student data for library filtering');
+        return null;
+      }
+      
+      return student;
+    },
+    enabled: !!user?.id && isStudent,
+  });
+
+  // Parse student grade level and auto-set filter for students
+  const studentGradeLevel = useMemo(() => {
+    if (!isStudent || !studentData?.level) return null;
+    return parseStudentLevel(studentData.level);
+  }, [isStudent, studentData?.level]);
+
+  // Auto-set grade filter for students
+  useEffect(() => {
+    if (isStudent && studentGradeLevel !== null) {
+      setSelectedGrade(studentGradeLevel.toString());
+    }
+  }, [isStudent, studentGradeLevel]);
 
   // Book search hook
   const { 
@@ -321,23 +393,34 @@ export const LibraryPage = () => {
               </Button>
             </div>
 
-            <Select value={selectedGrade} onValueChange={setSelectedGrade}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Filter by grade" />
-              </SelectTrigger>
-              <SelectContent>
-                {GRADE_LEVELS.map((level) => (
-                  <SelectItem key={level.value} value={level.value}>
-                    {level.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Grade Filter - Hidden for students */}
+            {!isStudent && (
+              <Select value={selectedGrade} onValueChange={setSelectedGrade}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Filter by grade" />
+                </SelectTrigger>
+                <SelectContent>
+                  {GRADE_LEVELS.map((level) => (
+                    <SelectItem key={level.value} value={level.value}>
+                      {level.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {/* Show current grade for students */}
+            {isStudent && studentGradeLevel !== null && (
+              <Badge variant="secondary" className="h-10 px-4 flex items-center gap-2">
+                <BookOpen className="h-4 w-4" />
+                {studentGradeLevel === 0 ? 'Kinder' : `Grade ${studentGradeLevel}`} Books
+              </Badge>
+            )}
           </div>
 
-          {/* Active Filters */}
-          {(selectedGrade !== 'all' || searchQuery) && (
+          {/* Active Filters - Only show for non-students */}
+          {!isStudent && (selectedGrade !== 'all' || searchQuery) && (
             <div className="flex flex-wrap gap-2 items-center">
               <span className="text-sm text-muted-foreground">
                 Active filters:
@@ -408,10 +491,14 @@ export const LibraryPage = () => {
           >
             <BookOpen className="h-16 w-16 text-muted-foreground/50 mb-4" />
             <h3 className="text-lg font-medium text-foreground mb-2">
-              No books found
+              {isStudent ? 'No books available for your grade level' : 'No books found'}
             </h3>
             <p className="text-muted-foreground max-w-md">
-              {searchQuery || selectedGrade !== 'all'
+              {isStudent
+                ? studentGradeLevel === 0
+                  ? 'There are no books available for Kinder students yet. Check back later!'
+                  : 'There are no books available for your grade level yet. Check back later!'
+                : searchQuery || selectedGrade !== 'all'
                 ? 'Try adjusting your search or filter criteria.'
                 : canManage
                 ? 'Upload your first book to get started!'
