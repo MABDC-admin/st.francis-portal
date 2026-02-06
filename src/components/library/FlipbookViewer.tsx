@@ -473,63 +473,95 @@ export const FlipbookViewer = ({
           {isLoading ? (
             <div className="text-muted-foreground">Loading pages...</div>
           ) : isDesktop && leftPage ? (
-            /* Desktop: 2-Page Spread with Flip Animation */
+            /* Desktop: 2-Page Spread with Enhanced 3D Flip Animation */
             <div
-              className="relative flex items-center justify-center gap-1"
-              style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
+              className="relative flex items-center justify-center"
+              style={{ 
+                transform: `scale(${zoom})`, 
+                transformOrigin: 'center center',
+                perspective: '2000px',
+              }}
             >
-              <AnimatePresence mode="wait">
+              <AnimatePresence mode="wait" initial={false}>
                 <motion.div
                   key={currentSpread}
                   initial={{ 
-                    rotateY: flipDirection === 'right' ? -15 : flipDirection === 'left' ? 15 : 0,
-                    opacity: 0.5,
-                    scale: 0.95
+                    rotateY: flipDirection === 'right' ? -90 : flipDirection === 'left' ? 90 : 0,
+                    opacity: 0,
+                    x: flipDirection === 'right' ? 50 : flipDirection === 'left' ? -50 : 0,
                   }}
                   animate={{ 
                     rotateY: 0,
                     opacity: 1,
-                    scale: 1
+                    x: 0,
                   }}
                   exit={{ 
-                    rotateY: flipDirection === 'right' ? 15 : flipDirection === 'left' ? -15 : 0,
-                    opacity: 0.5,
-                    scale: 0.95
+                    rotateY: flipDirection === 'right' ? 90 : flipDirection === 'left' ? -90 : 0,
+                    opacity: 0,
+                    x: flipDirection === 'right' ? -50 : flipDirection === 'left' ? 50 : 0,
                   }}
-                  transition={{ duration: 0.3, ease: 'easeInOut' }}
-                  className="flex items-center justify-center gap-1 perspective-1000"
-                  style={{ transformStyle: 'preserve-3d' }}
+                  transition={{ 
+                    duration: 0.5, 
+                    ease: [0.4, 0, 0.2, 1],
+                  }}
+                  className="flex items-center justify-center gap-0"
+                  style={{ 
+                    transformStyle: 'preserve-3d',
+                    transformOrigin: flipDirection === 'right' ? 'left center' : 'right center',
+                  }}
                 >
                   {/* Left Page */}
-                  <div className="relative shadow-lg bg-white">
+                  <motion.div 
+                    className="relative shadow-2xl bg-white"
+                    style={{ 
+                      transformStyle: 'preserve-3d',
+                      backfaceVisibility: 'hidden',
+                    }}
+                    initial={{ rotateY: flipDirection === 'left' ? 45 : 0 }}
+                    animate={{ rotateY: 0 }}
+                    transition={{ duration: 0.4, ease: 'easeOut' }}
+                  >
                     <img
                       src={leftPage.image_url}
                       alt={`Page ${leftPageIndex + 1}`}
                       className="max-h-[calc(100vh-200px)] w-auto"
                       draggable={false}
                     />
-                    {/* Page curl effect */}
-                    <div className="absolute inset-y-0 right-0 w-4 bg-gradient-to-l from-black/5 to-transparent pointer-events-none" />
-                  </div>
+                    {/* Page curl effect - enhanced shadow */}
+                    <div className="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-black/10 via-black/5 to-transparent pointer-events-none" />
+                    {/* Inner page shadow */}
+                    <div className="absolute inset-0 shadow-inner pointer-events-none" />
+                  </motion.div>
+                  
+                  {/* Center spine */}
+                  <div className="w-1 bg-gradient-to-r from-black/20 via-black/30 to-black/20 self-stretch" />
                   
                   {/* Right Page */}
                   {rightPage && (
-                    <div className="relative shadow-lg bg-white">
+                    <motion.div 
+                      className="relative shadow-2xl bg-white"
+                      style={{ 
+                        transformStyle: 'preserve-3d',
+                        backfaceVisibility: 'hidden',
+                      }}
+                      initial={{ rotateY: flipDirection === 'right' ? -45 : 0 }}
+                      animate={{ rotateY: 0 }}
+                      transition={{ duration: 0.4, ease: 'easeOut' }}
+                    >
                       <img
                         src={rightPage.image_url}
                         alt={`Page ${rightPageIndex + 1}`}
                         className="max-h-[calc(100vh-200px)] w-auto"
                         draggable={false}
                       />
-                      {/* Page curl effect */}
-                      <div className="absolute inset-y-0 left-0 w-4 bg-gradient-to-r from-black/5 to-transparent pointer-events-none" />
-                    </div>
+                      {/* Page curl effect - enhanced shadow */}
+                      <div className="absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-black/10 via-black/5 to-transparent pointer-events-none" />
+                      {/* Inner page shadow */}
+                      <div className="absolute inset-0 shadow-inner pointer-events-none" />
+                    </motion.div>
                   )}
                 </motion.div>
               </AnimatePresence>
-              
-              {/* Center spine shadow */}
-              <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-2 bg-gradient-to-r from-black/10 via-black/5 to-black/10 pointer-events-none z-10" />
             </div>
           ) : currentPageData ? (
             <AnimatePresence mode="wait" custom={slideDirection}>
