@@ -125,11 +125,12 @@ export function AnnotationToolbar({
             <TooltipTrigger asChild>
               <Button
                 variant="outline"
-                size="icon"
-                className="h-10 w-10"
+                size="sm"
+                className="h-10 px-3"
                 onClick={onThumbnailsClick}
               >
-                <LayoutGrid className="h-4 w-4" />
+                <LayoutGrid className="h-4 w-4 mr-2" />
+                Thumbnails
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">
@@ -173,11 +174,12 @@ export function AnnotationToolbar({
               <TooltipTrigger asChild>
                 <Button
                   variant={viewMode === 'single' ? 'secondary' : 'ghost'}
-                  size="icon"
-                  className="h-8 w-8"
+                  size="sm"
+                  className="h-8 px-3"
                   onClick={() => onViewModeChange?.('single')}
                 >
-                  <Image className="h-4 w-4" />
+                  <Image className="h-4 w-4 mr-1.5" />
+                  1 Page
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
@@ -189,11 +191,12 @@ export function AnnotationToolbar({
               <TooltipTrigger asChild>
                 <Button
                   variant={viewMode === 'spread' ? 'secondary' : 'ghost'}
-                  size="icon"
-                  className="h-8 w-8"
+                  size="sm"
+                  className="h-8 px-3"
                   onClick={() => onViewModeChange?.('spread')}
                 >
-                  <Columns2 className="h-4 w-4" />
+                  <Columns2 className="h-4 w-4 mr-1.5" />
+                  2 Pages
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
