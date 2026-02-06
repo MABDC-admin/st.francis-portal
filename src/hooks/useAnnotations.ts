@@ -212,6 +212,52 @@ export function useAnnotations() {
     });
   }, [annotationMode, pendingSticker, annotationColor, getCanvasCoordinates, saveToHistory]);
 
+  // Place sticker at specific coordinates (for drag-and-drop)
+  const placeStickerAtPosition = useCallback((
+    sticker: { type: 'emoji' | 'icon'; value: string },
+    pageNumber: number,
+    x: number,
+    y: number,
+    zoom: number
+  ) => {
+    const stickerSize = 48;
+    
+    // Convert from displayed coordinates to canvas coordinates
+    const canvasX = x / zoom;
+    const canvasY = y / zoom;
+    
+    const newAnnotation: Annotation = {
+      id: crypto.randomUUID(),
+      type: 'sticker',
+      color: annotationColor,
+      strokeWidth: 0,
+      sticker: {
+        type: sticker.type,
+        value: sticker.value,
+        x: canvasX - stickerSize / 2,
+        y: canvasY - stickerSize / 2,
+        size: stickerSize,
+      },
+    };
+
+    // Preload icon image if needed
+    if (sticker.type === 'icon') {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = sticker.value;
+      img.onload = () => {
+        setLoadedImages(prev => new Map(prev).set(sticker.value, img));
+      };
+    }
+
+    setAnnotations(prev => {
+      const pageAnns = prev[pageNumber] || [];
+      const newAnnotations = { ...prev, [pageNumber]: [...pageAnns, newAnnotation] };
+      saveToHistory(newAnnotations);
+      return newAnnotations;
+    });
+  }, [annotationColor, saveToHistory]);
+
   const eraseAtPoint = useCallback((e: React.MouseEvent<HTMLCanvasElement>, pageNumber: number, zoom: number) => {
     if (annotationMode !== 'eraser') return;
     
@@ -378,6 +424,7 @@ export function useAnnotations() {
     stopDrawing,
     eraseAtPoint,
     placeSticker,
+    placeStickerAtPosition,
     pendingSticker,
     setPendingSticker,
     renderAnnotations,

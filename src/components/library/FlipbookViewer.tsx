@@ -68,6 +68,7 @@ export const FlipbookViewer = ({
     stopDrawing,
     eraseAtPoint,
     placeSticker,
+    placeStickerAtPosition,
     pendingSticker,
     setPendingSticker,
     renderAnnotations,
@@ -279,6 +280,37 @@ export const FlipbookViewer = ({
     renderAnnotations(currentPage, zoom);
   };
 
+  // Handle drag-and-drop for stickers
+  const handleDragOver = (e: React.DragEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    
+    const stickerData = e.dataTransfer.getData('application/sticker');
+    if (!stickerData) return;
+    
+    try {
+      const sticker = JSON.parse(stickerData) as { type: 'emoji' | 'icon'; value: string };
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      
+      const x = (e.clientX - rect.left) * scaleX;
+      const y = (e.clientY - rect.top) * scaleY;
+      
+      placeStickerAtPosition(sticker, currentPage, x, y, zoom);
+      renderAnnotations(currentPage, zoom);
+    } catch (error) {
+      console.error('Failed to parse sticker data:', error);
+    }
+  };
+
   const currentPageData = pages[currentPage - 1];
 
   return (
@@ -487,12 +519,14 @@ export const FlipbookViewer = ({
                 ref={canvasRef}
                 className={cn(
                   'absolute inset-0 w-full h-full',
-                  annotationMode !== 'none' ? (annotationMode === 'sticker' ? 'cursor-copy' : 'cursor-crosshair') : 'pointer-events-none'
+                  annotationMode !== 'none' ? (annotationMode === 'sticker' ? 'cursor-copy' : 'cursor-crosshair') : ''
                 )}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
               />
             </div>
           ) : (

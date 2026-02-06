@@ -132,9 +132,10 @@ const getFluentEmojiUrlFlat = (folderName: string) => {
 
 interface FluentEmojiPickerProps {
   onSelect: (iconUrl: string) => void;
+  onDragStart?: (sticker: { type: 'emoji' | 'icon'; value: string }) => void;
 }
 
-export function FluentEmojiPicker({ onSelect }: FluentEmojiPickerProps) {
+export function FluentEmojiPicker({ onSelect, onDragStart }: FluentEmojiPickerProps) {
   const [activeCategory, setActiveCategory] = useState<CategoryKey>('popular');
   const [searchQuery, setSearchQuery] = useState('');
   const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
@@ -146,6 +147,13 @@ export function FluentEmojiPicker({ onSelect }: FluentEmojiPickerProps) {
 
   const handleImageError = (name: string) => {
     setFailedImages(prev => new Set([...prev, name]));
+  };
+
+  const handleDragStart = (e: React.DragEvent, url: string) => {
+    const sticker = { type: 'icon' as const, value: url };
+    e.dataTransfer.setData('application/sticker', JSON.stringify(sticker));
+    e.dataTransfer.effectAllowed = 'copy';
+    onDragStart?.(sticker);
   };
 
   // Get all emojis for search
@@ -215,12 +223,14 @@ export function FluentEmojiPicker({ onSelect }: FluentEmojiPickerProps) {
               <button
                 key={item.name}
                 onClick={() => onSelect(url)}
+                draggable
+                onDragStart={(e) => handleDragStart(e, url)}
                 className={cn(
-                  'relative aspect-square p-2 rounded-lg hover:bg-muted transition-colors',
+                  'relative aspect-square p-2 rounded-lg hover:bg-muted transition-colors cursor-grab active:cursor-grabbing',
                   'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1',
                   'flex flex-col items-center justify-center gap-1'
                 )}
-                title={item.name}
+                title={`${item.name} - drag to place`}
               >
                 {!isLoaded && (
                   <Skeleton className="absolute inset-2 rounded" />
@@ -229,7 +239,7 @@ export function FluentEmojiPicker({ onSelect }: FluentEmojiPickerProps) {
                   src={url}
                   alt={item.name}
                   className={cn(
-                    'w-8 h-8 object-contain transition-opacity',
+                    'w-8 h-8 object-contain transition-opacity pointer-events-none',
                     isLoaded ? 'opacity-100' : 'opacity-0'
                   )}
                   onLoad={() => handleImageLoad(item.name)}
