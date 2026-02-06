@@ -160,3 +160,80 @@ export const getSubjectCategory = (subjectCode: string, level: string): SubjectC
     if (['MAPEH', 'TLE', 'EPP', 'MUS', 'ART', 'PE', 'HEALTH'].some(kw => code.includes(kw))) return 'MAPEH/EPP/TLE';
     return 'Languages/AP/EsP';
 };
+
+/**
+ * DepEd Passing Grade Threshold
+ */
+export const PASSING_GRADE = 75;
+
+/**
+ * Grade type for quarterly/annual calculations
+ */
+export interface GradeRecord {
+    q1_grade?: number | null;
+    q2_grade?: number | null;
+    q3_grade?: number | null;
+    q4_grade?: number | null;
+    final_grade?: number | null;
+}
+
+/**
+ * Computes General Average for a single quarter across all subjects
+ * DepEd: GA = Sum of all subject grades / Number of subjects
+ */
+export const computeQuarterlyGeneralAverage = (
+    grades: GradeRecord[],
+    quarter: 'q1' | 'q2' | 'q3' | 'q4'
+): number | null => {
+    const key = `${quarter}_grade` as keyof GradeRecord;
+    const validGrades = grades
+        .filter(g => g[key] != null)
+        .map(g => g[key] as number);
+    if (validGrades.length === 0) return null;
+    return validGrades.reduce((sum, g) => sum + g, 0) / validGrades.length;
+};
+
+/**
+ * Computes Annual General Average (average of final grades across all subjects)
+ * DepEd: Annual GA = Sum of all final grades / Number of subjects
+ */
+export const computeAnnualGeneralAverage = (
+    grades: GradeRecord[]
+): number | null => {
+    const validGrades = grades
+        .filter(g => g.final_grade != null)
+        .map(g => g.final_grade as number);
+    if (validGrades.length === 0) return null;
+    return validGrades.reduce((sum, g) => sum + g, 0) / validGrades.length;
+};
+
+/**
+ * Check if a grade is passing based on DepEd standards
+ */
+export const isPassing = (grade: number | null): boolean => {
+    return grade !== null && grade >= PASSING_GRADE;
+};
+
+/**
+ * Get grade descriptor based on DepEd standards
+ */
+export const getGradeDescriptor = (grade: number | null): string => {
+    if (grade === null) return 'No Grade';
+    if (grade >= 90) return 'Outstanding';
+    if (grade >= 85) return 'Very Satisfactory';
+    if (grade >= 80) return 'Satisfactory';
+    if (grade >= 75) return 'Fairly Satisfactory';
+    return 'Did Not Meet Expectations';
+};
+
+/**
+ * Get color class for grade display based on DepEd thresholds
+ */
+export const getGradeColorClass = (grade: number | null): string => {
+    if (grade === null) return 'text-muted-foreground';
+    if (grade >= 90) return 'text-green-600 font-medium';    // Outstanding
+    if (grade >= 85) return 'text-blue-600';                  // Very Satisfactory
+    if (grade >= 80) return 'text-cyan-600';                  // Satisfactory
+    if (grade >= 75) return 'text-yellow-600';                // Fairly Satisfactory
+    return 'text-red-600 font-medium';                        // Did Not Meet Expectations
+};

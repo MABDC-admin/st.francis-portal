@@ -10,6 +10,14 @@ import { StudentProfileCard } from '@/components/students/StudentProfileCard';
 import { supabase } from '@/integrations/supabase/client';
 import { Student } from '@/types/student';
 import { useQuery } from '@tanstack/react-query';
+import {
+  computeQuarterlyGeneralAverage,
+  computeAnnualGeneralAverage,
+  isPassing,
+  getGradeDescriptor,
+  getGradeColorClass,
+  GradeRecord
+} from '@/utils/gradeComputation';
 
 // Custom hook for fetching student data
 const useStudentData = (userId: string | undefined) => {
@@ -170,13 +178,25 @@ export const StudentPortal = () => {
     setActiveTab(tab);
   }, []);
 
-  // Calculate GPA if grades exist
-  const gpa = useMemo(() => {
+  // Compute General Averages per quarter and annual (DepEd Compliant)
+  const generalAverages = useMemo(() => {
     if (!grades || grades.length === 0) return null;
-    const validGrades = grades.filter((g: any) => g.final_grade != null);
-    if (validGrades.length === 0) return null;
-    const sum = validGrades.reduce((acc: number, g: any) => acc + (g.final_grade || 0), 0);
-    return (sum / validGrades.length).toFixed(2);
+    
+    const gradeRecords: GradeRecord[] = grades.map((g: any) => ({
+      q1_grade: g.q1_grade,
+      q2_grade: g.q2_grade,
+      q3_grade: g.q3_grade,
+      q4_grade: g.q4_grade,
+      final_grade: g.final_grade,
+    }));
+
+    return {
+      q1: computeQuarterlyGeneralAverage(gradeRecords, 'q1'),
+      q2: computeQuarterlyGeneralAverage(gradeRecords, 'q2'),
+      q3: computeQuarterlyGeneralAverage(gradeRecords, 'q3'),
+      q4: computeQuarterlyGeneralAverage(gradeRecords, 'q4'),
+      annual: computeAnnualGeneralAverage(gradeRecords)
+    };
   }, [grades]);
 
   // Loading state
@@ -249,15 +269,42 @@ export const StudentPortal = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-purple-200/50">
+          {/* General Average Card - DepEd Compliant */}
+          <Card className={`bg-gradient-to-br ${
+            generalAverages?.annual && isPassing(generalAverages.annual)
+              ? 'from-purple-500/10 to-purple-600/5 border-purple-200/50'
+              : generalAverages?.annual
+                ? 'from-red-500/10 to-red-600/5 border-red-200/50'
+                : 'from-gray-500/10 to-gray-600/5 border-gray-200/50'
+          }`}>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-full bg-purple-500/20">
-                  <Award className="h-5 w-5 text-purple-600" />
+                <div className={`p-2 rounded-full ${
+                  generalAverages?.annual && isPassing(generalAverages.annual)
+                    ? 'bg-purple-500/20'
+                    : generalAverages?.annual
+                      ? 'bg-red-500/20'
+                      : 'bg-gray-500/20'
+                }`}>
+                  <Award className={`h-5 w-5 ${
+                    generalAverages?.annual && isPassing(generalAverages.annual)
+                      ? 'text-purple-600'
+                      : generalAverages?.annual
+                        ? 'text-red-600'
+                        : 'text-gray-600'
+                  }`} />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">GPA</p>
-                  <p className="font-semibold">{gpa || 'N/A'}</p>
+                  <p className="text-xs text-muted-foreground">Gen. Average</p>
+                  <p className={`font-semibold ${
+                    generalAverages?.annual && isPassing(generalAverages.annual)
+                      ? 'text-purple-600'
+                      : generalAverages?.annual
+                        ? 'text-red-600'
+                        : ''
+                  }`}>
+                    {generalAverages?.annual?.toFixed(2) || 'N/A'}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -272,6 +319,96 @@ export const StudentPortal = () => {
                 <div>
                   <p className="text-xs text-muted-foreground">Events</p>
                   <p className="font-semibold">{announcements.length}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Quarterly General Averages - DepEd Compliant */}
+      {generalAverages && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+        >
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Award className="h-5 w-5" />
+                Quarterly General Averages
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                {(['q1', 'q2', 'q3', 'q4'] as const).map((quarter) => {
+                  const avg = generalAverages[quarter];
+                  const passing = isPassing(avg);
+                  return (
+                    <div
+                      key={quarter}
+                      className={`p-4 rounded-lg text-center transition-colors ${
+                        avg === null
+                          ? 'bg-muted/50'
+                          : passing
+                            ? 'bg-green-50 border border-green-200 dark:bg-green-950/30 dark:border-green-800'
+                            : 'bg-red-50 border border-red-200 dark:bg-red-950/30 dark:border-red-800'
+                      }`}
+                    >
+                      <p className="text-xs text-muted-foreground uppercase font-medium">
+                        {quarter.toUpperCase()}
+                      </p>
+                      <p className={`text-xl font-bold ${
+                        avg === null
+                          ? 'text-muted-foreground'
+                          : passing
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-red-600 dark:text-red-400'
+                      }`}>
+                        {avg?.toFixed(2) || '-'}
+                      </p>
+                      {avg !== null && (
+                        <Badge 
+                          variant={passing ? 'default' : 'destructive'} 
+                          className="mt-1 text-xs"
+                        >
+                          {passing ? 'Passed' : 'Failed'}
+                        </Badge>
+                      )}
+                    </div>
+                  );
+                })}
+                {/* Annual/Final Average */}
+                <div
+                  className={`p-4 rounded-lg text-center transition-colors ${
+                    generalAverages.annual === null
+                      ? 'bg-muted/50'
+                      : isPassing(generalAverages.annual)
+                        ? 'bg-purple-50 border-2 border-purple-300 dark:bg-purple-950/30 dark:border-purple-700'
+                        : 'bg-red-50 border-2 border-red-300 dark:bg-red-950/30 dark:border-red-700'
+                  }`}
+                >
+                  <p className="text-xs text-muted-foreground uppercase font-medium">
+                    Final
+                  </p>
+                  <p className={`text-xl font-bold ${
+                    generalAverages.annual === null
+                      ? 'text-muted-foreground'
+                      : isPassing(generalAverages.annual)
+                        ? 'text-purple-600 dark:text-purple-400'
+                        : 'text-red-600 dark:text-red-400'
+                  }`}>
+                    {generalAverages.annual?.toFixed(2) || '-'}
+                  </p>
+                  {generalAverages.annual !== null && (
+                    <Badge 
+                      variant={isPassing(generalAverages.annual) ? 'default' : 'destructive'} 
+                      className="mt-1 text-xs"
+                    >
+                      {getGradeDescriptor(generalAverages.annual)}
+                    </Badge>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -332,26 +469,46 @@ export const StudentPortal = () => {
                           <th className="text-center py-3 px-2 font-medium">Q3</th>
                           <th className="text-center py-3 px-2 font-medium">Q4</th>
                           <th className="text-center py-3 px-2 font-medium">Final</th>
+                          <th className="text-center py-3 px-2 font-medium">Status</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {grades.map((grade: any) => (
-                          <tr key={grade.id} className="border-b hover:bg-muted/50">
-                            <td className="py-3 px-2">
-                              <div>
-                                <p className="font-medium">{grade.subjects?.name || 'Unknown'}</p>
-                                <p className="text-xs text-muted-foreground">{grade.subjects?.code}</p>
-                              </div>
-                            </td>
-                            <td className="text-center py-3 px-2">{grade.q1_grade ?? '-'}</td>
-                            <td className="text-center py-3 px-2">{grade.q2_grade ?? '-'}</td>
-                            <td className="text-center py-3 px-2">{grade.q3_grade ?? '-'}</td>
-                            <td className="text-center py-3 px-2">{grade.q4_grade ?? '-'}</td>
-                            <td className="text-center py-3 px-2 font-semibold">
-                              {grade.final_grade ?? '-'}
-                            </td>
-                          </tr>
-                        ))}
+                        {grades.map((grade: any) => {
+                          const finalGrade = grade.final_grade;
+                          const passing = isPassing(finalGrade);
+                          return (
+                            <tr key={grade.id} className="border-b hover:bg-muted/50">
+                              <td className="py-3 px-2">
+                                <div>
+                                  <p className="font-medium">{grade.subjects?.name || 'Unknown'}</p>
+                                  <p className="text-xs text-muted-foreground">{grade.subjects?.code}</p>
+                                </div>
+                              </td>
+                              <td className={`text-center py-3 px-2 ${getGradeColorClass(grade.q1_grade)}`}>
+                                {grade.q1_grade ?? '-'}
+                              </td>
+                              <td className={`text-center py-3 px-2 ${getGradeColorClass(grade.q2_grade)}`}>
+                                {grade.q2_grade ?? '-'}
+                              </td>
+                              <td className={`text-center py-3 px-2 ${getGradeColorClass(grade.q3_grade)}`}>
+                                {grade.q3_grade ?? '-'}
+                              </td>
+                              <td className={`text-center py-3 px-2 ${getGradeColorClass(grade.q4_grade)}`}>
+                                {grade.q4_grade ?? '-'}
+                              </td>
+                              <td className={`text-center py-3 px-2 font-semibold ${getGradeColorClass(finalGrade)}`}>
+                                {finalGrade ?? '-'}
+                              </td>
+                              <td className="text-center py-3 px-2">
+                                {finalGrade !== null && (
+                                  <Badge variant={passing ? 'default' : 'destructive'}>
+                                    {passing ? 'PASSED' : 'FAILED'}
+                                  </Badge>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
