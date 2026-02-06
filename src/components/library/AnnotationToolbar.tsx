@@ -10,6 +10,9 @@ import {
   Redo2,
   Trash2,
   Sparkles,
+  LayoutGrid,
+  Image,
+  Columns2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -31,6 +34,9 @@ interface AnnotationToolbarProps {
   canRedo: boolean;
   onStickerSelect?: (sticker: StickerData) => void;
   pendingSticker?: { type: 'emoji' | 'icon'; value: string } | null;
+  onThumbnailsClick?: () => void;
+  viewMode?: 'single' | 'spread';
+  onViewModeChange?: (mode: 'single' | 'spread') => void;
 }
 
 const tools = [
@@ -54,6 +60,9 @@ export function AnnotationToolbar({
   canRedo,
   onStickerSelect,
   pendingSticker,
+  onThumbnailsClick,
+  viewMode = 'spread',
+  onViewModeChange,
 }: AnnotationToolbarProps) {
   const [isDragging, setIsDragging] = useState(false);
 
@@ -121,39 +130,98 @@ export function AnnotationToolbar({
         </div>
       </div>
 
-      {/* Center: Animated Sticker Button */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            className={cn(
-              'sticker-button-animated h-10 px-4 text-white font-semibold shadow-lg',
-              'hover:shadow-xl transition-shadow',
-              mode === 'sticker' && 'ring-2 ring-white ring-offset-2 ring-offset-background'
-            )}
+      {/* Center: Stickers + Thumbnails + View Mode */}
+      <div className="flex items-center gap-2">
+        {/* Thumbnails Button */}
+        <TooltipProvider delayDuration={300}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-10 w-10"
+                onClick={onThumbnailsClick}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p>View All Pages</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        {/* Sticker Button */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              className={cn(
+                'sticker-button-animated h-10 px-4 text-white font-semibold shadow-lg',
+                'hover:shadow-xl transition-shadow',
+                mode === 'sticker' && 'ring-2 ring-white ring-offset-2 ring-offset-background'
+              )}
+            >
+              {pendingSticker?.type === 'emoji' ? (
+                <span className="text-lg mr-2">{pendingSticker.value}</span>
+              ) : (
+                <Sparkles className="h-4 w-4 mr-2" />
+              )}
+              Stickers
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent 
+            className="w-[400px] p-0" 
+            align="center"
+            onInteractOutside={(e) => {
+              if (isDragging) {
+                e.preventDefault();
+              }
+            }}
           >
-            {pendingSticker?.type === 'emoji' ? (
-              <span className="text-lg mr-2">{pendingSticker.value}</span>
-            ) : (
-              <Sparkles className="h-4 w-4 mr-2" />
-            )}
-            Stickers
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent 
-          className="w-[400px] p-0" 
-          align="center"
-          onInteractOutside={(e) => {
-            if (isDragging) {
-              e.preventDefault();
-            }
-          }}
-        >
-          <StickerPicker 
-            onSelect={handleStickerSelect} 
-            onDragStart={handleDragStart}
-          />
-        </PopoverContent>
-      </Popover>
+            <StickerPicker 
+              onSelect={handleStickerSelect} 
+              onDragStart={handleDragStart}
+            />
+          </PopoverContent>
+        </Popover>
+
+        {/* View Mode Toggle */}
+        <TooltipProvider delayDuration={300}>
+          <div className="flex items-center gap-1 border-l pl-2 ml-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={viewMode === 'single' ? 'secondary' : 'ghost'}
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => onViewModeChange?.('single')}
+                >
+                  <Image className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>Single Page View</p>
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={viewMode === 'spread' ? 'secondary' : 'ghost'}
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => onViewModeChange?.('spread')}
+                >
+                  <Columns2 className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>Two Page Spread</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
+      </div>
 
       {/* Right: Actions */}
       <div className="flex items-center gap-1">

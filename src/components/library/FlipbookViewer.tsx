@@ -45,6 +45,8 @@ export const FlipbookViewer = ({
   const [showSidebar, setShowSidebar] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [showMobileThumbnails, setShowMobileThumbnails] = useState(false);
+  const [showDesktopThumbnails, setShowDesktopThumbnails] = useState(false);
+  const [viewMode, setViewMode] = useState<'single' | 'spread'>('spread');
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const [isJumping, setIsJumping] = useState(false);
   const [flipDirection, setFlipDirection] = useState<'left' | 'right' | null>(null);
@@ -216,16 +218,16 @@ export const FlipbookViewer = ({
   }, [currentSpread, totalSpreads, isFlipping]);
 
   const goToPrev = useCallback(() => {
-    if (isDesktop) {
+    if (isDesktop && viewMode === 'spread') {
       goToPrevSpread();
     } else {
       setSlideDirection('left');
       setCurrentPage((p) => Math.max(1, p - 1));
     }
-  }, [isDesktop, goToPrevSpread]);
+  }, [isDesktop, viewMode, goToPrevSpread]);
 
   const goToNext = useCallback(() => {
-    if (isDesktop) {
+    if (isDesktop && viewMode === 'spread') {
       goToNextSpread();
     } else {
       setSlideDirection('right');
@@ -420,6 +422,9 @@ export const FlipbookViewer = ({
         canRedo={canRedo}
         onStickerSelect={(sticker) => setPendingSticker(sticker)}
         pendingSticker={pendingSticker}
+        onThumbnailsClick={() => setShowDesktopThumbnails(true)}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
       />
 
       {/* Main content */}
@@ -472,7 +477,7 @@ export const FlipbookViewer = ({
         <div className="flex-1 relative flex items-center justify-center overflow-auto bg-muted/20">
           {isLoading ? (
             <div className="text-muted-foreground">Loading pages...</div>
-          ) : isDesktop && leftPage ? (
+          ) : isDesktop && viewMode === 'spread' && leftPage ? (
             /* Desktop: 2-Page Spread with Heyzine-style Book Flip Animation */
             <div
               className="relative flex items-center justify-center"
@@ -609,7 +614,51 @@ export const FlipbookViewer = ({
                 </AnimatePresence>
               </div>
             </div>
+          ) : isDesktop && viewMode === 'single' && currentPageData ? (
+            /* Desktop: Single Page View with Slide Animation */
+            <AnimatePresence mode="wait" custom={slideDirection}>
+              <motion.div
+                key={currentPage}
+                ref={containerRef}
+                custom={slideDirection}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.25, ease: 'easeInOut' }}
+                className="relative"
+                style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
+              >
+                <img
+                  ref={imageRef}
+                  src={currentPageData.image_url}
+                  alt={`Page ${currentPage}`}
+                  className="max-h-[calc(100vh-200px)] w-auto shadow-lg"
+                  draggable={false}
+                  onLoad={handleImageLoad}
+                />
+                {/* Canvas Overlay for Annotations */}
+                <canvas
+                  ref={canvasRef}
+                  className={cn(
+                    'absolute inset-0 w-full h-full z-10',
+                    annotationMode !== 'none' ? (annotationMode === 'sticker' ? 'cursor-copy' : 'cursor-crosshair') : '',
+                    isDragOver && 'ring-2 ring-primary ring-inset'
+                  )}
+                  style={{ pointerEvents: 'auto' }}
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseUp}
+                  onDragEnter={handleDragEnter}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                />
+              </motion.div>
+            </AnimatePresence>
           ) : currentPageData ? (
+            /* Mobile/Tablet: Single Page View with Slide Animation */
             <AnimatePresence mode="wait" custom={slideDirection}>
               <motion.div
                 key={currentPage}
@@ -661,7 +710,11 @@ export const FlipbookViewer = ({
             size="icon"
             className="absolute left-4 top-1/2 -translate-y-1/2 opacity-70 hover:opacity-100"
             onClick={goToPrev}
-            disabled={isDesktop ? currentSpread <= 0 || isFlipping : currentPage <= 1}
+            disabled={
+              isDesktop && viewMode === 'spread'
+                ? currentSpread <= 0 || isFlipping
+                : currentPage <= 1
+            }
           >
             <ChevronLeft className="h-6 w-6" />
           </Button>
@@ -671,7 +724,11 @@ export const FlipbookViewer = ({
             size="icon"
             className="absolute right-4 top-1/2 -translate-y-1/2 opacity-70 hover:opacity-100"
             onClick={goToNext}
-            disabled={isDesktop ? currentSpread >= totalSpreads - 1 || isFlipping : currentPage >= pages.length}
+            disabled={
+              isDesktop && viewMode === 'spread'
+                ? currentSpread >= totalSpreads - 1 || isFlipping
+                : currentPage >= pages.length
+            }
           >
             <ChevronRight className="h-6 w-6" />
           </Button>
@@ -732,7 +789,67 @@ export const FlipbookViewer = ({
         )}
       </AnimatePresence>
 
-      {/* Mobile Page Navigation */}
+      {/* Desktop Fullscreen Thumbnail Overlay - 8 columns */}
+      <AnimatePresence>
+        {showDesktopThumbnails && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="hidden lg:flex fixed inset-0 z-[60] bg-background/95 backdrop-blur-sm flex-col"
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <h3 className="font-semibold text-lg">All Pages</h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowDesktopThumbnails(false)}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <ScrollArea className="flex-1">
+              <div className="grid grid-cols-8 gap-4 p-6">
+                {pages.map((page) => {
+                  const isInCurrentSpread = viewMode === 'spread' && 
+                    (page.page_number === leftPageIndex + 1 || page.page_number === rightPageIndex + 1);
+                  const isCurrentSingle = viewMode === 'single' && currentPage === page.page_number;
+                  
+                  return (
+                    <button
+                      key={page.id}
+                      onClick={() => {
+                        if (viewMode === 'spread') {
+                          const spreadIndex = Math.floor((page.page_number - 1) / 2);
+                          setCurrentSpread(spreadIndex);
+                        } else {
+                          setCurrentPage(page.page_number);
+                        }
+                        setShowDesktopThumbnails(false);
+                      }}
+                      className={cn(
+                        'rounded-lg overflow-hidden border-2 transition-all hover:scale-105 hover:shadow-lg',
+                        (isInCurrentSpread || isCurrentSingle)
+                          ? 'border-primary ring-2 ring-primary/20'
+                          : 'border-transparent hover:border-muted-foreground/30'
+                      )}
+                    >
+                      <img
+                        src={page.thumbnail_url || page.image_url}
+                        alt={`Page ${page.page_number}`}
+                        className="w-full aspect-[3/4] object-cover"
+                      />
+                      <p className="text-xs text-center py-2 bg-muted/50 font-medium">
+                        {page.page_number}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="lg:hidden flex items-center justify-center gap-4 py-3 border-t bg-card">
         <Button variant="outline" size="sm" onClick={goToPrev} disabled={currentPage <= 1}>
           <ChevronLeft className="h-4 w-4 mr-1" />
