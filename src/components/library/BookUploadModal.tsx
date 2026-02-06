@@ -19,6 +19,7 @@ import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { BookUploadItem, BookUploadData } from './BookUploadItem';
 import { usePdfToImages, ProgressCallback } from '@/hooks/usePdfToImages';
+import { useBookIndexing } from '@/hooks/useBookIndexing';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -46,6 +47,7 @@ export const BookUploadModal = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { processInBrowser } = usePdfToImages();
+  const { startIndexing } = useBookIndexing();
 
   const generateId = () => Math.random().toString(36).substring(2, 9);
 
@@ -141,10 +143,16 @@ export const BookUploadModal = ({
           page_count: numPages,
           status: 'ready',
           cover_url: firstPageUrl,
+          index_status: 'pending',
         })
         .eq('id', bookId);
 
       updateBook(book.id, { status: 'done' });
+      
+      // Auto-trigger AI indexing after upload completes
+      toast.success(`Book uploaded! Starting AI indexing for ${book.title}...`);
+      startIndexing(bookId);
+
       return true;
     } catch (error: any) {
       console.error('Upload error for', book.title, error);

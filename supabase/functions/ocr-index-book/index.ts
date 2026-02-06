@@ -33,27 +33,27 @@ async function analyzePageWithAI(imageUrl: string, apiKey: string): Promise<OCRR
       messages: [
         {
           role: "system",
-          content: `You are an expert OCR and content analysis assistant. Analyze textbook/book pages and extract structured information. Always respond with valid JSON only, no markdown.`
+          content: `You are an expert educational content analyzer. Focus ONLY on identifying topics, lessons, and chapters from textbook pages. Do NOT extract full text. Always respond with valid JSON only, no markdown.`
         },
         {
           role: "user",
           content: [
             {
               type: "text",
-              text: `Analyze this textbook/book page image and extract:
-1. All visible text (OCR) - preserve key content, clean up formatting
-2. Topics/Lessons mentioned (e.g., "Photosynthesis", "Chapter 5: Fractions", "Multiplication Tables")
-3. Keywords for search (10-20 important searchable terms)
-4. Chapter/Section title if visible
-5. A brief 1-2 sentence summary of the page content
+              text: `Analyze this textbook/book page. Extract ONLY:
+1. Topic/Lesson name visible (e.g., "Lesson 3: Plant Cells", "Chapter 5: Fractions", "Unit 2: World War II")
+2. Chapter or Section title if visible at the top
+3. Key concepts and keywords (5-10 important terms for search)
+4. A brief 1-sentence summary of the lesson/topic
+
+Do NOT extract full text. Focus on educational structure only.
 
 Return ONLY valid JSON in this exact format:
 {
-  "extracted_text": "full text content from the page",
-  "topics": ["Topic 1", "Topic 2"],
-  "keywords": ["keyword1", "keyword2", "keyword3"],
+  "topics": ["Topic 1", "Lesson Name"],
   "chapter_title": "Chapter title or null",
-  "summary": "Brief summary of page content"
+  "keywords": ["keyword1", "keyword2", "keyword3"],
+  "summary": "Brief summary of the lesson content"
 }`
             },
             {
@@ -63,7 +63,7 @@ Return ONLY valid JSON in this exact format:
           ]
         }
       ],
-      max_tokens: 4000,
+      max_tokens: 1500,
     }),
   });
 
@@ -87,7 +87,7 @@ Return ONLY valid JSON in this exact format:
     
     const parsed = JSON.parse(jsonStr.trim());
     return {
-      extracted_text: parsed.extracted_text || "",
+      extracted_text: "", // No full text extraction - focus on topics only
       topics: Array.isArray(parsed.topics) ? parsed.topics : [],
       keywords: Array.isArray(parsed.keywords) ? parsed.keywords : [],
       chapter_title: parsed.chapter_title || null,
@@ -97,7 +97,7 @@ Return ONLY valid JSON in this exact format:
     console.error("Failed to parse AI response:", e, content);
     // Return minimal result if parsing fails
     return {
-      extracted_text: content,
+      extracted_text: "",
       topics: [],
       keywords: [],
       chapter_title: null,
