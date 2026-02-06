@@ -188,7 +188,6 @@ const getNavItemsForRole = (role: string | null): NavItem[] => {
     case 'student':
       return [
         ...baseItems,
-        { id: 'profile', icon: ProfileIcon3D, label: 'My Profile' },
         { id: 'library', icon: LibraryIcon3D, label: 'Library' },
       ];
     case 'parent':
