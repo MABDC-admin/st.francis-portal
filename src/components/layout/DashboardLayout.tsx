@@ -594,14 +594,10 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
             )} />
           </motion.button>
         </CollapsibleTrigger>
-        <CollapsibleContent className="overflow-hidden">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="ml-4 pl-2 border-l border-white/20 space-y-0.5 mt-1"
-          >
+        <CollapsibleContent className="overflow-hidden data-[state=open]:animate-none data-[state=closed]:animate-none">
+          <div className="ml-4 pl-2 border-l border-white/20 space-y-0.5 mt-1">
             {group.items.map(item => renderNavItem(item, true))}
-          </motion.div>
+          </div>
         </CollapsibleContent>
       </Collapsible>
     );
