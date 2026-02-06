@@ -155,6 +155,8 @@ export const BookCard = ({
               src={book.cover_url}
               alt={book.title}
               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+              style={{ imageRendering: 'auto' }}
+              loading="lazy"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
