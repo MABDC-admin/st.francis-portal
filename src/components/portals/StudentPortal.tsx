@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { StudentProfileCard } from '@/components/students/StudentProfileCard';
+import { AnimatedStudentAvatar } from '@/components/students/AnimatedStudentAvatar';
 import { supabase } from '@/integrations/supabase/client';
 import { Student } from '@/types/student';
 import { useQuery } from '@tanstack/react-query';
@@ -534,24 +535,35 @@ export const StudentPortal = ({ activeSection = 'dashboard' }: StudentPortalProp
 
   return (
     <div className="space-y-6">
-      {/* Header with Logout */}
+      {/* Header with Avatar and Logout */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center justify-between"
       >
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
-            {sectionTitles[activeSection] || 'Student Portal'}
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Welcome, {displayName}!
-            {student && (
-              <span className="ml-2 text-sm">
-                • {student.level} • {student.school}
-              </span>
-            )}
-          </p>
+        <div className="flex items-center gap-4">
+          {/* Animated Student Avatar */}
+          {student && (
+            <AnimatedStudentAvatar
+              photoUrl={student.photo_url}
+              name={student.student_name}
+              size="4xl"
+              borderColor="hsl(var(--primary) / 0.3)"
+            />
+          )}
+          <div>
+            <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
+              {sectionTitles[activeSection] || 'Student Portal'}
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Welcome, {displayName}!
+              {student && (
+                <span className="ml-2 text-sm">
+                  • {student.level} • {student.school}
+                </span>
+              )}
+            </p>
+          </div>
         </div>
         <Button 
           variant="outline" 
