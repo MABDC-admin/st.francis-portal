@@ -52,6 +52,9 @@ import { NotebookPage } from '@/components/notebook/NotebookPage';
 // LIS
 import { LISPage } from '@/components/lis/LISPage';
 
+// Messaging
+import { MessagingPage } from '@/components/messaging/MessagingPage';
+
 // Management CRUD Components
 import { AttendanceManagement, ScheduleManagement, AssignmentManagement, ExamScheduleManagement, AnnouncementManagement } from '@/components/management';
 
@@ -421,6 +424,11 @@ const Index = () => {
       {/* Notebook LLM - Admin and Teacher only */}
       {activeTab === 'notebook' && (role === 'admin' || role === 'teacher') && (
         <NotebookPage />
+      )}
+
+      {/* Messages - Admin and Teacher only */}
+      {activeTab === 'messages' && (role === 'admin' || role === 'teacher') && (
+        <MessagingPage />
       )}
 
       {/* Admin Panel - Admin only */}
