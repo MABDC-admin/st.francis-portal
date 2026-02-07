@@ -24,22 +24,25 @@ serve(async (req) => {
 
     const TACTICALRMM_URL = Deno.env.get('TACTICALRMM_URL');
     const TACTICALRMM_API_KEY = Deno.env.get('TACTICALRMM_API_KEY');
+    const TACTICALRMM_MESH_URL = Deno.env.get('TACTICALRMM_MESH_URL');
 
     if (!TACTICALRMM_URL || !TACTICALRMM_API_KEY) {
       return new Response(JSON.stringify({ error: 'Tactical RMM not configured', configured: false }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const { action, path } = await req.json();
+    const { action, path, method: reqMethod, body: reqBody } = await req.json();
     const apiPath = path || '/agents/';
+    const httpMethod = (reqMethod || 'GET').toUpperCase();
 
-    console.log(`TacticalRMM proxy: ${action} ${apiPath}`);
+    console.log(`TacticalRMM proxy: action=${action} method=${httpMethod} path=${apiPath}`);
 
+    // Status check
     if (action === 'status') {
       try {
         const resp = await fetch(`${TACTICALRMM_URL}/agents/`, {
           headers: { 'X-API-KEY': TACTICALRMM_API_KEY, 'Content-Type': 'application/json' },
         });
-        return new Response(JSON.stringify({ data: { healthy: resp.ok }, configured: true }), {
+        return new Response(JSON.stringify({ data: { healthy: resp.ok }, configured: true, meshUrl: TACTICALRMM_MESH_URL || null }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       } catch {
@@ -49,9 +52,17 @@ serve(async (req) => {
       }
     }
 
-    const rmmResp = await fetch(`${TACTICALRMM_URL}${apiPath}`, {
+    // Build fetch options
+    const fetchOptions: RequestInit = {
+      method: httpMethod,
       headers: { 'X-API-KEY': TACTICALRMM_API_KEY, 'Content-Type': 'application/json' },
-    });
+    };
+
+    if (httpMethod !== 'GET' && reqBody) {
+      fetchOptions.body = JSON.stringify(reqBody);
+    }
+
+    const rmmResp = await fetch(`${TACTICALRMM_URL}${apiPath}`, fetchOptions);
 
     const contentType = rmmResp.headers.get('content-type') || '';
     const responseText = await rmmResp.text();
@@ -65,7 +76,7 @@ serve(async (req) => {
 
     const data = JSON.parse(responseText);
 
-    return new Response(JSON.stringify({ data, configured: true }), {
+    return new Response(JSON.stringify({ data, configured: true, meshUrl: TACTICALRMM_MESH_URL || null }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
