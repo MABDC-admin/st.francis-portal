@@ -52,7 +52,18 @@ serve(async (req) => {
     const rmmResp = await fetch(`${TACTICALRMM_URL}${apiPath}`, {
       headers: { 'X-API-KEY': TACTICALRMM_API_KEY, 'Content-Type': 'application/json' },
     });
-    const data = await rmmResp.json();
+
+    const contentType = rmmResp.headers.get('content-type') || '';
+    const responseText = await rmmResp.text();
+
+    if (!contentType.includes('application/json') || responseText.trim().startsWith('<!')) {
+      console.error(`TacticalRMM returned non-JSON (status ${rmmResp.status}):`, responseText.substring(0, 300));
+      return new Response(JSON.stringify({ error: `TacticalRMM returned non-JSON response (status ${rmmResp.status}). Check your TACTICALRMM_URL and TACTICALRMM_API_KEY.`, configured: true }), {
+        status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const data = JSON.parse(responseText);
 
     return new Response(JSON.stringify({ data, configured: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
