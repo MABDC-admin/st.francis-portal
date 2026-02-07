@@ -1,27 +1,39 @@
 
-# Replace Quick Actions Grid with Slider/Carousel Animation
+
+# Double PDF-to-Image Resolution and Switch to WebP
+
+## Analysis: WebP vs PNG vs JPEG
+
+| Factor | JPEG (current) | PNG | WebP (recommended) |
+|--------|----------------|-----|---------------------|
+| File size (typical A4 page) | ~300-500KB | ~1-2MB | ~150-300KB |
+| Quality | Lossy, good | Lossless, perfect | Lossy/lossless, excellent |
+| Transparency | No | Yes | Yes |
+| Text clarity | Artifacts at edges | Sharp | Sharp |
+| Browser support | Universal | Universal | 97%+ (all modern browsers) |
+| AI/OCR readability | Good | Best | Very good |
+
+**Verdict: WebP is the best approach.** It produces files 25-35% smaller than JPEG at equivalent quality, with sharper text rendering (important for document OCR). Browser support is effectively universal for this project's target audience.
 
 ## What Changes
-Replace the static 4-column grid of Quick Actions (Admit Student, Messages, Schedule, Enter Grades) with a smooth horizontally-scrollable carousel/slider using the already-installed `embla-carousel-react` library.
 
-## Visual Behavior
-- Cards slide horizontally with drag/swipe support
-- On desktop: all 4 cards visible but still swipeable
-- On mobile: shows 2 cards at a time, user swipes to see more
-- Dot indicators at the bottom to show current position
-- Smooth spring animation on drag release
-- Keeps existing hover effects (3D tilt, Apple style lift, etc.)
+### 1. `src/utils/pdfToImages.ts` (Student Documents)
+- Change render scale from `2` to `4` (doubling resolution)
+- Switch output format from `image/jpeg` at 0.92 to `image/webp` at 0.90
+- Update comments and function documentation
+- Update the `PageImage` interface to reflect the new format
 
-## Technical Details
+### 2. `src/hooks/usePdfToImages.ts` (Library Books)
+- Change render scale from `2` to `4` for high-res images
+- Change thumbnail scale from `0.5` to `1.0` (doubling)
+- Switch output format from `image/png` to `image/webp` at 0.90
+- Update `canvas.toDataURL` calls to use `image/webp`
+- Update storage upload `contentType` from `image/png` to `image/webp`
 
-**File: `src/components/dashboard/QuickActions.tsx`**
+### 3. `src/components/students/DocumentsManager.tsx`
+- Update the page file creation to use `.webp` extension and `image/webp` type instead of `.jpg` / `image/jpeg`
 
-- Import `useEmblaCarousel` from `embla-carousel-react`
-- Wrap action buttons in an Embla carousel container structure:
-  - Outer viewport div with `overflow-hidden`
-  - Inner container div with `flex` layout
-  - Each action button as a slide with responsive width (`basis-1/2 lg:basis-1/4`)
-- Add dot navigation indicators below the carousel
-- Use `useCallback` + Embla API to track the selected slide index for active dots
-- Keep all existing theme variants (modern, classicBlue, apple) and hover animations intact
-- Add auto-scroll with loop enabled for a polished feel
+## Notes
+- Thumbnail generation in `createPdfThumbnail` will also benefit from WebP (smaller blobs for previews)
+- Existing uploaded images (JPEG/PNG) in storage will continue to work -- browsers handle mixed formats fine
+- The AI analysis pipeline (`analyze-document` function) already handles any image MIME type, so no backend changes needed
