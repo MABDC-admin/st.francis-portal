@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
-import { useSchool } from '@/contexts/SchoolContext';
+import { useSchoolId } from '@/hooks/useSchoolId';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -27,7 +27,7 @@ export const ExcalidrawDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [newTitle, setNewTitle] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const { selectedSchool } = useSchool();
+  const { data: schoolUuid } = useSchoolId();
   const { user } = useAuth();
 
   const checkStatus = async () => {
@@ -47,13 +47,13 @@ export const ExcalidrawDashboard = () => {
   };
 
   const loadDrawings = async () => {
-    if (!selectedSchool) return;
+    if (!schoolUuid) return;
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('excalidraw_drawings')
         .select('id, title, is_shared, created_at, updated_at, created_by')
-        .eq('school_id', selectedSchool)
+        .eq('school_id', schoolUuid)
         .order('updated_at', { ascending: false });
       if (error) throw error;
       setDrawings(data || []);
@@ -65,11 +65,11 @@ export const ExcalidrawDashboard = () => {
   };
 
   const createDrawing = async () => {
-    if (!newTitle.trim() || !selectedSchool || !user) return;
+    if (!newTitle.trim() || !schoolUuid || !user) return;
     try {
       const { error } = await supabase.from('excalidraw_drawings').insert({
         title: newTitle.trim(),
-        school_id: selectedSchool,
+        school_id: schoolUuid,
         created_by: user.id,
         scene_data: {},
       });
@@ -106,7 +106,7 @@ export const ExcalidrawDashboard = () => {
   };
 
   useEffect(() => { checkStatus(); }, []);
-  useEffect(() => { if (configured) loadDrawings(); }, [configured, selectedSchool]);
+  useEffect(() => { if (configured) loadDrawings(); }, [configured, schoolUuid]);
 
   if (configured === false) {
     return (
