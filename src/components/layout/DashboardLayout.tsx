@@ -126,6 +126,7 @@ const icon3DMap: Record<string, any> = {
   classes: TeacherIcon3D,
   children: StudentIcon3D,
   admin: AdminIcon3D,
+  lis: StudentIcon3D,
   'student-records': StudentIcon3D,
   academics: EnterGradeIcon3D,
   'school-management': TeacherIcon3D,
@@ -167,6 +168,7 @@ const iconAppleMap: Record<string, any> = {
   classes: AppleTeacherIcon,
   children: AppleStudentIcon,
   admin: AppleAdminIcon,
+  lis: AppleStudentIcon,
   'student-records': AppleStudentIcon,
   academics: AppleGradesIcon,
   'school-management': AppleTeacherIcon,
@@ -200,6 +202,7 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
           isCollapsible: true,
           items: [
             { id: 'students', icon: StudentIcon3D, label: 'Students' },
+            { id: 'lis', icon: StudentIcon3D, label: 'LIS' },
             { id: 'enrollment', icon: EnrollmentIcon3D, label: 'New Student' },
             { id: 'import', icon: ImportIcon3D, label: 'Import CSV' },
             { id: 'attendance-mgmt', icon: ScheduleIcon3D, label: 'Attendance' },
@@ -254,6 +257,7 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
           isCollapsible: true,
           items: [
             { id: 'students', icon: StudentIcon3D, label: 'Students' },
+            { id: 'lis', icon: StudentIcon3D, label: 'LIS' },
             { id: 'enrollment', icon: EnrollmentIcon3D, label: 'New Student' },
             { id: 'import', icon: ImportIcon3D, label: 'Import CSV' },
             { id: 'attendance-mgmt', icon: ScheduleIcon3D, label: 'Attendance' },

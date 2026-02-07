@@ -49,6 +49,9 @@ import { CanvaStudio } from '@/components/canva/CanvaStudio';
 // Notebook LLM
 import { NotebookPage } from '@/components/notebook/NotebookPage';
 
+// LIS
+import { LISPage } from '@/components/lis/LISPage';
+
 // Management CRUD Components
 import { AttendanceManagement, ScheduleManagement, AssignmentManagement, ExamScheduleManagement, AnnouncementManagement } from '@/components/management';
 
@@ -348,6 +351,11 @@ const Index = () => {
             isLoading={isLoading}
           />
         </div>
+      )}
+
+      {/* LIS - Admin/Registrar only */}
+      {activeTab === 'lis' && hasAdminAccess && (
+        <LISPage />
       )}
 
       {/* Import - Admin/Registrar only */}
