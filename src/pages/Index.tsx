@@ -58,6 +58,14 @@ import { MessagingPage } from '@/components/messaging/MessagingPage';
 // Zoom
 import { ZoomDashboard } from '@/components/zoom/ZoomDashboard';
 
+// Docker App Integrations
+import { NocoDBDashboard } from '@/components/nocodb/NocoDBDashboard';
+import { OnlyOfficeDashboard } from '@/components/onlyoffice/OnlyOfficeDashboard';
+import { ExcalidrawDashboard } from '@/components/excalidraw/ExcalidrawDashboard';
+import { OmadaDashboard } from '@/components/omada/OmadaDashboard';
+import { TacticalRMMDashboard } from '@/components/tacticalrmm/TacticalRMMDashboard';
+import { DocumizeDashboard } from '@/components/documize/DocumizeDashboard';
+
 // Management CRUD Components
 import { AttendanceManagement, ScheduleManagement, AssignmentManagement, ExamScheduleManagement, AnnouncementManagement } from '@/components/management';
 
@@ -489,6 +497,14 @@ const Index = () => {
       {activeTab === 'exam-mgmt' && (role === 'admin' || role === 'registrar' || role === 'teacher') && (
         <ExamScheduleManagement />
       )}
+
+      {/* Docker App Integrations - Admin only */}
+      {activeTab === 'nocodb' && role === 'admin' && <NocoDBDashboard />}
+      {activeTab === 'onlyoffice' && role === 'admin' && <OnlyOfficeDashboard />}
+      {activeTab === 'excalidraw' && role === 'admin' && <ExcalidrawDashboard />}
+      {activeTab === 'omada' && role === 'admin' && <OmadaDashboard />}
+      {activeTab === 'tacticalrmm' && role === 'admin' && <TacticalRMMDashboard />}
+      {activeTab === 'documize' && role === 'admin' && <DocumizeDashboard />}
 
       {/* Announcement Management - Admin/Registrar */}
       {activeTab === 'announcement-mgmt' && hasAdminAccess && (

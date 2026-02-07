@@ -715,6 +715,47 @@ export type Database = {
           },
         ]
       }
+      excalidraw_drawings: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          is_shared: boolean | null
+          scene_data: Json | null
+          school_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          is_shared?: boolean | null
+          scene_data?: Json | null
+          school_id: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_shared?: boolean | null
+          scene_data?: Json | null
+          school_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "excalidraw_drawings_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flipbooks: {
         Row: {
           cover_image_url: string | null
