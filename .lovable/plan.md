@@ -1,15 +1,30 @@
 
 
-# Update Omada URL to HTTP
+# Fix Omada Authentication Request Body
 
 ## Problem
-The current `OMADA_URL` secret is set to `https://128.140.99.247:8043`, which fails because the edge function runtime rejects the self-signed certificate.
+The `omada-proxy` edge function is sending the wrong field names in the token request body.
 
-## Solution
-Update the `OMADA_URL` secret to `http://128.140.99.247:8088` (HTTP on port 8088). This bypasses the TLS issue entirely.
+**Current (incorrect):**
+```json
+{ "omadacId": "...", "secret": "..." }
+```
 
-## Steps
-1. Update the `OMADA_URL` secret value from `https://128.140.99.247:8043` to `http://128.140.99.247:8088`
-2. Test the `omada-proxy` edge function to verify connectivity
-3. No code changes needed
+**Required by Omada Client Credentials mode:**
+```json
+{ "client_id": "...", "client_secret": "..." }
+```
+
+This is why the controller returns "The Client Id Or Client Secret is Invalid" -- it cannot find the credentials under the wrong field names.
+
+## Fix
+Update `supabase/functions/omada-proxy/index.ts` line 17: change the `getOmadaToken` function body from `{ omadacId, secret }` to `{ client_id, client_secret }`.
+
+## Technical Details
+
+In `supabase/functions/omada-proxy/index.ts`, the `getOmadaToken` function (line 14-23) will be updated:
+
+- Change `body: JSON.stringify({ omadacId: clientId, secret: clientSecret })` to `body: JSON.stringify({ client_id: clientId, client_secret: clientSecret })`
+
+No other changes needed. After this fix, the proxy should authenticate successfully and the Omada dashboard will display controller data.
 
