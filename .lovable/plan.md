@@ -1,37 +1,27 @@
 
-# Fix Remote Desktop: Use Tactical RMM "Take Control" URL
+
+# Show Description as Primary Name in Agent Cards
 
 ## Problem
 
-The current "Remote Desktop" button tries to open MeshCentral (`mesh.mabdc.org`) using a `meshnode_id`, which may not always be available. The actual Tactical RMM "Take Control" feature uses a simpler, more reliable URL pattern:
-
-```text
-https://rmm.mabdc.org/takecontrol/{agent_id}
-```
-
-This URL is constructed from the RMM base URL (already configured as `TACTICALRMM_URL`) and the `agent_id` (always available for every agent).
+The agent cards currently display the hostname (e.g., `DESKTOP-4VD01U8`) as the primary label, which is not meaningful. The **Description** field in Tactical RMM contains the actual user/PC name (e.g., "JULIE FE PC"), which is more useful.
 
 ## Changes
 
-### 1. Update Backend Proxy (`supabase/functions/tacticalrmm-proxy/index.ts`)
+### 1. AgentCard.tsx
 
-- Return `rmmUrl` (the base Tactical RMM URL) alongside `meshUrl` in responses so the frontend can construct the take control link.
+- Show `agent.description` as the primary bold name (falling back to `agent.hostname` if no description exists)
+- Show `agent.hostname` as secondary muted text below
 
-### 2. Update Agent Detail Sheet (`src/components/tacticalrmm/AgentDetailSheet.tsx`)
+### 2. AgentTable.tsx
 
-- Add a new prop `rmmUrl` for the Tactical RMM base URL.
-- Replace the current MeshCentral-based "Remote Desktop" logic with:
-  - **"Take Control"** button that opens `{rmmUrl}/takecontrol/{agent_id}` in a new tab. This is always available for every agent since `agent_id` is a required field.
-- Keep the existing "Open MeshCentral" button as a secondary option if `meshUrl` is configured.
+- Reorder columns so Description appears more prominently
+- Show description as the primary identifier in the hostname column, with the actual hostname as secondary text
 
-### 3. Update Dashboard (`src/components/tacticalrmm/TacticalRMMDashboard.tsx`)
-
-- Capture `rmmUrl` from the proxy response and pass it to `AgentDetailSheet`.
-
-## Files Modified
+### Files Modified
 
 | File | Change |
 |---|---|
-| `supabase/functions/tacticalrmm-proxy/index.ts` | Return `rmmUrl` in API responses |
-| `src/components/tacticalrmm/AgentDetailSheet.tsx` | Add "Take Control" button using `{rmmUrl}/takecontrol/{agent_id}` |
-| `src/components/tacticalrmm/TacticalRMMDashboard.tsx` | Pass `rmmUrl` to the detail sheet |
+| `src/components/tacticalrmm/AgentCard.tsx` | Swap description and hostname display priority |
+| `src/components/tacticalrmm/AgentTable.tsx` | Show description as primary identifier in table rows |
+
