@@ -36,6 +36,14 @@ const ISSUE_TYPE_LABELS: Record<string, { label: string; icon: typeof AlertTrian
 export const DataQualityDashboard = () => {
   const { selectedSchool } = useSchool();
   const { data: schoolUuid } = useSchoolId();
+
+  // Students table uses text 'school' column, not UUID school_id
+  const getStudentSchoolFilter = (query: any) => {
+    if (selectedSchool === 'STFXSA') {
+      return query.or('school.ilike.%stfxsa%,school.ilike.%st. francis%');
+    }
+    return query.or('school.ilike.%mabdc%,school.is.null,school.eq.');
+  };
   const [issues, setIssues] = useState<ValidationIssue[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
@@ -89,11 +97,12 @@ export const DataQualityDashboard = () => {
     if (!schoolUuid) return;
     setIsScanning(true);
     try {
-      // Fetch all students for this school
-      const { data: students, error: studentsError } = await supabase
+      // Fetch all students for this school (students table uses text 'school' column)
+      let studentsQuery = supabase
         .from('students')
-        .select('id, student_name, lrn, level, birth_date, gender, mother_contact, father_contact, mother_maiden_name, father_name, phil_address, uae_address')
-        .eq('school_id', schoolUuid);
+        .select('id, student_name, lrn, level, birth_date, gender, mother_contact, father_contact, mother_maiden_name, father_name, phil_address, uae_address');
+      studentsQuery = getStudentSchoolFilter(studentsQuery);
+      const { data: students, error: studentsError } = await studentsQuery;
 
       if (studentsError) throw studentsError;
       if (!students || students.length === 0) {
