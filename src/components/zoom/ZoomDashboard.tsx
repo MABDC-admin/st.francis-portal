@@ -95,9 +95,10 @@ export const ZoomDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [manualOverride, setManualOverride] = useState(false);
 
   const hasAdminAccess = role === 'admin' || role === 'registrar';
-  const sessionActive = isInSession(uaeTime, settings);
+  const sessionActive = isInSession(uaeTime, settings) || manualOverride;
 
   const fetchSettings = async () => {
     if (!schoolId) { setLoading(false); return; }
@@ -227,12 +228,26 @@ export const ZoomDashboard = () => {
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Virtual Classes</h1>
           <p className="text-muted-foreground mt-1">Zoom virtual classroom dashboard</p>
         </div>
-        {hasAdminAccess && (
-          <Button variant="outline" onClick={() => setShowSettings(true)}>
-            <Settings className="h-4 w-4 mr-2" />
-            Settings
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {hasAdminAccess && !sessionActive && !manualOverride && (
+            <Button variant="default" onClick={() => { setManualOverride(true); toast.success('Meeting started manually – join buttons are now active'); }}>
+              <Video className="h-4 w-4 mr-2" />
+              Start Meeting Now
+            </Button>
+          )}
+          {manualOverride && (
+            <Button variant="destructive" onClick={() => setManualOverride(false)}>
+              <VideoOff className="h-4 w-4 mr-2" />
+              End Manual Session
+            </Button>
+          )}
+          {hasAdminAccess && (
+            <Button variant="outline" onClick={() => setShowSettings(true)}>
+              <Settings className="h-4 w-4 mr-2" />
+              Settings
+            </Button>
+          )}
+        </div>
       </motion.div>
 
       {/* Status & Clock */}
