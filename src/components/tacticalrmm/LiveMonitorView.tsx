@@ -1,17 +1,9 @@
-import { useState, useCallback } from 'react';
-import { ArrowLeft, RefreshCw, X, ExternalLink, Loader2, Grid2x2, Grid3x3, LayoutGrid, Monitor } from 'lucide-react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { ArrowLeft, RefreshCw, X, ExternalLink, Monitor, Focus, RotateCcw, MonitorUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import type { ConnectedAgent } from './types';
-
-type GridLayout = 'auto' | '2x2' | '3x3';
-
-const gridClass: Record<GridLayout, string> = {
-  auto: 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4',
-  '2x2': 'grid-cols-1 sm:grid-cols-2',
-  '3x3': 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
-};
 
 interface Props {
   agents: ConnectedAgent[];
@@ -21,20 +13,65 @@ interface Props {
 }
 
 export const LiveMonitorView = ({ agents, onBack, onRefreshAll, refreshing }: Props) => {
-  const [layout, setLayout] = useState<GridLayout>('auto');
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
-  const [iframeErrors, setIframeErrors] = useState<Set<string>>(new Set());
+  const [windowStatus, setWindowStatus] = useState<Record<string, boolean>>({});
+  const popupRefs = useRef<Record<string, Window | null>>({});
 
   const visible = agents.filter(a => !dismissed.has(a.agent_id));
-  const connectedCount = visible.filter(a => a.controlUrl && !a.connectionError).length;
+  const openCount = Object.values(windowStatus).filter(Boolean).length;
+
+  const openPopup = useCallback((agent: ConnectedAgent) => {
+    if (!agent.controlUrl) return;
+    const win = window.open(agent.controlUrl, `mesh_${agent.agent_id}`, 'width=1024,height=768,menubar=no,toolbar=no');
+    if (win) {
+      popupRefs.current[agent.agent_id] = win;
+      setWindowStatus(prev => ({ ...prev, [agent.agent_id]: true }));
+    }
+  }, []);
+
+  const focusPopup = useCallback((agentId: string) => {
+    const win = popupRefs.current[agentId];
+    if (win && !win.closed) {
+      win.focus();
+    }
+  }, []);
+
+  // Auto-open all on mount
+  useEffect(() => {
+    agents.forEach(agent => {
+      if (agent.controlUrl && !agent.connectionError) {
+        openPopup(agent);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Poll for closed windows
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const updated: Record<string, boolean> = {};
+      for (const [id, win] of Object.entries(popupRefs.current)) {
+        updated[id] = !!win && !win.closed;
+      }
+      setWindowStatus(updated);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const dismiss = useCallback((id: string) => {
+    const win = popupRefs.current[id];
+    if (win && !win.closed) win.close();
+    delete popupRefs.current[id];
     setDismissed(prev => new Set(prev).add(id));
   }, []);
 
-  const handleIframeError = useCallback((id: string) => {
-    setIframeErrors(prev => new Set(prev).add(id));
-  }, []);
+  const openAll = useCallback(() => {
+    visible.forEach(agent => {
+      if (agent.controlUrl && !agent.connectionError) {
+        openPopup(agent);
+      }
+    });
+  }, [visible, openPopup]);
 
   return (
     <div className="space-y-4">
@@ -45,31 +82,16 @@ export const LiveMonitorView = ({ agents, onBack, onRefreshAll, refreshing }: Pr
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-xl lg:text-2xl font-bold text-foreground">Live Monitor View</h1>
+            <h1 className="text-xl lg:text-2xl font-bold text-foreground">Live Monitor Control Panel</h1>
             <p className="text-sm text-muted-foreground">
-              {connectedCount} connected · {visible.length} total
+              {openCount} windows open · {visible.length} agents
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {/* Layout toggles */}
-          <div className="flex border rounded-md">
-            {([
-              { key: 'auto' as GridLayout, icon: LayoutGrid, label: 'Auto' },
-              { key: '2x2' as GridLayout, icon: Grid2x2, label: '2×2' },
-              { key: '3x3' as GridLayout, icon: Grid3x3, label: '3×3' },
-            ]).map(({ key, icon: Icon }) => (
-              <Button
-                key={key}
-                variant={layout === key ? 'default' : 'ghost'}
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setLayout(key)}
-              >
-                <Icon className="h-4 w-4" />
-              </Button>
-            ))}
-          </div>
+          <Button variant="outline" size="sm" onClick={openAll}>
+            <MonitorUp className="h-4 w-4 mr-1" /> Open All
+          </Button>
           <Button variant="outline" size="sm" onClick={onRefreshAll} disabled={refreshing}>
             <RefreshCw className={`h-4 w-4 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh All
@@ -88,58 +110,57 @@ export const LiveMonitorView = ({ agents, onBack, onRefreshAll, refreshing }: Pr
           </CardContent>
         </Card>
       ) : (
-        <div className={`grid gap-3 ${gridClass[layout]}`}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {visible.map(agent => {
-            const hasError = !!agent.connectionError || iframeErrors.has(agent.agent_id);
-            const hasUrl = !!agent.controlUrl && !agent.connectionError;
+            const hasError = !!agent.connectionError;
+            const hasUrl = !!agent.controlUrl && !hasError;
+            const isOpen = windowStatus[agent.agent_id] ?? false;
 
             return (
-              <Card key={agent.agent_id} className="overflow-hidden flex flex-col">
-                {/* Tile header */}
+              <Card key={agent.agent_id} className="overflow-hidden">
                 <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${agent.status === 'online' ? 'bg-green-500' : 'bg-destructive'}`} />
                     <span className="text-sm font-medium truncate">{agent.description || agent.hostname}</span>
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    {hasError && (
-                      <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Error</Badge>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => dismiss(agent.agent_id)}>
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    {hasError ? (
+                      <Badge variant="destructive">Error</Badge>
+                    ) : isOpen ? (
+                      <Badge className="bg-green-500/15 text-green-600 border-green-500/30">Window Open</Badge>
+                    ) : (
+                      <Badge variant="secondary">Window Closed</Badge>
                     )}
-                    {hasUrl && !hasError && (
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => window.open(agent.controlUrl, '_blank')}>
+                  </div>
+
+                  {hasError && (
+                    <p className="text-xs text-muted-foreground">{agent.connectionError}</p>
+                  )}
+
+                  <div className="flex gap-2">
+                    {hasUrl && isOpen && (
+                      <Button size="sm" variant="outline" className="flex-1" onClick={() => focusPopup(agent.agent_id)}>
+                        <Focus className="h-3 w-3 mr-1" /> Focus
+                      </Button>
+                    )}
+                    {hasUrl && !isOpen && (
+                      <Button size="sm" variant="outline" className="flex-1" onClick={() => openPopup(agent)}>
+                        <RotateCcw className="h-3 w-3 mr-1" /> Reopen
+                      </Button>
+                    )}
+                    {hasUrl && (
+                      <Button size="sm" variant="ghost" onClick={() => window.open(agent.controlUrl, '_blank')}>
                         <ExternalLink className="h-3 w-3" />
                       </Button>
                     )}
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => dismiss(agent.agent_id)}>
-                      <X className="h-3 w-3" />
-                    </Button>
                   </div>
-                </div>
-
-                {/* Tile body */}
-                <div className="relative aspect-video bg-muted/10">
-                  {hasUrl && !hasError ? (
-                    <iframe
-                      src={agent.controlUrl}
-                      className="absolute inset-0 w-full h-full border-0"
-                      sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-                      onError={() => handleIframeError(agent.agent_id)}
-                      title={`Remote: ${agent.hostname}`}
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 gap-2">
-                      <Monitor className="h-8 w-8 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">
-                        {agent.connectionError || 'Failed to load remote view'}
-                      </p>
-                      {agent.controlUrl && (
-                        <Button size="sm" variant="outline" onClick={() => window.open(agent.controlUrl, '_blank')}>
-                          <ExternalLink className="h-3 w-3 mr-1" /> Open in New Tab
-                        </Button>
-                      )}
-                    </div>
-                  )}
-                </div>
+                </CardContent>
               </Card>
             );
           })}
