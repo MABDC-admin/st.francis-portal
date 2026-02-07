@@ -38,8 +38,8 @@ async function renderPageToBlob(
         if (blob) resolve(blob);
         else reject(new Error('Failed to create blob'));
       },
-      'image/png',
-      0.9
+      'image/webp',
+      0.90
     );
   });
 }
@@ -74,13 +74,13 @@ export async function renderFirstPagePreview(
         if (b) resolve(b);
         else reject(new Error('Failed to create blob'));
       },
-      'image/png',
-      0.9
+      'image/webp',
+      0.90
     );
   });
 
   // Create data URL for preview
-  const dataUrl = canvas.toDataURL('image/png', 0.9);
+  const dataUrl = canvas.toDataURL('image/webp', 0.90);
   
   // Create base64 for AI analysis (same as dataUrl but cleaner extraction)
   const base64 = dataUrl;
@@ -134,11 +134,11 @@ export function usePdfToImages() {
           for (let pageNum = i; pageNum <= batchEnd; pageNum++) {
             batchPromises.push(
               (async (pNum) => {
-                // 3. Render High-Res PNG (Scale 2.0)
-                const pngBlob = await renderPageToBlob(pdf, pNum, 2.0);
+                // 3. Render High-Res WebP (Scale 4.0)
+                const pngBlob = await renderPageToBlob(pdf, pNum, 4.0);
 
-                // 4. Render Thumbnail (Scale 0.5 for better quality)
-                const thumbBlob = await renderPageToBlob(pdf, pNum, 0.5);
+                // 4. Render Thumbnail (Scale 1.0 for better quality)
+                const thumbBlob = await renderPageToBlob(pdf, pNum, 1.0);
 
                 // 5. Upload to Storage
                 const imagePath = `${bookId}/page-${pNum}.png`;
@@ -148,13 +148,13 @@ export function usePdfToImages() {
                   supabase.storage
                     .from('book-pages')
                     .upload(imagePath, pngBlob, {
-                      contentType: 'image/png',
+                      contentType: 'image/webp',
                       upsert: true,
                     }),
                   supabase.storage
                     .from('book-pages')
                     .upload(thumbPath, thumbBlob, {
-                      contentType: 'image/png',
+                      contentType: 'image/webp',
                       upsert: true,
                     }),
                 ]);

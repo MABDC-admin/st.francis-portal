@@ -30,12 +30,12 @@ export const createBlobPreviewUrl = (blob: Blob): string => {
 };
 
 /**
- * Renders a single PDF page to a JPEG blob
+ * Renders a single PDF page to a WebP blob (4x scale for high-res)
  */
 async function renderPageToBlob(
   pdf: any, 
   pageNumber: number,
-  scale: number = 2
+  scale: number = 4
 ): Promise<Blob> {
   const page = await pdf.getPage(pageNumber);
   const viewport = page.getViewport({ scale });
@@ -57,8 +57,8 @@ async function renderPageToBlob(
         if (blob) resolve(blob);
         else reject(new Error('Failed to create blob'));
       }, 
-      'image/jpeg', 
-      0.92
+      'image/webp', 
+      0.90
     );
   });
 }

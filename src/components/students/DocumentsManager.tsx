@@ -276,8 +276,8 @@ export const DocumentsManager = ({ studentId }: DocumentsManagerProps) => {
               // Upload each page as an image
               for (let i = 0; i < pageImages.length; i++) {
                 const pageImage = pageImages[i];
-                const pageFileName = `${pf.name.trim()}_page_${pageImage.pageNumber}.jpg`;
-                const pageFile = new window.File([pageImage.blob], pageFileName, { type: 'image/jpeg' });
+                const pageFileName = `${pf.name.trim()}_page_${pageImage.pageNumber}.webp`;
+                const pageFile = new window.File([pageImage.blob], pageFileName, { type: 'image/webp' });
                 
                 const pageResult = await uploadDocument.mutateAsync({
                   studentId,
