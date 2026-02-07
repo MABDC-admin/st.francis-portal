@@ -42,7 +42,7 @@ serve(async (req) => {
         const resp = await fetch(`${TACTICALRMM_URL}/agents/`, {
           headers: { 'X-API-KEY': TACTICALRMM_API_KEY, 'Content-Type': 'application/json' },
         });
-        return new Response(JSON.stringify({ data: { healthy: resp.ok }, configured: true, meshUrl: TACTICALRMM_MESH_URL || null }), {
+        return new Response(JSON.stringify({ data: { healthy: resp.ok }, configured: true, meshUrl: TACTICALRMM_MESH_URL || null, rmmUrl: TACTICALRMM_URL }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       } catch {
@@ -76,7 +76,7 @@ serve(async (req) => {
 
     const data = JSON.parse(responseText);
 
-    return new Response(JSON.stringify({ data, configured: true, meshUrl: TACTICALRMM_MESH_URL || null }), {
+    return new Response(JSON.stringify({ data, configured: true, meshUrl: TACTICALRMM_MESH_URL || null, rmmUrl: TACTICALRMM_URL }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {

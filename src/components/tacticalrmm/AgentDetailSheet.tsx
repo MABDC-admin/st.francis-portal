@@ -14,10 +14,11 @@ interface Props {
   open: boolean;
   onClose: () => void;
   meshUrl: string | null;
+  rmmUrl: string | null;
   loading: boolean;
 }
 
-export const AgentDetailSheet = ({ agent, open, onClose, meshUrl, loading }: Props) => {
+export const AgentDetailSheet = ({ agent, open, onClose, meshUrl, rmmUrl, loading }: Props) => {
   const [cmd, setCmd] = useState('');
   const [cmdOutput, setCmdOutput] = useState('');
   const [cmdLoading, setCmdLoading] = useState(false);
@@ -70,7 +71,13 @@ export const AgentDetailSheet = ({ agent, open, onClose, meshUrl, loading }: Pro
     }
   };
 
-  const openRemoteDesktop = () => {
+  const openTakeControl = () => {
+    if (rmmUrl && agent.agent_id) {
+      window.open(`${rmmUrl}/takecontrol/${agent.agent_id}`, '_blank');
+    }
+  };
+
+  const openMeshCentral = () => {
     if (meshUrl && agent.meshnode_id) {
       window.open(`${meshUrl}/#/device/${agent.meshnode_id}`, '_blank');
     } else if (meshUrl) {
@@ -143,9 +150,14 @@ export const AgentDetailSheet = ({ agent, open, onClose, meshUrl, loading }: Pro
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2">
+            {rmmUrl && (
+              <Button size="sm" onClick={openTakeControl}>
+                <ExternalLink className="h-4 w-4 mr-1" /> Take Control
+              </Button>
+            )}
             {meshUrl && (
-              <Button size="sm" onClick={openRemoteDesktop}>
-                <ExternalLink className="h-4 w-4 mr-1" /> {agent.meshnode_id ? 'Remote Desktop' : 'Open MeshCentral'}
+              <Button size="sm" variant="outline" onClick={openMeshCentral}>
+                <ExternalLink className="h-4 w-4 mr-1" /> {agent.meshnode_id ? 'MeshCentral' : 'Open MeshCentral'}
               </Button>
             )}
             <Button size="sm" variant="destructive" onClick={rebootAgent} disabled={rebooting || !isOnline}>

@@ -23,6 +23,7 @@ export const TacticalRMMDashboard = () => {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [meshUrl, setMeshUrl] = useState<string | null>(null);
+  const [rmmUrl, setRmmUrl] = useState<string | null>(null);
 
   const loadAgents = async () => {
     setLoading(true);
@@ -34,6 +35,7 @@ export const TacticalRMMDashboard = () => {
       if (result?.configured === false) { setConfigured(false); return; }
       setConfigured(true);
       if (result?.meshUrl) setMeshUrl(result.meshUrl);
+      if (result?.rmmUrl) setRmmUrl(result.rmmUrl);
       if (result?.error) { toast.error(result.error); return; }
       setAgents(Array.isArray(result?.data) ? result.data : []);
     } catch { toast.error('Failed to load agents'); }
@@ -176,6 +178,7 @@ export const TacticalRMMDashboard = () => {
         open={!!selectedAgent}
         onClose={() => setSelectedAgent(null)}
         meshUrl={meshUrl}
+        rmmUrl={rmmUrl}
         loading={detailLoading}
       />
     </div>
