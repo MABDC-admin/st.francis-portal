@@ -36,13 +36,25 @@ export const TacticalRMMDashboard = () => {
   const loadAgents = async () => {
     setLoading(true);
     try {
-      const result = await callProxy('list', '/agents/');
-      if (result.configured === false) {
+      const { data: result, error } = await supabase.functions.invoke('tacticalrmm-proxy', {
+        body: { action: 'list', path: '/agents/' },
+      });
+      if (error) {
+        console.error('Edge function error:', error);
+        toast.error('Failed to connect to Tactical RMM');
+        return;
+      }
+      if (result?.configured === false) {
         setConfigured(false);
         return;
       }
       setConfigured(true);
-      const agentList = Array.isArray(result.data) ? result.data : [];
+      if (result?.error) {
+        console.error('TacticalRMM API error:', result.error);
+        toast.error(result.error);
+        return;
+      }
+      const agentList = Array.isArray(result?.data) ? result.data : [];
       setAgents(agentList);
     } catch (err: any) {
       toast.error('Failed to load agents');
