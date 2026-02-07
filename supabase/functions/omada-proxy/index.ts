@@ -7,16 +7,50 @@ const corsHeaders = {
 };
 
 let cachedToken: { token: string; expires: number } | null = null;
+let cachedOmadacId: string | null = null;
+
+async function getOmadacId(url: string): Promise<string> {
+  if (cachedOmadacId) return cachedOmadacId;
+  
+  const resp = await fetch(`${url}/api/info`);
+  const text = await resp.text();
+  console.log('Omada /api/info response:', text);
+  
+  // Check for HTML response
+  if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
+    throw new Error('Omada controller returned HTML instead of JSON. Check the URL.');
+  }
+  
+  const data = JSON.parse(text);
+  if (data.errorCode !== 0) throw new Error(data.msg || 'Failed to get controller info');
+  
+  cachedOmadacId = data.result.omadacId;
+  console.log('Got omadacId:', cachedOmadacId);
+  return cachedOmadacId!;
+}
 
 async function getOmadaToken(url: string, clientId: string, clientSecret: string): Promise<string> {
   if (cachedToken && Date.now() < cachedToken.expires) return cachedToken.token;
 
-  const resp = await fetch(`${url}/openapi/authorize/token?grant_type=client_credentials`, {
+  const omadacId = await getOmadacId(url);
+  
+  const tokenUrl = `${url}/openapi/authorize/token?grant_type=client_credentials&omadac_id=${omadacId}`;
+  console.log('Requesting token from:', tokenUrl);
+  
+  const resp = await fetch(tokenUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ omadacId: clientId, secret: clientSecret }),
+    body: JSON.stringify({ client_id: clientId, client_secret: clientSecret }),
   });
-  const data = await resp.json();
+  
+  const text = await resp.text();
+  console.log('Omada token response:', text);
+  
+  if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
+    throw new Error('Omada controller returned HTML for token request. Check the URL/port.');
+  }
+  
+  const data = JSON.parse(text);
   if (data.errorCode !== 0) throw new Error(data.msg || 'Omada auth failed');
   
   cachedToken = { token: data.result.accessToken, expires: Date.now() + (data.result.expiresIn - 60) * 1000 };
