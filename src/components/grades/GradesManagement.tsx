@@ -15,7 +15,9 @@ import {
   Upload,
   Download,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Send,
+  Lock
 } from 'lucide-react';
 import Papa from 'papaparse';
 import { Button } from '@/components/ui/button';
@@ -59,6 +61,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchool } from '@/contexts/SchoolContext';
+import { GradeChangeRequestDialog } from './GradeChangeRequestDialog';
 
 interface StudentGrade {
   id: string;
@@ -71,6 +74,7 @@ interface StudentGrade {
   q4_grade: number | null;
   final_grade: number | null;
   remarks: string | null;
+  status?: string;
   student_name?: string;
   student_lrn?: string;
   student_level?: string;
@@ -135,6 +139,9 @@ export const GradesManagement = () => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedGrade, setSelectedGrade] = useState<StudentGrade | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Change request dialog state
+  const [changeRequestGrade, setChangeRequestGrade] = useState<StudentGrade | null>(null);
 
   // CSV Import state
   const [csvData, setCsvData] = useState<CSVGradeRow[]>([]);
@@ -357,6 +364,11 @@ export const GradesManagement = () => {
   };
 
   const handleEdit = (grade: StudentGrade) => {
+    // Block editing finalized grades
+    if (grade.status === 'finalized') {
+      setChangeRequestGrade(grade);
+      return;
+    }
     setSelectedGrade(grade);
     setFormData({
       student_id: grade.student_id,
@@ -369,6 +381,25 @@ export const GradesManagement = () => {
       remarks: grade.remarks || ''
     });
     setIsEditModalOpen(true);
+  };
+
+  const handleSubmitGrade = async (gradeId: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase
+      .from('student_grades')
+      .update({ status: 'submitted', submitted_by: user?.id, submitted_at: new Date().toISOString() })
+      .eq('id', gradeId);
+    if (error) toast.error('Failed to submit grade');
+    else { toast.success('Grade submitted for approval'); fetchData(); }
+  };
+
+  const getStatusBadge = (status?: string) => {
+    switch (status) {
+      case 'submitted': return <Badge className="bg-blue-500 text-white text-xs">Submitted</Badge>;
+      case 'approved': return <Badge className="bg-amber-500 text-white text-xs">Approved</Badge>;
+      case 'finalized': return <Badge className="bg-green-600 text-white text-xs"><Lock className="h-3 w-3 mr-1" />Final</Badge>;
+      default: return <Badge variant="secondary" className="text-xs">Draft</Badge>;
+    }
   };
 
   const handleDelete = (grade: StudentGrade) => {
@@ -786,6 +817,7 @@ export const GradesManagement = () => {
                     <TableHead>Student</TableHead>
                     <TableHead>Subject</TableHead>
                     <TableHead>Year</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead className="text-center">Q1</TableHead>
                     <TableHead className="text-center">Q2</TableHead>
                     <TableHead className="text-center">Q3</TableHead>
@@ -810,6 +842,7 @@ export const GradesManagement = () => {
                         <Badge variant="outline">{grade.subject_code}</Badge>
                       </TableCell>
                       <TableCell>{grade.academic_year || 'N/A'}</TableCell>
+                      <TableCell>{getStatusBadge(grade.status)}</TableCell>
                       <TableCell className={`text-center font-medium ${getGradeColor(grade.q1_grade)}`}>
                         {grade.q1_grade ?? '-'}
                       </TableCell>
@@ -827,12 +860,20 @@ export const GradesManagement = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => handleEdit(grade)}>
-                            <Edit className="h-4 w-4" />
+                          {grade.status === 'draft' && (
+                            <Button variant="ghost" size="icon" onClick={() => handleSubmitGrade(grade.id)} title="Submit for approval">
+                              <Send className="h-4 w-4 text-blue-500" />
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(grade)}
+                            title={grade.status === 'finalized' ? 'Request change' : 'Edit'}>
+                            {grade.status === 'finalized' ? <Lock className="h-4 w-4 text-muted-foreground" /> : <Edit className="h-4 w-4" />}
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(grade)} className="text-destructive">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {grade.status !== 'finalized' && (
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(grade)} className="text-destructive">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -1317,6 +1358,23 @@ export const GradesManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Grade Change Request Dialog */}
+      {changeRequestGrade && (
+        <GradeChangeRequestDialog
+          open={!!changeRequestGrade}
+          onOpenChange={(open) => { if (!open) setChangeRequestGrade(null); }}
+          gradeId={changeRequestGrade.id}
+          currentValues={{
+            q1_grade: changeRequestGrade.q1_grade,
+            q2_grade: changeRequestGrade.q2_grade,
+            q3_grade: changeRequestGrade.q3_grade,
+            q4_grade: changeRequestGrade.q4_grade,
+            remarks: changeRequestGrade.remarks,
+          }}
+          onSuccess={fetchData}
+        />
+      )}
     </div>
   );
 };

@@ -16,27 +16,36 @@ export type Database = {
     Tables: {
       academic_years: {
         Row: {
+          archived_at: string | null
+          archived_by: string | null
           created_at: string | null
           end_date: string
           id: string
+          is_archived: boolean
           is_current: boolean | null
           name: string
           school_id: string
           start_date: string
         }
         Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
           created_at?: string | null
           end_date: string
           id?: string
+          is_archived?: boolean
           is_current?: boolean | null
           name: string
           school_id: string
           start_date: string
         }
         Update: {
+          archived_at?: string | null
+          archived_by?: string | null
           created_at?: string | null
           end_date?: string
           id?: string
+          is_archived?: boolean
           is_current?: boolean | null
           name?: string
           school_id?: string
@@ -114,6 +123,58 @@ export type Database = {
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      archived_student_status: {
+        Row: {
+          academic_year_id: string
+          created_at: string
+          grade_level: string | null
+          id: string
+          school_id: string
+          student_id: string
+          was_active: boolean
+        }
+        Insert: {
+          academic_year_id: string
+          created_at?: string
+          grade_level?: string | null
+          id?: string
+          school_id: string
+          student_id: string
+          was_active?: boolean
+        }
+        Update: {
+          academic_year_id?: string
+          created_at?: string
+          grade_level?: string | null
+          id?: string
+          school_id?: string
+          student_id?: string
+          was_active?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "archived_student_status_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "archived_student_status_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "archived_student_status_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
             referencedColumns: ["id"]
           },
         ]
@@ -642,6 +703,66 @@ export type Database = {
           },
         ]
       }
+      data_validation_issues: {
+        Row: {
+          created_at: string
+          description: string
+          field_name: string | null
+          id: string
+          is_resolved: boolean
+          issue_type: string
+          resolved_at: string | null
+          resolved_by: string | null
+          school_id: string
+          severity: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          field_name?: string | null
+          id?: string
+          is_resolved?: boolean
+          issue_type: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          school_id: string
+          severity?: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          field_name?: string | null
+          id?: string
+          is_resolved?: boolean
+          issue_type?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          school_id?: string
+          severity?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_validation_issues_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_validation_issues_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exam_schedules: {
         Row: {
           academic_year_id: string
@@ -794,6 +915,136 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      grade_change_requests: {
+        Row: {
+          created_at: string
+          id: string
+          new_values: Json
+          old_values: Json
+          reason: string
+          requested_by: string
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          student_grade_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          new_values: Json
+          old_values: Json
+          reason: string
+          requested_by: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          student_grade_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          new_values?: Json
+          old_values?: Json
+          reason?: string
+          requested_by?: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          student_grade_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grade_change_requests_student_grade_id_fkey"
+            columns: ["student_grade_id"]
+            isOneToOne: false
+            referencedRelation: "student_grades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grade_snapshots: {
+        Row: {
+          academic_year_id: string
+          created_at: string
+          final_grade: number | null
+          id: string
+          q1_grade: number | null
+          q2_grade: number | null
+          q3_grade: number | null
+          q4_grade: number | null
+          remarks: string | null
+          school_id: string
+          snapshot_data: Json | null
+          student_id: string
+          subject_id: string
+        }
+        Insert: {
+          academic_year_id: string
+          created_at?: string
+          final_grade?: number | null
+          id?: string
+          q1_grade?: number | null
+          q2_grade?: number | null
+          q3_grade?: number | null
+          q4_grade?: number | null
+          remarks?: string | null
+          school_id: string
+          snapshot_data?: Json | null
+          student_id: string
+          subject_id: string
+        }
+        Update: {
+          academic_year_id?: string
+          created_at?: string
+          final_grade?: number | null
+          id?: string
+          q1_grade?: number | null
+          q2_grade?: number | null
+          q3_grade?: number | null
+          q4_grade?: number | null
+          remarks?: string | null
+          school_id?: string
+          snapshot_data?: Json | null
+          student_id?: string
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grade_snapshots_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grade_snapshots_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grade_snapshots_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grade_snapshots_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       message_receipts: {
         Row: {
@@ -1675,8 +1926,12 @@ export type Database = {
       student_grades: {
         Row: {
           academic_year_id: string
+          approved_at: string | null
+          approved_by: string | null
           created_at: string
           final_grade: number | null
+          finalized_at: string | null
+          finalized_by: string | null
           id: string
           q1_grade: number | null
           q2_grade: number | null
@@ -1684,14 +1939,21 @@ export type Database = {
           q4_grade: number | null
           remarks: string | null
           school_id: string
+          status: string
           student_id: string
           subject_id: string
+          submitted_at: string | null
+          submitted_by: string | null
           updated_at: string
         }
         Insert: {
           academic_year_id: string
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           final_grade?: number | null
+          finalized_at?: string | null
+          finalized_by?: string | null
           id?: string
           q1_grade?: number | null
           q2_grade?: number | null
@@ -1699,14 +1961,21 @@ export type Database = {
           q4_grade?: number | null
           remarks?: string | null
           school_id: string
+          status?: string
           student_id: string
           subject_id: string
+          submitted_at?: string | null
+          submitted_by?: string | null
           updated_at?: string
         }
         Update: {
           academic_year_id?: string
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           final_grade?: number | null
+          finalized_at?: string | null
+          finalized_by?: string | null
           id?: string
           q1_grade?: number | null
           q2_grade?: number | null
@@ -1714,8 +1983,11 @@ export type Database = {
           q4_grade?: number | null
           remarks?: string | null
           school_id?: string
+          status?: string
           student_id?: string
           subject_id?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
           updated_at?: string
         }
         Relationships: [

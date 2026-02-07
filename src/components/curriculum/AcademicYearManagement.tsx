@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Loader2, Calendar, Edit, Trash2, Check, CalendarCheck } from 'lucide-react';
+import { Plus, Loader2, Calendar, Edit, Trash2, Check, CalendarCheck, Archive, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -18,6 +19,8 @@ interface AcademicYear {
   start_date: string;
   end_date: string;
   is_current: boolean;
+  is_archived: boolean;
+  archived_at: string | null;
   created_at: string;
 }
 
@@ -38,6 +41,8 @@ export const AcademicYearManagement = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPromoteModalOpen, setIsPromoteModalOpen] = useState(false);
+  const [archiveConfirm, setArchiveConfirm] = useState<AcademicYear | null>(null);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [editingYear, setEditingYear] = useState<AcademicYear | null>(null);
   const [formData, setFormData] = useState(initialFormState);
 
@@ -154,6 +159,10 @@ export const AcademicYearManagement = () => {
   };
 
   const handleDelete = async (year: AcademicYear) => {
+    if (year.is_archived) {
+      toast.error('Cannot delete an archived academic year');
+      return;
+    }
     if (!confirm(`Are you sure you want to delete "${year.name}"?`)) return;
 
     try {
@@ -167,6 +176,62 @@ export const AcademicYearManagement = () => {
       fetchYears();
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete');
+    }
+  };
+
+  const handleArchive = async () => {
+    if (!archiveConfirm) return;
+    setIsArchiving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // 1. Copy all grades for this year into grade_snapshots
+      const { data: grades, error: gradesError } = await supabase
+        .from('student_grades')
+        .select('*')
+        .eq('academic_year_id', archiveConfirm.id);
+
+      if (gradesError) throw gradesError;
+
+      if (grades && grades.length > 0) {
+        const snapshots = grades.map(g => ({
+          student_id: g.student_id,
+          subject_id: g.subject_id,
+          academic_year_id: g.academic_year_id,
+          school_id: g.school_id,
+          q1_grade: g.q1_grade,
+          q2_grade: g.q2_grade,
+          q3_grade: g.q3_grade,
+          q4_grade: g.q4_grade,
+          final_grade: g.final_grade,
+          remarks: g.remarks,
+          snapshot_data: g,
+        }));
+
+        const { error: snapError } = await (supabase.from('grade_snapshots') as any).insert(snapshots);
+        if (snapError) throw snapError;
+      }
+
+      // 2. Mark year as archived
+      const { error: archiveError } = await supabase
+        .from('academic_years')
+        .update({
+          is_archived: true,
+          archived_at: new Date().toISOString(),
+          archived_by: user?.id,
+        })
+        .eq('id', archiveConfirm.id);
+
+      if (archiveError) throw archiveError;
+
+      toast.success(`${archiveConfirm.name} archived successfully. ${grades?.length || 0} grade snapshots created.`);
+      setArchiveConfirm(null);
+      fetchYears();
+    } catch (error: any) {
+      console.error('Archive error:', error);
+      toast.error('Failed to archive: ' + error.message);
+    } finally {
+      setIsArchiving(false);
     }
   };
 
@@ -236,25 +301,43 @@ export const AcademicYearManagement = () => {
                       <TableCell>{format(new Date(year.start_date), 'MMM d, yyyy')}</TableCell>
                       <TableCell>{format(new Date(year.end_date), 'MMM d, yyyy')}</TableCell>
                       <TableCell>
-                        {year.is_current ? (
+                        {year.is_archived ? (
+                          <Badge variant="outline" className="border-muted-foreground">
+                            <Lock className="h-3 w-3 mr-1" />Archived
+                          </Badge>
+                        ) : year.is_current ? (
                           <Badge className="bg-green-500">Current</Badge>
                         ) : (
                           <Badge variant="secondary">Inactive</Badge>
                         )}
+                        {year.archived_at && (
+                          <span className="text-xs text-muted-foreground ml-2">
+                            {format(new Date(year.archived_at), 'MMM d, yyyy')}
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          {!year.is_current && (
-                            <Button variant="ghost" size="icon" onClick={() => handleSetCurrent(year)} title="Set as current">
-                              <Check className="h-4 w-4 text-green-500" />
-                            </Button>
+                          {!year.is_archived && !year.is_current && (
+                            <>
+                              <Button variant="ghost" size="icon" onClick={() => handleSetCurrent(year)} title="Set as current">
+                                <Check className="h-4 w-4 text-green-500" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => setArchiveConfirm(year)} title="Archive this year">
+                                <Archive className="h-4 w-4 text-amber-600" />
+                              </Button>
+                            </>
                           )}
-                          <Button variant="ghost" size="icon" onClick={() => handleOpenModal(year)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(year)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          {!year.is_archived && (
+                            <>
+                              <Button variant="ghost" size="icon" onClick={() => handleOpenModal(year)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => handleDelete(year)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -343,6 +426,32 @@ export const AcademicYearManagement = () => {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Archive Confirmation */}
+      <AlertDialog open={!!archiveConfirm} onOpenChange={(open) => { if (!open) setArchiveConfirm(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive {archiveConfirm?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will:
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>Create immutable snapshots of all grades for this year</li>
+                <li>Lock grade editing for this academic year</li>
+                <li>Mark this year as archived</li>
+              </ul>
+              <p className="mt-2 font-medium text-destructive">This action cannot be undone.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleArchive} disabled={isArchiving} className="bg-amber-600 hover:bg-amber-700">
+              {isArchiving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              <Archive className="h-4 w-4 mr-2" />
+              Archive Year
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

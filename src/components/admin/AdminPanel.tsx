@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Trash2, AlertTriangle, Loader2, Database, RefreshCcw, Users, Settings, Building2, Activity, Shield, School } from 'lucide-react';
+import { Trash2, AlertTriangle, Loader2, Database, RefreshCcw, Users, Settings, Building2, Activity, Shield, School, ClipboardCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +11,7 @@ import { SchoolSettings } from './SchoolSettings';
 import { SchoolManagement } from './SchoolManagement';
 import { ActivityLogs } from './ActivityLogs';
 import { PermissionManagement } from './PermissionManagement';
+import { DataQualityDashboard } from './DataQualityDashboard';
 
 export const AdminPanel = () => {
   const [isResetting, setIsResetting] = useState(false);
@@ -56,7 +57,7 @@ export const AdminPanel = () => {
       </div>
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-6 lg:w-[840px]">
+        <TabsList className="grid w-full grid-cols-7 lg:w-[980px]">
           <TabsTrigger value="users" className="gap-2">
             <Users className="h-4 w-4" />
             <span className="hidden sm:inline">Users</span>
@@ -68,6 +69,10 @@ export const AdminPanel = () => {
           <TabsTrigger value="schools" className="gap-2">
             <School className="h-4 w-4" />
             <span className="hidden sm:inline">Schools</span>
+          </TabsTrigger>
+          <TabsTrigger value="data-quality" className="gap-2">
+            <ClipboardCheck className="h-4 w-4" />
+            <span className="hidden sm:inline">Data Quality</span>
           </TabsTrigger>
           <TabsTrigger value="logs" className="gap-2">
             <Activity className="h-4 w-4" />
@@ -93,6 +98,10 @@ export const AdminPanel = () => {
 
         <TabsContent value="schools" className="mt-6">
           <SchoolManagement />
+        </TabsContent>
+
+        <TabsContent value="data-quality" className="mt-6">
+          <DataQualityDashboard />
         </TabsContent>
 
         <TabsContent value="logs" className="mt-6">
