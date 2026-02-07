@@ -147,6 +147,13 @@ const icon3DMap: Record<string, any> = {
   'student-profile': ProfileIcon3D,
   'messages': EventsIcon3D,
   'zoom': TeacherIcon3D,
+  'nocodb': ImportIcon3D,
+  'onlyoffice': ReportsIcon3D,
+  'excalidraw': CanvaIcon3D,
+  'omada': TeacherIcon3D,
+  'tacticalrmm': AdminIcon3D,
+  'documize': LibraryIcon3D,
+  'integrations': AdminIcon3D,
 };
 
 // Icon mapping for Apple style icons
@@ -191,6 +198,13 @@ const iconAppleMap: Record<string, any> = {
   'student-profile': AppleProfileIcon,
   'messages': AppleEventsIcon,
   'zoom': AppleTeacherIcon,
+  'nocodb': AppleImportIcon,
+  'onlyoffice': AppleReportsIcon,
+  'excalidraw': AppleCanvaIcon,
+  'omada': AppleTeacherIcon,
+  'tacticalrmm': AppleAdminIcon,
+  'documize': AppleLibraryIcon,
+  'integrations': AppleAdminIcon,
 };
 
 // Hierarchical navigation structure for each role
@@ -252,6 +266,20 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
           ]
         },
         { id: 'reports', icon: ReportsIcon3D, label: 'Reports' },
+        {
+          id: 'integrations',
+          icon: AdminIcon3D,
+          label: 'Integrations',
+          isCollapsible: true,
+          items: [
+            { id: 'nocodb', icon: ImportIcon3D, label: 'NocoDB' },
+            { id: 'onlyoffice', icon: ReportsIcon3D, label: 'OnlyOffice' },
+            { id: 'excalidraw', icon: CanvaIcon3D, label: 'Excalidraw' },
+            { id: 'omada', icon: TeacherIcon3D, label: 'Omada' },
+            { id: 'tacticalrmm', icon: AdminIcon3D, label: 'Tactical RMM' },
+            { id: 'documize', icon: LibraryIcon3D, label: 'Documize' },
+          ]
+        },
       ];
     case 'registrar':
       return [

@@ -41,3 +41,21 @@ verify_jwt = false
 
 [functions.search-books]
 verify_jwt = false
+
+[functions.nocodb-proxy]
+verify_jwt = false
+
+[functions.onlyoffice-proxy]
+verify_jwt = false
+
+[functions.excalidraw-proxy]
+verify_jwt = false
+
+[functions.omada-proxy]
+verify_jwt = false
+
+[functions.tacticalrmm-proxy]
+verify_jwt = false
+
+[functions.documize-proxy]
+verify_jwt = false
