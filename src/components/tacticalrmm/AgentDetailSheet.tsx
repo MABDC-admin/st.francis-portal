@@ -23,6 +23,7 @@ export const AgentDetailSheet = ({ agent, open, onClose, meshUrl, rmmUrl, loadin
   const [cmdOutput, setCmdOutput] = useState('');
   const [cmdLoading, setCmdLoading] = useState(false);
   const [rebooting, setRebooting] = useState(false);
+  const [takeControlLoading, setTakeControlLoading] = useState(false);
 
   if (!agent) return null;
 
@@ -71,9 +72,26 @@ export const AgentDetailSheet = ({ agent, open, onClose, meshUrl, rmmUrl, loadin
     }
   };
 
-  const openTakeControl = () => {
-    if (rmmUrl && agent.agent_id) {
-      window.open(`${rmmUrl}/takecontrol/${agent.agent_id}`, '_blank');
+  const openTakeControl = async () => {
+    setTakeControlLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('tacticalrmm-proxy', {
+        body: {
+          action: 'takecontrol',
+          path: `/agents/${agent.agent_id}/meshcentral/`,
+        },
+      });
+      if (error) throw error;
+      const controlUrl = data?.data?.control;
+      if (controlUrl) {
+        window.open(controlUrl, '_blank');
+      } else {
+        toast.error('No control URL returned from API');
+      }
+    } catch (err: any) {
+      toast.error('Take Control failed: ' + err.message);
+    } finally {
+      setTakeControlLoading(false);
     }
   };
 
@@ -150,11 +168,10 @@ export const AgentDetailSheet = ({ agent, open, onClose, meshUrl, rmmUrl, loadin
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2">
-            {rmmUrl && (
-              <Button size="sm" onClick={openTakeControl}>
-                <ExternalLink className="h-4 w-4 mr-1" /> Take Control
-              </Button>
-            )}
+            <Button size="sm" onClick={openTakeControl} disabled={takeControlLoading || !isOnline}>
+              {takeControlLoading ? <RefreshCw className="h-4 w-4 mr-1 animate-spin" /> : <ExternalLink className="h-4 w-4 mr-1" />}
+              {takeControlLoading ? 'Connecting...' : 'Take Control'}
+            </Button>
             {meshUrl && (
               <Button size="sm" variant="outline" onClick={openMeshCentral}>
                 <ExternalLink className="h-4 w-4 mr-1" /> {agent.meshnode_id ? 'MeshCentral' : 'Open MeshCentral'}

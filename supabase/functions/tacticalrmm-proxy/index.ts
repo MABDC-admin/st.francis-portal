@@ -53,6 +53,34 @@ serve(async (req) => {
       }
     }
 
+    // Take Control - get authenticated MeshCentral URL via API
+    if (action === 'takecontrol') {
+      const agentId = path?.replace('/agents/', '').replace('/meshcentral/', '').replace(/\//g, '');
+      if (!agentId) {
+        return new Response(JSON.stringify({ error: 'Agent ID required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      console.log(`TacticalRMM takecontrol: fetching MeshCentral URL for agent ${agentId}`);
+      try {
+        const resp = await fetch(`${TACTICALRMM_URL}/agents/${agentId}/meshcentral/`, {
+          headers: { 'X-API-KEY': TACTICALRMM_API_KEY, 'Content-Type': 'application/json' },
+        });
+        const contentType = resp.headers.get('content-type') || '';
+        const text = await resp.text();
+        if (!contentType.includes('application/json') || text.trim().startsWith('<!')) {
+          console.error(`TacticalRMM meshcentral returned non-JSON (status ${resp.status}):`, text.substring(0, 300));
+          return new Response(JSON.stringify({ error: `Failed to get MeshCentral URL (status ${resp.status})` }), { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+        const meshData = JSON.parse(text);
+        console.log(`TacticalRMM takecontrol: got control URL for ${meshData.hostname || agentId}`);
+        return new Response(JSON.stringify({ data: meshData, configured: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch (err) {
+        console.error('TacticalRMM takecontrol error:', err);
+        return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+    }
+
     // Build fetch options
     const fetchOptions: RequestInit = {
       method: httpMethod,
