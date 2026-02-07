@@ -56,6 +56,7 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       } catch (e) {
+        console.error('Omada status check failed:', e);
         return new Response(JSON.stringify({ data: { healthy: false, error: e.message }, configured: true }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
