@@ -146,6 +146,7 @@ const icon3DMap: Record<string, any> = {
   'student-subjects': SubjectsIcon3D,
   'student-profile': ProfileIcon3D,
   'messages': EventsIcon3D,
+  'zoom': TeacherIcon3D,
 };
 
 // Icon mapping for Apple style icons
@@ -189,6 +190,7 @@ const iconAppleMap: Record<string, any> = {
   'student-subjects': AppleSubjectsIcon,
   'student-profile': AppleProfileIcon,
   'messages': AppleEventsIcon,
+  'zoom': AppleTeacherIcon,
 };
 
 // Hierarchical navigation structure for each role
@@ -232,6 +234,7 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
           items: [
             { id: 'teachers', icon: TeacherIcon3D, label: 'Teachers' },
             { id: 'messages', icon: EventsIcon3D, label: 'Messages' },
+            { id: 'zoom', icon: TeacherIcon3D, label: 'Virtual Classes' },
             { id: 'events', icon: EventsIcon3D, label: 'Events' },
             { id: 'announcement-mgmt', icon: EventsIcon3D, label: 'Announcements' },
             { id: 'academic-years', icon: ScheduleIcon3D, label: 'Academic Years' },
@@ -288,6 +291,7 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
           items: [
             { id: 'teachers', icon: TeacherIcon3D, label: 'Teachers' },
             { id: 'messages', icon: EventsIcon3D, label: 'Messages' },
+            { id: 'zoom', icon: TeacherIcon3D, label: 'Virtual Classes' },
             { id: 'events', icon: EventsIcon3D, label: 'Events' },
             { id: 'announcement-mgmt', icon: EventsIcon3D, label: 'Announcements' },
           ]
@@ -320,6 +324,7 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
           ]
         },
         { id: 'messages', icon: EventsIcon3D, label: 'Messages' },
+        { id: 'zoom', icon: TeacherIcon3D, label: 'Virtual Classes' },
         {
           id: 'resources',
           icon: LibraryIcon3D,

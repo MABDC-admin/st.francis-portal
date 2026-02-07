@@ -55,6 +55,9 @@ import { LISPage } from '@/components/lis/LISPage';
 // Messaging
 import { MessagingPage } from '@/components/messaging/MessagingPage';
 
+// Zoom
+import { ZoomDashboard } from '@/components/zoom/ZoomDashboard';
+
 // Management CRUD Components
 import { AttendanceManagement, ScheduleManagement, AssignmentManagement, ExamScheduleManagement, AnnouncementManagement } from '@/components/management';
 
@@ -434,6 +437,11 @@ const Index = () => {
       {/* Admin Panel - Admin only */}
       {activeTab === 'admin' && role === 'admin' && isAdminUnlocked && (
         <AdminPanel />
+      )}
+
+      {/* Virtual Classes - Admin/Registrar/Teacher */}
+      {activeTab === 'zoom' && (role === 'admin' || role === 'registrar' || role === 'teacher') && (
+        <ZoomDashboard />
       )}
 
       {/* Student Portal Sections - Student only */}

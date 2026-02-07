@@ -2091,6 +2091,65 @@ export type Database = {
           },
         ]
       }
+      zoom_settings: {
+        Row: {
+          active_days: number[]
+          breakout_rooms: Json | null
+          created_at: string
+          id: string
+          is_active: boolean
+          meeting_id: string | null
+          meeting_password: string | null
+          meeting_url: string | null
+          schedule_end: string
+          schedule_start: string
+          school_id: string
+          timezone: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          active_days?: number[]
+          breakout_rooms?: Json | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          meeting_id?: string | null
+          meeting_password?: string | null
+          meeting_url?: string | null
+          schedule_end?: string
+          schedule_start?: string
+          school_id: string
+          timezone?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          active_days?: number[]
+          breakout_rooms?: Json | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          meeting_id?: string | null
+          meeting_password?: string | null
+          meeting_url?: string | null
+          schedule_end?: string
+          schedule_start?: string
+          school_id?: string
+          timezone?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zoom_settings_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       school_access_stats: {
