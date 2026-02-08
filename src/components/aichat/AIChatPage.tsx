@@ -9,8 +9,9 @@ import { useChatSessions } from '@/hooks/useChatSessions';
 import { ChatSidebar } from './ChatSidebar';
 import { ChatMessageBubble } from './ChatMessageBubble';
 import { ChatEmptyState } from './ChatEmptyState';
-import { CHAT_URL, IMAGE_URL, SCHOOL_SYSTEM_PROMPT, isImageRequest } from './constants';
+import { CHAT_URL, IMAGE_URL, SCHOOL_SYSTEM_PROMPT, isImageRequest, isFindRequest, extractFindQuery } from './constants';
 import type { Message } from './types';
+import { supabase } from '@/integrations/supabase/client';
 
 export const AIChatPage = () => {
   const { session } = useAuth();
@@ -105,6 +106,46 @@ export const AIChatPage = () => {
     }
   };
 
+  const handleFindRequest = async (query: string, allMessages: Message[]) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('search-books', {
+        body: { query, limit: 20 },
+      });
+
+      if (error) console.error('Library search error:', error);
+
+      const results = data?.results || [];
+      const totalMatches = data?.total_matches || 0;
+
+      let contextPrompt: string;
+      if (results.length === 0 || totalMatches === 0) {
+        contextPrompt = `The user searched the school library for "${query}" but no results were found in any indexed books. Let them know no library results were found, then provide a helpful academic explanation of the topic "${query}" instead. Be educational and thorough.`;
+      } else {
+        let context = `The user searched the school library for "${query}". Here are the matching results from indexed books (${totalMatches} matches in ${results.length} books):\n\n`;
+        for (const book of results) {
+          context += `📚 **${book.book_title}**${book.subject ? ` (${book.subject})` : ''}${book.grade_level ? ` — Grade ${book.grade_level}` : ''}\n`;
+          for (const match of book.matches.slice(0, 5)) {
+            context += `  - Page ${match.page_number}`;
+            if (match.chapter_title) context += ` | Chapter: ${match.chapter_title}`;
+            if (match.topics?.length) context += ` | Topics: ${match.topics.join(', ')}`;
+            if (match.snippet) context += `\n    Snippet: "${match.snippet}"`;
+            context += '\n';
+          }
+          context += '\n';
+        }
+        contextPrompt = `${context}\nFormat these library search results beautifully for the user. Present each book with its page numbers, chapters, topics, and snippets. Make it easy to locate the information in the actual books. Add a brief summary of what the topic is about at the end.`;
+      }
+
+      await handleTextChat([
+        ...allMessages.slice(0, -1),
+        { id: allMessages[allMessages.length - 1].id, role: 'user', content: contextPrompt },
+      ]);
+    } catch (err) {
+      console.error('Find request failed:', err);
+      toast.error('Library search failed.');
+    }
+  };
+
   const handleTextChat = async (allMessages: Message[]): Promise<void> => {
     const controller = new AbortController();
     abortControllerRef.current = controller;
@@ -196,7 +237,10 @@ export const AIChatPage = () => {
     setIsLoading(true);
 
     try {
-      if (isImageRequest(trimmed)) {
+      if (isFindRequest(trimmed)) {
+        const query = extractFindQuery(trimmed);
+        await handleFindRequest(query, allMessages);
+      } else if (isImageRequest(trimmed)) {
         const result = await handleImageGeneration(trimmed);
         if (result) persistMessages(activeId, [...allMessages, result]);
       } else {

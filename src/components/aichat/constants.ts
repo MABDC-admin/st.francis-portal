@@ -60,3 +60,11 @@ export const isImageRequest = (text: string): boolean => {
   const lower = text.toLowerCase();
   return IMAGE_TRIGGERS.some(t => lower.includes(t));
 };
+
+export const isFindRequest = (text: string): boolean => {
+  return text.trim().toLowerCase().startsWith('find ');
+};
+
+export const extractFindQuery = (text: string): string => {
+  return text.trim().replace(/^find\s+/i, '').trim();
+};
