@@ -373,6 +373,7 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
             { id: 'ai-chat', icon: NotebookIcon3D, label: 'AI Chat' },
           ]
         },
+        { id: 'reports', icon: ReportsIcon3D, label: 'Reports' },
         { id: 'impersonate', icon: AdminIcon3D, label: 'Impersonate' },
       ];
     case 'student':

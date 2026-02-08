@@ -37,7 +37,7 @@ import { EnrollmentManagement } from '@/components/curriculum/EnrollmentManageme
 
 // Grades and Reports
 import { GradesManagement } from '@/components/grades/GradesManagement';
-import { ReportsManagement } from '@/components/reports/ReportsManagement';
+import { ReportsHub } from '@/components/reports/ReportsHub';
 import { EventsManagement } from '@/components/calendar/EventsManagement';
 
 // Library
@@ -422,9 +422,9 @@ const Index = () => {
         <GradesManagement />
       )}
 
-      {/* Reports Management - Admin/Registrar only */}
-      {activeTab === 'reports' && hasAdminAccess && (
-        <ReportsManagement />
+      {/* Reports Hub - All authenticated users (RBAC inside) */}
+      {activeTab === 'reports' && (
+        <ReportsHub />
       )}
 
       {/* Events Management - Admin/Registrar only */}
