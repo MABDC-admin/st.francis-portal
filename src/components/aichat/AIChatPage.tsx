@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Square, Bot, FileText, X, Loader2, Eraser } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { extractPdfText, type ExtractedPdfResult, type ExtractionProgress } from '@/utils/extractPdfText';
@@ -9,7 +10,7 @@ import { useChatSessions } from '@/hooks/useChatSessions';
 import { ChatSidebar } from './ChatSidebar';
 import { ChatMessageBubble } from './ChatMessageBubble';
 import { ChatEmptyState } from './ChatEmptyState';
-import { ChatActionMenu } from './ChatActionMenu';
+import { ChatActionMenu, type ModeInfo } from './ChatActionMenu';
 import { ChatSuggestionChips } from './ChatSuggestionChips';
 import { CHAT_URL, IMAGE_URL, SCHOOL_SYSTEM_PROMPT, isImageRequest, isFindRequest, extractFindQuery } from './constants';
 import type { Message } from './types';
@@ -26,6 +27,7 @@ export const AIChatPage = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isExtractingPdf, setIsExtractingPdf] = useState(false);
+  const [activeMode, setActiveMode] = useState<ModeInfo | null>(null);
   const [extractionProgress, setExtractionProgress] = useState<ExtractionProgress | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -239,6 +241,7 @@ export const AIChatPage = () => {
     const allMessages = [...messages, userMsg];
     persistMessages(activeId, allMessages);
     setInput('');
+    setActiveMode(null);
     setIsLoading(true);
 
     try {
@@ -346,27 +349,51 @@ export const AIChatPage = () => {
         {messages.length === 0 && (
           <ChatSuggestionChips
             sessions={sessions}
-            onSelect={(text) => { setInput(text); textareaRef.current?.focus(); }}
+            onSelect={(text) => { setInput(text); setActiveMode({ label: 'Quick Start', icon: '⚡' }); textareaRef.current?.focus(); }}
           />
         )}
         <div className="border-t p-3 bg-muted/20">
           <div className="flex gap-2 max-w-3xl mx-auto items-end">
             <input ref={fileInputRef} type="file" accept=".pdf" onChange={handleFileUpload} className="hidden" />
             <ChatActionMenu
-              onPrefill={(text) => { setInput(text); textareaRef.current?.focus(); }}
+              onSelect={(text, mode) => { setInput(text); setActiveMode(mode); textareaRef.current?.focus(); }}
               onFileUpload={() => fileInputRef.current?.click()}
               disabled={isLoading || isExtractingPdf}
             />
-            <Textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={uploadedDoc ? `Ask about "${uploadedDoc.filename}"...` : "Ask SchoolAI anything..."}
-              className="min-h-[44px] max-h-[160px] resize-none rounded-xl bg-background"
-              rows={1}
-              disabled={isLoading}
-            />
+            <div className="flex-1 relative">
+              {activeMode && (
+                <div className="absolute left-2 top-1/2 -translate-y-1/2 z-10">
+                  <Badge variant="secondary" className="gap-1 pr-1 text-xs cursor-default">
+                    <span>{activeMode.icon}</span>
+                    <span>{activeMode.label}</span>
+                    <button
+                      onClick={() => { setActiveMode(null); setInput(''); }}
+                      className="ml-0.5 rounded-full hover:bg-muted-foreground/20 p-0.5 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                </div>
+              )}
+              <Textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  if (!activeMode && e.target.value.length > 0) {
+                    setActiveMode({ label: 'Chat', icon: '💬' });
+                  }
+                }}
+                onKeyDown={handleKeyDown}
+                placeholder={activeMode
+                  ? `Type your ${activeMode.label.toLowerCase()} query...`
+                  : 'Tap + to get started...'}
+                className={`min-h-[44px] max-h-[160px] resize-none rounded-xl bg-background transition-opacity ${activeMode ? (activeMode ? 'pl-2' : '') : 'opacity-60'}`}
+                style={activeMode ? { paddingLeft: `${activeMode.label.length * 7 + 56}px` } : undefined}
+                rows={1}
+                disabled={isLoading}
+              />
+            </div>
             {isLoading ? (
               <Button size="icon" variant="destructive" onClick={handleStop} className="h-11 w-11 rounded-xl flex-shrink-0">
                 <Square className="h-4 w-4" />
