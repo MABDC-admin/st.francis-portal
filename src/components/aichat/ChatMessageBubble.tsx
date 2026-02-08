@@ -1,4 +1,4 @@
-import { Bot, User, Download, BookOpen, ExternalLink } from 'lucide-react';
+import { Bot, User, Download, BookOpen, ExternalLink, Play } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
@@ -37,6 +37,7 @@ export const ChatMessageBubble = ({ message, isStreaming, docFilename }: ChatMes
                   components={{
                     a: ({ node, children, href, ...props }) => {
                       const isBookLink = href?.includes('/library/book/');
+                      const isYouTube = href?.includes('youtube.com') || href?.includes('youtu.be');
                       return (
                         <a
                           {...props}
@@ -45,14 +46,17 @@ export const ChatMessageBubble = ({ message, isStreaming, docFilename }: ChatMes
                           rel="noopener noreferrer"
                           className={cn(
                             'inline-flex items-center gap-1 no-underline rounded-md px-2 py-0.5 text-xs font-medium transition-colors',
-                            isBookLink
-                              ? 'bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20'
-                              : 'text-primary underline hover:text-primary/80'
+                            isYouTube
+                              ? 'bg-red-500/10 text-red-600 hover:bg-red-500/20 border border-red-500/20 dark:text-red-400'
+                              : isBookLink
+                                ? 'bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20'
+                                : 'text-primary underline hover:text-primary/80'
                           )}
                         >
+                          {isYouTube && <Play className="h-3 w-3 flex-shrink-0 fill-current" />}
                           {isBookLink && <BookOpen className="h-3 w-3 flex-shrink-0" />}
                           {children}
-                          {isBookLink && <ExternalLink className="h-3 w-3 flex-shrink-0 opacity-60" />}
+                          {(isBookLink || isYouTube) && <ExternalLink className="h-3 w-3 flex-shrink-0 opacity-60" />}
                         </a>
                       );
                     },

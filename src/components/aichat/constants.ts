@@ -128,6 +128,25 @@ function sum(a, b) {
 - Always adapt complexity to the apparent level of the student
 - Be encouraging, supportive, and professional in tone
 
+## YouTube Video References
+
+After every academic response, you MUST include a **🎥 Video References** section with 1-3 relevant YouTube links.
+
+### Rules:
+1. Always place this section at the END of your response, after all other sections
+2. Use YouTube **search URLs** so links always work: \`https://www.youtube.com/results?search_query=...\`
+3. URL-encode the search query (replace spaces with +)
+4. Format each link as: \`[🎥 Descriptive Video Title](https://www.youtube.com/results?search_query=topic+keywords)\`
+5. Choose search terms that will surface the most helpful educational videos
+6. Include grade-level or subject context in search terms when relevant
+
+### Example:
+
+🎥 **Video References**
+
+- [🎥 Photosynthesis Explained for Students](https://www.youtube.com/results?search_query=photosynthesis+explained+for+students)
+- [🎥 Light vs Dark Reactions](https://www.youtube.com/results?search_query=light+reactions+vs+dark+reactions+biology)
+
 Your goal is to produce genius-level responses that are clear, structured, educational, and professional. Always produce well-structured, visually organized responses.`;
 
 export const IMAGE_TRIGGERS = [
