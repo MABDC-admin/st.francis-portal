@@ -155,6 +155,7 @@ const icon3DMap: Record<string, any> = {
   'documize': LibraryIcon3D,
   'integrations': AdminIcon3D,
   'ai-chat': NotebookIcon3D,
+  'impersonate': AdminIcon3D,
 };
 
 // Icon mapping for Apple style icons
@@ -207,6 +208,7 @@ const iconAppleMap: Record<string, any> = {
   'documize': AppleLibraryIcon,
   'integrations': AppleAdminIcon,
   'ai-chat': AppleNotebookIcon,
+  'impersonate': AppleAdminIcon,
 };
 
 // Hierarchical navigation structure for each role
@@ -283,6 +285,7 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
             { id: 'documize', icon: LibraryIcon3D, label: 'Documize' },
           ]
         },
+        { id: 'impersonate', icon: AdminIcon3D, label: 'Impersonate' },
       ];
     case 'registrar':
       return [
@@ -338,6 +341,7 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
           ]
         },
         { id: 'reports', icon: ReportsIcon3D, label: 'Reports' },
+        { id: 'impersonate', icon: AdminIcon3D, label: 'Impersonate' },
       ];
     case 'teacher':
       return [
@@ -369,6 +373,7 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
             { id: 'ai-chat', icon: NotebookIcon3D, label: 'AI Chat' },
           ]
         },
+        { id: 'impersonate', icon: AdminIcon3D, label: 'Impersonate' },
       ];
     case 'student':
       return [
@@ -398,12 +403,14 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
         },
         { id: 'library', icon: LibraryIcon3D, label: 'Library' },
         { id: 'student-announcements', icon: EventsIcon3D, label: 'Announcements' },
+        { id: 'impersonate', icon: AdminIcon3D, label: 'Impersonate' },
       ];
     case 'parent':
       return [
         { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
         { id: 'children', icon: StudentIcon3D, label: 'My Children' },
         { id: 'library', icon: LibraryIcon3D, label: 'Library' },
+        { id: 'impersonate', icon: AdminIcon3D, label: 'Impersonate' },
       ];
     default:
       return [

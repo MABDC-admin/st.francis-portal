@@ -68,6 +68,7 @@ import { ExcalidrawDashboard } from '@/components/excalidraw/ExcalidrawDashboard
 import { OmadaDashboard } from '@/components/omada/OmadaDashboard';
 import { TacticalRMMDashboard } from '@/components/tacticalrmm/TacticalRMMDashboard';
 import { DocumizeDashboard } from '@/components/documize/DocumizeDashboard';
+import { ImpersonatePage } from '@/components/admin/ImpersonatePage';
 
 // Management CRUD Components
 import { AttendanceManagement, ScheduleManagement, AssignmentManagement, ExamScheduleManagement, AnnouncementManagement } from '@/components/management';
@@ -520,6 +521,9 @@ const Index = () => {
       {activeTab === 'omada' && role === 'admin' && <OmadaDashboard />}
       {activeTab === 'tacticalrmm' && role === 'admin' && <TacticalRMMDashboard />}
       {activeTab === 'documize' && role === 'admin' && <DocumizeDashboard />}
+
+      {/* Impersonate - All roles */}
+      {activeTab === 'impersonate' && <ImpersonatePage />}
 
       {/* Announcement Management - Admin/Registrar */}
       {activeTab === 'announcement-mgmt' && hasAdminAccess && (
