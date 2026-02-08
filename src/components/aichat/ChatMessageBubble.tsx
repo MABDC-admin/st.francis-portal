@@ -104,7 +104,6 @@ export const ChatMessageBubble = ({ message, isStreaming, docFilename, showSugge
               </div>
             )}
 
-            {/* Suggestion callout */}
             {suggestionText && showSuggestions && !isStreaming && (
               <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2 mt-2">
                 <p className="text-sm text-amber-800 dark:text-amber-200 flex items-start gap-1.5">
@@ -123,7 +122,7 @@ export const ChatMessageBubble = ({ message, isStreaming, docFilename, showSugge
             )}
             {message.content && !isStreaming && (
               <button
-                onClick={() => exportResponseToPdf(message.content, docFilename)}
+                onClick={() => exportResponseToPdf(message.content, docFilename, message.images)}
                 className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-1"
               >
                 <Download className="h-3.5 w-3.5" />
