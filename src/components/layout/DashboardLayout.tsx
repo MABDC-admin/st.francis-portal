@@ -50,6 +50,7 @@ import { useColorTheme } from '@/hooks/useColorTheme';
 import { ColorThemeSelector } from '@/components/ColorThemeSelector';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { StudentBottomNav } from './StudentBottomNav';
 import {
   HomeIcon3D,
   StudentIcon3D,
@@ -924,12 +925,18 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
       {/* Main Content */}
       <main className={cn(
         "transition-all duration-300 pt-16 lg:pt-0 min-h-screen",
-        isCollapsed ? "lg:pl-[70px]" : "lg:pl-64"
+        isCollapsed ? "lg:pl-[70px]" : "lg:pl-64",
+        role === 'student' && "pb-20 lg:pb-0"
       )}>
         <div className="p-4 lg:p-8">
           {children}
         </div>
       </main>
+
+      {/* Student Bottom Navigation - Mobile Only */}
+      {role === 'student' && (
+        <StudentBottomNav activeTab={activeTab} onTabChange={onTabChange} />
+      )}
     </div>
   );
 };

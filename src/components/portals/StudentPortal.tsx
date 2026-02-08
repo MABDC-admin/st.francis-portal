@@ -562,7 +562,7 @@ export const StudentPortal = ({ activeSection = 'dashboard' }: StudentPortalProp
           variant="outline" 
           size="sm" 
           onClick={signOut}
-          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+          className="hidden lg:flex text-destructive hover:text-destructive hover:bg-destructive/10"
         >
           <LogOut className="h-4 w-4 mr-2" />
           Log out
