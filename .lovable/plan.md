@@ -1,113 +1,109 @@
 
 
-# AI-Powered Dynamic Suggestions for the Quick Actions Menu
+# Auto-Append Contextual Suggestions After Each AI Response
 
 ## What Changes
 
-The static quick actions menu transforms into a **hybrid system**: a large curated set of categorized actions (expanded to 20+ categories, 100+ items) **plus** an AI-generated "Trending & For You" section at the top that dynamically adapts based on the user's chat history, time of day, and current academic context.
+After every AI response, a visually distinct suggestion block appears (e.g., "💡 Suggestion: ..."). This is driven by the system prompt instructing the AI to always append it, and the frontend parses and renders it as a styled callout box. A toggle in the chat header lets the user turn this on/off (defaults to ON, persisted in localStorage).
 
 ## How It Works
 
-### 1. Massively Expanded Static Categories (always available)
+### 1. System Prompt Update (`constants.ts`)
 
-The menu grows from 9 to 20 color-coded categories with 100+ total actions. New categories include:
-
-| Category | Color | Sample Items |
-|----------|-------|--------------|
-| Filipino / Mother Tongue | `bg-yellow-50 text-yellow-700` | Pagsulat ng Sanaysay, Pagbasa Comprehension, Filipino Grammar |
-| History & Social Studies | `bg-orange-50 text-orange-700` | Timeline Creator, Historical Figure Bio, Map Analysis |
-| Arts & Music | `bg-fuchsia-50 text-fuchsia-600` | Art Critique, Music Theory, Color Theory Explainer |
-| Technology & Digital Literacy | `bg-cyan-50 text-cyan-700` | Typing Practice, Cybersecurity Tips, Spreadsheet Helper |
-| Environmental & Earth Science | `bg-emerald-50 text-emerald-700` | Climate Change Explainer, Ecosystem Builder, Weather Analysis |
-| Parenting & Home | `bg-lime-50 text-lime-700` | Parent-Teacher Conference Prep, Homework Help Guide, Reading List |
-| Special Education & Inclusion | `bg-violet-50 text-violet-600` | IEP Helper, Differentiation Strategies, Accommodations Guide |
-| Assessment & Evaluation | `bg-sky-50 text-sky-600` | Rubric Generator, Performance Task Design, Test Item Analysis |
-| Research & Academic Writing | `bg-stone-100 text-stone-700` | APA/MLA Citation Generator, Literature Review, Thesis Statement |
-| Current Events & Media | `bg-red-50 text-red-600` | Fact Checker, Media Literacy, Current Events Discussion |
-| Values & Character Education | `bg-warmGray-50 text-warmGray-700` | Moral Dilemma Discussion, Character Traits Activity, SEL Lesson |
-
-Existing categories also get more items (e.g., "Create & Generate" gets Infographic Creator, Worksheet Maker, Rubric Builder, Certificate Template).
-
-### 2. AI-Generated "For You" Section (top of menu)
-
-A new section at the very top of the popover labeled "Suggested For You" with a sparkle icon. It shows 3-5 dynamically generated suggestions based on:
-
-- **Chat history**: Topics the user has recently explored
-- **Time context**: Morning = lesson prep suggestions, afternoon = grading tools, evening = study tips
-- **Recency**: Prioritizes fresh, unused action types the user hasn't tried yet
-
-This runs entirely on the client side -- no API call needed. It analyzes the `sessions` data already available in the component and generates smart suggestions using pattern matching.
-
-### 3. Search/Filter Bar Inside the Menu
-
-A small search input at the top of the popover lets users quickly filter through all 100+ actions by typing keywords (e.g., typing "quiz" shows Quiz Creator, Trivia Game, etc.).
-
-### 4. Suggestion Chips Expansion
-
-The suggestion chips below the chat also become smarter:
-- More templates: "Deeper dive into...", "Create a worksheet on...", "Summarize...", "Debate about..."
-- More default suggestions (12 instead of 8)
-- Chips rotate/shuffle on each visit so the interface feels fresh
-
-## Visual Layout
+Add a new section to `SCHOOL_SYSTEM_PROMPT` instructing the AI to always end responses with a suggestion block:
 
 ```text
-+-------------------------------------+
-| [Search actions...]           (search bar)
-+-------------------------------------+
-| SUGGESTED FOR YOU            sparkle icon
-|  Morning lesson prep detected:
-|  [Lesson Plan] [Quiz Creator] [Warm-up Activity]
-+-------------------------------------+
-| SEARCH & DISCOVER        (blue)
-|  Search Library | YouTube | Wikipedia
-|  News | Academic Search | Image Search
-+-------------------------------------+
-| CREATE & GENERATE         (purple)
-|  Image | Essay | Quiz | Lesson Plan
-|  Flashcards | Story | Presentation
-|  Infographic | Worksheet | Rubric
-|  Certificate | Crossword Puzzle
-+-------------------------------------+
-| ... 18 more categories ...
-+-------------------------------------+
+========================
+12) CONTEXTUAL SUGGESTIONS
+========================
+
+After EVERY response, append a suggestion block on a new line using this exact format:
+
+💡 **Suggestion:** [1-2 sentence actionable next step or recommendation based on the topic just discussed]
+
+Rules:
+- Must be contextually relevant to the main response
+- Must not exceed 2 sentences
+- Must be actionable (e.g., "Try solving...", "Next, explore...", "Create a quiz on...")
+- Place it as the very last thing, after Video References
+- Use exactly the prefix: 💡 **Suggestion:**
+```
+
+### 2. Visual Rendering in `ChatMessageBubble.tsx`
+
+Parse the assistant message content to detect the suggestion block (line starting with "💡 **Suggestion:**"). Render it separately as a styled callout card:
+
+- Amber/yellow background with a lightbulb icon
+- Rounded border, slightly indented
+- Visually separated from the main response by a thin divider
+- Only rendered when the suggestion toggle is enabled
+
+The parsing splits the content at the suggestion line, rendering the main content normally via ReactMarkdown and the suggestion in its own styled container.
+
+### 3. Toggle in Chat Header (`AIChatPage.tsx`)
+
+Add a small Switch toggle in the header bar labeled with a lightbulb icon. State is stored in `localStorage` key `ai-suggestions-enabled` (defaults to `true`). The toggle is passed down to `ChatMessageBubble` to control whether the suggestion callout renders.
+
+## Visual Preview
+
+```text
+Assistant response bubble:
++------------------------------------------+
+| [Main response content with markdown]    |
+|                                          |
+| 🎥 Video References                     |
+| - [Video link]                           |
+|                                          |
+| ┌─────────────────────────────────────┐  |
+| │ 💡 Suggestion: Try creating a 5-   │  |
+| │ item quiz on this topic to test     │  |
+| │ your understanding.                 │  |
+| └─────────────────────────────────────┘  |
+|                                          |
+| [Download] Save as PDF                   |
++------------------------------------------+
+```
+
+Toggle in header:
+```text
+[SchoolAI icon] SchoolAI          [💡 on/off] [Clear]
 ```
 
 ## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/components/aichat/ChatActionMenu.tsx` | Expand to 20 categories / 100+ items, add search filter, add AI "For You" section |
-| `src/components/aichat/ChatSuggestionChips.tsx` | More templates, more defaults, shuffle logic |
-
-## Files to Create
-
-| File | Purpose |
-|------|---------|
-| `src/components/aichat/useSmartSuggestions.ts` | Hook that analyzes sessions + time of day to generate personalized suggestions |
+| `src/components/aichat/constants.ts` | Add section 12 to system prompt with suggestion format instructions |
+| `src/components/aichat/ChatMessageBubble.tsx` | Parse and render suggestion block as styled callout; accept `showSuggestions` prop |
+| `src/components/aichat/AIChatPage.tsx` | Add localStorage-backed toggle state, render Switch in header, pass prop to message bubbles |
 
 ## Technical Details
 
-### Smart Suggestions Hook (`useSmartSuggestions.ts`)
-
+### Content Parsing Logic (ChatMessageBubble)
 ```text
-Input: sessions[], current time
-Logic:
-  1. Extract all user topics from recent sessions
-  2. Determine time-of-day context (morning/afternoon/evening)
-  3. Check which action categories the user has NOT used yet
-  4. Generate 3-5 contextual suggestions:
-     - 1-2 based on recent topics ("Continue exploring Photosynthesis")
-     - 1 based on time ("Morning? Start with a warm-up activity")
-     - 1-2 unexplored categories ("Try: Rubric Generator")
-Output: Array of { emoji, label, prefill, reason }
+const suggestionRegex = /\n?💡 \*\*Suggestion:\*\*\s*.+$/s;
+const match = content.match(suggestionRegex);
+const mainContent = match ? content.slice(0, match.index) : content;
+const suggestionText = match ? match[0].replace('💡 **Suggestion:**', '').trim() : null;
 ```
 
-### Search Filter
+### Toggle State (AIChatPage)
+```text
+const [showSuggestions, setShowSuggestions] = useState(() => {
+  const saved = localStorage.getItem('ai-suggestions-enabled');
+  return saved !== null ? saved === 'true' : true; // default ON
+});
+// Persist on change
+useEffect(() => {
+  localStorage.setItem('ai-suggestions-enabled', String(showSuggestions));
+}, [showSuggestions]);
+```
 
-A controlled input at the top of the popover. As the user types, groups are filtered to only show items whose labels match the search string (case-insensitive). Empty groups are hidden. The filter resets when the popover closes.
+### Suggestion Callout Styling
+- Container: `bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2`
+- Icon: Lightbulb emoji inline
+- Text: `text-sm text-amber-800`
+- Hidden when `showSuggestions` is false or when streaming
 
 ### No New Dependencies
-
-Everything uses existing React state, Tailwind classes, and components already in the project.
-
+All changes use existing React state, Tailwind classes, localStorage, and regex parsing.
