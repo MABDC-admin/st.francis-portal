@@ -29,6 +29,7 @@ import { TeacherPortal } from '@/components/portals/TeacherPortal';
 import { StudentPortal } from '@/components/portals/StudentPortal';
 import { ParentPortal } from '@/components/portals/ParentPortal';
 import { TeacherManagement } from '@/components/teachers/TeacherManagement';
+import { TeacherCSVImport } from '@/components/teachers/TeacherCSVImport';
 
 // Curriculum Components
 import { SubjectManagement } from '@/components/curriculum/SubjectManagement';
@@ -253,7 +254,7 @@ const Index = () => {
       case 'registrar':
         return <RegistrarPortal onNavigate={handleTabChange} stats={{ totalStudents, pendingEnrollments: 0 }} />;
       case 'teacher':
-        return <TeacherPortal />;
+        return <TeacherPortal onNavigate={handleTabChange} />;
       case 'student':
         // Student portal dashboard is now rendered here directly
         return <StudentPortal activeSection="dashboard" />;
@@ -392,6 +393,22 @@ const Index = () => {
       {/* Teachers - Admin/Registrar only */}
       {activeTab === 'teachers' && hasAdminAccess && (
         <TeacherManagement />
+      )}
+
+      {/* Teacher CSV Import - Admin/Registrar only */}
+      {activeTab === 'teacher-import' && hasAdminAccess && (
+        <TeacherCSVImport />
+      )}
+
+      {/* Teacher Portal Sections - Teacher only */}
+      {activeTab === 'teacher-profile' && role === 'teacher' && (
+        <TeacherPortal activeSection="profile" />
+      )}
+      {activeTab === 'teacher-grades' && role === 'teacher' && (
+        <TeacherPortal activeSection="grades" />
+      )}
+      {activeTab === 'teacher-schedule' && role === 'teacher' && (
+        <TeacherPortal activeSection="schedule" />
       )}
 
       {/* Subjects - Admin/Registrar only */}

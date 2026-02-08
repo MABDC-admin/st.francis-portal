@@ -157,6 +157,11 @@ const icon3DMap: Record<string, any> = {
   'integrations': AdminIcon3D,
   'ai-chat': NotebookIcon3D,
   'impersonate': AdminIcon3D,
+  'teacher-import': ImportIcon3D,
+  'teacher-profile': ProfileIcon3D,
+  'teacher-grades': EnterGradeIcon3D,
+  'teacher-schedule': ScheduleIcon3D,
+  'my-info': ProfileIcon3D,
 };
 
 // Icon mapping for Apple style icons
@@ -210,6 +215,11 @@ const iconAppleMap: Record<string, any> = {
   'integrations': AppleAdminIcon,
   'ai-chat': AppleNotebookIcon,
   'impersonate': AppleAdminIcon,
+  'teacher-import': AppleImportIcon,
+  'teacher-profile': AppleProfileIcon,
+  'teacher-grades': AppleGradesIcon,
+  'teacher-schedule': AppleScheduleIcon,
+  'my-info': AppleProfileIcon,
 };
 
 // Hierarchical navigation structure for each role
@@ -252,6 +262,7 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
           isCollapsible: true,
           items: [
             { id: 'teachers', icon: TeacherIcon3D, label: 'Teachers' },
+            { id: 'teacher-import', icon: ImportIcon3D, label: 'Teacher Import' },
             { id: 'messages', icon: EventsIcon3D, label: 'Messages' },
             { id: 'zoom', icon: TeacherIcon3D, label: 'Virtual Classes' },
             { id: 'events', icon: EventsIcon3D, label: 'Events' },
@@ -325,6 +336,7 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
           isCollapsible: true,
           items: [
             { id: 'teachers', icon: TeacherIcon3D, label: 'Teachers' },
+            { id: 'teacher-import', icon: ImportIcon3D, label: 'Teacher Import' },
             { id: 'messages', icon: EventsIcon3D, label: 'Messages' },
             { id: 'zoom', icon: TeacherIcon3D, label: 'Virtual Classes' },
             { id: 'events', icon: EventsIcon3D, label: 'Events' },
@@ -347,6 +359,15 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
     case 'teacher':
       return [
         { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
+        {
+          id: 'my-info',
+          icon: ProfileIcon3D,
+          label: 'My Info',
+          isCollapsible: true,
+          items: [
+            { id: 'teacher-profile', icon: ProfileIcon3D, label: 'Profile' },
+          ]
+        },
         {
           id: 'academics',
           icon: EnterGradeIcon3D,

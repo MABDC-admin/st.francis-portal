@@ -52,9 +52,12 @@ export const ZoomRunner = () => {
                     });
                 }
 
-                window.ZoomMtg.setZoomJSLib('https://source.zoom.us/3.1.0/lib', '/av');
-                window.ZoomMtg.preLoadWasm();
-                window.ZoomMtg.prepareWebSDK();
+                const ZoomMtg = window.ZoomMtg as any;
+                if (ZoomMtg) {
+                    ZoomMtg.setZoomJSLib('https://source.zoom.us/3.1.0/lib', '/av');
+                    ZoomMtg.preLoadWasm();
+                    ZoomMtg.prepareWebSDK();
+                }
 
                 setSdkLoading(false);
             } catch (err) {
