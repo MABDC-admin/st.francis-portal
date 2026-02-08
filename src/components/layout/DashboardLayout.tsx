@@ -273,7 +273,7 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
           isCollapsible: true,
           items: [
             { id: 'nocodb', icon: ImportIcon3D, label: 'NocoDB' },
-            { id: 'onlyoffice', icon: ReportsIcon3D, label: 'OnlyOffice' },
+            { id: 'onlyoffice', icon: ReportsIcon3D, label: 'Google Docs' },
             { id: 'excalidraw', icon: CanvaIcon3D, label: 'Excalidraw' },
             { id: 'omada', icon: TeacherIcon3D, label: 'Omada' },
             { id: 'tacticalrmm', icon: AdminIcon3D, label: 'Tactical RMM' },

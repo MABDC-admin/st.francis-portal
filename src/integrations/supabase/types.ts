@@ -916,6 +916,47 @@ export type Database = {
         }
         Relationships: []
       }
+      google_docs: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          doc_type: string
+          id: string
+          school_id: string | null
+          title: string
+          updated_at: string | null
+          url: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string
+          doc_type?: string
+          id?: string
+          school_id?: string | null
+          title: string
+          updated_at?: string | null
+          url: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          doc_type?: string
+          id?: string
+          school_id?: string | null
+          title?: string
+          updated_at?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_docs_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       grade_change_requests: {
         Row: {
           created_at: string

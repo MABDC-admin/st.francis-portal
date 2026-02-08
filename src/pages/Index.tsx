@@ -60,7 +60,7 @@ import { ZoomDashboard } from '@/components/zoom/ZoomDashboard';
 
 // Docker App Integrations
 import { NocoDBDashboard } from '@/components/nocodb/NocoDBDashboard';
-import { OnlyOfficeDashboard } from '@/components/onlyoffice/OnlyOfficeDashboard';
+import { GoogleDocsDashboard } from '@/components/googledocs/GoogleDocsDashboard';
 import { ExcalidrawDashboard } from '@/components/excalidraw/ExcalidrawDashboard';
 import { OmadaDashboard } from '@/components/omada/OmadaDashboard';
 import { TacticalRMMDashboard } from '@/components/tacticalrmm/TacticalRMMDashboard';
@@ -500,7 +500,7 @@ const Index = () => {
 
       {/* Docker App Integrations - Admin only */}
       {activeTab === 'nocodb' && role === 'admin' && <NocoDBDashboard />}
-      {activeTab === 'onlyoffice' && role === 'admin' && <OnlyOfficeDashboard />}
+      {activeTab === 'onlyoffice' && role === 'admin' && <GoogleDocsDashboard />}
       {activeTab === 'excalidraw' && role === 'admin' && <ExcalidrawDashboard />}
       {activeTab === 'omada' && role === 'admin' && <OmadaDashboard />}
       {activeTab === 'tacticalrmm' && role === 'admin' && <TacticalRMMDashboard />}
