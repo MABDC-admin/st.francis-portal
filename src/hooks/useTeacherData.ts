@@ -1,5 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export interface TeacherRecord {
   id: string;
@@ -124,5 +125,35 @@ export const useTeacherStudentCount = (teacherId: string | undefined) => {
     },
     enabled: !!teacherId,
     staleTime: 5 * 60 * 1000,
+  });
+};
+
+// Update teacher profile
+export const useUpdateTeacherProfile = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<TeacherRecord> }) => {
+      const { data, error } = await supabase
+        .from('teachers')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['teacher-profile'] });
+      if (data.user_id) {
+        queryClient.invalidateQueries({ queryKey: ['teacher-profile', data.user_id] });
+      }
+      toast.success('Profile updated successfully');
+    },
+    onError: (error: any) => {
+      console.error('Error updating teacher profile:', error);
+      toast.error(error.message || 'Failed to update profile');
+    },
   });
 };

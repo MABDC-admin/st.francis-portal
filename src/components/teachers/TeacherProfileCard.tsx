@@ -1,16 +1,51 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Mail, Phone, Building2, BookOpen, GraduationCap, Briefcase } from 'lucide-react';
+import { User, Mail, Phone, Building2, BookOpen, GraduationCap, Briefcase, Edit2, Save, X, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { TeacherRecord } from '@/hooks/useTeacherData';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { TeacherRecord, useUpdateTeacherProfile } from '@/hooks/useTeacherData';
 
 interface TeacherProfileCardProps {
   teacher: TeacherRecord;
 }
 
 export const TeacherProfileCard = ({ teacher }: TeacherProfileCardProps) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    full_name: teacher.full_name,
+    phone: teacher.phone || '',
+    department: teacher.department || '',
+    subjects: teacher.subjects?.join(', ') || '',
+  });
+
+  const updateProfile = useUpdateTeacherProfile();
+
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return 'N/A';
     return new Date(dateStr).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
+  const handleSave = async () => {
+    const subjectsArray = formData.subjects
+      ? formData.subjects.split(',').map(s => s.trim()).filter(s => s)
+      : null;
+
+    updateProfile.mutate(
+      {
+        id: teacher.id,
+        updates: {
+          full_name: formData.full_name,
+          phone: formData.phone || null,
+          department: formData.department || null,
+          subjects: subjectsArray,
+        },
+      },
+      {
+        onSuccess: () => setIsEditing(false),
+      }
+    );
   };
 
   return (
@@ -43,11 +78,49 @@ export const TeacherProfileCard = ({ teacher }: TeacherProfileCardProps) => {
 
             {/* Teacher Info */}
             <div className="flex-1 space-y-1">
-              <div className="flex items-center gap-3 flex-wrap">
-                <h2 className="text-xl lg:text-2xl font-bold text-white">{teacher.full_name}</h2>
-                <Badge className="bg-amber-400 text-amber-900 hover:bg-amber-400 border-0 font-semibold">
-                  {teacher.status || 'Active'}
-                </Badge>
+              <div className="flex items-center gap-3 flex-wrap justify-between">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-xl lg:text-2xl font-bold text-white">{teacher.full_name}</h2>
+                  <Badge className="bg-amber-400 text-amber-900 hover:bg-amber-400 border-0 font-semibold">
+                    {teacher.status || 'Active'}
+                  </Badge>
+                </div>
+                {!isEditing ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsEditing(true)}
+                    className="text-white hover:bg-white/20"
+                  >
+                    <Edit2 className="h-4 w-4 mr-2" />
+                    Edit Profile
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsEditing(false)}
+                      className="text-white hover:bg-white/20"
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleSave}
+                      disabled={updateProfile.isPending}
+                      className="bg-white text-emerald-600 hover:bg-white/90"
+                    >
+                      {updateProfile.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4 mr-2" />
+                      )}
+                      Save
+                    </Button>
+                  </div>
+                )}
               </div>
               <p className="text-white/80 text-sm">
                 {teacher.employee_id} • {teacher.department || 'General'} • {teacher.school || 'School'}
@@ -93,26 +166,50 @@ export const TeacherProfileCard = ({ teacher }: TeacherProfileCardProps) => {
             <h3 className="font-semibold text-white">Basic Information</h3>
           </div>
           <div className="p-5 space-y-4 bg-gradient-to-br from-emerald-50/50 to-white dark:from-slate-800/50 dark:to-slate-900">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Full Name</p>
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{teacher.full_name}</p>
+            {isEditing ? (
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-xs text-emerald-600 dark:text-emerald-400">Full Name</Label>
+                  <Input
+                    value={formData.full_name}
+                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-emerald-600 dark:text-emerald-400">Phone Number</Label>
+                  <Input
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="mt-1"
+                    placeholder="+63 XXX XXX XXXX"
+                  />
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Employee ID</p>
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{teacher.employee_id}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Email</p>
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{teacher.email}</p>
-              </div>
-              <div>
-                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Phone</p>
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{teacher.phone || 'Not provided'}</p>
-              </div>
-            </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Full Name</p>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{teacher.full_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Employee ID</p>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{teacher.employee_id}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Email</p>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{teacher.email}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Phone</p>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{teacher.phone || 'Not provided'}</p>
+                  </div>
+                </div>
+              </>
+            )}
             <div>
               <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Date Joined</p>
               <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{formatDate(teacher.created_at)}</p>
@@ -136,28 +233,53 @@ export const TeacherProfileCard = ({ teacher }: TeacherProfileCardProps) => {
             <h3 className="font-semibold text-white">Department & Subjects</h3>
           </div>
           <div className="p-5 space-y-4 bg-gradient-to-br from-violet-50/50 to-white dark:from-slate-800/50 dark:to-slate-900">
-            <div>
-              <p className="text-xs text-violet-600 dark:text-violet-400 font-medium">Department</p>
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{teacher.department || 'Not assigned'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-violet-600 dark:text-violet-400 font-medium">Grade Level</p>
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{teacher.grade_level || 'Not assigned'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-violet-600 dark:text-violet-400 font-medium">Assigned Subjects</p>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {teacher.subjects && teacher.subjects.length > 0 ? (
-                  teacher.subjects.map((subject, idx) => (
-                    <Badge key={idx} variant="secondary" className="bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300">
-                      {subject}
-                    </Badge>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground">No subjects assigned</p>
-                )}
+            {isEditing ? (
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-xs text-violet-600 dark:text-violet-400">Department</Label>
+                  <Input
+                    value={formData.department}
+                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                    className="mt-1"
+                    placeholder="e.g. Mathematics"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-violet-600 dark:text-violet-400">Assigned Subjects (comma-separated)</Label>
+                  <Input
+                    value={formData.subjects}
+                    onChange={(e) => setFormData({ ...formData, subjects: e.target.value })}
+                    className="mt-1"
+                    placeholder="Math, Science, English"
+                  />
+                </div>
               </div>
-            </div>
+            ) : (
+              <>
+                <div>
+                  <p className="text-xs text-violet-600 dark:text-violet-400 font-medium">Department</p>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{teacher.department || 'Not assigned'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-violet-600 dark:text-violet-400 font-medium">Grade Level</p>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{teacher.grade_level || 'Not assigned'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-violet-600 dark:text-violet-400 font-medium">Assigned Subjects</p>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {teacher.subjects && teacher.subjects.length > 0 ? (
+                      teacher.subjects.map((subject, idx) => (
+                        <Badge key={idx} variant="secondary" className="bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300">
+                          {subject}
+                        </Badge>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No subjects assigned</p>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </motion.div>
 
