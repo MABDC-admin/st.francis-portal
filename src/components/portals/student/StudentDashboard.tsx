@@ -80,21 +80,6 @@ export const StudentDashboard = ({
 
   return (
     <div className="space-y-6">
-      {/* Student Avatar Header */}
-      {studentName && (
-        <div className="flex items-center gap-4">
-          <AnimatedStudentAvatar
-            photoUrl={studentPhotoUrl || null}
-            name={studentName}
-            size="4xl"
-            borderColor="hsl(var(--primary) / 0.3)"
-          />
-          <div>
-            <h2 className="text-xl font-bold text-foreground">{studentName}</h2>
-            <p className="text-muted-foreground">{gradeLevel}</p>
-          </div>
-        </div>
-      )}
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

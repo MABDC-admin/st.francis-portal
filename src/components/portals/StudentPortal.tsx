@@ -549,7 +549,7 @@ export const StudentPortal = ({ activeSection = 'dashboard' }: StudentPortalProp
             <AnimatedStudentAvatar
               photoUrl={student.photo_url}
               name={student.student_name}
-              size="4xl"
+              size="2xl"
               borderColor="hsl(var(--primary) / 0.3)"
             />
           )}
