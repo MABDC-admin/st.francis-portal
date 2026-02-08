@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Calculator, Save, AlertCircle, CheckCircle2, Info, Loader2, FileDown, FileSpreadsheet, TrendingUp, Award } from 'lucide-react';
+import { Plus, Trash2, Calculator, Save, AlertCircle, CheckCircle2, Loader2, FileDown, FileSpreadsheet } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import {
     Select,
@@ -23,12 +23,6 @@ import {
     getSubjectCategory,
     SubjectCategory,
     CATEGORY_WEIGHTS,
-    getGradeDescriptor,
-    getGradeColorClass,
-    isPassing,
-    computeQuarterlyGeneralAverage,
-    computeAnnualGeneralAverage,
-    GradeRecord,
 } from '@/utils/gradeComputation';
 import { cn } from '@/lib/utils';
 import { Student } from '@/types/student';
@@ -56,12 +50,6 @@ export const TransmutationManager = ({ student, academicYearId }: TransmutationM
 
     const [isSaving, setIsSaving] = useState(false);
 
-    // Quarterly overview data
-    const [quarterlyGrades, setQuarterlyGrades] = useState<Record<number, number | null>>({ 1: null, 2: null, 3: null, 4: null });
-    
-    // General average data
-    const [allSubjectGrades, setAllSubjectGrades] = useState<GradeRecord[]>([]);
-
     // Fetch student's enrolled subjects
     useEffect(() => {
         const fetchSubjects = async () => {
@@ -76,45 +64,6 @@ export const TransmutationManager = ({ student, academicYearId }: TransmutationM
         };
         fetchSubjects();
     }, [student.id]);
-
-    // Fetch quarterly overview when subject changes
-    useEffect(() => {
-        if (!selectedSubject) return;
-
-        const fetchQuarterlyOverview = async () => {
-            const { data } = await (supabase
-                .from('raw_scores' as any)
-                .select('quarter, transmuted_grade')
-                .eq('student_id', student.id)
-                .eq('subject_id', selectedSubject)
-                .eq('academic_year_id', academicYearId) as any);
-
-            const grades: Record<number, number | null> = { 1: null, 2: null, 3: null, 4: null };
-            if (data) {
-                data.forEach((r: any) => {
-                    grades[r.quarter] = r.transmuted_grade;
-                });
-            }
-            setQuarterlyGrades(grades);
-        };
-        fetchQuarterlyOverview();
-    }, [selectedSubject, student.id, academicYearId, isSaving]);
-
-    // Fetch general average data
-    useEffect(() => {
-        const fetchGeneralAverage = async () => {
-            const { data } = await (supabase
-                .from('student_grades') as any)
-                .select('q1_grade, q2_grade, q3_grade, q4_grade, final_grade')
-                .eq('student_id', student.id)
-                .eq('academic_year_id', academicYearId);
-
-            if (data) {
-                setAllSubjectGrades(data);
-            }
-        };
-        fetchGeneralAverage();
-    }, [student.id, academicYearId, isSaving]);
 
     // Fetch existing raw scores when subject or quarter changes
     useEffect(() => {
@@ -176,25 +125,6 @@ export const TransmutationManager = ({ student, academicYearId }: TransmutationM
 
         return computeQuarterlyGrade(currentCategory, { wwRaw, wwMax, ptRaw, ptMax, qaRaw, qaMax });
     }, [currentCategory, wwEntries, ptEntries, qaEntry]);
-
-    // Compute final grade (average of 4 quarters)
-    const finalGrade = useMemo(() => {
-        const grades = Object.values(quarterlyGrades).filter((g): g is number => g !== null);
-        if (grades.length === 0) return null;
-        return Math.round(grades.reduce((s, g) => s + g, 0) / grades.length);
-    }, [quarterlyGrades]);
-
-    // Compute general averages
-    const generalAverages = useMemo(() => {
-        if (allSubjectGrades.length === 0) return null;
-        return {
-            q1: computeQuarterlyGeneralAverage(allSubjectGrades, 'q1'),
-            q2: computeQuarterlyGeneralAverage(allSubjectGrades, 'q2'),
-            q3: computeQuarterlyGeneralAverage(allSubjectGrades, 'q3'),
-            q4: computeQuarterlyGeneralAverage(allSubjectGrades, 'q4'),
-            annual: computeAnnualGeneralAverage(allSubjectGrades),
-        };
-    }, [allSubjectGrades]);
 
     const handleAddEntry = (type: 'ww' | 'pt') => {
         if (type === 'ww') setWwEntries([...wwEntries, { raw: '', max: '' }]);
@@ -355,16 +285,6 @@ export const TransmutationManager = ({ student, academicYearId }: TransmutationM
         toast.success('CSV exported successfully!');
     };
 
-    const GradeCell = ({ grade }: { grade: number | null }) => {
-        if (grade === null) return <span className="text-muted-foreground text-xs">—</span>;
-        return (
-            <div className="flex flex-col items-center">
-                <span className={cn("text-sm font-bold", getGradeColorClass(grade))}>{grade}</span>
-                <span className="text-[8px] text-muted-foreground leading-none">{getGradeDescriptor(grade).split(' ').slice(0, 2).join(' ')}</span>
-            </div>
-        );
-    };
-
     return (
         <div className="flex flex-col bg-background/50 backdrop-blur-sm rounded-xl border border-border/50 overflow-hidden">
             {/* Configuration Header */}
@@ -403,39 +323,6 @@ export const TransmutationManager = ({ student, academicYearId }: TransmutationM
                     </Badge>
                 </div>
             </div>
-
-            {/* Quarterly Overview */}
-            {selectedSubject && (
-                <div className="px-3 py-2 bg-secondary/30 border-b border-border/50">
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                        <TrendingUp className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Quarterly Overview</span>
-                    </div>
-                    <div className="grid grid-cols-5 gap-1">
-                        {[1, 2, 3, 4].map(q => (
-                            <div key={q} className={cn(
-                                "flex flex-col items-center py-1.5 px-1 rounded-md border text-center",
-                                parseInt(quarter) === q ? "border-stat-cyan/40 bg-stat-cyan/5" : "border-border/30 bg-background/30"
-                            )}>
-                                <span className="text-[9px] font-bold text-muted-foreground">Q{q}</span>
-                                <GradeCell grade={quarterlyGrades[q]} />
-                            </div>
-                        ))}
-                        <div className="flex flex-col items-center py-1.5 px-1 rounded-md border border-primary/30 bg-primary/5 text-center">
-                            <span className="text-[9px] font-bold text-primary">Final</span>
-                            <GradeCell grade={finalGrade} />
-                        </div>
-                    </div>
-                    {finalGrade !== null && (
-                        <div className="mt-1 flex items-center gap-1.5 justify-center">
-                            <Badge className={cn("text-[9px] h-4", isPassing(finalGrade) ? "bg-green-500/10 text-green-600 border-green-500/20" : "bg-red-500/10 text-red-600 border-red-500/20")} variant="outline">
-                                {isPassing(finalGrade) ? '✓ PASSED' : '✗ FAILED'}
-                            </Badge>
-                            <span className={cn("text-[9px]", getGradeColorClass(finalGrade))}>{getGradeDescriptor(finalGrade)}</span>
-                        </div>
-                    )}
-                </div>
-            )}
 
             {/* Score Input Area */}
             <div className="flex-1 p-3 overflow-y-auto space-y-4 relative">
@@ -531,7 +418,7 @@ export const TransmutationManager = ({ student, academicYearId }: TransmutationM
 
                 <Separator className="opacity-50" />
 
-                {/* Inline Result Summary */}
+                {/* Result Summary */}
                 <Card className="bg-background/80 border border-stat-cyan/20 shadow-sm">
                     <CardContent className="p-3 space-y-2">
                         <div className="flex items-center gap-1.5 mb-1">
@@ -564,67 +451,8 @@ export const TransmutationManager = ({ student, academicYearId }: TransmutationM
                                 <div className="text-2xl font-black text-orange-500 drop-shadow-sm">{computedGrades.transmutedGrade}</div>
                             </div>
                         </div>
-
-                        {/* Grade Descriptor */}
-                        <div className="flex items-center justify-center gap-2 pt-1">
-                            <Badge className={cn("text-[10px]", isPassing(computedGrades.transmutedGrade) ? "bg-green-500/10 text-green-600 border-green-500/20" : "bg-red-500/10 text-red-600 border-red-500/20")} variant="outline">
-                                {isPassing(computedGrades.transmutedGrade) ? '✓ PASS' : '✗ FAIL'}
-                            </Badge>
-                            <span className={cn("text-xs font-medium", getGradeColorClass(computedGrades.transmutedGrade))}>
-                                {getGradeDescriptor(computedGrades.transmutedGrade)}
-                            </span>
-                        </div>
                     </CardContent>
                 </Card>
-
-                {/* General Average */}
-                {generalAverages && (
-                    <Card className="bg-background/80 border border-primary/20 shadow-sm">
-                        <CardContent className="p-3 space-y-2">
-                            <div className="flex items-center gap-1.5 mb-1">
-                                <Award className="h-3.5 w-3.5 text-primary" />
-                                <span className="text-[10px] uppercase tracking-widest text-primary font-bold">General Average</span>
-                                <Badge variant="outline" className="text-[9px] h-4 ml-auto">{allSubjectGrades.length} subjects</Badge>
-                            </div>
-                            <div className="grid grid-cols-5 gap-1">
-                                {(['q1', 'q2', 'q3', 'q4'] as const).map(q => {
-                                    const val = generalAverages[q];
-                                    const rounded = val !== null ? Math.round(val) : null;
-                                    return (
-                                        <div key={q} className="flex flex-col items-center py-1 rounded-md border border-border/30 bg-secondary/20">
-                                            <span className="text-[9px] font-bold text-muted-foreground uppercase">{q}</span>
-                                            <span className={cn("text-sm font-bold", getGradeColorClass(rounded))}>{rounded ?? '—'}</span>
-                                        </div>
-                                    );
-                                })}
-                                <div className="flex flex-col items-center py-1 rounded-md border border-primary/30 bg-primary/5">
-                                    <span className="text-[9px] font-bold text-primary">GA</span>
-                                    <span className={cn("text-sm font-bold", getGradeColorClass(generalAverages.annual !== null ? Math.round(generalAverages.annual) : null))}>
-                                        {generalAverages.annual !== null ? Math.round(generalAverages.annual) : '—'}
-                                    </span>
-                                </div>
-                            </div>
-                            {generalAverages.annual !== null && (
-                                <div className="flex items-center justify-center gap-1.5">
-                                    <Badge className={cn("text-[9px] h-4", isPassing(Math.round(generalAverages.annual)) ? "bg-green-500/10 text-green-600 border-green-500/20" : "bg-red-500/10 text-red-600 border-red-500/20")} variant="outline">
-                                        {isPassing(Math.round(generalAverages.annual)) ? '✓ PROMOTED' : '✗ RETAINED'}
-                                    </Badge>
-                                    <span className={cn("text-[9px]", getGradeColorClass(Math.round(generalAverages.annual)))}>
-                                        {getGradeDescriptor(Math.round(generalAverages.annual))}
-                                    </span>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Info Tip */}
-                <div className="p-2 bg-blue-500/5 rounded-md border border-blue-500/10 flex gap-1.5">
-                    <Info className="h-3.5 w-3.5 text-blue-500 shrink-0 mt-0.5" />
-                    <p className="text-[9px] text-blue-600/80 leading-relaxed italic">
-                        DepEd Order No. 8, s. 2015: Grade 75 is the minimum passing transmuted rating. General Average is the mean of all subject final grades.
-                    </p>
-                </div>
             </div>
 
             {/* Sticky Save Bar */}
