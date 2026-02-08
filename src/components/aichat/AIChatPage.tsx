@@ -359,6 +359,7 @@ export const AIChatPage = () => {
               onSelect={(text, mode) => { setInput(text); setActiveMode(mode); textareaRef.current?.focus(); }}
               onFileUpload={() => fileInputRef.current?.click()}
               disabled={isLoading || isExtractingPdf}
+              sessions={sessions}
             />
             <div className="flex-1 relative">
               {activeMode && (
