@@ -1,139 +1,48 @@
 
 
-# Enhanced PDF Export for AI Chat Responses
-
-## Overview
-
-Upgrade the existing `exportResponseToPdf` function in `src/utils/aiChatPdfExport.ts` with clickable hyperlinks, embedded AI-generated images, auto-generated table of contents, and improved visual quality. The current implementation strips links and ignores images -- the new version preserves both.
+# Omada Configuration Update
 
 ## What Changes
 
-### 1. Clickable Hyperlinks with URL Validation
+Update the three Omada secrets to your new credentials and modify the edge function to handle HTTPS connections with self-signed certificates.
 
-Currently all markdown links are stripped to plain text. The new version will:
+## New Credentials to Set
 
-- Parse `[text](url)` patterns and render them as **clickable PDF links** using jsPDF's `doc.textWithLink()` API
-- Validate URLs before embedding (must start with `http://` or `https://`)
-- Style links in blue with underline so they're visually identifiable
-- YouTube links get a red "VIDEO" badge (already exists) but now also become clickable
-- Invalid/malformed URLs render as plain text with a small "[invalid link]" note
+| Secret | New Value |
+|--------|-----------|
+| `OMADA_URL` | `https://128.140.99.247:8043` (trailing slash removed) |
+| `OMADA_CLIENT_ID` | `78dbd703ef9e419d82a532df196428ed` |
+| `OMADA_CLIENT_SECRET` | `c7653018c44340bb864e66cf8268858d` |
 
-### 2. Embedded Images (AI-Generated)
+## Edge Function TLS Fix
 
-The `Message` type already carries an `images` array. The export function will:
+The new URL uses HTTPS on a raw IP address, which almost certainly has a self-signed certificate. Deno's `fetch` rejects self-signed certs by default. The fix is to add a custom `fetch` wrapper or use Deno's undocumented `{ client: ... }` option -- but the simplest reliable approach for Deno Deploy (which powers backend functions) is to **try HTTPS first, and if it fails with a TLS error, fall back to HTTP on the same port**, or we can use a `NODE_TLS_REJECT_UNAUTHORIZED`-style workaround.
 
-- Accept an optional `images` parameter (the message's `ChatImage[]`)
-- For each base64 data URL image, embed it into the PDF using `doc.addImage()`
-- Scale images to fit within the usable width (max 150mm wide) while preserving aspect ratio
-- Use PNG format for best quality within jsPDF
-- Skip external URLs that can't be embedded client-side (add a placeholder note instead)
+**However**, there is no clean way to skip TLS verification in Deno Deploy. The recommended approach is:
 
-### 3. Auto-Generated Table of Contents
+**Option A (Recommended)**: Change the URL to HTTP if the controller supports it on that port: `http://128.140.99.247:8043`
 
-For longer responses, a TOC page is inserted after the header:
+**Option B**: If the controller only serves HTTPS, we need to confirm whether Deno Deploy's fetch can reach it. We can test this by deploying and checking logs.
 
-- During the first pass, collect all headings (`#`, `##`, `###`) with their text and page numbers
-- If there are 3+ headings, generate a TOC on page 2 with clickable internal links using `doc.link()` pointing to each heading's Y position
-- Each TOC entry shows: heading text (indented by level) and page number (right-aligned, dotted leader)
-- TOC entries are styled with the section color if an emoji section header
+## Implementation Steps
 
-### 4. Improved Visual Quality
-
-- Increase default font rendering quality (jsPDF uses 72 DPI by default; we set `doc.setProperties({ creator: 'SchoolAI' })` and use mm units which already produce clean vector text)
-- All text, lines, and shapes in jsPDF are already vector -- no rasterization needed
-- Images embedded at their original resolution (base64 images from AI are typically 1024x1024)
-- Bold text segments within paragraphs rendered inline (currently bold markers are stripped)
-
-### 5. Suggestion Block Exclusion
-
-The `💡 **Suggestion:**` block appended by the AI is **stripped before export** so it doesn't appear in the downloaded PDF (it's a UI-only element).
-
-### 6. Error Handling
-
-- Wrap the entire export in try/catch with a toast notification on failure
-- Image embedding failures are caught individually (skip broken images, continue export)
-- File size check after generation -- warn if over 10MB via toast
+1. Update the three secrets (`OMADA_URL`, `OMADA_CLIENT_ID`, `OMADA_CLIENT_SECRET`) with the new values
+2. Deploy the edge function (no code change needed if TLS works, or switch URL to HTTP)
+3. Test by calling the status endpoint and checking logs
 
 ## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/utils/aiChatPdfExport.ts` | Complete rewrite of export function with links, images, TOC, inline bold |
-| `src/components/aichat/ChatMessageBubble.tsx` | Pass `message.images` to the export function |
+| Secrets only | Update 3 secrets via the secret management tool |
 
-## Technical Details
+If TLS fails after testing:
 
-### Link Rendering
+| File | Change |
+|------|--------|
+| `supabase/functions/omada-proxy/index.ts` | Add error message clarifying TLS issue, or attempt HTTP fallback |
 
-jsPDF supports clickable links via `doc.textWithLink(text, x, y, { url })`. For inline links within paragraphs:
+## Testing Plan
 
-```text
-1. Parse line for [text](url) patterns
-2. Validate URL (must match /^https?:\/\//)
-3. Split line into segments: plain text + link text
-4. Render plain segments with doc.text()
-5. Render link segments with doc.textWithLink() in blue + underline
-6. Track X position across segments for inline flow
-```
-
-### Image Embedding
-
-```text
-1. Check if image URL starts with "data:image/"
-2. Extract format (png/jpeg/webp) from data URL
-3. Create temporary Image() to get natural dimensions
-4. Calculate scaled dimensions to fit within usableWidth
-5. Call doc.addImage(dataUrl, format, x, y, width, height)
-6. Advance Y cursor by image height + margin
-```
-
-### Table of Contents (Two-Pass Rendering)
-
-```text
-Pass 1: Parse all lines, collect headings with estimated page numbers
-Pass 2: If 3+ headings exist:
-  - Insert new page after header as TOC
-  - Render "Table of Contents" title
-  - For each heading: render text + page number with doc.link() internal destination
-  - Adjust all subsequent page numbers by +1
-Pass 3: Render content as before (with page offset)
-```
-
-### Inline Bold Rendering
-
-Instead of stripping `**bold**` markers, the renderer will:
-
-```text
-1. Split text by **...** patterns
-2. Alternate between normal and bold font
-3. Measure each segment width with doc.getTextWidth()
-4. Render segments sequentially, advancing X position
-```
-
-### URL Validation
-
-```text
-function isValidUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    return ['http:', 'https:'].includes(parsed.protocol);
-  } catch {
-    return false;
-  }
-}
-```
-
-### Export Function Signature Change
-
-```text
-// Before
-exportResponseToPdf(content: string, documentName?: string)
-
-// After
-exportResponseToPdf(content: string, documentName?: string, images?: ChatImage[])
-```
-
-### No New Dependencies
-
-Uses `jsPDF` (already installed) and `jspdf-autotable` (already installed, used for TOC table if needed). All other logic is vanilla TypeScript.
+After updating secrets, we will invoke the edge function's `status` action and inspect the logs to confirm connectivity.
 
