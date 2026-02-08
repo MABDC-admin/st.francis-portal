@@ -3,10 +3,13 @@ import { Student } from '@/types/student';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Calendar, User, Heart, MapPin, Phone, BookOpen, Bus, TrendingUp, ClipboardCheck } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
+import { useStudentQRCode } from '@/hooks/useStudentQRCode';
 
 interface StudentDetailPanelProps {
   student: Student;
@@ -23,6 +26,7 @@ const tabs: { id: DetailTab; label: string; icon: React.ElementType }[] = [
 
 export const StudentDetailPanel = ({ student }: StudentDetailPanelProps) => {
   const [activeTab, setActiveTab] = useState<DetailTab>('progress');
+  const { qrCodeUrl, isLoading: qrLoading } = useStudentQRCode(student.id);
 
   const address = student.uae_address || student.phil_address || '-';
   const birthDate = student.birth_date
@@ -73,7 +77,7 @@ export const StudentDetailPanel = ({ student }: StudentDetailPanelProps) => {
                 {student.student_name.charAt(0)}
               </AvatarFallback>
             </Avatar>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <h2 className="text-xl font-bold truncate">{student.student_name}</h2>
               <div className="flex flex-wrap items-center gap-3 mt-1.5 text-sm text-white/70">
                 <span className="bg-white/10 px-2.5 py-0.5 rounded-full text-xs font-medium">
@@ -82,6 +86,31 @@ export const StudentDetailPanel = ({ student }: StudentDetailPanelProps) => {
                 <span className="font-mono text-xs">ID: {student.lrn}</span>
               </div>
             </div>
+            {/* QR Code */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="shrink-0">
+                    {qrLoading ? (
+                      <Skeleton className="h-20 w-20 rounded-lg bg-white/10" />
+                    ) : qrCodeUrl ? (
+                      <img
+                        src={qrCodeUrl}
+                        alt="Student QR Code"
+                        className="h-20 w-20 rounded-lg border-2 border-white/20"
+                      />
+                    ) : (
+                      <div className="h-20 w-20 rounded-lg border-2 border-white/10 flex items-center justify-center text-white/30 text-[10px] text-center">
+                        No QR
+                      </div>
+                    )}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Scan for student credentials</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
 
@@ -134,7 +163,7 @@ export const StudentDetailPanel = ({ student }: StudentDetailPanelProps) => {
                       <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                       <XAxis dataKey="quarter" className="text-xs" />
                       <YAxis domain={[70, 100]} className="text-xs" />
-                      <Tooltip />
+                      <RechartsTooltip />
                       <Line
                         type="monotone"
                         dataKey="grade"
