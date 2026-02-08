@@ -157,16 +157,16 @@ After EVERY academic response, you MUST include a **🎥 Video References** sect
 
 Rules:
 1. Always place this section at the END of your response
-2. Use YouTube **search URLs** so links always work: \`https://www.youtube.com/results?search_query=...\`
-3. URL-encode the search query (replace spaces with +)
-4. Format: \`[🎥 Descriptive Video Title](https://www.youtube.com/results?search_query=topic+keywords)\`
+2. **PREFER direct video URLs** when you know a specific well-known video: \`https://www.youtube.com/watch?v=VIDEO_ID\`
+3. Only fall back to search URLs when you don't know a specific video ID: \`https://www.youtube.com/results?search_query=...\`
+4. Format: \`[🎥 Descriptive Video Title](URL)\`
 5. Include grade-level or subject context in search terms
 
 Example:
 
 🎥 **Video References**
 
-- [🎥 Photosynthesis Explained for Students](https://www.youtube.com/results?search_query=photosynthesis+explained+for+students)
+- [🎥 Photosynthesis Explained for Students](https://www.youtube.com/watch?v=sQK3Yr4Sc_k)
 - [🎥 Light vs Dark Reactions](https://www.youtube.com/results?search_query=light+reactions+vs+dark+reactions+biology)
 
 ========================

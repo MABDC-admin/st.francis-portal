@@ -38,6 +38,32 @@ export const ChatMessageBubble = ({ message, isStreaming, docFilename }: ChatMes
                     a: ({ node, children, href, ...props }) => {
                       const isBookLink = href?.includes('/library/book/');
                       const isYouTube = href?.includes('youtube.com') || href?.includes('youtu.be');
+                      
+                      // Extract YouTube video ID for embedding
+                      let videoId: string | null = null;
+                      if (isYouTube && href) {
+                        const watchMatch = href.match(/[?&]v=([0-9A-Za-z_-]{11})/);
+                        const shortMatch = href.match(/youtu\.be\/([0-9A-Za-z_-]{11})/);
+                        videoId = watchMatch?.[1] || shortMatch?.[1] || null;
+                      }
+
+                      // Render embedded player for direct YouTube video links
+                      if (videoId) {
+                        return (
+                          <div className="my-2 w-full max-w-md">
+                            <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-border">
+                              <iframe
+                                src={`https://www.youtube-nocookie.com/embed/${videoId}`}
+                                title={typeof children === 'string' ? children : 'YouTube video'}
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                                className="absolute inset-0 w-full h-full"
+                              />
+                            </div>
+                          </div>
+                        );
+                      }
+
                       return (
                         <a
                           {...props}
