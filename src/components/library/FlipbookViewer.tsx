@@ -131,9 +131,11 @@ export const FlipbookViewer = ({
     }
   }, [initialPage, pages.length, isLoading]);
 
-  // Auto-detect page numbers when pages are loaded (skips already-persisted ones)
+  // Auto-detect page numbers when pages are loaded (run once per book)
+  const hasTriggeredDetection = useRef(false);
   useEffect(() => {
-    if (pages.length > 0 && !isDetecting) {
+    if (pages.length > 0 && !hasTriggeredDetection.current) {
+      hasTriggeredDetection.current = true;
       const pagesToDetect = pages.map(page => ({
         pageIndex: page.page_number - 1,
         imageUrl: page.thumbnail_url || page.image_url,
@@ -142,7 +144,7 @@ export const FlipbookViewer = ({
       
       detectPagesSequentially(pagesToDetect);
     }
-  }, [pages, isDetecting, detectPagesSequentially]);
+  }, [pages, detectPagesSequentially]);
 
   // Keyboard navigation
   useEffect(() => {

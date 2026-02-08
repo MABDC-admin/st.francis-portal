@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -80,14 +80,20 @@ export function usePageDetection({ bookId, autoDetect = true }: UsePageDetection
     }
   }, [bookId]);
 
+  // Keep a ref in sync so the callback doesn't depend on detectedPages state
+  const detectedPagesRef = useRef(detectedPages);
+  useEffect(() => {
+    detectedPagesRef.current = detectedPages;
+  }, [detectedPages]);
+
   // Detect pages sequentially, skipping already-detected ones
   const detectPagesSequentially = useCallback(async (
     pages: { pageIndex: number; imageUrl: string; pageId?: string }[]
   ) => {
     if (pages.length === 0) return;
 
-    // Filter out pages already detected
-    const undetectedPages = pages.filter(p => !detectedPages.has(p.pageIndex));
+    // Filter out pages already detected (use ref to avoid dependency)
+    const undetectedPages = pages.filter(p => !detectedPagesRef.current.has(p.pageIndex));
     
     if (undetectedPages.length === 0) {
       console.log('All pages already detected, skipping scan');
@@ -131,7 +137,7 @@ export function usePageDetection({ bookId, autoDetect = true }: UsePageDetection
     }
 
     return results;
-  }, [detectPageNumber, detectedPages]);
+  }, [detectPageNumber]);
 
   // Cancel ongoing detection
   const cancelDetection = useCallback(() => {

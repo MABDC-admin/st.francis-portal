@@ -141,8 +141,8 @@ export function usePdfToImages() {
                 const thumbBlob = await renderPageToBlob(pdf, pNum, 1.0);
 
                 // 5. Upload to Storage
-                const imagePath = `${bookId}/page-${pNum}.png`;
-                const thumbPath = `${bookId}/thumb-${pNum}.png`;
+                const imagePath = `${bookId}/page-${pNum}.webp`;
+                const thumbPath = `${bookId}/thumb-${pNum}.webp`;
 
                 const [pngUpload, thumbUpload] = await Promise.all([
                   supabase.storage
@@ -212,7 +212,7 @@ export function usePdfToImages() {
 
         const {
           data: { publicUrl: firstPageUrl },
-        } = supabase.storage.from('book-pages').getPublicUrl(`${bookId}/page-1.png`);
+        } = supabase.storage.from('book-pages').getPublicUrl(`${bookId}/page-1.webp`);
 
         return { numPages, firstPageUrl };
       } catch (error: any) {
