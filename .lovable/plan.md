@@ -1,79 +1,36 @@
 
-# Integrate Library Search into AI Chat
+
+# Update SchoolAI System Prompt with Strict Formatting Rules
 
 ## What This Does
-When you type **"find [topic]"** in the AI chat, SchoolAI will search through all indexed books in your library and return matching topics, lessons, and keywords -- then present the results as a formatted, intelligent response.
-
-## How It Works
-
-1. **Keyword Detection**: When your message starts with "find" (e.g., "find photosynthesis", "find fractions"), the system intercepts it before sending to the AI model.
-
-2. **Library Search**: It queries the indexed book pages database for matching topics, keywords, chapter titles, and text content.
-
-3. **AI-Formatted Response**: The raw search results are passed to SchoolAI, which formats them into a helpful response with:
-   - Book titles and page numbers
-   - Relevant topics and chapter titles
-   - Snippets of matching content
-   - Suggestions for further exploration
-
-4. **Fallback**: If no results are found, the AI tells you and offers to help explain the topic instead.
-
----
+Replaces the current `SCHOOL_SYSTEM_PROMPT` in `src/components/aichat/constants.ts` with an enhanced version that enforces strict response formatting — section headers with icons, proper spacing, numbered lists for steps, bullet points for items, code blocks with explanations, and clean professional layout.
 
 ## Technical Details
 
-### Files to Modify
+### File to Modify
 
 **`src/components/aichat/constants.ts`**
-- Add a `isFindRequest(text)` helper that detects messages starting with "find " (case-insensitive)
-- Extract the search query from the message (everything after "find ")
 
-**`src/components/aichat/AIChatPage.tsx`**
-- Import `isFindRequest` from constants
-- Add a `handleFindRequest(query)` function that:
-  1. Calls the `search-books` edge function with the extracted topic
-  2. Formats results into a context string
-  3. Sends the context + user query to the AI chat for a nicely formatted response
-- Update `handleSend` to check `isFindRequest` before `isImageRequest` and route accordingly
+Replace the existing `SCHOOL_SYSTEM_PROMPT` string with the new prompt that includes:
 
-### Search Flow
+1. **Identity and personality** — Genius-level SchoolAI assistant
+2. **Mandatory section icons** — Each response must use appropriate icons:
+   - `📘 Topic` for lesson/subject titles
+   - `🧠 Explanation` for detailed explanations
+   - `✅ Answer` for conclusions
+   - `📝 Steps` for procedures
+   - `💡 Tip` for insights
+   - `⚠️ Warning` for cautions
+   - `🔧 Technical` for technical content
+   - `📊 Analysis` for breakdowns
+3. **Spacing rules** — Blank lines between sections, before/after code blocks
+4. **List formatting** — Numbered lists for steps, bullet points for items
+5. **Code formatting** — Proper markdown code blocks with language tags, followed by explanations
+6. **Use-case awareness** — Lesson explanation, math solving, essay writing, quiz generation, teacher/admin assistance, programming/IT help
+7. **All existing domain expertise** retained (Math, Science, Programming, English, History, DepEd standards, etc.)
 
-```text
-User types: "find photosynthesis"
-       |
-       v
-isFindRequest() detects "find" prefix
-       |
-       v
-Extract query: "photosynthesis"
-       |
-       v
-Call search-books edge function
-       |
-       v
-Results found? ----No----> AI responds: "No library results found, but here's what I know..."
-       |
-      Yes
-       |
-       v
-Build context string with book titles, pages, topics, snippets
-       |
-       v
-Send to AI with prompt: "Format these library search results for the user"
-       |
-       v
-AI renders formatted results with book names, page numbers, and summaries
-```
+### No Other File Changes
+- Only `constants.ts` is modified (the system prompt string)
+- No new dependencies or database changes
+- The prompt is sent server-side via the existing `notebook-chat` edge function
 
-### Response Format Example
-The AI will present results like:
-
-- **Book**: "Science Grade 7" -- Page 45
-  - **Chapter**: Plant Biology
-  - **Topics**: Photosynthesis, Chloroplasts, Light Reactions
-  - **Snippet**: "Photosynthesis is the process by which plants convert..."
-
-### No External Dependencies
-- Uses the existing `search-books` edge function (already deployed)
-- No new database tables or migrations needed
-- No new packages required
