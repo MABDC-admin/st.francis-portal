@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Users, GraduationCap, TrendingUp, UserPlus, BookUser } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -75,6 +75,8 @@ import { AttendanceManagement, ScheduleManagement, AssignmentManagement, ExamSch
 const Index = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { bookId } = useParams<{ bookId?: string }>();
+  const [searchParams] = useSearchParams();
   const { user, loading, role, session } = useAuth();
 
   // Redirect to auth if not logged in
@@ -144,11 +146,15 @@ const Index = () => {
   // Handle navigation state and initial role-based tab setting
   useEffect(() => {
     if (!loading && user && role && !hasInitialized.current) {
+      // If deep-linking to a book, go straight to library
+      if (bookId) {
+        setActiveTab('library');
+        hasInitialized.current = true;
+        return;
+      }
       const state = location.state as { activeTab?: string } | null;
       if (state?.activeTab) {
         setActiveTab(state.activeTab);
-        // Clear state to avoid re-triggering on unrelated renders, 
-        // but it won't affect our hasInitialized flag
         navigate(location.pathname, { replace: true, state: {} });
       } else {
         setActiveTab('portal');
@@ -427,7 +433,7 @@ const Index = () => {
 
       {/* Library - All authenticated users */}
       {activeTab === 'library' && (
-        <LibraryPage />
+        <LibraryPage deepLinkBookId={bookId} deepLinkPage={searchParams.get('page') ? parseInt(searchParams.get('page')!) : undefined} />
       )}
 
       {/* Canva Studio - Admin and Teacher only */}

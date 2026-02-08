@@ -57,6 +57,7 @@ const App = () => {
                     <Routes>
                       <Route path="/auth" element={<Auth />} />
                       <Route path="/" element={<Index />} />
+                      <Route path="/library/book/:bookId" element={<Index />} />
                       <Route path="/student/:id" element={<StudentProfile />} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                       <Route path="*" element={<NotFound />} />

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Filter, BookOpen, Plus, Sparkles, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -80,7 +80,12 @@ const GRADE_LEVELS = [
   })),
 ];
 
-export const LibraryPage = () => {
+interface LibraryPageProps {
+  deepLinkBookId?: string;
+  deepLinkPage?: number;
+}
+
+export const LibraryPage = ({ deepLinkBookId, deepLinkPage }: LibraryPageProps = {}) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGrade, setSelectedGrade] = useState<string>('all');
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -148,6 +153,8 @@ export const LibraryPage = () => {
     }
   }, [isStudent, studentGradeLevel]);
 
+
+
   // Book search hook
   const { 
     search, 
@@ -182,6 +189,26 @@ export const LibraryPage = () => {
       return data as Book[];
     },
   });
+
+  // Handle deep-link to a specific book
+  const deepLinkHandled = useRef(false);
+  useEffect(() => {
+    if (deepLinkBookId && !deepLinkHandled.current && !isLoading) {
+      deepLinkHandled.current = true;
+      const book = books.find(b => b.id === deepLinkBookId);
+      if (book) {
+        setSelectedBook({ id: book.id, title: book.title, initialPage: deepLinkPage });
+      } else {
+        supabase.from('books').select('id, title').eq('id', deepLinkBookId).maybeSingle().then(({ data }) => {
+          if (data) {
+            setSelectedBook({ id: data.id, title: data.title, initialPage: deepLinkPage });
+          } else {
+            toast.error('Book not found or no longer available.');
+          }
+        });
+      }
+    }
+  }, [deepLinkBookId, deepLinkPage, books, isLoading]);
 
   // NOTE: Auto-indexing is disabled. Indexing runs at midnight UAE via scheduled job.
   // Books with pending status will be indexed sequentially by the cron job.

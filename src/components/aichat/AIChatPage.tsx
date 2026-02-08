@@ -121,19 +121,22 @@ export const AIChatPage = () => {
       if (results.length === 0 || totalMatches === 0) {
         contextPrompt = `The user searched the school library for "${query}" but no results were found in any indexed books. Let them know no library results were found, then provide a helpful academic explanation of the topic "${query}" instead. Be educational and thorough.`;
       } else {
+        const baseUrl = window.location.origin;
         let context = `The user searched the school library for "${query}". Here are the matching results from indexed books (${totalMatches} matches in ${results.length} books):\n\n`;
         for (const book of results) {
           context += `📚 **${book.book_title}**${book.subject ? ` (${book.subject})` : ''}${book.grade_level ? ` — Grade ${book.grade_level}` : ''}\n`;
           for (const match of book.matches.slice(0, 5)) {
+            const bookLink = `${baseUrl}/library/book/${book.book_id}?page=${match.page_number}`;
             context += `  - Page ${match.page_number}`;
             if (match.chapter_title) context += ` | Chapter: ${match.chapter_title}`;
             if (match.topics?.length) context += ` | Topics: ${match.topics.join(', ')}`;
             if (match.snippet) context += `\n    Snippet: "${match.snippet}"`;
+            context += `\n    [📖 Open "${book.book_title}" — Page ${match.page_number}](${bookLink})`;
             context += '\n';
           }
           context += '\n';
         }
-        contextPrompt = `${context}\nFormat these library search results beautifully for the user. Present each book with its page numbers, chapters, topics, and snippets. Make it easy to locate the information in the actual books. Add a brief summary of what the topic is about at the end.`;
+        contextPrompt = `${context}\nFormat these library search results beautifully for the user. Present each book with its page numbers, chapters, topics, and snippets. IMPORTANT: You MUST include the markdown links exactly as provided above (the [📖 Open "..." — Page N](url) links) so users can click to open the book directly. Do not modify or omit these links. Add a brief summary of what the topic is about at the end.`;
       }
 
       await handleTextChat([

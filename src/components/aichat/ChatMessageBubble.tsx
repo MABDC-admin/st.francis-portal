@@ -1,4 +1,4 @@
-import { Bot, User, Download } from 'lucide-react';
+import { Bot, User, Download, BookOpen, ExternalLink } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
@@ -32,7 +32,34 @@ export const ChatMessageBubble = ({ message, isStreaming, docFilename }: ChatMes
           <div className="space-y-3">
             {message.content && (
               <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    a: ({ node, children, href, ...props }) => {
+                      const isBookLink = href?.includes('/library/book/');
+                      return (
+                        <a
+                          {...props}
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={cn(
+                            'inline-flex items-center gap-1 no-underline rounded-md px-2 py-0.5 text-xs font-medium transition-colors',
+                            isBookLink
+                              ? 'bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20'
+                              : 'text-primary underline hover:text-primary/80'
+                          )}
+                        >
+                          {isBookLink && <BookOpen className="h-3 w-3 flex-shrink-0" />}
+                          {children}
+                          {isBookLink && <ExternalLink className="h-3 w-3 flex-shrink-0 opacity-60" />}
+                        </a>
+                      );
+                    },
+                  }}
+                >
+                  {message.content}
+                </ReactMarkdown>
               </div>
             )}
             {message.images && message.images.length > 0 && (
