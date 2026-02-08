@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Square, Bot, Paperclip, FileText, X, Loader2, Eraser } from 'lucide-react';
+import { Send, Square, Bot, FileText, X, Loader2, Eraser } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,6 +9,8 @@ import { useChatSessions } from '@/hooks/useChatSessions';
 import { ChatSidebar } from './ChatSidebar';
 import { ChatMessageBubble } from './ChatMessageBubble';
 import { ChatEmptyState } from './ChatEmptyState';
+import { ChatActionMenu } from './ChatActionMenu';
+import { ChatSuggestionChips } from './ChatSuggestionChips';
 import { CHAT_URL, IMAGE_URL, SCHOOL_SYSTEM_PROMPT, isImageRequest, isFindRequest, extractFindQuery } from './constants';
 import type { Message } from './types';
 import { supabase } from '@/integrations/supabase/client';
@@ -341,12 +343,20 @@ export const AIChatPage = () => {
         )}
 
         {/* Input */}
+        {messages.length === 0 && (
+          <ChatSuggestionChips
+            sessions={sessions}
+            onSelect={(text) => { setInput(text); textareaRef.current?.focus(); }}
+          />
+        )}
         <div className="border-t p-3 bg-muted/20">
           <div className="flex gap-2 max-w-3xl mx-auto items-end">
             <input ref={fileInputRef} type="file" accept=".pdf" onChange={handleFileUpload} className="hidden" />
-            <Button size="icon" variant="ghost" onClick={() => fileInputRef.current?.click()} disabled={isLoading || isExtractingPdf} className="h-11 w-11 rounded-xl flex-shrink-0" title="Upload PDF">
-              <Paperclip className="h-4 w-4" />
-            </Button>
+            <ChatActionMenu
+              onPrefill={(text) => { setInput(text); textareaRef.current?.focus(); }}
+              onFileUpload={() => fileInputRef.current?.click()}
+              disabled={isLoading || isExtractingPdf}
+            />
             <Textarea
               ref={textareaRef}
               value={input}
