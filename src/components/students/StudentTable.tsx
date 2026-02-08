@@ -14,7 +14,8 @@ import {
   List,
   GraduationCap,
   Rows3,
-  PanelLeftClose
+  PanelLeftClose,
+  SlidersHorizontal
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -182,7 +183,8 @@ export const StudentTable = ({
 
   return (
     <div className="bg-card rounded-2xl shadow-card overflow-hidden">
-      {/* Header */}
+      {/* Header - hidden in split mode */}
+      {viewMode as string !== 'split' && (
       <div className="p-4 lg:p-6 border-b border-border space-y-3">
         {/* Single Row: All Controls */}
         <div className="flex flex-wrap items-center gap-3">
@@ -343,24 +345,100 @@ export const StudentTable = ({
           )}
         </div>
       </div>
+      )}
 
       {/* Content */}
-      <div className="p-4 lg:p-6">
+      <div className={cn(viewMode === 'split' ? 'p-2' : 'p-4 lg:p-6')}>
         {viewMode === 'split' ? (
           /* Split Panel View */
-          <div className="flex gap-4 h-[calc(100vh-280px)] min-h-[500px]">
+          <div className="flex gap-3 h-[calc(100vh-160px)] min-h-[500px]">
             {/* Left Panel - Student List */}
             <div className="w-[35%] min-w-[280px] flex flex-col border rounded-xl overflow-hidden">
-              <div className="p-3 border-b bg-secondary/30">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search students..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9 h-8 text-sm"
-                  />
+              {/* Search + Filter Row */}
+              <div className="p-2.5 border-b bg-secondary/30 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      placeholder="Search students..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="pl-8 h-7 text-xs"
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className={cn("h-7 w-7 shrink-0", showFilters && "bg-primary/10 border-primary/30")}
+                    onClick={() => setShowFilters(!showFilters)}
+                    title="Filters"
+                  >
+                    <SlidersHorizontal className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-7 w-7 shrink-0"
+                    onClick={exportToCSV}
+                    title="Export CSV"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
+                {/* Inline Filters */}
+                <AnimatePresence>
+                  {showFilters && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        <Select value={schoolFilter} onValueChange={(v) => setSchoolFilter(v)}>
+                          <SelectTrigger className="h-7 text-xs w-[90px]">
+                            <GraduationCap className="h-3 w-3 mr-1 text-primary" />
+                            <SelectValue>{SCHOOLS.find(s => s.id === schoolFilter)?.acronym || 'ALL'}</SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SCHOOLS.map((school) => (
+                              <SelectItem key={school.id} value={school.id}>
+                                {school.acronym}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select value={levelFilter} onValueChange={(v) => setLevelFilter(v)}>
+                          <SelectTrigger className="h-7 text-xs w-[100px]">
+                            <SelectValue placeholder="All Levels" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Levels</SelectItem>
+                            {levels.map(level => (
+                              <SelectItem key={level} value={level}>{level}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select value={genderFilter} onValueChange={(v) => setGenderFilter(v)}>
+                          <SelectTrigger className="h-7 text-xs w-[90px]">
+                            <SelectValue placeholder="Gender" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All</SelectItem>
+                            {genders.map(gender => (
+                              <SelectItem key={gender} value={gender!}>{gender}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {hasActiveFilters && (
+                          <Button variant="ghost" size="icon" onClick={clearFilters} className="h-7 w-7" title="Clear filters">
+                            <X className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
               <ScrollArea className="flex-1">
                 <div className="divide-y divide-border">
