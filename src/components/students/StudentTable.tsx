@@ -13,14 +13,17 @@ import {
   LayoutGrid,
   List,
   GraduationCap,
-  Rows3
+  Rows3,
+  PanelLeftClose
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Student } from '@/types/student';
 import { StudentCard } from './StudentCard';
 import { StudentHoverPreview } from './StudentHoverPreview';
+import { StudentDetailPanel } from './StudentDetailPanel';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatName } from '@/utils/textFormatting';
 import {
   Select,
@@ -49,7 +52,7 @@ interface StudentTableProps {
 
 type SortField = 'student_name' | 'level' | 'age' | 'gender';
 type SortDirection = 'asc' | 'desc';
-type ViewMode = 'cards' | 'table' | 'compact';
+type ViewMode = 'cards' | 'table' | 'compact' | 'split';
 
 const ITEMS_PER_PAGE = 18;
 
@@ -75,7 +78,7 @@ export const StudentTable = ({
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
   const [currentPage, setCurrentPage] = useState(1);
-
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   // Get unique levels and genders for filters
   const levels = useMemo(() => {
     const uniqueLevels = [...new Set(students.map(s => s.level))].filter(Boolean).sort();
@@ -267,6 +270,18 @@ export const StudentTable = ({
             >
               <List className="h-4 w-4" />
             </button>
+            <button
+              onClick={() => setViewMode('split')}
+              className={cn(
+                "p-1.5 rounded-md transition-all",
+                viewMode === 'split'
+                  ? "bg-stat-purple text-white shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              title="Split Panel View"
+            >
+              <PanelLeftClose className="h-4 w-4" />
+            </button>
           </div>
 
           {/* Action Buttons */}
@@ -331,7 +346,100 @@ export const StudentTable = ({
 
       {/* Content */}
       <div className="p-4 lg:p-6">
-        {viewMode === 'cards' ? (
+        {viewMode === 'split' ? (
+          /* Split Panel View */
+          <div className="flex gap-4 h-[calc(100vh-280px)] min-h-[500px]">
+            {/* Left Panel - Student List */}
+            <div className="w-[35%] min-w-[280px] flex flex-col border rounded-xl overflow-hidden">
+              <div className="p-3 border-b bg-secondary/30">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search students..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9 h-8 text-sm"
+                  />
+                </div>
+              </div>
+              <ScrollArea className="flex-1">
+                <div className="divide-y divide-border">
+                  {isLoading ? (
+                    Array.from({ length: 10 }).map((_, i) => (
+                      <div key={i} className="p-3 animate-pulse">
+                        <div className="flex items-center gap-3">
+                          <div className="h-9 w-9 rounded-full bg-muted" />
+                          <div className="flex-1 space-y-1.5">
+                            <div className="h-3.5 bg-muted rounded w-3/4" />
+                            <div className="h-3 bg-muted rounded w-1/2" />
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : filteredStudents.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-muted-foreground">
+                      No students found.
+                    </div>
+                  ) : (
+                    filteredStudents.map((student) => (
+                      <button
+                        key={student.id}
+                        onClick={() => setSelectedStudent(student)}
+                        className={cn(
+                          "w-full flex items-center gap-3 p-3 text-left transition-colors hover:bg-secondary/50",
+                          selectedStudent?.id === student.id && "bg-primary/5 border-l-2 border-l-primary"
+                        )}
+                      >
+                        {student.photo_url ? (
+                          <img
+                            src={student.photo_url}
+                            alt=""
+                            className="h-9 w-9 rounded-full object-cover flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-bold text-primary">
+                              {student.student_name.charAt(0)}
+                            </span>
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">
+                            {formatName(student.student_name)}
+                          </p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] px-1.5 py-px rounded bg-primary/10 text-primary font-medium">
+                              {student.level}
+                            </span>
+                            <span className="text-[10px] font-mono text-muted-foreground truncate">
+                              {student.lrn}
+                            </span>
+                          </div>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+              <div className="p-2 border-t text-xs text-muted-foreground text-center bg-secondary/20">
+                {filteredStudents.length} students
+              </div>
+            </div>
+
+            {/* Right Panel - Student Detail */}
+            <div className="flex-1 min-w-0">
+              {selectedStudent ? (
+                <StudentDetailPanel student={selectedStudent} />
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-muted-foreground rounded-xl border border-dashed">
+                  <Eye className="h-12 w-12 mb-3 opacity-20" />
+                  <p className="text-sm font-medium">Select a student</p>
+                  <p className="text-xs mt-1">Click on a student from the list to view details</p>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : viewMode === 'cards' ? (
           /* Card View */
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
@@ -432,7 +540,6 @@ export const StudentTable = ({
                     className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50 transition-colors cursor-pointer group"
                     onClick={() => onView(student)}
                   >
-                    {/* Avatar */}
                     {student.photo_url ? (
                       <img
                         src={student.photo_url}
@@ -446,23 +553,15 @@ export const StudentTable = ({
                         </span>
                       </div>
                     )}
-
-                    {/* Name */}
                     <span className="font-medium text-sm flex-1 truncate min-w-0">
                       {formatName(student.student_name)}
                     </span>
-
-                    {/* Level Badge */}
                     <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-stat-purple/10 text-stat-purple flex-shrink-0">
                       {student.level}
                     </span>
-
-                    {/* LRN */}
                     <span className="font-mono text-[10px] text-muted-foreground hidden sm:block flex-shrink-0 w-28 truncate">
                       {student.lrn}
                     </span>
-
-                    {/* Actions */}
                     <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                       <Button
                         variant="ghost"
