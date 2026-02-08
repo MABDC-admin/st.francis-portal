@@ -9,14 +9,40 @@ const corsHeaders = {
 let cachedToken: { token: string; expires: number } | null = null;
 let cachedOmadacId: string | null = null;
 
+function httpFallbackUrl(baseUrl: string): string | null {
+  try {
+    const u = new URL(baseUrl);
+    if (u.protocol === 'https:') {
+      u.protocol = 'http:';
+      return u.toString().replace(/\/$/, '');
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+async function fetchWithTlsFallback(fullUrl: string, options?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(fullUrl, options);
+  } catch (err: any) {
+    const msg = String(err?.message || err);
+    if (msg.includes('UnknownIssuer') || msg.includes('certificate') || msg.includes('TLS') || msg.includes('SSL')) {
+      const parsed = new URL(fullUrl);
+      parsed.protocol = 'http:';
+      const httpUrl = parsed.toString();
+      console.log('TLS failed, falling back to HTTP:', httpUrl);
+      return await fetch(httpUrl, options);
+    }
+    throw err;
+  }
+}
+
 async function getOmadacId(url: string): Promise<string> {
   if (cachedOmadacId) return cachedOmadacId;
   
-  const resp = await fetch(`${url}/api/info`);
+  const resp = await fetchWithTlsFallback(`${url}/api/info`);
   const text = await resp.text();
   console.log('Omada /api/info response:', text);
   
-  // Check for HTML response
   if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
     throw new Error('Omada controller returned HTML instead of JSON. Check the URL.');
   }
@@ -37,9 +63,8 @@ async function getOmadaToken(url: string, clientId: string, clientSecret: string
   const tokenUrl = `${url}/openapi/authorize/token?grant_type=client_credentials&omadac_id=${omadacId}`;
   const requestBody = { client_id: clientId, client_secret: clientSecret };
   console.log('Requesting token from:', tokenUrl);
-  console.log('Token request body client_id:', clientId, 'client_secret length:', clientSecret?.length);
   
-  const resp = await fetch(tokenUrl, {
+  const resp = await fetchWithTlsFallback(tokenUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(requestBody),
@@ -75,7 +100,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const OMADA_URL = Deno.env.get('OMADA_URL');
+    const OMADA_URL = (Deno.env.get('OMADA_URL') || '').replace(/\/$/, '');
     const OMADA_CLIENT_ID = Deno.env.get('OMADA_CLIENT_ID');
     const OMADA_CLIENT_SECRET = Deno.env.get('OMADA_CLIENT_SECRET');
 
@@ -102,7 +127,7 @@ Deno.serve(async (req) => {
     if (action === 'proxy') {
       const token = await getOmadaToken(OMADA_URL, OMADA_CLIENT_ID, OMADA_CLIENT_SECRET);
       const apiPath = path || '/openapi/v1/sites';
-      const resp = await fetch(`${OMADA_URL}${apiPath}`, {
+      const resp = await fetchWithTlsFallback(`${OMADA_URL}${apiPath}`, {
         headers: { Authorization: `AccessToken=${token}`, 'Content-Type': 'application/json' },
       });
       const data = await resp.json();
