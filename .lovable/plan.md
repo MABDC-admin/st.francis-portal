@@ -1,24 +1,60 @@
 
-# Enhance "Find" Results with Clickable Book Links
+
+# Add YouTube Video References and Enhanced PDF Graphics
 
 ## What This Does
-When you type "find [topic]" in the AI Chat, the search results will now include **clickable links** for each book match. Clicking a link opens the book's flipbook viewer directly to the matching page — in a new browser tab.
+1. **YouTube Videos in AI Responses**: SchoolAI will automatically include relevant YouTube video links when answering academic queries. These links appear as styled, clickable video cards in the chat.
+2. **Enhanced PDF Export**: The "Save as PDF" feature will include section icons (colored markers), styled headers, decorative separators, and visual indicators matching the chat formatting.
 
-## How It Works
+---
 
-1. **URL Structure**: A new route `/library/book/:bookId` is added that opens the Library page and automatically loads the flipbook viewer for that book at an optional page number (`?page=45`).
+## Part 1: YouTube Video References
 
-2. **Clickable Markdown Links**: The context sent to the AI now includes pre-built markdown links like:
-   ```
-   [📖 Open Book — Page 45](/library/book/abc123?page=45)
-   ```
-   The AI includes these links in its formatted response.
+### System Prompt Update
+**File: `src/components/aichat/constants.ts`**
 
-3. **New Tab Behavior**: The `ChatMessageBubble` component's ReactMarkdown renderer is configured to render all links with `target="_blank"` and `rel="noopener noreferrer"`.
+Add a new section to `SCHOOL_SYSTEM_PROMPT` instructing the AI to include YouTube video references:
+- After answering a query, include a `🎥 **Video References**` section
+- Include 1-3 relevant YouTube search/video links in markdown format
+- Use YouTube search URLs (`https://www.youtube.com/results?search_query=...`) when specific video IDs aren't known -- this ensures links always work
+- Format: `[🎥 Video Title](https://youtube.com/results?search_query=topic+keywords)`
 
-4. **Book Landing Route**: A new route `/library/book/:bookId` renders the `LibraryPage` component, which detects the URL params and auto-opens the flipbook viewer for that specific book and page.
+### Chat Bubble YouTube Styling
+**File: `src/components/aichat/ChatMessageBubble.tsx`**
 
-5. **Error Handling**: If a book ID is invalid or missing, the library page shows a toast notification and falls back to the normal library view.
+Update the custom `a` component in ReactMarkdown to detect YouTube links and render them with distinct styling:
+- Detect `youtube.com` or `youtu.be` in `href`
+- Render with a red/YouTube-branded pill style with a play icon
+- Keep `target="_blank"` and `rel="noopener noreferrer"`
+
+---
+
+## Part 2: Enhanced PDF Export with Graphics and Icons
+
+**File: `src/utils/aiChatPdfExport.ts`**
+
+Enhance the PDF generator with visual elements:
+
+1. **Section Icon Indicators**: Draw small colored circles before section headers to represent each icon type:
+   - Blue circle for `📘 Topic`
+   - Purple circle for `🧠 Explanation`
+   - Green circle for `✅ Answer`
+   - Orange circle for `📝 Steps`
+   - Yellow circle for `💡 Tip`
+   - Red circle for `⚠️ Warning`
+   - Gray circle for `🔧 Technical`
+   - Teal circle for `📊 Analysis`
+   - Red circle for `🎥 Video References`
+
+2. **Colored Section Headers**: Section header text rendered in matching colors (not just black)
+
+3. **Decorative Separators**: Thin colored lines between major sections instead of plain gray
+
+4. **Header Banner**: A styled header area with SchoolAI branding, a colored accent bar, and the date
+
+5. **YouTube Link Rendering**: Detect YouTube URLs in the content and render them as styled text with a "VIDEO" label prefix and the URL printed below for reference
+
+6. **Footer Enhancement**: Add SchoolAI logo text and a colored accent line in the footer
 
 ---
 
@@ -26,38 +62,27 @@ When you type "find [topic]" in the AI Chat, the search results will now include
 
 ### Files to Modify
 
-**1. `src/components/aichat/AIChatPage.tsx`**
-- Update `handleFindRequest` to include clickable markdown links in the context string
-- Each book match line includes: `[📖 Open "${bookTitle}" — Page ${pageNumber}](/library/book/${bookId}?page=${pageNumber})`
-- Update the AI formatting instruction to tell it to preserve and include these markdown links
-
-**2. `src/components/aichat/ChatMessageBubble.tsx`**
-- Add a custom `components` prop to `ReactMarkdown` that renders `<a>` tags with `target="_blank"` and `rel="noopener noreferrer"`
-- Add visual styling: book links get a distinct style (underline, primary color, external link icon)
-
-**3. `src/App.tsx`**
-- Add route: `<Route path="/library/book/:bookId" element={<Index />} />`
-- The Index page will pass the bookId param down to the Library view
-
-**4. `src/components/library/LibraryPage.tsx`**
-- Accept optional `bookId` and `page` props (or read from URL params via `useParams`/`useSearchParams`)
-- On mount, if `bookId` is present, fetch the book details and auto-open the FlipbookViewer at the specified page
-- Show error toast if book not found
-
-### Link Format in AI Response
-
-The AI will output responses like:
-
-> **Science Grade 7** (Science)
-> - Page 45 | Chapter: Plant Biology | Topics: Photosynthesis
->   Snippet: "Photosynthesis is the process..."
->   [📖 Open Book — Page 45](/library/book/abc-123?page=45)
-
-### Security
-- All links use `rel="noopener noreferrer"` 
-- Book access respects existing school-level permissions (the library page already checks school context)
+| File | Change |
+|------|--------|
+| `src/components/aichat/constants.ts` | Add YouTube video reference instructions to system prompt |
+| `src/components/aichat/ChatMessageBubble.tsx` | Add YouTube link detection and styled rendering |
+| `src/utils/aiChatPdfExport.ts` | Add colored icon circles, styled headers, YouTube URL rendering, decorative separators |
 
 ### No New Dependencies
-- Uses existing `react-router-dom` for routing
-- Uses existing `ReactMarkdown` custom components API
-- No database changes needed
+- Uses existing jsPDF drawing primitives (circles, colored text, lines)
+- Uses existing ReactMarkdown custom components
+- YouTube links are standard URLs -- no embed API needed
+
+### YouTube Link Detection Logic
+```text
+href includes "youtube.com" OR "youtu.be"
+  -> Render with red accent, play icon, "Watch on YouTube" label
+```
+
+### PDF Icon Rendering Logic
+```text
+Line starts with emoji pattern (📘, 🧠, ✅, etc.)
+  -> Draw colored circle (3mm diameter) at left margin
+  -> Render header text in matching color, offset right
+  -> Add thin colored underline
+```
