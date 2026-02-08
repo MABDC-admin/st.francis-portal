@@ -4,72 +4,33 @@ import { Wifi, WifiOff, Monitor, RefreshCw, AlertCircle, Users, Signal } from 'l
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+const OMADA_API_BASE = 'https://api.mabdc.org/api/omada';
+
 export const OmadaDashboard = () => {
-  const [configured, setConfigured] = useState<boolean | null>(null);
   const [healthy, setHealthy] = useState<boolean | null>(null);
   const [sites, setSites] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const callProxy = async (action: string, path?: string) => {
-    const { data: result, error } = await supabase.functions.invoke('omada-proxy', {
-      body: { action, path },
-    });
-    if (error) throw error;
-    return result;
-  };
-
   const checkStatus = async () => {
     setLoading(true);
     try {
-      const result = await callProxy('status');
-      if (result.configured === false) {
-        setConfigured(false);
-        return;
-      }
-      setConfigured(true);
-      setHealthy(result.data?.healthy ?? false);
-    } catch {
-      setConfigured(true);
+      const resp = await fetch(`${OMADA_API_BASE}/sites`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      setHealthy(true);
+      setSites(Array.isArray(data) ? data : data?.result?.data || data?.data || []);
+    } catch (err: any) {
+      console.error('Omada API error:', err);
       setHealthy(false);
+      setSites([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadSites = async () => {
-    try {
-      const result = await callProxy('proxy', '/openapi/v1/sites');
-      setSites(result.data?.result?.data || []);
-    } catch (err: any) {
-      console.error('Failed to load Omada sites:', err);
-    }
-  };
-
   useEffect(() => { checkStatus(); }, []);
-  useEffect(() => { if (healthy) loadSites(); }, [healthy]);
-
-  if (configured === false) {
-    return (
-      <div className="space-y-6">
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Omada Controller</h1>
-          <p className="text-muted-foreground mt-1">Network Management</p>
-        </motion.div>
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Omada Not Configured</h3>
-            <p className="text-muted-foreground max-w-md">
-              Set up <code className="bg-muted px-1 rounded">OMADA_URL</code>, <code className="bg-muted px-1 rounded">OMADA_CLIENT_ID</code>, and <code className="bg-muted px-1 rounded">OMADA_CLIENT_SECRET</code> secrets.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -151,6 +112,18 @@ export const OmadaDashboard = () => {
             <Wifi className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">Connected to Omada</h3>
             <p className="text-muted-foreground">Controller is online. No sites data available yet.</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {!loading && !healthy && (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Cannot Reach API</h3>
+            <p className="text-muted-foreground max-w-md">
+              Unable to connect to <code className="bg-muted px-1 rounded">api.mabdc.org</code>. Check if the API is online.
+            </p>
           </CardContent>
         </Card>
       )}
