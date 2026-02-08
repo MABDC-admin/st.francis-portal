@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.generate-student-qr]
 verify_jwt = false
+
+[functions.generate-ai-image]
+verify_jwt = false
