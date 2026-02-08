@@ -56,7 +56,6 @@ export const FlipbookViewer = ({
   const [flipDirection, setFlipDirection] = useState<'left' | 'right' | null>(null);
   const [isFlipping, setIsFlipping] = useState(false);
   const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right');
-  const [placedStickers, setPlacedStickers] = useState<Map<number, PlacedSticker[]>>(new Map());
   const [containerRect, setContainerRect] = useState<DOMRect | null>(null);
 
   const isMobile = useIsMobile();
@@ -71,6 +70,7 @@ export const FlipbookViewer = ({
     setAnnotationMode,
     annotationColor,
     setAnnotationColor,
+    annotations,
     canvasRef,
     containerRef,
     startDrawing,
@@ -85,9 +85,11 @@ export const FlipbookViewer = ({
     undo,
     redo,
     clearAnnotations,
+    updateAnnotation,
+    removeAnnotation,
     canUndo,
     canRedo,
-  } = useAnnotations();
+  } = useAnnotations(bookId);
 
   // Page detection hook
   const {
@@ -335,51 +337,41 @@ export const FlipbookViewer = ({
     const rect = pageContainerRef.current.getBoundingClientRect();
     setContainerRect(rect);
 
-    // Place sticker in center of visible area
-    const centerX = (rect.width / 2) / zoom;
-    const centerY = (rect.height / 2) / zoom;
-
-    const newSticker: PlacedSticker = {
-      id: crypto.randomUUID(),
-      type: sticker.type,
-      value: sticker.value,
-      x: centerX - 24, // offset by half the default size
-      y: centerY - 24,
-      size: 48,
-    };
-
-    setPlacedStickers(prev => {
-      const pageStickers = prev.get(currentPage) || [];
-      const updated = new Map(prev);
-      updated.set(currentPage, [...pageStickers, newSticker]);
-      return updated;
-    });
+    // Use the hook's placement logic
+    placeStickerAtPosition(
+      sticker,
+      currentPage,
+      rect.width / 2,
+      rect.height / 2,
+      zoom
+    );
 
     setPendingSticker(null);
     setAnnotationMode('none');
-  }, [currentPage, zoom, setPendingSticker, setAnnotationMode]);
+  }, [currentPage, zoom, setPendingSticker, setAnnotationMode, placeStickerAtPosition]);
 
   // Update sticker position or size
   const handleStickerUpdate = useCallback((id: string, updates: Partial<PlacedSticker>) => {
-    setPlacedStickers(prev => {
-      const pageStickers = prev.get(currentPage) || [];
-      const updated = new Map(prev);
-      updated.set(currentPage, pageStickers.map(s =>
-        s.id === id ? { ...s, ...updates } : s
-      ));
-      return updated;
+    updateAnnotation(currentPage, id, {
+      sticker: updates as any
     });
-  }, [currentPage]);
+  }, [currentPage, updateAnnotation]);
 
   // Remove sticker
   const handleStickerRemove = useCallback((id: string) => {
-    setPlacedStickers(prev => {
-      const pageStickers = prev.get(currentPage) || [];
-      const updated = new Map(prev);
-      updated.set(currentPage, pageStickers.filter(s => s.id !== id));
-      return updated;
-    });
-  }, [currentPage]);
+    removeAnnotation(currentPage, id);
+  }, [currentPage, removeAnnotation]);
+
+  // Helper to get stickers for a page
+  const getStickersForPage = useCallback((pageNumber: number) => {
+    const pageAnns = annotations[pageNumber] || [];
+    return pageAnns
+      .filter(ann => ann.type === 'sticker' && ann.sticker)
+      .map(ann => ({
+        ...ann.sticker,
+        id: ann.id
+      })) as PlacedSticker[];
+  }, [annotations]);
 
   // Update container rect when page container changes
   useEffect(() => {
@@ -665,6 +657,18 @@ export const FlipbookViewer = ({
                   />
                   {/* Inner shadow near spine */}
                   <div className="absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-black/8 to-transparent pointer-events-none" />
+
+                  {/* Stickers for Left Page */}
+                  {getStickersForPage(leftPageIndex + 1).map((sticker) => (
+                    <StickerOverlay
+                      key={sticker.id}
+                      sticker={sticker}
+                      containerRect={containerRect}
+                      zoom={zoom}
+                      onUpdate={(id, updates) => updateAnnotation(leftPageIndex + 1, id, { sticker: updates as any })}
+                      onRemove={(id) => removeAnnotation(leftPageIndex + 1, id)}
+                    />
+                  ))}
                 </div>
 
                 {/* Spine */}
@@ -687,6 +691,18 @@ export const FlipbookViewer = ({
                     />
                     {/* Inner shadow near spine */}
                     <div className="absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-black/8 to-transparent pointer-events-none" />
+
+                    {/* Stickers for Right Page */}
+                    {getStickersForPage(rightPageIndex + 1).map((sticker) => (
+                      <StickerOverlay
+                        key={sticker.id}
+                        sticker={sticker}
+                        containerRect={containerRect}
+                        zoom={zoom}
+                        onUpdate={(id, updates) => updateAnnotation(rightPageIndex + 1, id, { sticker: updates as any })}
+                        onRemove={(id) => removeAnnotation(rightPageIndex + 1, id)}
+                      />
+                    ))}
                   </div>
                 )}
 
@@ -855,7 +871,7 @@ export const FlipbookViewer = ({
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseUp}
                   />
-                  {(placedStickers.get(currentPage) || []).map((sticker) => (
+                  {getStickersForPage(currentPage).map((sticker) => (
                     <StickerOverlay
                       key={sticker.id}
                       sticker={sticker}
@@ -912,7 +928,7 @@ export const FlipbookViewer = ({
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseUp}
                   />
-                  {(placedStickers.get(currentPage) || []).map((sticker) => (
+                  {getStickersForPage(currentPage).map((sticker) => (
                     <StickerOverlay
                       key={sticker.id}
                       sticker={sticker}

@@ -12,6 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PrintableCredentialSlips } from './PrintableCredentialSlips';
+import { useAuth } from '@/contexts/AuthContext';
+import { downloadBulkQRCodes } from '@/utils/qrBulkDownload';
+import { QrCode } from 'lucide-react';
 
 interface UserCredential {
   id: string;
@@ -27,6 +30,7 @@ interface UserCredential {
 }
 
 export const UserManagement = () => {
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [credentials, setCredentials] = useState<UserCredential[]>([]);
@@ -39,13 +43,14 @@ export const UserManagement = () => {
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [selectedSchool, setSelectedSchool] = useState('M.A Brain Development Center');
   const [resettingPasswordId, setResettingPasswordId] = useState<string | null>(null);
+  const [isDownloadingQRs, setIsDownloadingQRs] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
-  
+
   const schoolOptions = [
     { value: 'M.A Brain Development Center', label: 'M.A Brain Development Center (MABDC)' },
     { value: 'St. Francis Xavier Smart Academy Inc', label: 'St. Francis Xavier Smart Academy Inc (STFXSA)' },
   ];
-  
+
   // Form states for creating accounts
   const [adminForm, setAdminForm] = useState({ email: 'denskie@edutrack.local', password: 'Denskie123', fullName: 'Admin User' });
   const [registrarForm, setRegistrarForm] = useState({ email: 'registrar@edutrack.local', password: 'registrar123', fullName: 'Registrar User' });
@@ -62,7 +67,7 @@ export const UserManagement = () => {
         )
       `)
       .order('created_at', { ascending: false });
-    
+
     if (!error && data) {
       const mappedData = data.map((cred: any) => ({
         ...cred,
@@ -114,9 +119,29 @@ export const UserManagement = () => {
     setShowPrintDialog(true);
   };
 
+  const handleBulkDownloadQRs = async () => {
+    if (studentCredentials.length === 0) {
+      toast.error('No student credentials to download');
+      return;
+    }
+
+    setIsDownloadingQRs(true);
+    try {
+      const students = studentCredentials.map(cred => ({
+        id: cred.student_id!,
+        name: cred.student_name || 'Student'
+      })).filter(s => s.id);
+
+      await downloadBulkQRCodes(students);
+    } finally {
+      setIsDownloadingQRs(false);
+    }
+  };
+
   const executePrint = () => {
     const printWindow = window.open('', '_blank');
     if (printWindow && printRef.current) {
+      const content = printRef.current.innerHTML;
       printWindow.document.write(`
         <!DOCTYPE html>
         <html>
@@ -124,77 +149,105 @@ export const UserManagement = () => {
             <title>Student Credentials</title>
             <style>
               body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+              /* Force visibility in the print window */
+              body * { visibility: visible !important; }
+              .print-container { width: 100%; }
               .credential-slip {
-                border: 2px dashed #666;
-                padding: 16px;
-                margin-bottom: 8px;
+                border: 1px dashed #666;
+                padding: 8px;
+                margin-bottom: 4px;
                 page-break-inside: avoid;
                 background: white;
+                display: flex;
+                flex-direction: column;
+                min-height: 140px;
               }
               .slip-header {
                 text-align: center;
                 border-bottom: 1px solid #ccc;
-                padding-bottom: 8px;
-                margin-bottom: 12px;
+                padding-bottom: 4px;
+                margin-bottom: 8px;
               }
               .slip-header h3 {
-                font-size: 14px;
+                font-size: 11px;
                 font-weight: bold;
                 margin: 0;
                 color: #333;
               }
               .slip-header p {
-                font-size: 10px;
+                font-size: 8px;
                 color: #666;
-                margin: 4px 0 0 0;
+                margin: 2px 0 0 0;
               }
               .slip-content {
                 display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 8px;
+                grid-template-columns: 1fr;
+                gap: 4px;
+                flex-grow: 1;
               }
               .slip-field {
-                font-size: 11px;
+                font-size: 9px;
               }
               .slip-field label {
                 font-weight: 600;
                 color: #444;
                 display: block;
-                margin-bottom: 2px;
+                margin-bottom: 1px;
               }
               .slip-field .value {
                 font-family: monospace;
-                font-size: 12px;
+                font-size: 10px;
                 background: #f5f5f5;
-                padding: 4px 8px;
-                border-radius: 4px;
+                padding: 2px 4px;
+                border-radius: 2px;
                 border: 1px solid #ddd;
+                word-break: break-all;
               }
               .slip-footer {
-                margin-top: 12px;
-                padding-top: 8px;
+                margin-top: 8px;
+                padding-top: 4px;
                 border-top: 1px dashed #ccc;
-                font-size: 9px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 2px;
                 color: #888;
+              }
+              .cut-line {
+                font-size: 7px;
                 text-align: center;
+              }
+              .print-audit {
+                font-size: 7px;
+                font-style: italic;
+                text-align: center;
+                line-height: 1.1;
               }
               .slips-grid {
                 display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 12px;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 8px;
               }
               @media print {
                 @page { size: A4; margin: 10mm; }
+                .slips-grid {
+                  grid-template-columns: repeat(4, 1fr);
+                }
               }
             </style>
           </head>
           <body>
-            ${printRef.current.innerHTML}
+            <div class="print-container">
+              ${content}
+            </div>
           </body>
         </html>
       `);
       printWindow.document.close();
-      printWindow.print();
+      // Wait for content to render before printing
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
     }
     setShowPrintDialog(false);
   };
@@ -208,7 +261,7 @@ export const UserManagement = () => {
       });
 
       if (error) throw error;
-      
+
       toast.success(result.message);
       fetchCredentials();
     } catch (error: any) {
@@ -244,7 +297,7 @@ export const UserManagement = () => {
       toast.error('Please type RESET to confirm');
       return;
     }
-    
+
     setIsResetting(true);
     try {
       const { data: result, error } = await supabase.functions.invoke('create-users', {
@@ -252,7 +305,7 @@ export const UserManagement = () => {
       });
 
       if (error) throw error;
-      
+
       toast.success(result.message || 'Student accounts reset successfully');
       setShowResetDialog(false);
       setConfirmText('');
@@ -298,7 +351,7 @@ export const UserManagement = () => {
       });
 
       if (error) throw error;
-      
+
       toast.success(`Password reset! New password: ${result.newPassword}`);
       fetchCredentials();
     } catch (error: any) {
@@ -343,21 +396,21 @@ export const UserManagement = () => {
           <CardContent className="space-y-3">
             <div>
               <Label>Email</Label>
-              <Input 
-                value={adminForm.email} 
+              <Input
+                value={adminForm.email}
                 onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })}
               />
             </div>
             <div>
               <Label>Password</Label>
-              <Input 
+              <Input
                 value={adminForm.password}
                 onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })}
               />
             </div>
             <div>
               <Label>Full Name</Label>
-              <Input 
+              <Input
                 value={adminForm.fullName}
                 onChange={(e) => setAdminForm({ ...adminForm, fullName: e.target.value })}
               />
@@ -383,21 +436,21 @@ export const UserManagement = () => {
           <CardContent className="space-y-3">
             <div>
               <Label>Email</Label>
-              <Input 
+              <Input
                 value={registrarForm.email}
                 onChange={(e) => setRegistrarForm({ ...registrarForm, email: e.target.value })}
               />
             </div>
             <div>
               <Label>Password</Label>
-              <Input 
+              <Input
                 value={registrarForm.password}
                 onChange={(e) => setRegistrarForm({ ...registrarForm, password: e.target.value })}
               />
             </div>
             <div>
               <Label>Full Name</Label>
-              <Input 
+              <Input
                 value={registrarForm.fullName}
                 onChange={(e) => setRegistrarForm({ ...registrarForm, fullName: e.target.value })}
               />
@@ -475,6 +528,19 @@ export const UserManagement = () => {
                   </SelectContent>
                 </Select>
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBulkDownloadQRs}
+                disabled={isDownloadingQRs || studentCredentials.length === 0}
+              >
+                {isDownloadingQRs ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <QrCode className="h-4 w-4 mr-2" />
+                )}
+                Download QRs
+              </Button>
               <Button variant="outline" size="sm" onClick={handlePrint}>
                 <Printer className="h-4 w-4 mr-2" />
                 Print Slips
@@ -519,9 +585,9 @@ export const UserManagement = () => {
                           <span className="font-mono text-sm">
                             {showPasswords.has(cred.id) ? cred.temp_password : '••••••••'}
                           </span>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             className="h-6 w-6"
                             onClick={() => togglePasswordVisibility(cred.id)}
                           >
@@ -578,8 +644,8 @@ export const UserManagement = () => {
               <Key className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>No credentials found</p>
               <p className="text-sm">
-                {credentials.length > 0 
-                  ? 'Try adjusting your filters' 
+                {credentials.length > 0
+                  ? 'Try adjusting your filters'
                   : 'Create user accounts to see their credentials here'}
               </p>
             </div>
@@ -596,7 +662,7 @@ export const UserManagement = () => {
               Reset All Student Accounts
             </DialogTitle>
             <DialogDescription>
-              This will permanently delete all student user accounts and their credentials. 
+              This will permanently delete all student user accounts and their credentials.
               The student records will remain, but their login accounts will be removed.
             </DialogDescription>
           </DialogHeader>
@@ -638,7 +704,7 @@ export const UserManagement = () => {
               Preview and print {studentCredentials.length} student credential slips. Each slip can be cut along the dotted lines.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <Label className="whitespace-nowrap">School Name:</Label>
@@ -655,16 +721,17 @@ export const UserManagement = () => {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="border rounded-lg p-4 bg-muted/30 max-h-[400px] overflow-y-auto">
-              <PrintableCredentialSlips 
+              <PrintableCredentialSlips
                 ref={printRef}
                 credentials={studentCredentials}
                 schoolName={selectedSchool}
+                printedBy={user?.user_metadata?.full_name || user?.email || 'Administrator'}
               />
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowPrintDialog(false)}>
               Cancel
