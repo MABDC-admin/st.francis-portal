@@ -1,36 +1,43 @@
 
 
-# Fix Scanning Loop and Rename Storage Paths to .webp
+# AI Chat Page with Gemini Flash
 
-## Problem 1: Scanning Loop
-The `FlipbookViewer` triggers `detectPagesSequentially` inside a `useEffect` that depends on `[pages, isDetecting, detectPagesSequentially]`. The issue is:
-- `detectPagesSequentially` is recreated every time `detectedPages` changes (it's in its dependency array in `usePageDetection`)
-- When detection finishes, `isDetecting` flips to `false`, which re-triggers the effect
-- This creates an infinite loop: detect -> complete -> re-trigger -> detect again (even though internally it filters already-detected pages, the function reference keeps changing)
+## Overview
+Create a dedicated AI Chat page that lets all authenticated users have conversations with Google's Gemini Flash model through the built-in Lovable AI gateway. The page reuses the existing `notebook-chat` edge function (already configured with streaming and error handling).
 
-## Problem 2: .png Extension for WebP Files
-In `usePdfToImages.ts`, storage paths use `.png` extensions (`page-${pNum}.png`, `thumb-${pNum}.png`) but the actual uploaded content is WebP (`image/webp`). This is misleading and could cause caching/MIME issues.
+## What You'll Get
+- A full-screen chat interface with message bubbles, markdown rendering, and streaming responses
+- Conversation history maintained during the session
+- Loading indicators while the AI responds
+- Error handling for rate limits (429) and credit issues (402)
+- Responsive design for mobile and desktop
+- Accessible from the sidebar under "Resources" as "AI Chat"
 
-## Changes
+## Technical Details
 
-### File: `src/hooks/usePageDetection.ts`
-- Stabilize `detectPagesSequentially` by using a ref for `detectedPages` instead of including it in the `useCallback` dependency array
-- This prevents the function reference from changing every time a page is detected, breaking the re-trigger loop
+### New File: `src/components/aichat/AIChatPage.tsx`
+- Main chat component with:
+  - State: `messages[]` array with `{role, content, id}`, `isLoading`, `error`
+  - Streaming via `fetch` to the existing `notebook-chat` edge function with SSE parsing
+  - System prompt: "You are a helpful AI assistant. Keep answers clear and concise. Use markdown formatting."
+  - Model: `google/gemini-3-flash-preview`
+  - Message rendering with `react-markdown` + `remark-gfm` (already installed)
+  - Auto-scroll to latest message
+  - Input with Enter-to-send (Shift+Enter for newline)
+  - AbortController support for canceling in-flight requests
+  - Toast notifications for 429/402 errors
 
-### File: `src/components/library/FlipbookViewer.tsx` (lines 135-145)
-- Fix the auto-detect `useEffect` to only run once when pages are first loaded
-- Remove `isDetecting` and `detectPagesSequentially` from the dependency array
-- Use a ref to track if detection was already triggered for this book
+### Modified File: `src/components/layout/DashboardLayout.tsx`
+- Add `{ id: 'ai-chat', icon: NotebookIcon3D, label: 'AI Chat' }` to the Resources section for admin, registrar, and teacher nav groups
+- Add icon mapping entries for `'ai-chat'`
 
-### File: `src/hooks/usePdfToImages.ts`
-- Rename `page-${pNum}.png` to `page-${pNum}.webp`
-- Rename `thumb-${pNum}.png` to `thumb-${pNum}.webp`
-- Update the final `getPublicUrl` call to use `.webp`
+### Modified File: `src/pages/Index.tsx`
+- Import `AIChatPage`
+- Add tab rendering: `{activeTab === 'ai-chat' && (role === 'admin' || role === 'teacher' || role === 'registrar') && <AIChatPage />}`
 
-### File: `src/utils/pdfToImages.ts`
-- No changes needed (it uses blob URLs, not storage paths)
-
-## Notes
-- Existing books with `.png` paths in the database will still work -- those URLs are already stored in `book_pages.image_url` and `book_pages.thumbnail_url`
-- Only newly uploaded books will get `.webp` extensions going forward
-
+### No edge function changes needed
+The existing `notebook-chat` function already supports:
+- Streaming SSE responses
+- Lovable AI gateway with `google/gemini-3-flash-preview`
+- Auth verification
+- Rate limit (429) and credit (402) error handling
