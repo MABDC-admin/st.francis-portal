@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Pencil, Plus, RefreshCw, AlertCircle, Trash2, Share2, ExternalLink } from 'lucide-react';
+import { Pencil, Plus, Trash2, Share2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSchoolId } from '@/hooks/useSchoolId';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { ExcalidrawEditor } from './ExcalidrawEditor';
 
 interface Drawing {
   id: string;
@@ -21,30 +22,13 @@ interface Drawing {
 }
 
 export const ExcalidrawDashboard = () => {
-  const [configured, setConfigured] = useState<boolean | null>(null);
-  const [excalidrawUrl, setExcalidrawUrl] = useState('');
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [loading, setLoading] = useState(true);
   const [newTitle, setNewTitle] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [activeDrawing, setActiveDrawing] = useState<Drawing | null>(null);
   const { data: schoolUuid } = useSchoolId();
   const { user } = useAuth();
-
-  const checkStatus = async () => {
-    try {
-      const { data: result } = await supabase.functions.invoke('excalidraw-proxy', {
-        body: { action: 'get-url' },
-      });
-      if (result?.configured === false) {
-        setConfigured(false);
-        return;
-      }
-      setConfigured(true);
-      setExcalidrawUrl(result?.data?.url || '');
-    } catch {
-      setConfigured(false);
-    }
-  };
 
   const loadDrawings = async () => {
     if (!schoolUuid) return;
@@ -57,7 +41,7 @@ export const ExcalidrawDashboard = () => {
         .order('updated_at', { ascending: false });
       if (error) throw error;
       setDrawings(data || []);
-    } catch (err: any) {
+    } catch {
       toast.error('Failed to load drawings');
     } finally {
       setLoading(false);
@@ -67,16 +51,17 @@ export const ExcalidrawDashboard = () => {
   const createDrawing = async () => {
     if (!newTitle.trim() || !schoolUuid || !user) return;
     try {
-      const { error } = await supabase.from('excalidraw_drawings').insert({
+      const { data, error } = await supabase.from('excalidraw_drawings').insert({
         title: newTitle.trim(),
         school_id: schoolUuid,
         created_by: user.id,
         scene_data: {},
-      });
+      }).select('id, title, is_shared, created_at, updated_at, created_by').single();
       if (error) throw error;
       toast.success('Drawing created');
       setNewTitle('');
       setIsCreateOpen(false);
+      if (data) setActiveDrawing(data);
       loadDrawings();
     } catch {
       toast.error('Failed to create drawing');
@@ -105,26 +90,15 @@ export const ExcalidrawDashboard = () => {
     }
   };
 
-  useEffect(() => { checkStatus(); }, []);
-  useEffect(() => { if (configured) loadDrawings(); }, [configured, schoolUuid]);
+  useEffect(() => { loadDrawings(); }, [schoolUuid]);
 
-  if (configured === false) {
+  if (activeDrawing) {
     return (
-      <div className="space-y-6">
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Excalidraw</h1>
-          <p className="text-muted-foreground mt-1">Whiteboard & Drawing Tool</p>
-        </motion.div>
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Excalidraw Not Configured</h3>
-            <p className="text-muted-foreground max-w-md">
-              Set up the <code className="bg-muted px-1 rounded">EXCALIDRAW_URL</code> secret with your self-hosted Excalidraw server URL.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <ExcalidrawEditor
+        drawingId={activeDrawing.id}
+        title={activeDrawing.title}
+        onBack={() => { setActiveDrawing(null); loadDrawings(); }}
+      />
     );
   }
 
@@ -135,23 +109,18 @@ export const ExcalidrawDashboard = () => {
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Excalidraw</h1>
           <p className="text-muted-foreground mt-1">Whiteboard & Drawing Tool</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => window.open(excalidrawUrl, '_blank')}>
-            <ExternalLink className="h-4 w-4 mr-2" /> Open Full Editor
-          </Button>
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm"><Plus className="h-4 w-4 mr-2" /> New Drawing</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>New Drawing</DialogTitle></DialogHeader>
-              <div className="space-y-4">
-                <Input placeholder="Drawing title..." value={newTitle} onChange={e => setNewTitle(e.target.value)} />
-                <Button onClick={createDrawing} disabled={!newTitle.trim()} className="w-full">Create</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm"><Plus className="h-4 w-4 mr-2" /> New Drawing</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>New Drawing</DialogTitle></DialogHeader>
+            <div className="space-y-4">
+              <Input placeholder="Drawing title..." value={newTitle} onChange={e => setNewTitle(e.target.value)} />
+              <Button onClick={createDrawing} disabled={!newTitle.trim()} className="w-full">Create</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </motion.div>
 
       {loading ? (
@@ -169,7 +138,7 @@ export const ExcalidrawDashboard = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {drawings.map(drawing => (
-            <Card key={drawing.id} className="hover:shadow-md transition-shadow">
+            <Card key={drawing.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setActiveDrawing(drawing)}>
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center justify-between text-base">
                   <span className="flex items-center gap-2 truncate">
@@ -183,11 +152,8 @@ export const ExcalidrawDashboard = () => {
                 <p className="text-xs text-muted-foreground mb-3">
                   Updated {new Date(drawing.updated_at).toLocaleDateString()}
                 </p>
-                <div className="flex gap-1">
-                  <Button size="sm" variant="outline" onClick={() => window.open(excalidrawUrl, '_blank')}>
-                    <ExternalLink className="h-3 w-3" />
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => toggleShare(drawing.id, drawing.is_shared)}>
+                <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+                  <Button size="sm" variant="outline" onClick={() => toggleShare(drawing.id, drawing.is_shared ?? false)}>
                     <Share2 className="h-3 w-3" />
                   </Button>
                   {drawing.created_by === user?.id && (

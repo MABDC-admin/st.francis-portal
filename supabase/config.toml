@@ -48,9 +48,6 @@ verify_jwt = false
 [functions.onlyoffice-proxy]
 verify_jwt = false
 
-[functions.excalidraw-proxy]
-verify_jwt = false
-
 [functions.omada-proxy]
 verify_jwt = false
 
