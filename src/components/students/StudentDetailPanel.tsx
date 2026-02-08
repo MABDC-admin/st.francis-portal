@@ -228,9 +228,7 @@ export const StudentDetailPanel = ({ student }: StudentDetailPanelProps) => {
 
             {activeTab === 'grades' && (
               currentAcademicYearId ? (
-                <div className="h-[500px]">
-                  <TransmutationManager student={student} academicYearId={currentAcademicYearId} />
-                </div>
+                <TransmutationManager student={student} academicYearId={currentAcademicYearId} />
               ) : (
                 <div className="flex items-center justify-center h-64">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

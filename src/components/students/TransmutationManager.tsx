@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Calculator, Save, AlertCircle, CheckCircle2, Info, Loader2, FileDown, FileSpreadsheet } from 'lucide-react';
+import { Plus, Trash2, Calculator, Save, AlertCircle, CheckCircle2, Info, Loader2, FileDown, FileSpreadsheet, TrendingUp, Award } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,13 @@ import {
     computeQuarterlyGrade,
     getSubjectCategory,
     SubjectCategory,
-    CATEGORY_WEIGHTS
+    CATEGORY_WEIGHTS,
+    getGradeDescriptor,
+    getGradeColorClass,
+    isPassing,
+    computeQuarterlyGeneralAverage,
+    computeAnnualGeneralAverage,
+    GradeRecord,
 } from '@/utils/gradeComputation';
 import { cn } from '@/lib/utils';
 import { Student } from '@/types/student';
@@ -50,19 +56,18 @@ export const TransmutationManager = ({ student, academicYearId }: TransmutationM
 
     const [isSaving, setIsSaving] = useState(false);
 
+    // Quarterly overview data
+    const [quarterlyGrades, setQuarterlyGrades] = useState<Record<number, number | null>>({ 1: null, 2: null, 3: null, 4: null });
+    
+    // General average data
+    const [allSubjectGrades, setAllSubjectGrades] = useState<GradeRecord[]>([]);
+
     // Fetch student's enrolled subjects
     useEffect(() => {
         const fetchSubjects = async () => {
-            const { data, error } = await supabase
+            const { data } = await supabase
                 .from('student_subjects')
-                .select(`
-          subject_id,
-          subjects (
-            id,
-            code,
-            name
-          )
-        `)
+                .select(`subject_id, subjects (id, code, name)`)
                 .eq('student_id', student.id);
 
             if (data) {
@@ -72,6 +77,45 @@ export const TransmutationManager = ({ student, academicYearId }: TransmutationM
         fetchSubjects();
     }, [student.id]);
 
+    // Fetch quarterly overview when subject changes
+    useEffect(() => {
+        if (!selectedSubject) return;
+
+        const fetchQuarterlyOverview = async () => {
+            const { data } = await (supabase
+                .from('raw_scores' as any)
+                .select('quarter, transmuted_grade')
+                .eq('student_id', student.id)
+                .eq('subject_id', selectedSubject)
+                .eq('academic_year_id', academicYearId) as any);
+
+            const grades: Record<number, number | null> = { 1: null, 2: null, 3: null, 4: null };
+            if (data) {
+                data.forEach((r: any) => {
+                    grades[r.quarter] = r.transmuted_grade;
+                });
+            }
+            setQuarterlyGrades(grades);
+        };
+        fetchQuarterlyOverview();
+    }, [selectedSubject, student.id, academicYearId, isSaving]);
+
+    // Fetch general average data
+    useEffect(() => {
+        const fetchGeneralAverage = async () => {
+            const { data } = await (supabase
+                .from('student_grades') as any)
+                .select('q1_grade, q2_grade, q3_grade, q4_grade, final_grade')
+                .eq('student_id', student.id)
+                .eq('academic_year_id', academicYearId);
+
+            if (data) {
+                setAllSubjectGrades(data);
+            }
+        };
+        fetchGeneralAverage();
+    }, [student.id, academicYearId, isSaving]);
+
     // Fetch existing raw scores when subject or quarter changes
     useEffect(() => {
         if (!selectedSubject || !quarter) return;
@@ -79,7 +123,7 @@ export const TransmutationManager = ({ student, academicYearId }: TransmutationM
         const fetchRawScores = async () => {
             setIsLoading(true);
             try {
-                const { data, error } = await (supabase
+                const { data } = await (supabase
                     .from('raw_scores' as any)
                     .select('*')
                     .eq('student_id', student.id)
@@ -102,7 +146,6 @@ export const TransmutationManager = ({ student, academicYearId }: TransmutationM
                         max: data.qa_max?.toString() || '100'
                     });
                 } else {
-                    // Reset to defaults if no record found
                     setWwEntries([{ raw: '', max: '' }]);
                     setPtEntries([{ raw: '', max: '' }]);
                     setQaEntry({ raw: '', max: '100' });
@@ -131,15 +174,27 @@ export const TransmutationManager = ({ student, academicYearId }: TransmutationM
         const qaRaw = parseFloat(qaEntry.raw) || 0;
         const qaMax = parseFloat(qaEntry.max) || 100;
 
-        return computeQuarterlyGrade(currentCategory, {
-            wwRaw,
-            wwMax,
-            ptRaw,
-            ptMax,
-            qaRaw,
-            qaMax
-        });
+        return computeQuarterlyGrade(currentCategory, { wwRaw, wwMax, ptRaw, ptMax, qaRaw, qaMax });
     }, [currentCategory, wwEntries, ptEntries, qaEntry]);
+
+    // Compute final grade (average of 4 quarters)
+    const finalGrade = useMemo(() => {
+        const grades = Object.values(quarterlyGrades).filter((g): g is number => g !== null);
+        if (grades.length === 0) return null;
+        return Math.round(grades.reduce((s, g) => s + g, 0) / grades.length);
+    }, [quarterlyGrades]);
+
+    // Compute general averages
+    const generalAverages = useMemo(() => {
+        if (allSubjectGrades.length === 0) return null;
+        return {
+            q1: computeQuarterlyGeneralAverage(allSubjectGrades, 'q1'),
+            q2: computeQuarterlyGeneralAverage(allSubjectGrades, 'q2'),
+            q3: computeQuarterlyGeneralAverage(allSubjectGrades, 'q3'),
+            q4: computeQuarterlyGeneralAverage(allSubjectGrades, 'q4'),
+            annual: computeAnnualGeneralAverage(allSubjectGrades),
+        };
+    }, [allSubjectGrades]);
 
     const handleAddEntry = (type: 'ww' | 'pt') => {
         if (type === 'ww') setWwEntries([...wwEntries, { raw: '', max: '' }]);
@@ -176,7 +231,6 @@ export const TransmutationManager = ({ student, academicYearId }: TransmutationM
 
         setIsSaving(true);
         try {
-            // 1. Save to raw_scores table (detailed record)
             const wwRaw = wwEntries.map(e => parseFloat(e.raw)).filter(v => !isNaN(v));
             const wwMax = wwEntries.map(e => parseFloat(e.max)).filter(v => !isNaN(v));
             const ptRaw = ptEntries.map(e => parseFloat(e.raw)).filter(v => !isNaN(v));
@@ -204,7 +258,6 @@ export const TransmutationManager = ({ student, academicYearId }: TransmutationM
 
             if (rawError) throw rawError;
 
-            // 2. Sync with student_grades table (final rating for reports)
             const gradeField = `q${quarter}_grade`;
             const { error: gradeError } = await (supabase
                 .from('student_grades') as any)
@@ -212,7 +265,7 @@ export const TransmutationManager = ({ student, academicYearId }: TransmutationM
                     student_id: student.id,
                     subject_id: selectedSubject,
                     academic_year_id: academicYearId,
-                    school_id: '00000000-0000-0000-0000-000000000000', // Placeholder
+                    school_id: '00000000-0000-0000-0000-000000000000',
                     [gradeField]: computedGrades.transmutedGrade,
                     updated_at: new Date().toISOString()
                 }, {
@@ -221,7 +274,7 @@ export const TransmutationManager = ({ student, academicYearId }: TransmutationM
 
             if (gradeError) throw gradeError;
 
-            toast.success(`Quarter ${quarter} grade and raw scores saved successfully!`);
+            toast.success(`Quarter ${quarter} grade saved successfully!`);
         } catch (error) {
             console.error('Error saving grade:', error);
             toast.error('Failed to save grade');
@@ -230,18 +283,14 @@ export const TransmutationManager = ({ student, academicYearId }: TransmutationM
         }
     };
 
-    // Export PDF
     const handleExportPDF = () => {
         const subjectName = subjects.find(s => s.id === selectedSubject)?.name || 'Unknown Subject';
         const subjectCode = subjects.find(s => s.id === selectedSubject)?.code || '';
 
         const doc = new jsPDF();
-
-        // Header
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
         doc.text('Grade Transmutation Report', 14, 20);
-
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
         doc.text(`Student: ${student.student_name}`, 14, 30);
@@ -251,7 +300,6 @@ export const TransmutationManager = ({ student, academicYearId }: TransmutationM
         doc.text(`Quarter: ${quarter}`, 14, 54);
         doc.text(`Category: ${currentCategory}`, 14, 60);
 
-        // Scores Table
         autoTable(doc, {
             startY: 70,
             head: [['Component', 'Weight', 'Weighted Score']],
@@ -264,7 +312,6 @@ export const TransmutationManager = ({ student, academicYearId }: TransmutationM
             headStyles: { fillColor: [8, 145, 178] },
         });
 
-        // Final Grades
         const finalY = (doc as any).lastAutoTable.finalY + 10;
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
@@ -276,7 +323,6 @@ export const TransmutationManager = ({ student, academicYearId }: TransmutationM
         toast.success('PDF exported successfully!');
     };
 
-    // Export CSV (Excel compatible)
     const handleExportCSV = () => {
         const subjectName = subjects.find(s => s.id === selectedSubject)?.name || 'Unknown Subject';
         const subjectCode = subjects.find(s => s.id === selectedSubject)?.code || '';
@@ -309,277 +355,294 @@ export const TransmutationManager = ({ student, academicYearId }: TransmutationM
         toast.success('CSV exported successfully!');
     };
 
+    const GradeCell = ({ grade }: { grade: number | null }) => {
+        if (grade === null) return <span className="text-muted-foreground text-xs">—</span>;
+        return (
+            <div className="flex flex-col items-center">
+                <span className={cn("text-sm font-bold", getGradeColorClass(grade))}>{grade}</span>
+                <span className="text-[8px] text-muted-foreground leading-none">{getGradeDescriptor(grade).split(' ').slice(0, 2).join(' ')}</span>
+            </div>
+        );
+    };
+
     return (
-        <div className="flex flex-col h-full bg-background/50 backdrop-blur-sm rounded-xl border border-border/50 overflow-hidden">
+        <div className="flex flex-col bg-background/50 backdrop-blur-sm rounded-xl border border-border/50 overflow-hidden">
             {/* Configuration Header */}
-            <div className="p-4 bg-card/30 border-b border-border/50 flex flex-wrap items-center gap-4">
-                <div className="flex-1 min-w-[200px]">
-                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">Subject</Label>
-                    <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-                        <SelectTrigger className="h-9 bg-background/50 border-stat-cyan/20">
-                            <SelectValue placeholder="Select Subject" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {subjects.map(s => (
-                                <SelectItem key={s.id} value={s.id}>{s.name} ({s.code})</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+            <div className="p-3 bg-card/30 border-b border-border/50 space-y-3">
+                <div className="flex flex-wrap items-end gap-3">
+                    <div className="flex-1 min-w-[140px]">
+                        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">Subject</Label>
+                        <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+                            <SelectTrigger className="h-8 text-xs bg-background/50 border-stat-cyan/20">
+                                <SelectValue placeholder="Select Subject" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {subjects.map(s => (
+                                    <SelectItem key={s.id} value={s.id}>{s.name} ({s.code})</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
 
-                <div className="w-32">
-                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">Quarter</Label>
-                    <Select value={quarter} onValueChange={setQuarter}>
-                        <SelectTrigger className="h-9 bg-background/50 border-stat-cyan/20">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {[1, 2, 3, 4].map(q => (
-                                <SelectItem key={q} value={q.toString()}>Quarter {q}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+                    <div className="w-28">
+                        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">Quarter</Label>
+                        <Select value={quarter} onValueChange={setQuarter}>
+                            <SelectTrigger className="h-8 text-xs bg-background/50 border-stat-cyan/20">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {[1, 2, 3, 4].map(q => (
+                                    <SelectItem key={q} value={q.toString()}>Q{q}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
 
-                <div className="flex flex-col items-start px-3 py-1 bg-stat-cyan/10 rounded-lg border border-stat-cyan/20">
-                    <span className="text-[9px] uppercase tracking-wider text-stat-cyan font-bold">Category</span>
-                    <span className="text-xs font-semibold whitespace-nowrap">{currentCategory}</span>
+                    <Badge variant="outline" className="h-8 text-[10px] bg-stat-cyan/10 border-stat-cyan/20 text-stat-cyan whitespace-nowrap">
+                        {currentCategory}
+                    </Badge>
                 </div>
             </div>
 
-            <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+            {/* Quarterly Overview */}
+            {selectedSubject && (
+                <div className="px-3 py-2 bg-secondary/30 border-b border-border/50">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                        <TrendingUp className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Quarterly Overview</span>
+                    </div>
+                    <div className="grid grid-cols-5 gap-1">
+                        {[1, 2, 3, 4].map(q => (
+                            <div key={q} className={cn(
+                                "flex flex-col items-center py-1.5 px-1 rounded-md border text-center",
+                                parseInt(quarter) === q ? "border-stat-cyan/40 bg-stat-cyan/5" : "border-border/30 bg-background/30"
+                            )}>
+                                <span className="text-[9px] font-bold text-muted-foreground">Q{q}</span>
+                                <GradeCell grade={quarterlyGrades[q]} />
+                            </div>
+                        ))}
+                        <div className="flex flex-col items-center py-1.5 px-1 rounded-md border border-primary/30 bg-primary/5 text-center">
+                            <span className="text-[9px] font-bold text-primary">Final</span>
+                            <GradeCell grade={finalGrade} />
+                        </div>
+                    </div>
+                    {finalGrade !== null && (
+                        <div className="mt-1 flex items-center gap-1.5 justify-center">
+                            <Badge className={cn("text-[9px] h-4", isPassing(finalGrade) ? "bg-green-500/10 text-green-600 border-green-500/20" : "bg-red-500/10 text-red-600 border-red-500/20")} variant="outline">
+                                {isPassing(finalGrade) ? '✓ PASSED' : '✗ FAILED'}
+                            </Badge>
+                            <span className={cn("text-[9px]", getGradeColorClass(finalGrade))}>{getGradeDescriptor(finalGrade)}</span>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Score Input Area */}
+            <div className="flex-1 p-3 overflow-y-auto space-y-4 relative">
                 {isLoading && (
                     <div className="absolute inset-0 bg-background/50 backdrop-blur-[2px] z-20 flex items-center justify-center">
                         <Loader2 className="h-8 w-8 animate-spin text-stat-cyan" />
                     </div>
                 )}
 
-                {/* Left Side: Raw Score Inputs */}
-                <div className="flex-1 p-4 overflow-y-auto space-y-6">
-                    {/* Written Work Section */}
-                    <section className="space-y-3">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <div className="h-7 w-7 rounded-lg bg-stat-purple/10 flex items-center justify-center text-stat-purple">
-                                    <Calculator className="h-4 w-4" />
-                                </div>
-                                <h4 className="font-bold text-sm">Written Work (WW)</h4>
-                                <Badge variant="outline" className="text-[10px] h-5 bg-stat-purple/5 border-stat-purple/20 text-stat-purple">
-                                    {(CATEGORY_WEIGHTS[currentCategory].ww * 100)}% Weight
-                                </Badge>
+                {/* Written Work */}
+                <section className="space-y-2">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                            <div className="h-6 w-6 rounded-md bg-stat-purple/10 flex items-center justify-center text-stat-purple">
+                                <Calculator className="h-3 w-3" />
                             </div>
-                            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-stat-purple hover:bg-stat-purple/10" onClick={() => handleAddEntry('ww')}>
-                                <Plus className="h-3 w-3 mr-1" /> Add Score
-                            </Button>
-                        </div>
-
-                        <div className="space-y-2">
-                            {wwEntries.map((entry, idx) => (
-                                <motion.div
-                                    initial={{ opacity: 0, x: -10 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    key={idx}
-                                    className="flex items-center gap-2 group"
-                                >
-                                    <span className="text-[10px] font-bold text-muted-foreground w-6">#{idx + 1}</span>
-                                    <Input
-                                        placeholder="Score"
-                                        className="h-8 text-sm bg-background/50"
-                                        value={entry.raw}
-                                        onChange={(e) => handleUpdateEntry('ww', idx, 'raw', e.target.value)}
-                                    />
-                                    <span className="text-muted-foreground">/</span>
-                                    <Input
-                                        placeholder="Max"
-                                        className="h-8 text-sm bg-background/50"
-                                        value={entry.max}
-                                        onChange={(e) => handleUpdateEntry('ww', idx, 'max', e.target.value)}
-                                    />
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-7 w-7 opacity-0 group-hover:opacity-100 text-destructive hover:bg-destructive/10"
-                                        onClick={() => handleRemoveEntry('ww', idx)}
-                                    >
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                </motion.div>
-                            ))}
-                        </div>
-                    </section>
-
-                    <Separator className="opacity-50" />
-
-                    {/* Performance Tasks Section */}
-                    <section className="space-y-3">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <div className="h-7 w-7 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600">
-                                    <CheckCircle2 className="h-4 w-4" />
-                                </div>
-                                <h4 className="font-bold text-sm">Performance Tasks (PT)</h4>
-                                <Badge variant="outline" className="text-[10px] h-5 bg-emerald-500/5 border-emerald-500/20 text-emerald-600">
-                                    {(CATEGORY_WEIGHTS[currentCategory].pt * 100)}% Weight
-                                </Badge>
-                            </div>
-                            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-emerald-600 hover:bg-emerald-500/10" onClick={() => handleAddEntry('pt')}>
-                                <Plus className="h-3 w-3 mr-1" /> Add Task
-                            </Button>
-                        </div>
-
-                        <div className="space-y-2">
-                            {ptEntries.map((entry, idx) => (
-                                <motion.div
-                                    initial={{ opacity: 0, x: -10 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    key={idx}
-                                    className="flex items-center gap-2 group"
-                                >
-                                    <span className="text-[10px] font-bold text-muted-foreground w-6">#{idx + 1}</span>
-                                    <Input
-                                        placeholder="Score"
-                                        className="h-8 text-sm bg-background/50"
-                                        value={entry.raw}
-                                        onChange={(e) => handleUpdateEntry('pt', idx, 'raw', e.target.value)}
-                                    />
-                                    <span className="text-muted-foreground">/</span>
-                                    <Input
-                                        placeholder="Max"
-                                        className="h-8 text-sm bg-background/50"
-                                        value={entry.max}
-                                        onChange={(e) => handleUpdateEntry('pt', idx, 'max', e.target.value)}
-                                    />
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-7 w-7 opacity-0 group-hover:opacity-100 text-destructive hover:bg-destructive/10"
-                                        onClick={() => handleRemoveEntry('pt', idx)}
-                                    >
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                </motion.div>
-                            ))}
-                        </div>
-                    </section>
-
-                    <Separator className="opacity-50" />
-
-                    {/* Quarterly Assessment Section */}
-                    <section className="space-y-3">
-                        <div className="flex items-center gap-2">
-                            <div className="h-7 w-7 rounded-lg bg-stat-cyan/10 flex items-center justify-center text-stat-cyan">
-                                <AlertCircle className="h-4 w-4" />
-                            </div>
-                            <h4 className="font-bold text-sm">Quarterly Assessment (QA)</h4>
-                            <Badge variant="outline" className="text-[10px] h-5 bg-stat-cyan/5 border-stat-cyan/20 text-stat-cyan">
-                                {(CATEGORY_WEIGHTS[currentCategory].qa * 100)}% Weight
+                            <h4 className="font-bold text-xs">Written Work</h4>
+                            <Badge variant="outline" className="text-[9px] h-4 bg-stat-purple/5 border-stat-purple/20 text-stat-purple">
+                                {(CATEGORY_WEIGHTS[currentCategory].ww * 100)}%
                             </Badge>
                         </div>
+                        <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[10px] text-stat-purple hover:bg-stat-purple/10" onClick={() => handleAddEntry('ww')}>
+                            <Plus className="h-3 w-3 mr-0.5" /> Add
+                        </Button>
+                    </div>
+                    <div className="space-y-1.5">
+                        {wwEntries.map((entry, idx) => (
+                            <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} key={idx} className="flex items-center gap-1.5 group">
+                                <span className="text-[9px] font-bold text-muted-foreground w-5">#{idx + 1}</span>
+                                <Input placeholder="Score" className="h-7 text-xs bg-background/50" value={entry.raw} onChange={(e) => handleUpdateEntry('ww', idx, 'raw', e.target.value)} />
+                                <span className="text-muted-foreground text-xs">/</span>
+                                <Input placeholder="Max" className="h-7 text-xs bg-background/50" value={entry.max} onChange={(e) => handleUpdateEntry('ww', idx, 'max', e.target.value)} />
+                                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 text-destructive hover:bg-destructive/10" onClick={() => handleRemoveEntry('ww', idx)}>
+                                    <Trash2 className="h-3 w-3" />
+                                </Button>
+                            </motion.div>
+                        ))}
+                    </div>
+                </section>
 
-                        <div className="flex items-center gap-2 pl-8">
-                            <Input
-                                placeholder="Ex. Score"
-                                className="h-8 text-sm bg-background/50 max-w-[120px]"
-                                value={qaEntry.raw}
-                                onChange={(e) => setQaEntry({ ...qaEntry, raw: e.target.value })}
-                            />
-                            <span className="text-muted-foreground">/</span>
-                            <Input
-                                placeholder="Max"
-                                className="h-8 text-sm bg-background/50 max-w-[120px]"
-                                value={qaEntry.max}
-                                onChange={(e) => setQaEntry({ ...qaEntry, max: e.target.value })}
-                            />
+                <Separator className="opacity-50" />
+
+                {/* Performance Tasks */}
+                <section className="space-y-2">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                            <div className="h-6 w-6 rounded-md bg-emerald-500/10 flex items-center justify-center text-emerald-600">
+                                <CheckCircle2 className="h-3 w-3" />
+                            </div>
+                            <h4 className="font-bold text-xs">Performance Tasks</h4>
+                            <Badge variant="outline" className="text-[9px] h-4 bg-emerald-500/5 border-emerald-500/20 text-emerald-600">
+                                {(CATEGORY_WEIGHTS[currentCategory].pt * 100)}%
+                            </Badge>
                         </div>
-                    </section>
-                </div>
-
-                {/* Right Side: Calculation Results */}
-                <div className="w-full lg:w-72 p-4 bg-secondary/20 border-l border-border/50 flex flex-col gap-4">
-                    <Card className="bg-background/80 backdrop-blur-sm border-2 border-stat-cyan/30 shadow-xl overflow-hidden">
-                        <CardHeader className="p-3 bg-gradient-to-r from-stat-cyan/20 to-stat-cyan/5 border-b border-stat-cyan/10">
-                            <CardTitle className="text-xs uppercase tracking-widest text-stat-cyan flex items-center gap-2">
-                                <Calculator className="h-3.5 w-3.5" /> Result Summary
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-4 space-y-4">
-                            <div className="space-y-2">
-                                <div className="flex justify-between text-[10px] text-muted-foreground uppercase font-bold">
-                                    <span>Component</span>
-                                    <span>Weighted</span>
-                                </div>
-                                <div className="flex justify-between text-xs py-1 border-b border-border/50">
-                                    <span className="text-stat-purple font-medium">Written Work</span>
-                                    <span className="font-mono">{computedGrades.wwWS.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between text-xs py-1 border-b border-border/50">
-                                    <span className="text-emerald-600 font-medium">Performance Tasks</span>
-                                    <span className="font-mono">{computedGrades.ptWS.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between text-xs py-1 border-b border-border/50">
-                                    <span className="text-stat-cyan font-medium">Quarterly Exam</span>
-                                    <span className="font-mono">{computedGrades.qaWS.toFixed(2)}</span>
-                                </div>
-                            </div>
-
-                            <div className="pt-2">
-                                <div className="bg-secondary/50 rounded-lg p-3 border border-border/50 flex flex-col items-center">
-                                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-1">Initial Grade</span>
-                                    <span className="text-2xl font-black text-foreground font-mono">{computedGrades.initialGrade.toFixed(1)}</span>
-                                </div>
-                            </div>
-
-                            <div className="py-2">
-                                <div className="bg-stat-cyan rounded-xl p-4 shadow-lg shadow-stat-cyan/20 flex flex-col items-center justify-center relative overflow-hidden group">
-                                    <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-                                    <span className="text-[10px] uppercase tracking-tighter text-orange-600 font-bold z-10">Transmuted Rating</span>
-                                    <span className="text-4xl font-black text-orange-500 z-10 drop-shadow-md">{computedGrades.transmutedGrade}</span>
-                                </div>
-                            </div>
-
-                            <Button
-                                className="w-full h-11 bg-stat-purple hover:bg-stat-purple-dark text-white shadow-lg shadow-stat-purple/20 transition-all active:scale-95 gap-2"
-                                onClick={handleSave}
-                                disabled={isSaving || !selectedSubject}
-                            >
-                                {isSaving ? <Loader2 className="h-4 w-4 animate-spin text-white" /> : <Save className="h-4 w-4 text-white" />}
-                                {isSaving ? 'Saving...' : 'Save Quarterly Grade'}
-                            </Button>
-
-                            {/* Export Buttons */}
-                            <div className="flex gap-2 pt-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="flex-1 gap-1 text-xs"
-                                    onClick={handleExportPDF}
-                                    disabled={!selectedSubject}
-                                >
-                                    <FileDown className="h-3 w-3" />
-                                    PDF
+                        <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[10px] text-emerald-600 hover:bg-emerald-500/10" onClick={() => handleAddEntry('pt')}>
+                            <Plus className="h-3 w-3 mr-0.5" /> Add
+                        </Button>
+                    </div>
+                    <div className="space-y-1.5">
+                        {ptEntries.map((entry, idx) => (
+                            <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} key={idx} className="flex items-center gap-1.5 group">
+                                <span className="text-[9px] font-bold text-muted-foreground w-5">#{idx + 1}</span>
+                                <Input placeholder="Score" className="h-7 text-xs bg-background/50" value={entry.raw} onChange={(e) => handleUpdateEntry('pt', idx, 'raw', e.target.value)} />
+                                <span className="text-muted-foreground text-xs">/</span>
+                                <Input placeholder="Max" className="h-7 text-xs bg-background/50" value={entry.max} onChange={(e) => handleUpdateEntry('pt', idx, 'max', e.target.value)} />
+                                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 text-destructive hover:bg-destructive/10" onClick={() => handleRemoveEntry('pt', idx)}>
+                                    <Trash2 className="h-3 w-3" />
                                 </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="flex-1 gap-1 text-xs"
-                                    onClick={handleExportCSV}
-                                    disabled={!selectedSubject}
-                                >
-                                    <FileSpreadsheet className="h-3 w-3" />
-                                    Excel (CSV)
-                                </Button>
+                            </motion.div>
+                        ))}
+                    </div>
+                </section>
+
+                <Separator className="opacity-50" />
+
+                {/* Quarterly Assessment */}
+                <section className="space-y-2">
+                    <div className="flex items-center gap-1.5">
+                        <div className="h-6 w-6 rounded-md bg-stat-cyan/10 flex items-center justify-center text-stat-cyan">
+                            <AlertCircle className="h-3 w-3" />
+                        </div>
+                        <h4 className="font-bold text-xs">Quarterly Assessment</h4>
+                        <Badge variant="outline" className="text-[9px] h-4 bg-stat-cyan/5 border-stat-cyan/20 text-stat-cyan">
+                            {(CATEGORY_WEIGHTS[currentCategory].qa * 100)}%
+                        </Badge>
+                    </div>
+                    <div className="flex items-center gap-1.5 pl-7">
+                        <Input placeholder="Score" className="h-7 text-xs bg-background/50 max-w-[100px]" value={qaEntry.raw} onChange={(e) => setQaEntry({ ...qaEntry, raw: e.target.value })} />
+                        <span className="text-muted-foreground text-xs">/</span>
+                        <Input placeholder="Max" className="h-7 text-xs bg-background/50 max-w-[100px]" value={qaEntry.max} onChange={(e) => setQaEntry({ ...qaEntry, max: e.target.value })} />
+                    </div>
+                </section>
+
+                <Separator className="opacity-50" />
+
+                {/* Inline Result Summary */}
+                <Card className="bg-background/80 border border-stat-cyan/20 shadow-sm">
+                    <CardContent className="p-3 space-y-2">
+                        <div className="flex items-center gap-1.5 mb-1">
+                            <Calculator className="h-3.5 w-3.5 text-stat-cyan" />
+                            <span className="text-[10px] uppercase tracking-widest text-stat-cyan font-bold">Result Summary</span>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                            <div className="bg-stat-purple/5 rounded-md p-1.5 border border-stat-purple/10">
+                                <div className="text-[8px] text-stat-purple font-bold uppercase">WW</div>
+                                <div className="text-sm font-mono font-bold">{computedGrades.wwWS.toFixed(1)}</div>
                             </div>
+                            <div className="bg-emerald-500/5 rounded-md p-1.5 border border-emerald-500/10">
+                                <div className="text-[8px] text-emerald-600 font-bold uppercase">PT</div>
+                                <div className="text-sm font-mono font-bold">{computedGrades.ptWS.toFixed(1)}</div>
+                            </div>
+                            <div className="bg-stat-cyan/5 rounded-md p-1.5 border border-stat-cyan/10">
+                                <div className="text-[8px] text-stat-cyan font-bold uppercase">QA</div>
+                                <div className="text-sm font-mono font-bold">{computedGrades.qaWS.toFixed(1)}</div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 pt-1">
+                            <div className="flex-1 bg-secondary/50 rounded-md p-2 text-center border border-border/50">
+                                <div className="text-[8px] uppercase text-muted-foreground font-bold">Initial</div>
+                                <div className="text-lg font-black font-mono">{computedGrades.initialGrade.toFixed(1)}</div>
+                            </div>
+                            <div className="flex-1 bg-stat-cyan rounded-md p-2 text-center shadow-md relative overflow-hidden">
+                                <div className="text-[8px] uppercase text-orange-600 font-bold">Transmuted</div>
+                                <div className="text-2xl font-black text-orange-500 drop-shadow-sm">{computedGrades.transmutedGrade}</div>
+                            </div>
+                        </div>
+
+                        {/* Grade Descriptor */}
+                        <div className="flex items-center justify-center gap-2 pt-1">
+                            <Badge className={cn("text-[10px]", isPassing(computedGrades.transmutedGrade) ? "bg-green-500/10 text-green-600 border-green-500/20" : "bg-red-500/10 text-red-600 border-red-500/20")} variant="outline">
+                                {isPassing(computedGrades.transmutedGrade) ? '✓ PASS' : '✗ FAIL'}
+                            </Badge>
+                            <span className={cn("text-xs font-medium", getGradeColorClass(computedGrades.transmutedGrade))}>
+                                {getGradeDescriptor(computedGrades.transmutedGrade)}
+                            </span>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* General Average */}
+                {generalAverages && (
+                    <Card className="bg-background/80 border border-primary/20 shadow-sm">
+                        <CardContent className="p-3 space-y-2">
+                            <div className="flex items-center gap-1.5 mb-1">
+                                <Award className="h-3.5 w-3.5 text-primary" />
+                                <span className="text-[10px] uppercase tracking-widest text-primary font-bold">General Average</span>
+                                <Badge variant="outline" className="text-[9px] h-4 ml-auto">{allSubjectGrades.length} subjects</Badge>
+                            </div>
+                            <div className="grid grid-cols-5 gap-1">
+                                {(['q1', 'q2', 'q3', 'q4'] as const).map(q => {
+                                    const val = generalAverages[q];
+                                    const rounded = val !== null ? Math.round(val) : null;
+                                    return (
+                                        <div key={q} className="flex flex-col items-center py-1 rounded-md border border-border/30 bg-secondary/20">
+                                            <span className="text-[9px] font-bold text-muted-foreground uppercase">{q}</span>
+                                            <span className={cn("text-sm font-bold", getGradeColorClass(rounded))}>{rounded ?? '—'}</span>
+                                        </div>
+                                    );
+                                })}
+                                <div className="flex flex-col items-center py-1 rounded-md border border-primary/30 bg-primary/5">
+                                    <span className="text-[9px] font-bold text-primary">GA</span>
+                                    <span className={cn("text-sm font-bold", getGradeColorClass(generalAverages.annual !== null ? Math.round(generalAverages.annual) : null))}>
+                                        {generalAverages.annual !== null ? Math.round(generalAverages.annual) : '—'}
+                                    </span>
+                                </div>
+                            </div>
+                            {generalAverages.annual !== null && (
+                                <div className="flex items-center justify-center gap-1.5">
+                                    <Badge className={cn("text-[9px] h-4", isPassing(Math.round(generalAverages.annual)) ? "bg-green-500/10 text-green-600 border-green-500/20" : "bg-red-500/10 text-red-600 border-red-500/20")} variant="outline">
+                                        {isPassing(Math.round(generalAverages.annual)) ? '✓ PROMOTED' : '✗ RETAINED'}
+                                    </Badge>
+                                    <span className={cn("text-[9px]", getGradeColorClass(Math.round(generalAverages.annual)))}>
+                                        {getGradeDescriptor(Math.round(generalAverages.annual))}
+                                    </span>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
+                )}
 
-                    {/* Info Tip */}
-                    <div className="p-3 bg-blue-500/5 rounded-lg border border-blue-500/10 flex gap-2">
-                        <Info className="h-4 w-4 text-blue-500 shrink-0" />
-                        <p className="text-[10px] text-blue-600/80 leading-relaxed italic">
-                            Grade 75 is the minimum passing transmuted rating. An initial grade of 60 transmuted correctly to 75.
-                        </p>
-                    </div>
+                {/* Info Tip */}
+                <div className="p-2 bg-blue-500/5 rounded-md border border-blue-500/10 flex gap-1.5">
+                    <Info className="h-3.5 w-3.5 text-blue-500 shrink-0 mt-0.5" />
+                    <p className="text-[9px] text-blue-600/80 leading-relaxed italic">
+                        DepEd Order No. 8, s. 2015: Grade 75 is the minimum passing transmuted rating. General Average is the mean of all subject final grades.
+                    </p>
                 </div>
+            </div>
+
+            {/* Sticky Save Bar */}
+            <div className="p-3 bg-card/50 border-t border-border/50 flex items-center gap-2">
+                <Button
+                    className="flex-1 h-9 bg-stat-purple hover:bg-stat-purple-dark text-white shadow-md gap-1.5 text-xs"
+                    onClick={handleSave}
+                    disabled={isSaving || !selectedSubject}
+                >
+                    {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                    {isSaving ? 'Saving...' : 'Save Q' + quarter}
+                </Button>
+                <Button variant="outline" size="sm" className="h-9 gap-1 text-[10px]" onClick={handleExportPDF} disabled={!selectedSubject}>
+                    <FileDown className="h-3 w-3" /> PDF
+                </Button>
+                <Button variant="outline" size="sm" className="h-9 gap-1 text-[10px]" onClick={handleExportCSV} disabled={!selectedSubject}>
+                    <FileSpreadsheet className="h-3 w-3" /> CSV
+                </Button>
             </div>
         </div>
     );
