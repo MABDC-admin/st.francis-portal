@@ -1,125 +1,53 @@
 
 
-# Add Quick Actions Popup and History-Based Suggestions to Chat
+# Guided Action Flow: Click "+" First, Then Type
 
-## What This Does
-Replaces the plain paperclip button with a "+" button that opens a popup menu with categorized quick actions (Search YouTube, Upload File, Image Generation, Doc Analysis, etc.) and shows history-based suggestions above the input area.
+## What Changes
+The text input starts **disabled/dimmed** with a placeholder like "Tap + to get started..." guiding the teacher to click the "+" button first. After choosing an action from the menu, the input activates with the prefilled text and a visible label showing what mode they're in (e.g., "Search YouTube Videos"). A small "x" on the label lets them cancel and return to the guided state.
 
-## Visual Layout
+## Visual Flow
 
 ```text
+INITIAL STATE (input disabled):
 +--------------------------------------------------+
-|  Chat Messages Area                               |
-|                                                    |
-+--------------------------------------------------+
-|  [Suggestion Chips based on history]              |
-|  e.g. "Continue lesson on Photosynthesis"         |
-|       "Quiz me on fractions"                      |
-+--------------------------------------------------+
-|  [+]  [Type a message...]            [Send/Stop]  |
+|  [+]  [ Tap + to get started... (dimmed) ] [Send] |
 +--------------------------------------------------+
 
-When [+] is clicked, a Popover appears above it:
-
-+-----------------------------------+
-| SEARCH & DISCOVER                 |
-|  🔍 Search Library                |
-|  🎥 Search YouTube Videos         |
-|                                    |
-| CREATE & GENERATE                 |
-|  🖼️ Generate Image                |
-|  📝 Write Essay / Report          |
-|  📊 Create Quiz / Exam            |
-|  📋 Lesson Plan (MELC)            |
-|                                    |
-| ANALYZE & UPLOAD                  |
-|  📄 Upload PDF Document           |
-|  📖 Document Analysis             |
-|                                    |
-| SCHOOL TOOLS                      |
-|  🍽️ Meal / Nutrition Planner      |
-|  📅 Schedule Helper               |
-|  💡 Study Tips                    |
-|  🧮 Math Solver                   |
-+-----------------------------------+
+AFTER clicking "+" and choosing "Search YouTube Videos":
++--------------------------------------------------+
+|  [+]  [🎥 YouTube Search ✕] [Search YouTube for |] [Send] |
++--------------------------------------------------+
+         ^-- active mode badge        ^-- input now active, cursor here
 ```
 
 ## How It Works
 
-### 1. New Component: `ChatActionMenu.tsx`
-A Popover component triggered by a "+" button with categorized action items:
+### 1. New state: `activeMode` in `AIChatPage.tsx`
+- Add `activeMode` state: `{ label: string, icon: string, prefix: string } | null`
+- When no mode is selected and input is empty, the textarea is **read-only** with a guiding placeholder
+- When the user picks an action from the menu, set `activeMode` and prefill the input
+- Clicking "x" on the mode badge clears `activeMode` and resets the input
+- After sending a message, `activeMode` is cleared
+- If the user starts typing directly (without clicking +), the input still works -- this is just a UX guide, not a hard lock
 
-**Search and Discover**
-- Search Library -- prefills "find " in input
-- Search YouTube Videos -- prefills "Search YouTube for "
+### 2. Update `ChatActionMenu.tsx`
+- Change `onPrefill` callback to also pass mode metadata: `onSelect: (text: string, mode: { label: string, icon: string }) => void`
+- Each action item includes its label and emoji for the badge
 
-**Create and Generate**
-- Generate Image -- prefills "Generate an image of "
-- Write Essay / Report -- prefills "Write an essay about "
-- Create Quiz / Exam -- prefills "Create a 10-item quiz about "
-- Lesson Plan (MELC) -- prefills "Create a DepEd MELC lesson plan for "
+### 3. Update input area in `AIChatPage.tsx`
+- Show a colored badge/chip before the textarea when `activeMode` is set (e.g., "🎥 YouTube Search [x]")
+- Textarea placeholder changes based on mode (e.g., "Type a topic to search on YouTube...")
+- The textarea is subtly dimmed (not fully disabled) when no mode is active, with the placeholder guiding to click "+"
 
-**Analyze and Upload**
-- Upload PDF Document -- triggers the file input click
-- Document Analysis -- prefills "Analyze the uploaded document: "
-
-**School Tools**
-- Meal / Nutrition Planner -- prefills "Create a weekly meal plan for "
-- Schedule Helper -- prefills "Help me create a class schedule for "
-- Study Tips -- prefills "Give me effective study tips for "
-- Math Solver -- prefills "Solve step by step: "
-- Code Helper -- prefills "Help me write code for "
-
-Each action either prefills text in the input or triggers an action (like file upload).
-
-### 2. New Component: `ChatSuggestionChips.tsx`
-Renders suggestion chips above the input area based on chat history:
-
-- Analyzes the last few user messages across all sessions
-- Generates contextual suggestions like:
-  - "Continue: [last topic]" -- based on last conversation
-  - "Quiz me on [recent subject]"
-  - "Explain more about [recent topic]"
-- Also shows static quick suggestions when there's no history (e.g., "Help with homework", "Generate a quiz")
-- Clicking a chip fills the input and auto-sends
-
-### 3. Update `AIChatPage.tsx`
-- Replace the Paperclip button with the new "+" button + ChatActionMenu popover
-- Add ChatSuggestionChips above the input area
-- Pass necessary callbacks (setInput, fileInputRef click, handleSend)
-
-## Technical Details
-
-### Files to Create
-
-| File | Purpose |
-|------|---------|
-| `src/components/aichat/ChatActionMenu.tsx` | Popover with categorized quick actions |
-| `src/components/aichat/ChatSuggestionChips.tsx` | History-based suggestion chips |
-
-### Files to Modify
+## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/components/aichat/AIChatPage.tsx` | Replace paperclip button with action menu, add suggestion chips |
+| `src/components/aichat/ChatActionMenu.tsx` | Pass mode metadata (label + icon) alongside prefill text |
+| `src/components/aichat/AIChatPage.tsx` | Add `activeMode` state, mode badge chip, guided placeholder on textarea |
 
-### Suggestion Generation Logic
-```text
-1. Collect last 5 user messages from all sessions
-2. Extract key topics (first 30 chars of each)
-3. Generate contextual prompts:
-   - "Continue: [topic]"
-   - "Quiz me on [topic]"
-   - "Explain [topic] simply"
-4. If no history, show defaults:
-   - "Help with homework"
-   - "Create a lesson plan"
-   - "Generate an image"
-   - "Solve a math problem"
-```
-
-### No New Dependencies
-- Uses existing Popover component from Radix UI
-- Uses existing Lucide icons
-- All logic is client-side
-
+## Key Details
+- Input is **not hard-disabled** -- teachers can still type freely without choosing a mode (power users)
+- The guided placeholder is just a soft UX nudge for less tech-savvy teachers
+- The mode badge disappears after sending a message
+- File upload action still works the same (no mode badge needed)
