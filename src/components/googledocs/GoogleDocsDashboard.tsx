@@ -9,7 +9,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
-import { useSchool } from '@/contexts/SchoolContext';
 import { toast } from 'sonner';
 
 interface GoogleDoc {
@@ -52,7 +51,6 @@ function detectDocType(url: string): string {
 }
 
 export const GoogleDocsDashboard = () => {
-  const { selectedSchool } = useSchool();
   const [docs, setDocs] = useState<GoogleDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
@@ -64,9 +62,7 @@ export const GoogleDocsDashboard = () => {
 
   const fetchDocs = async () => {
     setLoading(true);
-    const query = supabase.from('google_docs').select('*').order('created_at', { ascending: false });
-    if (selectedSchool) query.eq('school_id', selectedSchool);
-    const { data, error } = await query;
+    const { data, error } = await supabase.from('google_docs').select('*').order('created_at', { ascending: false });
     if (error) {
       toast.error('Failed to load documents');
     } else {
@@ -75,7 +71,7 @@ export const GoogleDocsDashboard = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchDocs(); }, [selectedSchool]);
+  useEffect(() => { fetchDocs(); }, []);
 
   const handleAdd = async () => {
     if (!title.trim() || !url.trim()) {
@@ -88,8 +84,7 @@ export const GoogleDocsDashboard = () => {
       title: title.trim(),
       url: url.trim(),
       doc_type: detected !== 'document' ? detected : docType,
-      school_id: selectedSchool,
-    } as any);
+    });
     if (error) {
       toast.error('Failed to add document');
     } else {
