@@ -1,109 +1,139 @@
 
 
-# Auto-Append Contextual Suggestions After Each AI Response
+# Enhanced PDF Export for AI Chat Responses
+
+## Overview
+
+Upgrade the existing `exportResponseToPdf` function in `src/utils/aiChatPdfExport.ts` with clickable hyperlinks, embedded AI-generated images, auto-generated table of contents, and improved visual quality. The current implementation strips links and ignores images -- the new version preserves both.
 
 ## What Changes
 
-After every AI response, a visually distinct suggestion block appears (e.g., "💡 Suggestion: ..."). This is driven by the system prompt instructing the AI to always append it, and the frontend parses and renders it as a styled callout box. A toggle in the chat header lets the user turn this on/off (defaults to ON, persisted in localStorage).
+### 1. Clickable Hyperlinks with URL Validation
 
-## How It Works
+Currently all markdown links are stripped to plain text. The new version will:
 
-### 1. System Prompt Update (`constants.ts`)
+- Parse `[text](url)` patterns and render them as **clickable PDF links** using jsPDF's `doc.textWithLink()` API
+- Validate URLs before embedding (must start with `http://` or `https://`)
+- Style links in blue with underline so they're visually identifiable
+- YouTube links get a red "VIDEO" badge (already exists) but now also become clickable
+- Invalid/malformed URLs render as plain text with a small "[invalid link]" note
 
-Add a new section to `SCHOOL_SYSTEM_PROMPT` instructing the AI to always end responses with a suggestion block:
+### 2. Embedded Images (AI-Generated)
 
-```text
-========================
-12) CONTEXTUAL SUGGESTIONS
-========================
+The `Message` type already carries an `images` array. The export function will:
 
-After EVERY response, append a suggestion block on a new line using this exact format:
+- Accept an optional `images` parameter (the message's `ChatImage[]`)
+- For each base64 data URL image, embed it into the PDF using `doc.addImage()`
+- Scale images to fit within the usable width (max 150mm wide) while preserving aspect ratio
+- Use PNG format for best quality within jsPDF
+- Skip external URLs that can't be embedded client-side (add a placeholder note instead)
 
-💡 **Suggestion:** [1-2 sentence actionable next step or recommendation based on the topic just discussed]
+### 3. Auto-Generated Table of Contents
 
-Rules:
-- Must be contextually relevant to the main response
-- Must not exceed 2 sentences
-- Must be actionable (e.g., "Try solving...", "Next, explore...", "Create a quiz on...")
-- Place it as the very last thing, after Video References
-- Use exactly the prefix: 💡 **Suggestion:**
-```
+For longer responses, a TOC page is inserted after the header:
 
-### 2. Visual Rendering in `ChatMessageBubble.tsx`
+- During the first pass, collect all headings (`#`, `##`, `###`) with their text and page numbers
+- If there are 3+ headings, generate a TOC on page 2 with clickable internal links using `doc.link()` pointing to each heading's Y position
+- Each TOC entry shows: heading text (indented by level) and page number (right-aligned, dotted leader)
+- TOC entries are styled with the section color if an emoji section header
 
-Parse the assistant message content to detect the suggestion block (line starting with "💡 **Suggestion:**"). Render it separately as a styled callout card:
+### 4. Improved Visual Quality
 
-- Amber/yellow background with a lightbulb icon
-- Rounded border, slightly indented
-- Visually separated from the main response by a thin divider
-- Only rendered when the suggestion toggle is enabled
+- Increase default font rendering quality (jsPDF uses 72 DPI by default; we set `doc.setProperties({ creator: 'SchoolAI' })` and use mm units which already produce clean vector text)
+- All text, lines, and shapes in jsPDF are already vector -- no rasterization needed
+- Images embedded at their original resolution (base64 images from AI are typically 1024x1024)
+- Bold text segments within paragraphs rendered inline (currently bold markers are stripped)
 
-The parsing splits the content at the suggestion line, rendering the main content normally via ReactMarkdown and the suggestion in its own styled container.
+### 5. Suggestion Block Exclusion
 
-### 3. Toggle in Chat Header (`AIChatPage.tsx`)
+The `💡 **Suggestion:**` block appended by the AI is **stripped before export** so it doesn't appear in the downloaded PDF (it's a UI-only element).
 
-Add a small Switch toggle in the header bar labeled with a lightbulb icon. State is stored in `localStorage` key `ai-suggestions-enabled` (defaults to `true`). The toggle is passed down to `ChatMessageBubble` to control whether the suggestion callout renders.
+### 6. Error Handling
 
-## Visual Preview
-
-```text
-Assistant response bubble:
-+------------------------------------------+
-| [Main response content with markdown]    |
-|                                          |
-| 🎥 Video References                     |
-| - [Video link]                           |
-|                                          |
-| ┌─────────────────────────────────────┐  |
-| │ 💡 Suggestion: Try creating a 5-   │  |
-| │ item quiz on this topic to test     │  |
-| │ your understanding.                 │  |
-| └─────────────────────────────────────┘  |
-|                                          |
-| [Download] Save as PDF                   |
-+------------------------------------------+
-```
-
-Toggle in header:
-```text
-[SchoolAI icon] SchoolAI          [💡 on/off] [Clear]
-```
+- Wrap the entire export in try/catch with a toast notification on failure
+- Image embedding failures are caught individually (skip broken images, continue export)
+- File size check after generation -- warn if over 10MB via toast
 
 ## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/components/aichat/constants.ts` | Add section 12 to system prompt with suggestion format instructions |
-| `src/components/aichat/ChatMessageBubble.tsx` | Parse and render suggestion block as styled callout; accept `showSuggestions` prop |
-| `src/components/aichat/AIChatPage.tsx` | Add localStorage-backed toggle state, render Switch in header, pass prop to message bubbles |
+| `src/utils/aiChatPdfExport.ts` | Complete rewrite of export function with links, images, TOC, inline bold |
+| `src/components/aichat/ChatMessageBubble.tsx` | Pass `message.images` to the export function |
 
 ## Technical Details
 
-### Content Parsing Logic (ChatMessageBubble)
+### Link Rendering
+
+jsPDF supports clickable links via `doc.textWithLink(text, x, y, { url })`. For inline links within paragraphs:
+
 ```text
-const suggestionRegex = /\n?💡 \*\*Suggestion:\*\*\s*.+$/s;
-const match = content.match(suggestionRegex);
-const mainContent = match ? content.slice(0, match.index) : content;
-const suggestionText = match ? match[0].replace('💡 **Suggestion:**', '').trim() : null;
+1. Parse line for [text](url) patterns
+2. Validate URL (must match /^https?:\/\//)
+3. Split line into segments: plain text + link text
+4. Render plain segments with doc.text()
+5. Render link segments with doc.textWithLink() in blue + underline
+6. Track X position across segments for inline flow
 ```
 
-### Toggle State (AIChatPage)
+### Image Embedding
+
 ```text
-const [showSuggestions, setShowSuggestions] = useState(() => {
-  const saved = localStorage.getItem('ai-suggestions-enabled');
-  return saved !== null ? saved === 'true' : true; // default ON
-});
-// Persist on change
-useEffect(() => {
-  localStorage.setItem('ai-suggestions-enabled', String(showSuggestions));
-}, [showSuggestions]);
+1. Check if image URL starts with "data:image/"
+2. Extract format (png/jpeg/webp) from data URL
+3. Create temporary Image() to get natural dimensions
+4. Calculate scaled dimensions to fit within usableWidth
+5. Call doc.addImage(dataUrl, format, x, y, width, height)
+6. Advance Y cursor by image height + margin
 ```
 
-### Suggestion Callout Styling
-- Container: `bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2`
-- Icon: Lightbulb emoji inline
-- Text: `text-sm text-amber-800`
-- Hidden when `showSuggestions` is false or when streaming
+### Table of Contents (Two-Pass Rendering)
+
+```text
+Pass 1: Parse all lines, collect headings with estimated page numbers
+Pass 2: If 3+ headings exist:
+  - Insert new page after header as TOC
+  - Render "Table of Contents" title
+  - For each heading: render text + page number with doc.link() internal destination
+  - Adjust all subsequent page numbers by +1
+Pass 3: Render content as before (with page offset)
+```
+
+### Inline Bold Rendering
+
+Instead of stripping `**bold**` markers, the renderer will:
+
+```text
+1. Split text by **...** patterns
+2. Alternate between normal and bold font
+3. Measure each segment width with doc.getTextWidth()
+4. Render segments sequentially, advancing X position
+```
+
+### URL Validation
+
+```text
+function isValidUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return ['http:', 'https:'].includes(parsed.protocol);
+  } catch {
+    return false;
+  }
+}
+```
+
+### Export Function Signature Change
+
+```text
+// Before
+exportResponseToPdf(content: string, documentName?: string)
+
+// After
+exportResponseToPdf(content: string, documentName?: string, images?: ChatImage[])
+```
 
 ### No New Dependencies
-All changes use existing React state, Tailwind classes, localStorage, and regex parsing.
+
+Uses `jsPDF` (already installed) and `jspdf-autotable` (already installed, used for TOC table if needed). All other logic is vanilla TypeScript.
+
