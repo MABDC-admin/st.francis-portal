@@ -1,4 +1,4 @@
-import { Plus, Search, Youtube, ImageIcon, FileText, BookOpen, UtensilsCrossed, CalendarDays, Lightbulb, Calculator, Code, ClipboardList, GraduationCap } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useState } from 'react';
@@ -9,14 +9,14 @@ export interface ModeInfo {
 }
 
 interface ActionItem {
-  icon: React.ReactNode;
-  label: string;
   emoji: string;
+  label: string;
   action: () => void;
 }
 
 interface ActionGroup {
   title: string;
+  bgClass: string;
   items: ActionItem[];
 }
 
@@ -37,35 +37,98 @@ export const ChatActionMenu = ({ onSelect, onFileUpload, disabled }: ChatActionM
   const groups: ActionGroup[] = [
     {
       title: 'Search & Discover',
+      bgClass: 'bg-blue-50 text-blue-600',
       items: [
-        { icon: <Search className="h-4 w-4" />, label: 'Search Library', emoji: '🔍', action: () => act('find ', 'Library Search', '🔍') },
-        { icon: <Youtube className="h-4 w-4" />, label: 'Search YouTube Videos', emoji: '🎥', action: () => act('Search YouTube for ', 'YouTube Search', '🎥') },
+        { emoji: '🔍', label: 'Search Library', action: () => act('find ', 'Library Search', '🔍') },
+        { emoji: '🎥', label: 'Search YouTube Videos', action: () => act('Search YouTube for ', 'YouTube Search', '🎥') },
+        { emoji: '📚', label: 'Wikipedia Lookup', action: () => act('Look up on Wikipedia: ', 'Wikipedia', '📚') },
+        { emoji: '📰', label: 'News & Current Events', action: () => act('Find recent news about ', 'News Search', '📰') },
       ],
     },
     {
       title: 'Create & Generate',
+      bgClass: 'bg-purple-50 text-purple-600',
       items: [
-        { icon: <ImageIcon className="h-4 w-4" />, label: 'Generate Image', emoji: '🖼️', action: () => act('Generate an image of ', 'Image Generation', '🖼️') },
-        { icon: <FileText className="h-4 w-4" />, label: 'Write Essay / Report', emoji: '📝', action: () => act('Write an essay about ', 'Essay Writing', '📝') },
-        { icon: <ClipboardList className="h-4 w-4" />, label: 'Create Quiz / Exam', emoji: '📊', action: () => act('Create a 10-item quiz about ', 'Quiz Creator', '📊') },
-        { icon: <GraduationCap className="h-4 w-4" />, label: 'Lesson Plan (MELC)', emoji: '📋', action: () => act('Create a DepEd MELC lesson plan for ', 'Lesson Plan', '📋') },
+        { emoji: '🖼️', label: 'Generate Image', action: () => act('Generate an image of ', 'Image Generation', '🖼️') },
+        { emoji: '📝', label: 'Write Essay / Report', action: () => act('Write an essay about ', 'Essay Writing', '📝') },
+        { emoji: '📊', label: 'Create Quiz / Exam', action: () => act('Create a 10-item quiz about ', 'Quiz Creator', '📊') },
+        { emoji: '📋', label: 'Lesson Plan (MELC)', action: () => act('Create a DepEd MELC lesson plan for ', 'Lesson Plan', '📋') },
+        { emoji: '🃏', label: 'Create Flashcards', action: () => act('Create flashcards for ', 'Flashcards', '🃏') },
+        { emoji: '✍️', label: 'Write a Story / Poem', action: () => act('Write a creative story about ', 'Story Writer', '✍️') },
+        { emoji: '📽️', label: 'Presentation Outline', action: () => act('Create a presentation outline for ', 'Presentation', '📽️') },
       ],
     },
     {
       title: 'Analyze & Upload',
+      bgClass: 'bg-amber-50 text-amber-600',
       items: [
-        { icon: <BookOpen className="h-4 w-4" />, label: 'Upload PDF Document', emoji: '📄', action: () => { onFileUpload(); setOpen(false); } },
-        { icon: <FileText className="h-4 w-4" />, label: 'Document Analysis', emoji: '📖', action: () => act('Analyze the uploaded document: ', 'Doc Analysis', '📖') },
+        { emoji: '📄', label: 'Upload PDF Document', action: () => { onFileUpload(); setOpen(false); } },
+        { emoji: '📖', label: 'Document Analysis', action: () => act('Analyze the uploaded document: ', 'Doc Analysis', '📖') },
+        { emoji: '📌', label: 'Summarize a Topic', action: () => act('Summarize the key points of ', 'Summarizer', '📌') },
+        { emoji: '⚖️', label: 'Compare & Contrast', action: () => act('Compare and contrast ', 'Compare', '⚖️') },
       ],
     },
     {
       title: 'School Tools',
+      bgClass: 'bg-green-50 text-green-600',
       items: [
-        { icon: <UtensilsCrossed className="h-4 w-4" />, label: 'Meal / Nutrition Planner', emoji: '🍽️', action: () => act('Create a weekly meal plan for ', 'Meal Planner', '🍽️') },
-        { icon: <CalendarDays className="h-4 w-4" />, label: 'Schedule Helper', emoji: '📅', action: () => act('Help me create a class schedule for ', 'Schedule Helper', '📅') },
-        { icon: <Lightbulb className="h-4 w-4" />, label: 'Study Tips', emoji: '💡', action: () => act('Give me effective study tips for ', 'Study Tips', '💡') },
-        { icon: <Calculator className="h-4 w-4" />, label: 'Math Solver', emoji: '🧮', action: () => act('Solve step by step: ', 'Math Solver', '🧮') },
-        { icon: <Code className="h-4 w-4" />, label: 'Code Helper', emoji: '💻', action: () => act('Help me write code for ', 'Code Helper', '💻') },
+        { emoji: '📅', label: 'Schedule Helper', action: () => act('Help me create a class schedule for ', 'Schedule Helper', '📅') },
+        { emoji: '💡', label: 'Study Tips', action: () => act('Give me effective study tips for ', 'Study Tips', '💡') },
+        { emoji: '🧮', label: 'Math Solver', action: () => act('Solve step by step: ', 'Math Solver', '🧮') },
+        { emoji: '🔬', label: 'Science Experiment Ideas', action: () => act('Suggest a science experiment about ', 'Science Lab', '🔬') },
+        { emoji: '📕', label: 'Book Report Helper', action: () => act('Help me write a book report on ', 'Book Report', '📕') },
+        { emoji: '🧭', label: 'Research Guide', action: () => act('Guide me on how to research ', 'Research Guide', '🧭') },
+      ],
+    },
+    {
+      title: 'Language & Writing',
+      bgClass: 'bg-pink-50 text-pink-600',
+      items: [
+        { emoji: '✅', label: 'Grammar Checker', action: () => act('Check the grammar of: ', 'Grammar Check', '✅') },
+        { emoji: '🌐', label: 'Translate Text', action: () => act('Translate to English: ', 'Translator', '🌐') },
+        { emoji: '📖', label: 'Vocabulary Builder', action: () => act('Teach me 10 vocabulary words about ', 'Vocabulary', '📖') },
+        { emoji: '✉️', label: 'Letter / Email Writer', action: () => act('Write a professional email about ', 'Email Writer', '✉️') },
+      ],
+    },
+    {
+      title: 'Science & Math',
+      bgClass: 'bg-teal-50 text-teal-600',
+      items: [
+        { emoji: '⚛️', label: 'Physics Problem Solver', action: () => act('Solve this physics problem: ', 'Physics Solver', '⚛️') },
+        { emoji: '🧪', label: 'Chemistry Helper', action: () => act('Explain this chemistry concept: ', 'Chemistry', '🧪') },
+        { emoji: '🧬', label: 'Biology Explainer', action: () => act('Explain in biology: ', 'Biology', '🧬') },
+        { emoji: '📈', label: 'Statistics Calculator', action: () => act('Calculate the statistics for: ', 'Statistics', '📈') },
+      ],
+    },
+    {
+      title: 'Lifestyle & Wellness',
+      bgClass: 'bg-rose-50 text-rose-600',
+      items: [
+        { emoji: '🍽️', label: 'Meal / Nutrition Planner', action: () => act('Create a weekly meal plan for ', 'Meal Planner', '🍽️') },
+        { emoji: '🏃', label: 'Exercise / PE Activities', action: () => act('Suggest PE activities for ', 'PE Activities', '🏃') },
+        { emoji: '🧘', label: 'Mindfulness / SEL Activity', action: () => act('Create a mindfulness activity for ', 'Mindfulness', '🧘') },
+        { emoji: '⏰', label: 'Time Management Tips', action: () => act('Give me time management tips for ', 'Time Management', '⏰') },
+      ],
+    },
+    {
+      title: 'Fun & Creative',
+      bgClass: 'bg-indigo-50 text-indigo-600',
+      items: [
+        { emoji: '🎯', label: 'Trivia Game', action: () => act('Create a trivia game about ', 'Trivia', '🎯') },
+        { emoji: '🧩', label: 'Brain Teasers / Riddles', action: () => act('Give me brain teasers about ', 'Brain Teasers', '🧩') },
+        { emoji: '🎤', label: 'Debate Topic Generator', action: () => act('Generate debate topics about ', 'Debate Topics', '🎤') },
+        { emoji: '🤔', label: 'Would You Rather (Edu)', action: () => act('Create educational "Would You Rather" questions about ', 'Would You Rather', '🤔') },
+        { emoji: '🎲', label: 'Icebreaker Activities', action: () => act('Suggest icebreaker activities for ', 'Icebreakers', '🎲') },
+      ],
+    },
+    {
+      title: 'Professional & Career',
+      bgClass: 'bg-slate-100 text-slate-600',
+      items: [
+        { emoji: '📄', label: 'Resume / CV Helper', action: () => act('Help me create a resume for ', 'Resume Helper', '📄') },
+        { emoji: '🎙️', label: 'Interview Prep', action: () => act('Prepare me for an interview about ', 'Interview Prep', '🎙️') },
+        { emoji: '💻', label: 'Code Helper', action: () => act('Help me write code for ', 'Code Helper', '💻') },
+        { emoji: '💡', label: 'Project Idea Generator', action: () => act('Generate project ideas for ', 'Project Ideas', '💡') },
       ],
     },
   ];
@@ -86,7 +149,7 @@ export const ChatActionMenu = ({ onSelect, onFileUpload, disabled }: ChatActionM
       <PopoverContent
         side="top"
         align="start"
-        className="w-72 p-2 max-h-[420px] overflow-y-auto"
+        className="w-80 p-2 max-h-[520px] overflow-y-auto"
       >
         {groups.map((group, gi) => (
           <div key={gi} className={gi > 0 ? 'mt-2 pt-2 border-t' : ''}>
@@ -99,7 +162,9 @@ export const ChatActionMenu = ({ onSelect, onFileUpload, disabled }: ChatActionM
                 onClick={item.action}
                 className="flex items-center gap-2.5 w-full rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors text-left"
               >
-                <span className="text-muted-foreground">{item.icon}</span>
+                <span className={`w-6 h-6 rounded-md flex items-center justify-center text-sm ${group.bgClass}`}>
+                  {item.emoji}
+                </span>
                 <span>{item.label}</span>
               </button>
             ))}

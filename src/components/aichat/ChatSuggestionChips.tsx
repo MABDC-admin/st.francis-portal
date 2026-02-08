@@ -11,6 +11,20 @@ const DEFAULT_SUGGESTIONS = [
   'Generate an image',
   'Solve a math problem',
   'Search YouTube videos',
+  'Write a story',
+  'Create flashcards',
+  'Translate a sentence',
+];
+
+const CHIP_COLORS = [
+  'border-blue-200 bg-blue-50 text-blue-700',
+  'border-green-200 bg-green-50 text-green-700',
+  'border-purple-200 bg-purple-50 text-purple-700',
+  'border-pink-200 bg-pink-50 text-pink-700',
+  'border-amber-200 bg-amber-50 text-amber-700',
+  'border-teal-200 bg-teal-50 text-teal-700',
+  'border-indigo-200 bg-indigo-50 text-indigo-700',
+  'border-rose-200 bg-rose-50 text-rose-700',
 ];
 
 const TEMPLATES = [
@@ -74,7 +88,7 @@ export const ChatSuggestionChips = ({ sessions, onSelect }: ChatSuggestionChipsP
         <button
           key={i}
           onClick={() => onSelect(chip)}
-          className="text-xs px-3 py-1.5 rounded-full border bg-background hover:bg-accent transition-colors text-muted-foreground hover:text-foreground truncate max-w-[200px]"
+          className={`text-xs px-3 py-1.5 rounded-full border transition-colors hover:opacity-80 truncate max-w-[200px] ${CHIP_COLORS[i % CHIP_COLORS.length]}`}
         >
           {chip}
         </button>
