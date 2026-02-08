@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSchoolId } from '@/hooks/useSchoolId';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { ExcalidrawEditor } from './ExcalidrawEditor';
+import { TldrawEditor } from './TldrawEditor';
 
 interface Drawing {
   id: string;
@@ -94,7 +94,7 @@ export const ExcalidrawDashboard = () => {
 
   if (activeDrawing) {
     return (
-      <ExcalidrawEditor
+      <TldrawEditor
         drawingId={activeDrawing.id}
         title={activeDrawing.title}
         onBack={() => { setActiveDrawing(null); loadDrawings(); }}
@@ -106,8 +106,8 @@ export const ExcalidrawDashboard = () => {
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Excalidraw</h1>
-          <p className="text-muted-foreground mt-1">Whiteboard & Drawing Tool</p>
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Whiteboard</h1>
+          <p className="text-muted-foreground mt-1">Drawing & Collaboration Tool</p>
         </div>
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
