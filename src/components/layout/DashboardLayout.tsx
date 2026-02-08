@@ -154,6 +154,7 @@ const icon3DMap: Record<string, any> = {
   'tacticalrmm': AdminIcon3D,
   'documize': LibraryIcon3D,
   'integrations': AdminIcon3D,
+  'ai-chat': NotebookIcon3D,
 };
 
 // Icon mapping for Apple style icons
@@ -205,6 +206,7 @@ const iconAppleMap: Record<string, any> = {
   'tacticalrmm': AppleAdminIcon,
   'documize': AppleLibraryIcon,
   'integrations': AppleAdminIcon,
+  'ai-chat': AppleNotebookIcon,
 };
 
 // Hierarchical navigation structure for each role
@@ -263,6 +265,7 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
             { id: 'library', icon: LibraryIcon3D, label: 'Library' },
             { id: 'canva', icon: CanvaIcon3D, label: 'Canva Studio' },
             { id: 'notebook', icon: NotebookIcon3D, label: 'Notebook LLM' },
+            { id: 'ai-chat', icon: NotebookIcon3D, label: 'AI Chat' },
           ]
         },
         { id: 'reports', icon: ReportsIcon3D, label: 'Reports' },
@@ -331,6 +334,7 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
           isCollapsible: true,
           items: [
             { id: 'library', icon: LibraryIcon3D, label: 'Library' },
+            { id: 'ai-chat', icon: NotebookIcon3D, label: 'AI Chat' },
           ]
         },
         { id: 'reports', icon: ReportsIcon3D, label: 'Reports' },
@@ -362,6 +366,7 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
             { id: 'library', icon: LibraryIcon3D, label: 'Library' },
             { id: 'canva', icon: CanvaIcon3D, label: 'Canva Studio' },
             { id: 'notebook', icon: NotebookIcon3D, label: 'Notebook LLM' },
+            { id: 'ai-chat', icon: NotebookIcon3D, label: 'AI Chat' },
           ]
         },
       ];

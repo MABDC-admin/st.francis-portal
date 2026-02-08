@@ -49,6 +49,9 @@ import { CanvaStudio } from '@/components/canva/CanvaStudio';
 // Notebook LLM
 import { NotebookPage } from '@/components/notebook/NotebookPage';
 
+// AI Chat
+import { AIChatPage } from '@/components/aichat/AIChatPage';
+
 // LIS
 import { LISPage } from '@/components/lis/LISPage';
 
@@ -441,6 +444,12 @@ const Index = () => {
       {activeTab === 'messages' && (role === 'admin' || role === 'teacher' || role === 'registrar') && (
         <MessagingPage />
       )}
+
+      {/* AI Chat - Admin, Teacher, and Registrar */}
+      {activeTab === 'ai-chat' && (role === 'admin' || role === 'teacher' || role === 'registrar') && (
+        <AIChatPage />
+      )}
+
 
       {/* Admin Panel - Admin only */}
       {activeTab === 'admin' && role === 'admin' && isAdminUnlocked && (
