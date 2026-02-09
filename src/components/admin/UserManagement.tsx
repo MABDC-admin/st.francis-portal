@@ -617,7 +617,7 @@ export const UserManagement = () => {
                               <Copy className="h-4 w-4" />
                             )}
                           </Button>
-                          {cred.role === 'student' && cred.user_id && (
+                          {cred.user_id && (
                             <Button
                               variant="ghost"
                               size="sm"
