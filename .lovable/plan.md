@@ -1,26 +1,39 @@
 
 
-# Add Clickable Learner Names with Profile Popup in Finance Learners Page
+# Add Logout Button to Student Portal Sidebar
 
-## Overview
+## What Changes
 
-Make learner names clickable in the Finance Learners table so clicking a name opens the existing `StudentProfileModal` with their complete profile (Personal Info, Academic History, Subjects, Documents, Anecdotal, Grades tabs).
+Add a "Sign Out" button below the "Announcements" menu item in the student portal sidebar, with vertical spacing equivalent to 4 menu items gap.
 
-## Changes
+## Technical Details
 
-### File: `src/components/finance/FinanceLearnerPage.tsx`
+### File: `src/components/layout/DashboardLayout.tsx`
 
-**1. Fetch full student data** -- Update the students query `select` to fetch all fields (`*`) instead of only `id, student_name, lrn, gender, level, photo_url, school, school_id`. The `StudentProfileModal` requires a full `Student` object with fields like `birth_date`, `age`, `religion`, `mother_contact`, etc.
+**Update the student menu items array (around line 479-481):**
 
-**2. Add state for selected student** -- Add `selectedStudent` state to track which learner was clicked, and a boolean `profileOpen` to control the modal.
+After the `student-announcements` entry, add a spacer and a logout item. Since the menu items are rendered as a list, the cleanest approach is to add a special "spacer" entry followed by a logout entry with a unique id (e.g., `'logout'`).
 
-**3. Make the name cell clickable** -- Wrap the student name `TableCell` content in a styled button/span with `text-primary underline-offset-2 hover:underline cursor-pointer` styling. On click, set the selected student and open the modal.
+However, since menu items trigger `onTabChange`, a simpler approach is to handle this in the sidebar rendering logic. The plan:
 
-**4. Import and render `StudentProfileModal`** -- Import from `@/components/students/StudentProfileModal` and render it at the bottom of the component, passing the selected student and open/close handlers.
+1. In the `getMenuItems` function for the `'student'` case (~line 480), add a spacer object and a logout item after `student-announcements`:
+   ```typescript
+   { id: 'spacer', icon: null, label: '', isSpacer: true },
+   { id: 'logout', icon: LogOutIcon, label: 'Sign Out', isLogout: true },
+   ```
 
-### Summary
+2. In the sidebar rendering section where menu items are mapped, add handling for:
+   - `isSpacer`: render a `div` with `mt-16` (approximately 4 menu-item heights of gap)
+   - `isLogout`: render a styled logout button that calls `signOut` instead of `onTabChange`
 
-- 1 file modified (`FinanceLearnerPage.tsx`)
-- No database changes
-- Reuses the existing `StudentProfileModal` component for a consistent experience
+This follows the existing sign-out button pattern already used in the sidebar footer but places a dedicated one in the student menu for better visibility.
 
+**Alternative simpler approach:** Instead of modifying the menu items system, insert a dedicated logout button specifically when `role === 'student'` in the sidebar content area, positioned after the menu items with `mt-16` spacing. This avoids changing the menu item type system.
+
+The simpler approach will be used:
+- After the menu items loop for students, render a logout button with `mt-16` (4 menu gaps) spacing
+- Style it consistently with the existing sidebar logout button (red text, LogOut icon)
+- This keeps the menu items array clean and avoids type changes
+
+### Files Modified
+- `src/components/layout/DashboardLayout.tsx` -- Add a student-specific logout button after menu items with spacing
