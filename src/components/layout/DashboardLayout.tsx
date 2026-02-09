@@ -442,6 +442,53 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
         { id: 'children', icon: StudentIcon3D, label: 'My Children' },
         { id: 'library', icon: LibraryIcon3D, label: 'Library' },
       ];
+    case 'finance':
+      return [
+        { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
+        {
+          id: 'billing',
+          icon: ReportsIcon3D,
+          label: 'Billing',
+          isCollapsible: true,
+          items: [
+            { id: 'fee-setup', icon: SubjectsIcon3D, label: 'Fees Setup' },
+            { id: 'assessments', icon: EnrollmentIcon3D, label: 'Assessments' },
+            { id: 'discount-scholarships', icon: StudentIcon3D, label: 'Discounts' },
+          ]
+        },
+        {
+          id: 'payments-group',
+          icon: EnterGradeIcon3D,
+          label: 'Payments',
+          isCollapsible: true,
+          items: [
+            { id: 'cashier', icon: EnterGradeIcon3D, label: 'Cashier' },
+            { id: 'payment-plans', icon: ScheduleIcon3D, label: 'Payment Plans' },
+          ]
+        },
+        {
+          id: 'accounts',
+          icon: ProfileIcon3D,
+          label: 'Accounts',
+          isCollapsible: true,
+          items: [
+            { id: 'student-ledger', icon: ReportsIcon3D, label: 'Student Ledger' },
+            { id: 'finance-clearance', icon: AdminIcon3D, label: 'Clearance' },
+          ]
+        },
+        { id: 'finance-reports', icon: ReportsIcon3D, label: 'Reports' },
+        {
+          id: 'finance-config',
+          icon: AdminIcon3D,
+          label: 'Settings',
+          isCollapsible: true,
+          items: [
+            { id: 'finance-settings', icon: AdminIcon3D, label: 'Finance Settings' },
+            { id: 'finance-audit', icon: ImportIcon3D, label: 'Audit Logs' },
+          ]
+        },
+        { id: 'library', icon: LibraryIcon3D, label: 'Library' },
+      ];
     default:
       return [
         { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
@@ -462,6 +509,7 @@ const roleColors: Record<string, string> = {
   teacher: 'bg-green-500',
   student: 'bg-purple-500',
   parent: 'bg-orange-500',
+  finance: 'bg-emerald-600',
 };
 
 const roleLabels: Record<string, string> = {
@@ -470,6 +518,7 @@ const roleLabels: Record<string, string> = {
   teacher: 'Teacher',
   student: 'Learner',
   parent: 'Parent',
+  finance: 'Finance',
 };
 
 // Check if any item in a group is active

@@ -3,7 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { logAuditAction } from '@/hooks/useAuditLog';
 
-type AppRole = 'admin' | 'registrar' | 'teacher' | 'student' | 'parent';
+type AppRole = 'admin' | 'registrar' | 'teacher' | 'student' | 'parent' | 'finance';
 
 interface AuthContextType {
   user: User | null;

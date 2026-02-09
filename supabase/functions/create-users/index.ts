@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 interface CreateUserRequest {
-  action: "create_admin" | "create_registrar" | "create_teacher" | "bulk_create_students" | "reset_student_accounts" | "create_single_student" | "reset_student_password";
+  action: "create_admin" | "create_registrar" | "create_teacher" | "create_finance" | "bulk_create_students" | "reset_student_accounts" | "create_single_student" | "reset_student_password";
   email?: string;
   password?: string;
   fullName?: string;
@@ -60,7 +60,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { action, email, password, fullName, studentId, studentLrn, studentName, studentSchool, credentialId, userId }: CreateUserRequest = await req.json();
     console.log(`Processing action: ${action}`);
 
-    if (action === "create_admin" || action === "create_registrar" || action === "create_teacher") {
+    if (action === "create_admin" || action === "create_registrar" || action === "create_teacher" || action === "create_finance") {
       const generatedPassword = password || generatePassword();
       
       if (!email) {
