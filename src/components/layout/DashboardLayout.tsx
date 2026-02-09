@@ -1012,6 +1012,27 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
           animate="visible"
         >
           {navGroups.map((group) => renderNavGroup(group))}
+
+          {/* Student-specific Sign Out button after menu items */}
+          {role === 'student' && (
+            <motion.button
+              variants={itemVariants}
+              initial="hidden"
+              animate="visible"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={signOut}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-3 mt-16 font-medium transition-all duration-200 rounded-lg",
+                isAppleTheme
+                  ? "text-[#FF3B30] hover:bg-[#FF3B30]/10 rounded-xl"
+                  : "text-inherit/80 hover:bg-white/10 hover:text-red-300"
+              )}
+            >
+              <LogOut className="h-5 w-5 flex-shrink-0" />
+              {!isCollapsed && <span className={cn(isAppleTheme && "text-[13px]")}>Sign Out</span>}
+            </motion.button>
+          )}
         </motion.nav>
 
         {/* Bottom Section - Admin */}
