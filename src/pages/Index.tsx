@@ -167,7 +167,7 @@ const Index = () => {
         setActiveTab(state.activeTab);
         navigate(location.pathname, { replace: true, state: {} });
       } else {
-        setActiveTab('portal');
+        setActiveTab(role === 'finance' ? 'finance-reports' : 'portal');
       }
       hasInitialized.current = true;
     }
@@ -276,7 +276,7 @@ const Index = () => {
       case 'parent':
         return <ParentPortal />;
       case 'finance':
-        return <FinancePortal onNavigate={handleTabChange} />;
+        return null;
       default:
         return null;
     }
