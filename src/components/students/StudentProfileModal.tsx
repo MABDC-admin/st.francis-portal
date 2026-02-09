@@ -112,7 +112,7 @@ export const StudentProfileModal = ({ student, isOpen, onClose }: StudentProfile
         remarks: g.remarks
       }));
 
-      generateSF9(student as any, formattedGrades, academicYear);
+      generateSF9(student as any, formattedGrades, [], academicYear);
       toast.success('SF9 Report Card generated successfully');
     } catch (error) {
       console.error('Error generating SF9:', error);
