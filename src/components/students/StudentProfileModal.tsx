@@ -151,7 +151,7 @@ export const StudentProfileModal = ({ student, isOpen, onClose }: StudentProfile
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] max-w-4xl max-h-[90vh] bg-slate-50 dark:bg-slate-900 rounded-2xl shadow-lg z-50 overflow-hidden flex flex-col"
+            className="fixed inset-0 m-auto w-[calc(100%-2rem)] max-w-4xl max-h-[90vh] h-fit bg-slate-50 dark:bg-slate-900 rounded-2xl shadow-lg z-50 overflow-hidden flex flex-col"
           >
             {/* Header - Teal Gradient */}
             <div
