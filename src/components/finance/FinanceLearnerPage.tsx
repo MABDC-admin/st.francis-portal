@@ -42,7 +42,7 @@ export const FinanceLearnerPage = () => {
       // Students table uses text 'school' column (MABDC/STFXSA), not UUID school_id
       const { data, error } = await supabase
         .from('students')
-        .select('id, student_name, lrn, gender, level, photo_url, school, school_id, status')
+        .select('id, student_name, lrn, gender, level, photo_url, school, school_id')
         .eq('school', selectedSchool)
         .order('student_name', { ascending: true });
 
