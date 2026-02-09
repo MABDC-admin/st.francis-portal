@@ -12,12 +12,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { AnimatedStudentAvatar } from '@/components/students/AnimatedStudentAvatar';
+import { StudentProfileModal } from '@/components/students/StudentProfileModal';
+import type { Student } from '@/types/student';
 
 export const FinanceLearnerPage = () => {
   const { selectedSchool } = useSchool();
   const { selectedYearId } = useAcademicYear();
   const [searchQuery, setSearchQuery] = useState('');
   const [gradeFilter, setGradeFilter] = useState('all');
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   // Get school UUID
   const { data: schoolId } = useQuery({
@@ -42,7 +46,7 @@ export const FinanceLearnerPage = () => {
       // Students table uses text 'school' column (MABDC/STFXSA), not UUID school_id
       const { data, error } = await supabase
         .from('students')
-        .select('id, student_name, lrn, gender, level, photo_url, school, school_id')
+        .select('*')
         .eq('school', selectedSchool)
         .order('student_name', { ascending: true });
 
@@ -245,7 +249,14 @@ export const FinanceLearnerPage = () => {
                             enableAnimation={false}
                           />
                         </TableCell>
-                        <TableCell className="font-medium">{student.student_name}</TableCell>
+                        <TableCell>
+                          <button
+                            className="font-medium text-primary hover:underline underline-offset-2 cursor-pointer text-left"
+                            onClick={() => { setSelectedStudent(student as Student); setProfileOpen(true); }}
+                          >
+                            {student.student_name}
+                          </button>
+                        </TableCell>
                         <TableCell className="text-muted-foreground text-xs">{student.lrn || '—'}</TableCell>
                         <TableCell>{student.level || '—'}</TableCell>
                         
@@ -262,6 +273,11 @@ export const FinanceLearnerPage = () => {
           )}
         </CardContent>
       </Card>
+      <StudentProfileModal
+        student={selectedStudent}
+        isOpen={profileOpen}
+        onClose={() => { setProfileOpen(false); setSelectedStudent(null); }}
+      />
     </div>
   );
 };
