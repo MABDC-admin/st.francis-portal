@@ -487,7 +487,6 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
       ];
     case 'finance':
       return [
-        { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
         { id: 'finance-learners', icon: StudentIcon3D, label: 'Learners' },
         {
           id: 'billing',
