@@ -75,6 +75,19 @@ import { ImpersonatePage } from '@/components/admin/ImpersonatePage';
 // Management CRUD Components
 import { AttendanceManagement, ScheduleManagement, AssignmentManagement, ExamScheduleManagement, AnnouncementManagement } from '@/components/management';
 
+// Finance Components
+import { FinancePortal } from '@/components/finance/FinancePortal';
+import { FeeSetup } from '@/components/finance/FeeSetup';
+import { StudentAssessments } from '@/components/finance/StudentAssessments';
+import { PaymentCollection } from '@/components/finance/PaymentCollection';
+import { PaymentPlans } from '@/components/finance/PaymentPlans';
+import { StudentLedger } from '@/components/finance/StudentLedger';
+import { DiscountScholarships } from '@/components/finance/DiscountScholarships';
+import { FinanceClearance } from '@/components/finance/FinanceClearance';
+import { FinanceReports } from '@/components/finance/FinanceReports';
+import { FinanceSettings } from '@/components/finance/FinanceSettings';
+import { FinanceAuditLogs } from '@/components/finance/FinanceAuditLogs';
+
 const Index = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -257,10 +270,11 @@ const Index = () => {
       case 'teacher':
         return <TeacherPortal onNavigate={handleTabChange} />;
       case 'student':
-        // Student portal dashboard is now rendered here directly
         return <StudentPortal activeSection="dashboard" />;
       case 'parent':
         return <ParentPortal />;
+      case 'finance':
+        return <FinancePortal onNavigate={handleTabChange} />;
       default:
         return null;
     }
@@ -523,8 +537,20 @@ const Index = () => {
 
       {/* Announcement Management - Admin/Registrar */}
       {activeTab === 'announcement-mgmt' && hasAdminAccess && (
-        <AnnouncementManagement />
+      <AnnouncementManagement />
       )}
+
+      {/* Finance Module Tabs */}
+      {activeTab === 'fee-setup' && role === 'finance' && <FeeSetup />}
+      {activeTab === 'assessments' && role === 'finance' && <StudentAssessments />}
+      {activeTab === 'cashier' && role === 'finance' && <PaymentCollection />}
+      {activeTab === 'payment-plans' && role === 'finance' && <PaymentPlans />}
+      {activeTab === 'student-ledger' && role === 'finance' && <StudentLedger />}
+      {activeTab === 'discount-scholarships' && role === 'finance' && <DiscountScholarships />}
+      {activeTab === 'finance-clearance' && role === 'finance' && <FinanceClearance />}
+      {activeTab === 'finance-reports' && role === 'finance' && <FinanceReports />}
+      {activeTab === 'finance-settings' && role === 'finance' && <FinanceSettings />}
+      {activeTab === 'finance-audit' && role === 'finance' && <FinanceAuditLogs />}
 
       {/* Modals */}
       <AdminPinModal
