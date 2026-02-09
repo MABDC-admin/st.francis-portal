@@ -48,6 +48,8 @@ export const UserManagement = () => {
   const [isDownloadingQRs, setIsDownloadingQRs] = useState(false);
   const [bulkSchool, setBulkSchool] = useState<string>('all');
   const [bulkGradeLevel, setBulkGradeLevel] = useState<string>('all');
+  const [deleteTarget, setDeleteTarget] = useState<UserCredential | null>(null);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
   const schoolOptions = [
@@ -382,6 +384,35 @@ export const UserManagement = () => {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (!deleteTarget?.user_id) {
+      toast.error('Cannot delete: No user account linked');
+      return;
+    }
+
+    setIsDeletingAccount(true);
+    try {
+      const { data: result, error } = await supabase.functions.invoke('create-users', {
+        body: {
+          action: 'delete_account',
+          credentialId: deleteTarget.id,
+          userId: deleteTarget.user_id,
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success(result.message || 'Account deleted successfully');
+      setDeleteTarget(null);
+      fetchCredentials();
+    } catch (error: any) {
+      console.error('Error deleting account:', error);
+      toast.error(error.message || 'Failed to delete account');
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
+
   const roleColors: Record<string, string> = {
     admin: 'bg-red-500',
     registrar: 'bg-blue-500',
@@ -699,6 +730,17 @@ export const UserManagement = () => {
                               )}
                             </Button>
                           )}
+                          {cred.user_id && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDeleteTarget(cred)}
+                              title="Delete account"
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -754,6 +796,39 @@ export const UserManagement = () => {
             >
               {isResetting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
               Reset All
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Account Confirmation Dialog */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Delete Account
+            </DialogTitle>
+            <DialogDescription>
+              This will permanently delete the account for{' '}
+              <strong>{deleteTarget?.student_name || deleteTarget?.email}</strong>
+              {deleteTarget?.role && (
+                <> (role: <strong>{deleteTarget.role}</strong>)</>
+              )}
+              . The user will no longer be able to log in. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              disabled={isDeletingAccount}
+            >
+              {isDeletingAccount ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              Delete Account
             </Button>
           </DialogFooter>
         </DialogContent>

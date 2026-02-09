@@ -470,6 +470,56 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Delete a single account
+    if (action === "delete_account") {
+      if (!credentialId || !userId) {
+        return new Response(
+          JSON.stringify({ error: "Credential ID and User ID are required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log(`Deleting account: userId=${userId}, credentialId=${credentialId}`);
+
+      // Delete the auth user (cascades to user_roles, profiles via ON DELETE CASCADE)
+      const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+      if (deleteAuthError) {
+        console.error("Error deleting auth user:", deleteAuthError);
+        // If user not found in auth, still clean up the credential
+        if (!deleteAuthError.message?.includes("User not found") && deleteAuthError.status !== 404) {
+          return new Response(
+            JSON.stringify({ error: deleteAuthError.message }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        console.log("Auth user not found, cleaning up orphaned credential");
+      }
+
+      // Delete the credential record
+      const { error: deleteCredError } = await supabaseAdmin
+        .from("user_credentials")
+        .delete()
+        .eq("id", credentialId);
+
+      if (deleteCredError) {
+        console.error("Error deleting credential:", deleteCredError);
+        return new Response(
+          JSON.stringify({ error: deleteCredError.message }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log(`Account deleted successfully: ${userId}`);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Account deleted successfully",
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: "Invalid action" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
