@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { FeeTemplateManager } from './FeeTemplateManager';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -153,6 +154,8 @@ export const FeeSetup = () => {
           </Table>
         </CardContent>
       </Card>
+
+      <FeeTemplateManager />
     </div>
   );
 };
