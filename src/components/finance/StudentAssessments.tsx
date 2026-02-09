@@ -6,9 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, UserPlus } from 'lucide-react';
+import { Search, UserPlus, Tag } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
@@ -32,6 +32,11 @@ export const StudentAssessments = () => {
   const [studentSearch, setStudentSearch] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+
+  // Discount dialog state
+  const [discountOpen, setDiscountOpen] = useState(false);
+  const [discountAssessment, setDiscountAssessment] = useState<any>(null);
+  const [selectedDiscountId, setSelectedDiscountId] = useState<string | null>(null);
 
   const { data: schoolData } = useQuery({
     queryKey: ['school-id', selectedSchool],
@@ -88,8 +93,31 @@ export const StudentAssessments = () => {
     enabled: !!selectedTemplateId,
   });
 
+  // Available discounts for the discount dialog
+  const { data: availableDiscounts = [] } = useQuery({
+    queryKey: ['discounts-active', schoolData?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from('discounts').select('*').eq('school_id', schoolData!.id).eq('is_active', true).order('name');
+      return data || [];
+    },
+    enabled: !!schoolData?.id && discountOpen,
+  });
+
   const templateTotal = templateItems.reduce((sum: number, i: any) => sum + Number(i.amount), 0);
   const selectedStudent = students.find((s: any) => s.id === selectedStudentId);
+
+  // Selected discount object for preview
+  const selectedDiscount = availableDiscounts.find((d: any) => d.id === selectedDiscountId);
+  const discountPreviewAmount = (() => {
+    if (!selectedDiscount || !discountAssessment) return 0;
+    if (selectedDiscount.type === 'percentage') {
+      const raw = (selectedDiscount.value / 100) * Number(discountAssessment.total_amount);
+      return selectedDiscount.max_cap ? Math.min(raw, selectedDiscount.max_cap) : raw;
+    }
+    if (selectedDiscount.type === 'fixed') return Number(selectedDiscount.value);
+    if (selectedDiscount.type === 'coverage') return Number(discountAssessment.total_amount);
+    return 0;
+  })();
 
   const createAssessment = useMutation({
     mutationFn: async () => {
@@ -97,7 +125,6 @@ export const StudentAssessments = () => {
         throw new Error('Please select a student and template');
       }
 
-      // Check for existing assessment
       const { data: existing } = await supabase.from('student_assessments')
         .select('id').eq('student_id', selectedStudentId).eq('academic_year_id', selectedYearId).eq('is_closed', false).limit(1);
       if (existing && existing.length > 0) {
@@ -138,6 +165,55 @@ export const StudentAssessments = () => {
       setSelectedStudentId(null);
       setSelectedTemplateId(null);
       setStudentSearch('');
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const applyDiscount = useMutation({
+    mutationFn: async () => {
+      if (!selectedDiscountId || !discountAssessment || !schoolData?.id) throw new Error('Missing data');
+
+      const { data: session } = await supabase.auth.getSession();
+      const userId = session?.session?.user?.id;
+
+      const appliedAmount = Math.round(discountPreviewAmount * 100) / 100;
+
+      // Insert student_discount record
+      const { error: sdErr } = await supabase.from('student_discounts').insert({
+        student_id: discountAssessment.student_id,
+        discount_id: selectedDiscountId,
+        assessment_id: discountAssessment.id,
+        school_id: schoolData.id,
+        applied_amount: appliedAmount,
+        status: selectedDiscount?.requires_approval ? 'pending' : 'approved',
+        approved_by: selectedDiscount?.requires_approval ? null : userId,
+        approved_at: selectedDiscount?.requires_approval ? null : new Date().toISOString(),
+      });
+      if (sdErr) throw sdErr;
+
+      // Update assessment totals (only if auto-approved)
+      if (!selectedDiscount?.requires_approval) {
+        const newDiscountAmount = Number(discountAssessment.discount_amount) + appliedAmount;
+        const newNetAmount = Number(discountAssessment.total_amount) - newDiscountAmount;
+        const newBalance = newNetAmount - Number(discountAssessment.total_paid);
+
+        const { error: updErr } = await supabase.from('student_assessments').update({
+          discount_amount: newDiscountAmount,
+          net_amount: Math.max(0, newNetAmount),
+          balance: Math.max(0, newBalance),
+        }).eq('id', discountAssessment.id);
+        if (updErr) throw updErr;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['student-assessments'] });
+      const msg = selectedDiscount?.requires_approval
+        ? 'Discount submitted for approval'
+        : 'Discount applied successfully';
+      toast.success(msg);
+      setDiscountOpen(false);
+      setDiscountAssessment(null);
+      setSelectedDiscountId(null);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -263,7 +339,7 @@ export const StudentAssessments = () => {
                 <TableHead>Paid</TableHead>
                 <TableHead>Balance</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Closed</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -279,7 +355,18 @@ export const StudentAssessments = () => {
                   <TableCell>₱{Number(a.total_paid).toLocaleString()}</TableCell>
                   <TableCell className="font-semibold">₱{Number(a.balance).toLocaleString()}</TableCell>
                   <TableCell><Badge className={statusColors[a.is_closed ? 'closed' : a.status] || ''}>{a.is_closed ? 'closed' : a.status}</Badge></TableCell>
-                  <TableCell>{a.is_closed ? <Badge variant="destructive">Closed</Badge> : '—'}</TableCell>
+                  <TableCell>
+                    {!a.is_closed && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="gap-1"
+                        onClick={() => { setDiscountAssessment(a); setDiscountOpen(true); }}
+                      >
+                        <Tag className="h-3.5 w-3.5" /> Discount
+                      </Button>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
               {filtered.length === 0 && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No assessments found</TableCell></TableRow>}
@@ -287,6 +374,59 @@ export const StudentAssessments = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Apply Discount Dialog */}
+      <Dialog open={discountOpen} onOpenChange={(v) => { if (!v) { setDiscountOpen(false); setDiscountAssessment(null); setSelectedDiscountId(null); } else setDiscountOpen(true); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Tag className="h-5 w-5" />Apply Discount</DialogTitle></DialogHeader>
+
+          {discountAssessment && (
+            <div className="space-y-4">
+              <div className="bg-muted/50 rounded-md p-3">
+                <p className="font-medium text-sm">{discountAssessment.students?.student_name}</p>
+                <p className="text-xs text-muted-foreground">LRN: {discountAssessment.students?.lrn} • Assessment Total: ₱{Number(discountAssessment.total_amount).toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">Current Discount: ₱{Number(discountAssessment.discount_amount).toLocaleString()} • Balance: ₱{Number(discountAssessment.balance).toLocaleString()}</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Select Discount / Scholarship</Label>
+                <Select value={selectedDiscountId || ''} onValueChange={v => setSelectedDiscountId(v)}>
+                  <SelectTrigger><SelectValue placeholder="Choose a discount..." /></SelectTrigger>
+                  <SelectContent>
+                    {availableDiscounts.map((d: any) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name} — {d.type === 'percentage' ? `${d.value}%` : `₱${Number(d.value).toLocaleString()}`}
+                        {d.requires_approval ? ' (needs approval)' : ''}
+                      </SelectItem>
+                    ))}
+                    {availableDiscounts.length === 0 && (
+                      <div className="px-3 py-2 text-sm text-muted-foreground">No active discounts. Create one in Discounts & Scholarships first.</div>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {selectedDiscount && (
+                <div className="bg-muted/30 rounded-md p-3 space-y-1">
+                  <p className="text-sm font-medium">Discount Preview</p>
+                  <p className="text-sm">Type: <span className="capitalize">{selectedDiscount.type}</span> — Value: {selectedDiscount.type === 'percentage' ? `${selectedDiscount.value}%` : `₱${Number(selectedDiscount.value).toLocaleString()}`}</p>
+                  <p className="text-sm font-semibold">Amount to deduct: ₱{discountPreviewAmount.toLocaleString()}</p>
+                  {selectedDiscount.requires_approval && (
+                    <p className="text-xs text-amber-600">⚠ This discount requires admin approval before it takes effect.</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setDiscountOpen(false); setDiscountAssessment(null); setSelectedDiscountId(null); }}>Cancel</Button>
+            <Button onClick={() => applyDiscount.mutate()} disabled={!selectedDiscountId || applyDiscount.isPending}>
+              {applyDiscount.isPending ? 'Applying...' : 'Apply Discount'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
