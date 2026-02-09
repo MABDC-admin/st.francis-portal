@@ -52,6 +52,7 @@
     "emoji-picker-react": "^4.17.4",
     "file-saver": "^2.0.5",
     "framer-motion": "^12.23.26",
+    "html5-qrcode": "^2.3.8",
     "input-otp": "^1.4.2",
     "jspdf": "^4.1.0",
     "jspdf-autotable": "^5.0.7",
