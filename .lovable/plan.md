@@ -1,111 +1,82 @@
 
 
-# Add Fee Templates Management to Connect Fee Setup with Learners
+# Add Payment Collection UI to Cashier Dashboard
 
 ## The Problem
 
-The Fee Setup page correctly manages the **fee catalog** (individual fee items like tuition, books, uniform). However, there is **no UI to create Fee Templates**, which are the bridge between fee items and student assessments.
-
-The database has three tables that form a chain:
-
-```text
-fee_catalog (individual fees)
-      |
-      v
-fee_template_items (links fees to a template)
-      |
-      v
-fee_templates (grouped by grade level + academic year)
-      |
-      v
-student_assessments (applied to a specific student)
-```
-
-The `fee_templates` and `fee_template_items` tables exist in the database but have **zero UI** -- so staff can create fees but can never bundle them into grade-level templates or assess students against them.
+The Cashier Dashboard (`PaymentCollection.tsx`) currently only shows a **read-only table** of recent payments. Although the code contains a `form` state and a `recordPayment` mutation, there is **no UI** to actually collect a payment -- no button, no dialog, no student search, no payment form. The cashier literally cannot record a payment.
 
 ## Solution
 
-Add a **Fee Templates** management section to the Fee Setup page, allowing staff to:
+Add a **"Collect Payment"** button and dialog that follows this flow:
 
-1. Create a template (e.g., "Grade 7 - SY 2024-2025") with a grade level and academic year
-2. Add fee catalog items to that template (picking from existing fee_catalog entries)
-3. Use that template when assessing students (the StudentAssessments page already has a `template_id` FK)
+1. Search and select a student (by name or LRN)
+2. View the student's active assessment and outstanding balance
+3. Enter payment amount, method, reference number, and notes
+4. Submit to record the payment and update the assessment balance
 
 ## Changes
 
-### 1. New File: `src/components/finance/FeeTemplateManager.tsx`
+### Modified File: `src/components/finance/PaymentCollection.tsx`
 
-A new component that provides:
+Add the following to the existing component:
 
-- **Template List**: Table showing all fee templates for the current school/academic year, with columns: Name, Grade Level, Strand, Item Count, Total Amount, Active status
-- **Create/Edit Template Dialog**: Form with fields for Name, Grade Level (dropdown from known levels), Strand (optional), and a checklist of fee_catalog items with editable amounts
-- **Delete Template**: With confirmation
-- **Data queries**:
-  - Fetch `fee_templates` filtered by `school_id` and `academic_year_id`
-  - Fetch `fee_template_items` joined with `fee_catalog` for each template
-  - CRUD mutations for both `fee_templates` and `fee_template_items`
+**1. "Collect Payment" button** in the page header (next to the title)
 
-### 2. Modified File: `src/components/finance/FeeSetup.tsx`
+**2. Payment Dialog** containing:
+- **Student Search**: Text input to search students by name/LRN (queries `students` table filtered by `school_id`)
+- **Student selector**: Clickable list of matching students
+- **Assessment display**: Once a student is selected, fetch their active `student_assessments` record showing total, paid, and balance
+- **Payment form**:
+  - Amount input (pre-filled with outstanding balance, editable)
+  - Payment method dropdown (cash, bank deposit, online transfer, e-wallet, card)
+  - Reference number input (optional, required for non-cash methods)
+  - Notes textarea (optional)
+- **Submit button**: Calls the existing `recordPayment` mutation
 
-- Import and render `FeeTemplateManager` below the existing fee catalog table
-- Add a visual separator between the two sections
-- The page will now have two sections:
-  - **Fee Catalog** (existing) -- individual fee items
-  - **Fee Templates** (new) -- bundled fee packages by grade level
+**3. Post-payment update**: After inserting the payment, also update the `student_assessments` record:
+- Increment `total_paid` by the payment amount
+- Recalculate `balance` (net_amount - new total_paid)
+- Update `status` to 'partial' or 'paid' based on remaining balance
 
-### 3. Modified File: `src/components/finance/StudentAssessments.tsx`
+**4. Receipt number generation**: Query `finance_settings` for the current OR/AR sequence number, assign it to the payment, and increment the counter.
 
-- Add an **"Assess Student"** button that opens a dialog
-- The dialog lets the cashier:
-  - Search and select a student
-  - Pick a fee template
-  - Review the items and amounts
-  - Click "Create Assessment" which inserts into `student_assessments` and `assessment_items`
-- This connects the template to actual student records
+### Data Queries Added
+- Search `students` by name/LRN within the school
+- Fetch `student_assessments` for the selected student (active, current academic year)
+- Fetch `finance_settings` for receipt numbering
+- Update `student_assessments` totals after payment
+
+### No Database Changes
+All required tables and columns already exist: `payments`, `student_assessments`, `students`, `finance_settings`.
 
 ## Technical Details
 
-### FeeTemplateManager Component Structure
-
+### Payment Recording Flow
 ```text
-FeeTemplateManager
-  |-- useQuery: fetch fee_templates (school_id, academic_year_id)
-  |-- useQuery: fetch fee_catalog (school_id) for the item picker
-  |-- useMutation: create/update fee_templates
-  |-- useMutation: create/delete fee_template_items
-  |
-  |-- UI:
-  |     Card "Fee Templates"
-  |       Table (name, grade_level, strand, items count, total, actions)
-  |       "Add Template" button -> Dialog
-  |         - Name input
-  |         - Grade Level select
-  |         - Strand input (optional)
-  |         - Fee items checklist (from fee_catalog)
-  |           each item: checkbox + name + editable amount (defaults to catalog amount)
-  |         - Total display
-  |         - Save button
+User clicks "Collect Payment"
+  -> Dialog opens
+  -> Search student (students table, school_id filter)
+  -> Select student
+  -> Fetch active assessment (student_assessments, is_closed=false)
+  -> Show balance info
+  -> Fill payment details (amount, method, reference, notes)
+  -> Click "Record Payment"
+     -> INSERT into payments (student_id, assessment_id, amount, method, etc.)
+     -> UPDATE student_assessments (total_paid += amount, balance -= amount, status)
+     -> Fetch & increment OR number from finance_settings
+     -> Invalidate queries
+     -> Show success toast with OR number
 ```
 
-### Assess Student Dialog Structure
-
+### Assessment Status Logic
 ```text
-AssessStudentDialog
-  |-- Student search (name/LRN)
-  |-- Template picker (dropdown of active templates matching student grade)
-  |-- Items preview table (from fee_template_items)
-  |-- "Create Assessment" button
-  |     -> INSERT student_assessments (student_id, school_id, academic_year_id, template_id, total_amount, etc.)
-  |     -> INSERT assessment_items (one per fee_template_item)
+if balance <= 0 -> status = 'paid'
+if balance > 0 && total_paid > 0 -> status = 'partial'  
+if total_paid == 0 -> status = 'pending'
 ```
-
-### Database
-
-No schema changes needed -- `fee_templates`, `fee_template_items`, `student_assessments`, and `assessment_items` tables all exist with correct columns and foreign keys. RLS policies are already in place for finance/admin roles.
 
 ## Summary
-
-- 1 new file: `FeeTemplateManager.tsx`
-- 2 modified files: `FeeSetup.tsx`, `StudentAssessments.tsx`
-- No database migrations
-- Completes the fee-to-student pipeline that was missing its middle layer
+- 1 modified file: `PaymentCollection.tsx`
+- No new files, no database migrations
+- Adds the missing payment collection form that connects the cashier to student assessments
