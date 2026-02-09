@@ -44,20 +44,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch credentials
-    const { data: creds, error: credsError } = await supabase
+    // Fetch credentials (may not exist yet)
+    const { data: creds } = await supabase
       .from("user_credentials")
       .select("temp_password")
       .eq("student_id", student_id)
-      .single();
-
-    if (credsError || !creds) {
-      console.error("Credentials not found:", credsError);
-      return new Response(
-        JSON.stringify({ error: "Credentials not found for student" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+      .maybeSingle();
 
     // Get school code
     let schoolCode = "";
@@ -72,7 +64,7 @@ Deno.serve(async (req) => {
 
     const qrPayload = JSON.stringify({
       lrn: student.lrn || "",
-      password: creds.temp_password || "",
+      password: creds?.temp_password || "",
       school: schoolCode,
       generated: new Date().toISOString(),
     });
