@@ -74,6 +74,7 @@ const handler = async (req: Request): Promise<Response> => {
         create_admin: "admin",
         create_registrar: "registrar",
         create_teacher: "teacher",
+        create_finance: "finance",
       };
       const role = roleMap[action];
       
