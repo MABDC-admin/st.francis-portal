@@ -3593,6 +3593,7 @@ export type Database = {
       }
     }
     Functions: {
+      check_finance_access: { Args: { p_school_id: string }; Returns: boolean }
       get_user_conversation_ids: {
         Args: { _user_id: string }
         Returns: string[]
