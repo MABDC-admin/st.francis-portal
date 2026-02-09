@@ -354,7 +354,6 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
           ]
         },
         { id: 'reports', icon: ReportsIcon3D, label: 'Reports' },
-        { id: 'impersonate', icon: AdminIcon3D, label: 'Impersonate' },
       ];
     case 'teacher':
       return [
@@ -407,7 +406,6 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
           ]
         },
         { id: 'reports', icon: ReportsIcon3D, label: 'Reports' },
-        { id: 'impersonate', icon: AdminIcon3D, label: 'Impersonate' },
       ];
     case 'student':
       return [
@@ -437,14 +435,12 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
         },
         { id: 'library', icon: LibraryIcon3D, label: 'Library' },
         { id: 'student-announcements', icon: EventsIcon3D, label: 'Announcements' },
-        { id: 'impersonate', icon: AdminIcon3D, label: 'Impersonate' },
       ];
     case 'parent':
       return [
         { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
         { id: 'children', icon: StudentIcon3D, label: 'My Children' },
         { id: 'library', icon: LibraryIcon3D, label: 'Library' },
-        { id: 'impersonate', icon: AdminIcon3D, label: 'Impersonate' },
       ];
     default:
       return [
@@ -581,17 +577,17 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
           isNested ? "px-3 py-2 text-sm" : "px-3 py-2.5",
           isAppleTheme
             ? cn(
-                "rounded-xl",
-                isActive
-                  ? "bg-[#007AFF] text-white shadow-sm"
-                  : "text-gray-700 hover:bg-black/5"
-              )
+              "rounded-xl",
+              isActive
+                ? "bg-[#007AFF] text-white shadow-sm"
+                : "text-gray-700 hover:bg-black/5"
+            )
             : cn(
-                "rounded-lg",
-                isActive
-                  ? `${effectiveTheme.menuActiveBg} ${effectiveTheme.menuActiveText} shadow-md`
-                  : `text-inherit/80 ${effectiveTheme.menuHoverBg} hover:bg-yellow-400/20 hover:text-yellow-700 dark:hover:text-yellow-300 transition-colors`
-              ),
+              "rounded-lg",
+              isActive
+                ? `${effectiveTheme.menuActiveBg} ${effectiveTheme.menuActiveText} shadow-md`
+                : `text-inherit/80 ${effectiveTheme.menuHoverBg} hover:bg-yellow-400/20 hover:text-yellow-700 dark:hover:text-yellow-300 transition-colors`
+            ),
           isCollapsed && "justify-center px-2"
         )}
         title={isCollapsed ? item.label : undefined}
@@ -660,13 +656,13 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
               "w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-200",
               isAppleTheme
                 ? cn(
-                    hasActiveChild ? "bg-black/5" : "hover:bg-black/5",
-                    "text-gray-700"
-                  )
+                  hasActiveChild ? "bg-black/5" : "hover:bg-black/5",
+                  "text-gray-700"
+                )
                 : cn(
-                    hasActiveChild ? "bg-white/10" : "hover:bg-white/10",
-                    "text-inherit/80"
-                  )
+                  hasActiveChild ? "bg-white/10" : "hover:bg-white/10",
+                  "text-inherit/80"
+                )
             )}
           >
             <div className="flex items-center gap-3">
@@ -925,17 +921,17 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
                   "w-full flex items-center gap-3 px-4 py-3 font-medium transition-all duration-200 relative overflow-hidden",
                   isAppleTheme
                     ? cn(
-                        "rounded-xl",
-                        activeTab === adminItem.id
-                          ? "bg-[#FF3B30] text-white shadow-sm"
-                          : "text-[#FF3B30] hover:bg-[#FF3B30]/10"
-                      )
+                      "rounded-xl",
+                      activeTab === adminItem.id
+                        ? "bg-[#FF3B30] text-white shadow-sm"
+                        : "text-[#FF3B30] hover:bg-[#FF3B30]/10"
+                    )
                     : cn(
-                        "rounded-lg",
-                        activeTab === adminItem.id
-                          ? "bg-destructive text-destructive-foreground shadow-md"
-                          : "text-inherit/80 hover:bg-white/10 hover:text-red-300"
-                      )
+                      "rounded-lg",
+                      activeTab === adminItem.id
+                        ? "bg-destructive text-destructive-foreground shadow-md"
+                        : "text-inherit/80 hover:bg-white/10 hover:text-red-300"
+                    )
                 )}
               >
                 {activeTab === adminItem.id && !isAppleTheme && (

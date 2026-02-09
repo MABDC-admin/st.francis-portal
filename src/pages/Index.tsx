@@ -518,8 +518,8 @@ const Index = () => {
       {activeTab === 'tacticalrmm' && role === 'admin' && <TacticalRMMDashboard />}
       {activeTab === 'documize' && role === 'admin' && <DocumizeDashboard />}
 
-      {/* Impersonate - All roles */}
-      {activeTab === 'impersonate' && <ImpersonatePage />}
+      {/* Impersonate - Admin only */}
+      {activeTab === 'impersonate' && role === 'admin' && <ImpersonatePage />}
 
       {/* Announcement Management - Admin/Registrar */}
       {activeTab === 'announcement-mgmt' && hasAdminAccess && (

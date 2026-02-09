@@ -45,7 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .select('role')
       .eq('user_id', userId)
       .single();
-    
+
     if (!error && data) {
       setRole(data.role as AppRole);
     }
@@ -67,7 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        
+
         // Defer role fetching
         if (session?.user) {
           setTimeout(() => {
@@ -121,7 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setRole(null);
       setImpersonatedUser(null);
       sessionStorage.removeItem('impersonating_target');
-      
+
       // Then sign out from Supabase (ignore errors if session already expired)
       await supabase.auth.signOut({ scope: 'local' });
     } catch (error) {
@@ -131,6 +131,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const impersonate = (target: { id: string, role: AppRole, full_name?: string | null }) => {
+    if (role !== 'admin') {
+      console.warn('Unauthorized impersonation attempt blocked.');
+      return;
+    }
     setImpersonatedUser(target);
     sessionStorage.setItem('impersonating_target', JSON.stringify(target));
   };
