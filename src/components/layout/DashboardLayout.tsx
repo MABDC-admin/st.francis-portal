@@ -177,6 +177,7 @@ const icon3DMap: Record<string, any> = {
   'payments-group': EnterGradeIcon3D,
   'accounts': ProfileIcon3D,
   'finance-config': AdminIcon3D,
+  'finance-learners': StudentIcon3D,
 };
 
 // Icon mapping for Apple style icons
@@ -250,6 +251,7 @@ const iconAppleMap: Record<string, any> = {
   'payments-group': AppleGradesIcon,
   'accounts': AppleProfileIcon,
   'finance-config': AppleAdminIcon,
+  'finance-learners': AppleStudentIcon,
 };
 
 // Hierarchical navigation structure for each role
@@ -475,6 +477,7 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
     case 'finance':
       return [
         { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
+        { id: 'finance-learners', icon: StudentIcon3D, label: 'Learners' },
         {
           id: 'billing',
           icon: ReportsIcon3D,
