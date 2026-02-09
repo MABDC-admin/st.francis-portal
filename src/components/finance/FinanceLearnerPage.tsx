@@ -42,7 +42,7 @@ export const FinanceLearnerPage = () => {
       // Students table uses text 'school' column (MABDC/STFXSA), not UUID school_id
       const { data, error } = await supabase
         .from('students')
-        .select('id, student_name, lrn, gender, level, section, photo_url, school, school_id, status')
+        .select('id, student_name, lrn, gender, level, photo_url, school, school_id, status')
         .eq('school', selectedSchool)
         .order('student_name', { ascending: true });
 
@@ -225,7 +225,7 @@ export const FinanceLearnerPage = () => {
                     <TableHead>Name</TableHead>
                     <TableHead>LRN</TableHead>
                     <TableHead>Grade Level</TableHead>
-                    <TableHead>Section</TableHead>
+                    
                     <TableHead className="text-right">Assessed</TableHead>
                     <TableHead className="text-right">Paid</TableHead>
                     <TableHead className="text-right">Balance</TableHead>
@@ -248,7 +248,7 @@ export const FinanceLearnerPage = () => {
                         <TableCell className="font-medium">{student.student_name}</TableCell>
                         <TableCell className="text-muted-foreground text-xs">{student.lrn || '—'}</TableCell>
                         <TableCell>{student.level || '—'}</TableCell>
-                        <TableCell>{student.section || '—'}</TableCell>
+                        
                         <TableCell className="text-right">₱{(fin?.total_amount || 0).toLocaleString()}</TableCell>
                         <TableCell className="text-right text-green-600">₱{(fin?.total_paid || 0).toLocaleString()}</TableCell>
                         <TableCell className="text-right font-semibold">{fin?.balance ? `₱${fin.balance.toLocaleString()}` : '—'}</TableCell>
