@@ -12,6 +12,7 @@ import { DashboardLayoutProvider } from "@/contexts/DashboardLayoutContext";
 import Index from "./pages/Index";
 import StudentProfile from "./pages/StudentProfile";
 import Auth from "./pages/Auth";
+import Attendance from "./pages/Attendance";
 import NotFound from "./pages/NotFound";
 import Install from "./pages/Install";
 import { ZoomRunner } from "./components/zoom/ZoomRunner";
@@ -58,6 +59,7 @@ const App = () => {
                   <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                     <Routes>
                       <Route path="/auth" element={<Auth />} />
+                      <Route path="/attendance" element={<Attendance />} />
                       <Route path="/" element={<Index />} />
                       <Route path="/library/book/:bookId" element={<Index />} />
                       <Route path="/student/:id" element={<StudentProfile />} />

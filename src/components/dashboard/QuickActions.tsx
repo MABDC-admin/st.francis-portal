@@ -5,6 +5,7 @@ import { AppleAdmitIcon, AppleScheduleIcon, AppleGradesIcon, AppleEventsIcon } f
 import { LayoutStyle } from '@/contexts/DashboardLayoutContext';
 import useEmblaCarousel from 'embla-carousel-react';
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 interface QuickActionsProps {
   onNavigate: (tab: string) => void;
@@ -12,6 +13,7 @@ interface QuickActionsProps {
 }
 
 export const QuickActions = ({ onNavigate, variant = 'modern' }: QuickActionsProps) => {
+  const navigate = useNavigate();
   const isClassic = variant === 'classicBlue';
   const isApple = variant === 'apple';
 
@@ -69,6 +71,14 @@ export const QuickActions = ({ onNavigate, variant = 'modern' }: QuickActionsPro
       bgClass: isApple ? 'apple-card' : isClassic ? 'classic-card' : 'bg-card hover:bg-muted',
       iconBg: isApple ? 'bg-[#AF52DE]/10' : 'bg-stat-purple/10',
       iconColor: isApple ? 'text-[#AF52DE]' : 'text-stat-purple',
+    },
+    {
+      icon: isApple ? AppleScheduleIcon : ScheduleIcon3D,
+      label: 'Attendance Kiosk',
+      onClick: () => navigate('/attendance'),
+      bgClass: isApple ? 'apple-card' : isClassic ? 'classic-card' : 'bg-card hover:bg-muted',
+      iconBg: isApple ? 'bg-[#FF3B30]/10' : 'bg-destructive/10',
+      iconColor: isApple ? 'text-[#FF3B30]' : 'text-destructive',
     },
   ];
 
