@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { UserPlus, Loader2, Search, Edit, Trash2, Mail, Phone, BookOpen } from 'lucide-react';
+import { UserPlus, Loader2, Search, Edit, Trash2, Mail, Phone, BookOpen, GraduationCap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useSchool, SchoolType } from '@/contexts/SchoolContext';
+
+const GRADE_LEVELS = [
+  'Kinder 1', 'Kinder 2',
+  'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6',
+  'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12',
+];
 
 interface Teacher {
   id: string;
@@ -49,6 +55,8 @@ export const TeacherManagement = () => {
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [formData, setFormData] = useState({ ...initialFormState, school: selectedSchool });
   const [createAccount, setCreateAccount] = useState(true);
+  const [quickAssignTeacher, setQuickAssignTeacher] = useState<Teacher | null>(null);
+  const [quickAssignLevel, setQuickAssignLevel] = useState('');
 
   const fetchTeachers = async () => {
     setIsLoading(true);
@@ -272,6 +280,17 @@ export const TeacherManagement = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Assign Grade Level"
+                            onClick={() => {
+                              setQuickAssignTeacher(teacher);
+                              setQuickAssignLevel(teacher.grade_level || '');
+                            }}
+                          >
+                            <GraduationCap className="h-4 w-4" />
+                          </Button>
                           <Button variant="ghost" size="icon" onClick={() => handleOpenModal(teacher)}>
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -351,11 +370,19 @@ export const TeacherManagement = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Grade Level</Label>
-                <Input
+                <Select
                   value={formData.grade_level}
-                  onChange={(e) => setFormData({ ...formData, grade_level: e.target.value })}
-                  placeholder="Grade 6"
-                />
+                  onValueChange={(val) => setFormData({ ...formData, grade_level: val })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select grade level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {GRADE_LEVELS.map(level => (
+                      <SelectItem key={level} value={level}>{level}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label>Subjects (comma-separated)</Label>
@@ -388,6 +415,50 @@ export const TeacherManagement = () => {
             <Button onClick={handleSave} disabled={isSaving}>
               {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               {editingTeacher ? 'Update' : 'Add Teacher'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Quick Assign Grade Level Dialog */}
+      <Dialog open={!!quickAssignTeacher} onOpenChange={(open) => { if (!open) setQuickAssignTeacher(null); }}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Assign Grade Level</DialogTitle>
+            <DialogDescription>
+              {quickAssignTeacher?.full_name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label>Grade Level</Label>
+            <Select value={quickAssignLevel} onValueChange={setQuickAssignLevel}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select grade level" />
+              </SelectTrigger>
+              <SelectContent>
+                {GRADE_LEVELS.map(level => (
+                  <SelectItem key={level} value={level}>{level}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setQuickAssignTeacher(null)}>Cancel</Button>
+            <Button onClick={async () => {
+              if (!quickAssignTeacher) return;
+              const { error } = await supabase
+                .from('teachers')
+                .update({ grade_level: quickAssignLevel || null })
+                .eq('id', quickAssignTeacher.id);
+              if (error) {
+                toast.error('Failed to update grade level');
+              } else {
+                toast.success(`${quickAssignTeacher.full_name} assigned to ${quickAssignLevel || 'none'}`);
+                fetchTeachers();
+              }
+              setQuickAssignTeacher(null);
+            }}>
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>
