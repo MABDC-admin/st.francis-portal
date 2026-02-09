@@ -1,0 +1,2 @@
+ALTER TABLE public.user_school_access DROP CONSTRAINT user_school_access_role_check;
+ALTER TABLE public.user_school_access ADD CONSTRAINT user_school_access_role_check CHECK (role = ANY (ARRAY['admin'::text, 'registrar'::text, 'teacher'::text, 'viewer'::text, 'finance'::text]));
