@@ -541,16 +541,16 @@ const Index = () => {
       )}
 
       {/* Finance Module Tabs */}
-      {activeTab === 'fee-setup' && role === 'finance' && <FeeSetup />}
-      {activeTab === 'assessments' && role === 'finance' && <StudentAssessments />}
-      {activeTab === 'cashier' && role === 'finance' && <PaymentCollection />}
-      {activeTab === 'payment-plans' && role === 'finance' && <PaymentPlans />}
-      {activeTab === 'student-ledger' && role === 'finance' && <StudentLedger />}
-      {activeTab === 'discount-scholarships' && role === 'finance' && <DiscountScholarships />}
-      {activeTab === 'finance-clearance' && role === 'finance' && <FinanceClearance />}
-      {activeTab === 'finance-reports' && role === 'finance' && <FinanceReports />}
-      {activeTab === 'finance-settings' && role === 'finance' && <FinanceSettings />}
-      {activeTab === 'finance-audit' && role === 'finance' && <FinanceAuditLogs />}
+      {activeTab === 'fee-setup' && (role === 'finance' || role === 'admin') && <FeeSetup />}
+      {activeTab === 'assessments' && (role === 'finance' || role === 'admin') && <StudentAssessments />}
+      {activeTab === 'cashier' && (role === 'finance' || role === 'admin') && <PaymentCollection />}
+      {activeTab === 'payment-plans' && (role === 'finance' || role === 'admin') && <PaymentPlans />}
+      {activeTab === 'student-ledger' && (role === 'finance' || role === 'admin') && <StudentLedger />}
+      {activeTab === 'discount-scholarships' && (role === 'finance' || role === 'admin') && <DiscountScholarships />}
+      {activeTab === 'finance-clearance' && (role === 'finance' || role === 'admin') && <FinanceClearance />}
+      {activeTab === 'finance-reports' && (role === 'finance' || role === 'admin') && <FinanceReports />}
+      {activeTab === 'finance-settings' && (role === 'finance' || role === 'admin') && <FinanceSettings />}
+      {activeTab === 'finance-audit' && (role === 'finance' || role === 'admin') && <FinanceAuditLogs />}
 
       {/* Modals */}
       <AdminPinModal

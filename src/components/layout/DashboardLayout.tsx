@@ -162,6 +162,20 @@ const icon3DMap: Record<string, any> = {
   'teacher-grades': EnterGradeIcon3D,
   'teacher-schedule': ScheduleIcon3D,
   'my-info': ProfileIcon3D,
+  'fee-setup': SubjectsIcon3D,
+  'assessments': EnrollmentIcon3D,
+  'cashier': EnterGradeIcon3D,
+  'payment-plans': ScheduleIcon3D,
+  'student-ledger': ReportsIcon3D,
+  'discount-scholarships': StudentIcon3D,
+  'finance-clearance': AdminIcon3D,
+  'finance-reports': ReportsIcon3D,
+  'finance-settings': AdminIcon3D,
+  'finance-audit': ImportIcon3D,
+  'billing': ReportsIcon3D,
+  'payments-group': EnterGradeIcon3D,
+  'accounts': ProfileIcon3D,
+  'finance-config': AdminIcon3D,
 };
 
 // Icon mapping for Apple style icons
@@ -220,6 +234,20 @@ const iconAppleMap: Record<string, any> = {
   'teacher-grades': AppleGradesIcon,
   'teacher-schedule': AppleScheduleIcon,
   'my-info': AppleProfileIcon,
+  'fee-setup': AppleSubjectsIcon,
+  'assessments': AppleEnrollmentIcon,
+  'cashier': AppleGradesIcon,
+  'payment-plans': AppleScheduleIcon,
+  'student-ledger': AppleReportsIcon,
+  'discount-scholarships': AppleStudentIcon,
+  'finance-clearance': AppleAdminIcon,
+  'finance-reports': AppleReportsIcon,
+  'finance-settings': AppleAdminIcon,
+  'finance-audit': AppleImportIcon,
+  'billing': AppleReportsIcon,
+  'payments-group': AppleGradesIcon,
+  'accounts': AppleProfileIcon,
+  'finance-config': AppleAdminIcon,
 };
 
 // Hierarchical navigation structure for each role
@@ -550,7 +578,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
   const isAppleTheme = layoutStyle === 'apple';
 
   // Admin and Registrar can switch schools
-  const canSwitch = role === 'admin' || role === 'registrar';
+  const canSwitch = role === 'admin' || role === 'registrar' || role === 'finance';
 
   useEffect(() => {
     setCanSwitchSchool(canSwitch);
