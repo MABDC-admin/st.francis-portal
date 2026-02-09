@@ -17,7 +17,7 @@ import { AddressInfoStep } from './steps/AddressInfoStep';
 import { AgreementStep } from './steps/AgreementStep';
 
 const STEPS = [
-    { id: 1, title: 'Student Info', description: 'Personal details' },
+    { id: 1, title: 'Learner Info', description: 'Personal details' },
     { id: 2, title: 'Parent Info', description: 'Guardian details' },
     { id: 3, title: 'Address', description: 'Location details' },
     { id: 4, title: 'Agreement', description: 'Review & Sign' }
@@ -402,7 +402,7 @@ const EnrollmentSuccess = ({ studentName, credentials, onNew }: { studentName: s
                 <div className="bg-muted/30 rounded-lg p-6 mb-8 border border-border text-left">
                     <h3 className="font-semibold mb-4 flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-stat-purple" />
-                        Student Portal Credentials
+                     Student Portal Credentials
                     </h3>
                     <div className="grid grid-cols-2 gap-4">
                         <div>

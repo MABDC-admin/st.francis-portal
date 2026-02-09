@@ -228,7 +228,7 @@ export const AssignmentManagement = () => {
       >
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Assignment Management</h1>
-          <p className="text-muted-foreground mt-1">Create and manage student assignments</p>
+          <p className="text-muted-foreground mt-1">Create and manage learner assignments</p>
         </div>
         <Button onClick={() => setIsModalOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
@@ -522,7 +522,7 @@ export const AssignmentManagement = () => {
               <Textarea
                 value={formData.instructions}
                 onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
-                placeholder="Detailed instructions for students"
+                placeholder="Detailed instructions for learners"
                 rows={4}
               />
             </div>

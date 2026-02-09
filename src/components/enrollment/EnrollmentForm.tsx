@@ -295,13 +295,13 @@ export const EnrollmentForm = () => {
         </head>
         <body>
           <div class="header">
-            <h1>Student Enrollment Confirmation</h1>
+            <h1>Learner Enrollment Confirmation</h1>
             <p>${SCHOOLS.find(s => s.id === formData.school)?.name || formData.school}</p>
             <p>School Year ${formData.school_year}</p>
           </div>
           
           <div class="section">
-            <div class="section-title">Student Information</div>
+            <div class="section-title">Learner Information</div>
             <div class="row"><span class="label">Full Name</span><span class="value">${formData.student_name}</span></div>
             <div class="row"><span class="label">LRN</span><span class="value">${formData.lrn || (isKinderLevel ? 'To be assigned' : '-')}</span></div>
             <div class="row"><span class="label">Grade Level</span><span class="value">${formData.level}</span></div>
@@ -398,7 +398,7 @@ export const EnrollmentForm = () => {
       >
         <div className="flex items-center gap-3 mb-8">
           <UserPlus className="h-6 w-6 text-stat-purple" />
-          <h2 className="text-xl font-bold text-foreground">New Student Enrollment</h2>
+          <h2 className="text-xl font-bold text-foreground">New Learner Enrollment</h2>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
@@ -413,7 +413,7 @@ export const EnrollmentForm = () => {
                   Full Name <span className="text-destructive">*</span>
                 </Label>
                 <Input
-                  placeholder="Enter student's full name"
+                  placeholder="Enter learner's full name"
                   value={formData.student_name}
                   onChange={(e) => handleChange('student_name', e.target.value)}
                   onBlur={() => handleBlur('student_name')}

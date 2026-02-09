@@ -15,7 +15,7 @@ export const BottomActions = ({ onNavigate, variant = 'modern' }: BottomActionsP
   const actions = [
     {
       icon: Users,
-      label: 'Manage Students',
+      label: 'Manage Learners',
       onClick: () => onNavigate('students'),
       bgClass: isApple ? 'apple-card' : isClassic ? 'classic-card' : 'bg-card',
       iconBg: isApple ? 'bg-[#007AFF]/10' : 'bg-info/10',

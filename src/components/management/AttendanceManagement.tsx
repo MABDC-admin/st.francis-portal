@@ -208,7 +208,7 @@ export const AttendanceManagement = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.student_id) {
-      toast.error('Please select a student');
+      toast.error('Please select a learner');
       return;
     }
     saveMutation.mutate(formData);
@@ -224,7 +224,7 @@ export const AttendanceManagement = () => {
       >
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Attendance Management</h1>
-          <p className="text-muted-foreground mt-1">Record and manage student attendance</p>
+          <p className="text-muted-foreground mt-1">Record and manage learner attendance</p>
         </div>
         <Button onClick={() => setIsModalOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
@@ -285,7 +285,7 @@ export const AttendanceManagement = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Student</TableHead>
+                    <TableHead>Learner</TableHead>
                     <TableHead>LRN</TableHead>
                     <TableHead>Level</TableHead>
                     <TableHead>Status</TableHead>

@@ -46,7 +46,7 @@ export const DeleteConfirmModal = ({
                   <AlertTriangle className="h-6 w-6 text-destructive" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-foreground">Delete Student</h3>
+                  <h3 className="text-lg font-semibold text-foreground">Delete Learner</h3>
                   <p className="mt-2 text-sm text-muted-foreground">
                     Are you sure you want to delete <span className="font-medium text-foreground">{student.student_name}</span>? 
                     This action cannot be undone.
@@ -73,7 +73,7 @@ export const DeleteConfirmModal = ({
                     Deleting...
                   </>
                 ) : (
-                  'Delete Student'
+                  'Delete Learner'
                 )}
               </Button>
             </div>

@@ -21,13 +21,13 @@ export const AgreementStep = ({ agreed, setAgreed, sigPadRef, handleClearSignatu
                 <h3 className="font-semibold text-lg text-foreground">Terms and Conditions</h3>
                 <ScrollArea className="h-[200px] w-full rounded-md border p-4 bg-muted/30">
                     <div className="space-y-4 text-sm text-muted-foreground">
-                        <p><strong>1. ENROLLMENT AGREEMENT:</strong> By submitting this form, I hereby request enrollment for the student named above in M.A. Brain Development Center (MABDC) / St. Francis Xavier Smart Academy (STFXSA).</p>
+                        <p><strong>1. ENROLLMENT AGREEMENT:</strong> By submitting this form, I hereby request enrollment for the learner named above in M.A. Brain Development Center (MABDC) / St. Francis Xavier Smart Academy (STFXSA).</p>
 
-                        <p><strong>2. PARENTAL CONSENT:</strong> I certify that I am the parent or legal guardian of the student and have the authority to make educational decisions on their behalf.</p>
+                        <p><strong>2. PARENTAL CONSENT:</strong> I certify that I am the parent or legal guardian of the learner and have the authority to make educational decisions on their behalf.</p>
 
                         <p><strong>3. ACCURACY OF INFORMATION:</strong> I verify that all information provided in this form is true, correct, and complete to the best of my knowledge. I understand that withholding or falsifying information may be grounds for denial of enrollment or dismissal.</p>
 
-                        <p><strong>4. DATA PRIVACY:</strong> I consent to the collection and processing of the student's personal data for educational and administrative purposes in accordance with the Data Privacy Act.</p>
+                        <p><strong>4. DATA PRIVACY:</strong> I consent to the collection and processing of the learner's personal data for educational and administrative purposes in accordance with the Data Privacy Act.</p>
 
                         <p><strong>5. FINANCIAL OBLIGATION:</strong> I understand and agree to the financial obligations associated with this enrollment, including the payment of tuition and miscellaneous fees as scheduled.</p>
 

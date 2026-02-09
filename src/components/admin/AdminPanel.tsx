@@ -35,7 +35,7 @@ export const AdminPanel = () => {
       if (error) throw error;
 
       await queryClient.invalidateQueries({ queryKey: ['students'] });
-      toast.success('All student records have been deleted');
+      toast.success('All learner records have been deleted');
       setShowConfirm(false);
       setConfirmText('');
     } catch (error: any) {

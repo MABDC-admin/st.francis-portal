@@ -96,7 +96,7 @@ export const StudentFormModal = ({
             {/* Header */}
             <div className="px-6 py-5 border-b border-border flex items-center justify-between">
               <h2 className="text-xl font-bold text-foreground">
-                {student ? 'Edit Student' : 'Add New Student'}
+                {student ? 'Edit Learner' : 'Add New Learner'}
               </h2>
               <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
                 <X className="h-5 w-5" />
@@ -283,7 +283,7 @@ export const StudentFormModal = ({
                   ) : (
                     <>
                       <Save className="h-4 w-4 mr-2" />
-                      {student ? 'Update' : 'Add'} Student
+                      {student ? 'Update' : 'Add'} Learner
                     </>
                   )}
                 </Button>

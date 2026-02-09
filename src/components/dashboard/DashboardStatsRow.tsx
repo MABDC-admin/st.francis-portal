@@ -49,7 +49,7 @@ export const DashboardStatsRow = ({
   const stats = [
     {
       value: totalStudents,
-      label: 'Total Students',
+      label: 'Total Learners',
       bgClass: isApple ? 'apple-stat-green' : isClassic ? 'classic-stat-green' : 'bg-success',
       icon: isApple ? AppleStudentIcon : StudentIcon3D,
     },

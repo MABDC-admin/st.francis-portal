@@ -97,7 +97,7 @@ export const GlobalStudentSearch = () => {
             setIsOpen(true);
           }}
           onFocus={() => setIsOpen(true)}
-          placeholder="Search student by name or LRN..."
+          placeholder="Search learner by name or LRN..."
           className="pl-10 pr-10 h-10 bg-background/50 backdrop-blur-sm border-border/50 focus:border-primary"
         />
         {query && (
@@ -157,7 +157,7 @@ export const GlobalStudentSearch = () => {
             ) : (
               <div className="py-6 text-center text-muted-foreground">
                 <User className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No students found</p>
+                <p className="text-sm">No learners found</p>
                 <p className="text-xs">Try a different search term</p>
               </div>
             )}

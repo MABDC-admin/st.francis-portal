@@ -148,7 +148,7 @@ export const StudentPortal = ({ activeSection = 'dashboard' }: StudentPortalProp
   const displayName = useMemo(() => {
     if (student?.student_name) return student.student_name;
     if (user?.email) return user.email.split('@')[0];
-    return 'Student';
+    return 'Learner';
   }, [student?.student_name, user?.email]);
 
   // Compute General Averages per quarter and annual (DepEd Compliant)
@@ -212,7 +212,7 @@ export const StudentPortal = ({ activeSection = 'dashboard' }: StudentPortalProp
           <Card>
             <CardContent className="py-10 text-center">
               <p className="text-muted-foreground">
-                Student profile not found. Please contact your administrator.
+                 Student profile not found. Please contact your administrator.
               </p>
             </CardContent>
           </Card>

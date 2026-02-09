@@ -44,7 +44,7 @@ export const StudentInfoStep = ({ formData, errors, touched, handleChange, handl
                         Full Name <span className="text-destructive">*</span>
                     </Label>
                     <Input
-                        placeholder="Enter student's full name"
+                        placeholder="Enter learner's full name"
                         value={formData.student_name}
                         onChange={(e) => handleChange('student_name', e.target.value)}
                         onBlur={() => handleBlur('student_name')}

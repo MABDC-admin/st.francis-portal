@@ -121,7 +121,7 @@ export const StudentDetailPanel = ({ student }: StudentDetailPanelProps) => {
                     ) : qrCodeUrl ? (
                       <img
                         src={qrCodeUrl}
-                        alt="Student QR Code"
+                        alt="Learner QR Code"
                         className="h-20 w-20 rounded-lg border-2 border-white/20"
                       />
                     ) : (
@@ -132,7 +132,7 @@ export const StudentDetailPanel = ({ student }: StudentDetailPanelProps) => {
                   </div>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Scan for student credentials</p>
+                  <p>Scan for learner credentials</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

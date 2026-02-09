@@ -66,10 +66,10 @@ export const useCreateStudent = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
-      toast.success('Student added successfully');
+      toast.success('Learner added successfully');
     },
     onError: (error: Error) => {
-      toast.error('Failed to add student: ' + error.message);
+      toast.error('Failed to add learner: ' + error.message);
     },
   });
 };
@@ -91,10 +91,10 @@ export const useUpdateStudent = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
-      toast.success('Student updated successfully');
+      toast.success('Learner updated successfully');
     },
     onError: (error: Error) => {
-      toast.error('Failed to update student: ' + error.message);
+      toast.error('Failed to update learner: ' + error.message);
     },
   });
 };
@@ -113,10 +113,10 @@ export const useDeleteStudent = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
-      toast.success('Student deleted successfully');
+      toast.success('Learner deleted successfully');
     },
     onError: (error: Error) => {
-      toast.error('Failed to delete student: ' + error.message);
+      toast.error('Failed to delete learner: ' + error.message);
     },
   });
 };
@@ -136,10 +136,10 @@ export const useBulkCreateStudents = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
-      toast.success(`${data.length} students imported successfully`);
+      toast.success(`${data.length} learners imported successfully`);
     },
     onError: (error: Error) => {
-      toast.error('Failed to import students: ' + error.message);
+      toast.error('Failed to import learners: ' + error.message);
     },
   });
 };

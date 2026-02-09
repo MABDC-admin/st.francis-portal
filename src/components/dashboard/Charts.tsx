@@ -52,7 +52,7 @@ export const Charts = ({ students }: ChartsProps) => {
         <div className="bg-card border border-border rounded-lg p-3 shadow-lg">
           <p className="font-semibold text-foreground">{label || payload[0].name}</p>
           <p className="text-muted-foreground">
-            Students: <span className="font-semibold text-primary">{payload[0].value}</span>
+            Learners: <span className="font-semibold text-primary">{payload[0].value}</span>
           </p>
         </div>
       );
@@ -69,7 +69,7 @@ export const Charts = ({ students }: ChartsProps) => {
         transition={{ delay: 0.2 }}
         className="bg-card rounded-2xl p-6 shadow-card"
       >
-        <h3 className="text-lg font-semibold text-foreground mb-4">Students by Level</h3>
+        <h3 className="text-lg font-semibold text-foreground mb-4">Learners by Level</h3>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={levelData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>

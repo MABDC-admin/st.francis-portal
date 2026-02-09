@@ -88,7 +88,7 @@ export const TeacherPortal = ({ activeSection = 'dashboard', onNavigate }: Teach
                   <CardContent className="pt-6 text-center">
                     <Users className="h-8 w-8 text-emerald-600 dark:text-emerald-400 mx-auto mb-2" />
                     <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{studentCount}</p>
-                    <p className="text-xs text-emerald-600 dark:text-emerald-400">My Students</p>
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400">My Learners</p>
                   </CardContent>
                 </Card>
               </motion.div>

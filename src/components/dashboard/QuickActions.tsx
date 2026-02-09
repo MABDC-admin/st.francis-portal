@@ -40,7 +40,7 @@ export const QuickActions = ({ onNavigate, variant = 'modern' }: QuickActionsPro
   const actions = [
     {
       icon: isApple ? AppleAdmitIcon : AdmitStudentIcon3D,
-      label: 'Admit Student',
+      label: 'Admit Learner',
       onClick: () => onNavigate('enrollment'),
       bgClass: isApple ? 'apple-card' : isClassic ? 'classic-card' : 'bg-card hover:bg-muted',
       iconBg: isApple ? 'bg-[#007AFF]/10' : 'bg-info/10',

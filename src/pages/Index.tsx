@@ -283,22 +283,22 @@ const Index = () => {
           >
             <div>
               <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Dashboard</h1>
-              <p className="text-muted-foreground mt-1">Overview of student records</p>
+              <p className="text-muted-foreground mt-1">Overview of learner records</p>
             </div>
             <GlobalStudentSearch />
           </motion.div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
             <StatsCard
-              title="Total Students"
+              title="Total Learners"
               value={totalStudents}
-              subtitle="Enrolled students"
+              subtitle="Enrolled learners"
               icon={BookUser}
               variant="purple"
               delay={0}
             />
             <StatsCard
-              title="Male Students"
+              title="Male Learners"
               value={maleCount}
               subtitle={`${totalStudents ? ((maleCount / totalStudents) * 100).toFixed(1) : 0}% of total`}
               icon={TrendingUp}
@@ -306,7 +306,7 @@ const Index = () => {
               delay={0.1}
             />
             <StatsCard
-              title="Female Students"
+              title="Female Learners"
               value={femaleCount}
               subtitle={`${totalStudents ? ((femaleCount / totalStudents) * 100).toFixed(1) : 0}% of total`}
               icon={TrendingUp}
@@ -335,7 +335,7 @@ const Index = () => {
             animate={{ opacity: 1, y: 0 }}
           >
             <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Enrollment</h1>
-            <p className="text-muted-foreground mt-1">Enroll new students</p>
+            <p className="text-muted-foreground mt-1">Enroll new learners</p>
           </motion.div>
 
           <EnrollmentWizard />
@@ -351,12 +351,12 @@ const Index = () => {
             className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
           >
             <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Students</h1>
-              <p className="text-muted-foreground mt-1">Manage student records</p>
+              <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Learners</h1>
+              <p className="text-muted-foreground mt-1">Manage learner records</p>
             </div>
             <Button onClick={handleAddNew} className="w-full sm:w-auto">
               <UserPlus className="h-4 w-4 mr-2" />
-              Add Student
+              Add Learner
             </Button>
           </motion.div>
 
@@ -383,7 +383,7 @@ const Index = () => {
             animate={{ opacity: 1, y: 0 }}
           >
             <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Import Data</h1>
-            <p className="text-muted-foreground mt-1">Bulk import students from CSV files</p>
+            <p className="text-muted-foreground mt-1">Bulk import learners from CSV files</p>
           </motion.div>
 
           <CSVImport />

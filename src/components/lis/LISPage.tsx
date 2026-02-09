@@ -23,7 +23,7 @@ export const LISPage = () => {
               Learner Information System
             </h1>
             <p className="text-muted-foreground text-sm mt-0.5">
-              Cross-school, cross-year comprehensive student records
+              Cross-school, cross-year comprehensive learner records
             </p>
           </div>
         </div>

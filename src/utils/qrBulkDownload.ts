@@ -10,7 +10,7 @@ interface StudentQRInfo {
 
 export const downloadBulkQRCodes = async (students: StudentQRInfo[]) => {
     if (students.length === 0) {
-        toast.error('No students selected for QR download');
+        toast.error('No learners selected for QR download');
         return;
     }
 
