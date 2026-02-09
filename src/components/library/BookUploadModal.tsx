@@ -283,8 +283,8 @@ export const BookUploadModal = ({
 
           {/* Book List */}
           {books.length > 0 && (
-            <ScrollArea className="flex-1 min-h-0 max-h-[300px]">
-              <div className="space-y-3 pr-4">
+            <ScrollArea className="flex-1 min-h-0 max-h-[340px] border rounded-lg">
+              <div className="space-y-3 p-3 pr-4">
                 {books.map((book) => (
                   <BookUploadItem
                     key={book.id}
