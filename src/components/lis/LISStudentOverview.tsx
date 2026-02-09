@@ -32,6 +32,7 @@ export const LISStudentOverview = ({ student }: LISStudentOverviewProps) => {
           <InfoItem icon={User} label="Gender" value={student.gender} />
           <InfoItem icon={Calendar} label="Birth Date" value={student.birth_date} />
           <InfoItem icon={User} label="Age" value={student.age?.toString()} />
+          <InfoItem icon={User} label="Religion" value={student.religion} />
         </CardContent>
       </Card>
 

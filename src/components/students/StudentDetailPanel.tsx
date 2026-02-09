@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Student } from '@/types/student';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { Calendar, User, Heart, MapPin, Phone, BookOpen, TrendingUp, ClipboardCheck, GraduationCap, FolderOpen, Calculator, AlertTriangle, Loader2 } from 'lucide-react';
+import { Calendar, User, Heart, MapPin, Phone, BookOpen, TrendingUp, ClipboardCheck, GraduationCap, FolderOpen, Calculator, AlertTriangle, Loader2, Pencil, School } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { useStudentQRCode } from '@/hooks/useStudentQRCode';
 import { StudentSubjectsManager } from './StudentSubjectsManager';
@@ -33,6 +35,7 @@ const tabs: { id: DetailTab; label: string; icon: React.ElementType }[] = [
 ];
 
 export const StudentDetailPanel = ({ student }: StudentDetailPanelProps) => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<DetailTab>('overview');
   const { qrCodeUrl, isLoading: qrLoading } = useStudentQRCode(student.id);
   const [currentAcademicYearId, setCurrentAcademicYearId] = useState<string>('');
@@ -71,9 +74,10 @@ export const StudentDetailPanel = ({ student }: StudentDetailPanelProps) => {
   const detailItems = [
     { label: 'Gender', value: student.gender || '-', icon: User },
     { label: 'Date of Birth', value: birthDate, icon: Calendar },
-    { label: 'Religion', value: '-', icon: Heart },
-    { label: 'Blood Group', value: '-', icon: Heart },
-    { label: 'Address', value: address, icon: MapPin, span: true },
+    { label: 'Age', value: student.age?.toString() || '-', icon: User },
+    { label: 'Religion', value: student.religion || '-', icon: Heart },
+    { label: 'Philippine Address', value: student.phil_address || '-', icon: MapPin, span: true },
+    { label: 'UAE Address', value: student.uae_address || '-', icon: MapPin, span: true },
     {
       label: 'Father',
       value: student.father_name
@@ -88,13 +92,14 @@ export const StudentDetailPanel = ({ student }: StudentDetailPanelProps) => {
         : '-',
       icon: Phone,
     },
+    { label: 'Previous School', value: student.previous_school || '-', icon: School },
   ];
 
   return (
     <ScrollArea className="h-full">
       <div className="space-y-4 pb-6">
         {/* Dark Header Banner */}
-        <div className="bg-gradient-to-r from-foreground/90 via-foreground/80 to-foreground/90 rounded-xl p-6 text-primary-foreground">
+        <div className="bg-gradient-to-r from-teal-600 via-cyan-500 to-teal-400 rounded-xl p-6 text-white">
           <div className="flex items-center gap-5">
             <Avatar className="h-20 w-20 border-2 border-white/20">
               <AvatarImage src={student.photo_url || undefined} alt={student.student_name} />
@@ -111,6 +116,16 @@ export const StudentDetailPanel = ({ student }: StudentDetailPanelProps) => {
                 <span className="font-mono text-xs">ID: {student.lrn}</span>
               </div>
             </div>
+            {/* Edit Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(`/student/${student.id}`)}
+              className="shrink-0 text-white hover:bg-white/20"
+              title="Edit Learner"
+            >
+              <Pencil className="h-5 w-5" />
+            </Button>
             {/* QR Code */}
             <TooltipProvider>
               <Tooltip>
