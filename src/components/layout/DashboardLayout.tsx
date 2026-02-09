@@ -369,6 +369,15 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
           ]
         },
         {
+          id: 'student-records',
+          icon: StudentIcon3D,
+          label: 'Learner Records',
+          isCollapsible: true,
+          items: [
+            { id: 'students', icon: StudentIcon3D, label: 'Learners' },
+          ]
+        },
+        {
           id: 'academics',
           icon: EnterGradeIcon3D,
           label: 'Academics',
