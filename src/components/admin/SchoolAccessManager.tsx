@@ -13,13 +13,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Table,
   TableBody,
   TableCell,
@@ -37,8 +30,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { GrantAccessDialog } from './GrantAccessDialog';
 
 interface SchoolAccess {
   id: string;
@@ -70,9 +63,6 @@ export const SchoolAccessManager = () => {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<string>('');
-  const [selectedSchoolId, setSelectedSchoolId] = useState<string>('');
-  const [selectedRole, setSelectedRole] = useState<string>('registrar');
 
   // Fetch school access records with user and school details
   const { data: accessRecords = [], isLoading } = useQuery({
@@ -158,38 +148,41 @@ export const SchoolAccessManager = () => {
   });
 
   const addAccessMutation = useMutation({
-    mutationFn: async () => {
-      // Check if access already exists
+    mutationFn: async ({ userIds, schoolId, role }: { userIds: string[]; schoolId: string; role: string }) => {
+      // Check which users already have access
       const { data: existing } = await supabase
         .from('user_school_access')
-        .select('id')
-        .eq('user_id', selectedUserId)
-        .eq('school_id', selectedSchoolId)
-        .single();
+        .select('user_id')
+        .eq('school_id', schoolId)
+        .in('user_id', userIds);
 
-      if (existing) {
-        throw new Error('User already has access to this school');
+      const existingSet = new Set(existing?.map((e) => e.user_id) || []);
+      const newUserIds = userIds.filter((id) => !existingSet.has(id));
+
+      if (newUserIds.length === 0) {
+        throw new Error('All selected users already have access to this school');
       }
 
-      const { error } = await supabase
-        .from('user_school_access')
-        .insert({
-          user_id: selectedUserId,
-          school_id: selectedSchoolId,
-          role: selectedRole,
-          granted_by: user?.id,
-          is_active: true,
-        });
+      const records = newUserIds.map((uid) => ({
+        user_id: uid,
+        school_id: schoolId,
+        role,
+        granted_by: user?.id,
+        is_active: true,
+      }));
 
+      const { error } = await supabase.from('user_school_access').insert(records);
       if (error) throw error;
+
+      return { granted: newUserIds.length, skipped: existingSet.size };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['school-access-records'] });
-      toast.success('School access granted successfully');
+      const msg = data.skipped > 0
+        ? `Access granted to ${data.granted} users (${data.skipped} already had access)`
+        : `Access granted to ${data.granted} user${data.granted > 1 ? 's' : ''}`;
+      toast.success(msg);
       setIsAddDialogOpen(false);
-      setSelectedUserId('');
-      setSelectedSchoolId('');
-      setSelectedRole('registrar');
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to grant access');
@@ -340,77 +333,16 @@ export const SchoolAccessManager = () => {
         </Table>
       </div>
 
-      {/* Add Access Dialog */}
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Grant School Access</DialogTitle>
-            <DialogDescription>
-              Allow a user to access a specific school's data
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="user">User</Label>
-              <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-                <SelectTrigger id="user">
-                  <SelectValue placeholder="Select a user" />
-                </SelectTrigger>
-                <SelectContent>
-                  {profiles.map((profile) => (
-                    <SelectItem key={profile.id} value={profile.id}>
-                      {profile.full_name || profile.email}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="school">School</Label>
-              <Select value={selectedSchoolId} onValueChange={setSelectedSchoolId}>
-                <SelectTrigger id="school">
-                  <SelectValue placeholder="Select a school" />
-                </SelectTrigger>
-                <SelectContent>
-                  {schools.map((school) => (
-                    <SelectItem key={school.id} value={school.id}>
-                      {school.name} ({school.code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="role">Role at School</Label>
-              <Select value={selectedRole} onValueChange={setSelectedRole}>
-                <SelectTrigger id="role">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="registrar">Registrar</SelectItem>
-                  <SelectItem value="teacher">Teacher</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={() => addAccessMutation.mutate()}
-              disabled={!selectedUserId || !selectedSchoolId || addAccessMutation.isPending}
-            >
-              {addAccessMutation.isPending ? 'Granting...' : 'Grant Access'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <GrantAccessDialog
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        profiles={profiles}
+        schools={schools}
+        isPending={addAccessMutation.isPending}
+        onGrant={(userIds, schoolId, role) =>
+          addAccessMutation.mutate({ userIds, schoolId, role })
+        }
+      />
     </div>
   );
 };
