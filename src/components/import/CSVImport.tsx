@@ -83,6 +83,7 @@ export const CSVImport = () => {
           phil_address: row.phil_address?.trim(),
           uae_address: row.uae_address?.trim(),
           previous_school: row.previous_school?.trim(),
+          religion: row.religion?.trim(),
         };
       });
 
@@ -328,7 +329,7 @@ export const CSVImport = () => {
           Your CSV file should have the following headers:
         </p>
         <code className="text-xs bg-secondary px-2 py-1 rounded text-foreground font-mono block overflow-x-auto">
-          level, lrn, student_name, birth_date, age, gender, mother_contact, mother_maiden_name, father_contact, father_name, phil_address, uae_address, previous_school
+          level, lrn, student_name, birth_date, age, gender, religion, mother_contact, mother_maiden_name, father_contact, father_name, phil_address, uae_address, previous_school
         </code>
       </div>
     </motion.div>

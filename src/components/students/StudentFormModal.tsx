@@ -54,6 +54,7 @@ export const StudentFormModal = ({
         phil_address: student.phil_address || undefined,
         uae_address: student.uae_address || undefined,
         previous_school: student.previous_school || undefined,
+        religion: student.religion || undefined,
       });
     } else {
       setFormData({
@@ -179,6 +180,15 @@ export const StudentFormModal = ({
                         value={formData.age || ''}
                         onChange={(e) => handleChange('age', parseInt(e.target.value) || 0)}
                         placeholder="Enter age"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="religion">Religion</Label>
+                      <Input
+                        id="religion"
+                        value={formData.religion || ''}
+                        onChange={(e) => handleChange('religion', e.target.value)}
+                        placeholder="Enter religion"
                       />
                     </div>
                   </div>

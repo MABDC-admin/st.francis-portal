@@ -49,6 +49,7 @@ interface StudentTableProps {
   onEdit: (student: Student) => void;
   onDelete: (student: Student) => void;
   isLoading?: boolean;
+  hideActions?: boolean;
 }
 
 type SortField = 'student_name' | 'level' | 'age' | 'gender';
@@ -68,7 +69,8 @@ export const StudentTable = ({
   onView,
   onEdit,
   onDelete,
-  isLoading
+  isLoading,
+  hideActions = false
 }: StudentTableProps) => {
   const [search, setSearch] = useState('');
   const [schoolFilter, setSchoolFilter] = useState<string>('all');

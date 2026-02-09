@@ -10,6 +10,7 @@ import { StudentTable } from '@/components/students/StudentTable';
 import { StudentProfileModal } from '@/components/students/StudentProfileModal';
 import { StudentFormModal } from '@/components/students/StudentFormModal';
 import { DeleteConfirmModal } from '@/components/students/DeleteConfirmModal';
+import { TeacherStudentsView } from '@/components/students/TeacherStudentsView';
 import { CSVImport } from '@/components/import/CSVImport';
 import { EnrollmentWizard } from '@/components/enrollment/EnrollmentWizard';
 import { AdminPanel } from '@/components/admin/AdminPanel';
@@ -342,32 +343,18 @@ const Index = () => {
         </div>
       )}
 
-      {/* Students - Admin/Registrar only */}
-      {activeTab === 'students' && hasAdminAccess && (
-        <div className="space-y-6">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
-          >
-            <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Learners</h1>
-              <p className="text-muted-foreground mt-1">Manage learner records</p>
-            </div>
-            <Button onClick={handleAddNew} className="w-full sm:w-auto">
-              <UserPlus className="h-4 w-4 mr-2" />
-              Add Learner
-            </Button>
-          </motion.div>
-
-          <StudentTable
-            students={students}
-            onView={handleView}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            isLoading={isLoading}
-          />
-        </div>
+      {/* Students - Admin/Registrar/Teacher */}
+      {activeTab === 'students' && (hasAdminAccess || role === 'teacher') && (
+        <TeacherStudentsView
+          students={students}
+          isLoading={isLoading}
+          role={role}
+          hasAdminAccess={hasAdminAccess}
+          onView={handleView}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onAddNew={handleAddNew}
+        />
       )}
 
       {/* LIS - Admin/Registrar only */}
