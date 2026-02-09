@@ -1,58 +1,48 @@
 
 
-# Insert Grade 8-10 Subjects (Both Schools) and Auto-Enroll All Learners
+# Insert 2 STFXSA Grade 5 Students and Auto-Enroll
 
-## Current State
+## Overview
 
-- **Grade 7 / Level 7**: Already has all 8 correct subjects with dual naming (Filipino, English, Math, Science, AP, ESP, TLE, MAPEH) -- but 0 enrollments
-- **Level 8, 9, 10**: Only 4 subjects each (Filipino, English Language, Mathematics, Science) with MABDC-only naming. 428 existing enrollments tied to these.
-- **Students**: Only MABDC has learners in these levels (Level 7: 38, Level 8: 36, Level 9: 21, Level 10: 25). No STFXSA learners in Grade 7-10 yet.
+Insert 2 students into STFXSA as Grade 5 learners and auto-enroll them in all 8 Grade 5 subjects.
 
-## Plan
+## Student Data (mapped to our schema)
 
-### Step 1: Update existing Level 8-10 subjects to add Grade naming
+| Field | Student 1 | Student 2 |
+|-------|-----------|-----------|
+| LRN | 451503200002 | 404677200006 |
+| student_name | SALAZAR, GABRIEL MARTIN CORTEJOS | NOPAL, JULIANA KIONA ANONUEVO |
+| level | Grade 5 | Grade 5 |
+| gender | Male | Female |
+| birth_date | 2015-10-06 | 2015-07-16 |
+| age | 10 | 10 |
+| mother_maiden_name | CORTEJOS, ROXANNE, BIBAT | ANONUEVO, MELONA, PELESCO |
+| father_name | SALAZAR, FIDEL MARTI, MOROT | NOPAL, JONATHAN, MUNEZ |
+| phil_address | TINAGO, INOPACAN | GUADALUPE, INOPACAN |
+| religion | Christianity | Christianity |
+| mother_tongue | Cebuano | Cebuano / Kana / Sinugboanong Bini |
+| school | STFXSA | STFXSA |
+| school_id | 22222222-2222-2222-2222-222222222222 | 22222222-2222-2222-2222-222222222222 |
+| academic_year_id | 74fb8614-... (SY 2025-2026) | 74fb8614-... (SY 2025-2026) |
 
-Update the 12 existing subjects (L8/L9/L10) to include dual naming so they work for both schools. This preserves the 428 existing enrollment records.
+## Auto-Enrollment: 8 Grade 5 Subjects
 
-- `Level 8` subjects get `ARRAY['Level 8', 'Grade 8']`
-- `Level 9` subjects get `ARRAY['Level 9', 'Grade 9']`
-- `Level 10` subjects get `ARRAY['Level 10', 'Grade 10']`
+Each student will be enrolled in:
+1. Filipino
+2. English
+3. Math
+4. Science
+5. EPP
+6. AP (Araling Panlipunan)
+7. MAPEH
+8. GMRC
 
-Also standardize names to match Grade 7 style (e.g., "English Language" to "English", "Mathematics" to "Math").
-
-### Step 2: Insert missing subjects for Level 8-10
-
-Add the 4 missing subjects for each of Level 8, 9, 10 (12 new rows total):
-- Araling Panlipunan (AP)
-- Edukasyon sa Pagpapakatao (ESP) / Values Education
-- TLE (Technology and Livelihood Education)
-- MAPEH
-
-Each with dual grade_levels arrays.
-
-### Step 3: Auto-enroll all learners
-
-Enroll every student in Level 7-10 into all 8 subjects for their grade level:
-- Level 7: 38 students x 8 subjects = 304 enrollments
-- Level 8: 36 students x 8 subjects = 288 enrollments (minus 428 already enrolled = net ~144 new from missing subjects + re-check)
-- Level 9: 21 students x 8 subjects = 168 enrollments
-- Level 10: 25 students x 8 subjects = 200 enrollments
-
-Will use INSERT ... ON CONFLICT or NOT EXISTS to avoid duplicate enrollments for the 428 already enrolled.
+Total: 2 students x 8 subjects = 16 enrollment records.
 
 ## Technical Details
 
-### Migration SQL sequence:
-
-1. **Update** 12 existing L8-L10 subjects: add Grade naming, standardize names
-2. **Insert** 12 new subjects (AP, ESP, TLE, MAPEH for each of L8, L9, L10)
-3. **Insert** enrollments for Level 7 students (38 x 8 = 304 rows)
-4. **Insert** enrollments for Level 8-10 students into NEW subjects only (avoiding duplicates for existing 4 subjects)
-
-Key IDs:
-- MABDC school_id: `33333333-3333-3333-3333-333333333333`
-- STFXSA school_id: `22222222-2222-2222-2222-222222222222`
-- Academic year (2025-2026): `74fb8614-8b9d-49d8-ac4a-7f4c74df201e`
-
-No code changes required -- purely database operations.
+- Column mapping from the user's SQL to our schema: `last_name + first_name + middle_name` combined into `student_name`, `current_residence` mapped to `phil_address`, `birthdate` to `birth_date`, `M/F` to `Male/Female`.
+- Guardian info (grandmother SALAZAR, GREGORIA, MOROT) is noted but the students table has no guardian column -- only mother/father fields are stored.
+- A temporary edge function will be created to perform the insert (since the read-only query tool cannot do writes), then deleted after use.
+- The `format_student_text_fields` trigger will auto-format names to Title Case on insert.
 
