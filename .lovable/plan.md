@@ -1,45 +1,51 @@
 
 
-# Show Full Academics Menu for Teachers and Registrars
+# Add Learner Records Menu to Teacher Sidebar
 
-## Current State
+## Problem
 
-All three staff roles (Admin, Registrar, Teacher) already have an "Academics" collapsible menu in the sidebar. However, the **Teacher** role is missing two items compared to Admin/Registrar:
-
-| Menu Item          | Admin | Registrar | Teacher |
-|--------------------|-------|-----------|---------|
-| Grades             | Yes   | Yes       | Yes     |
-| Subjects           | Yes   | Yes       | **No**  |
-| Subject Enrollment | Yes   | Yes       | **No**  |
-| Schedules          | Yes   | Yes       | Yes     |
-| Assignments        | Yes   | Yes       | Yes     |
-| Exams              | Yes   | Yes       | Yes     |
-| Attendance         | No*   | No*       | Yes     |
-
-(*Attendance is under "Learner Records" for Admin/Registrar, but under "Academics" for Teacher)
+Admin and Registrar roles have a **"Learner Records"** collapsible group in their sidebar containing items like "Learners", "LIS", and "Attendance". The Teacher role has **no equivalent** -- teachers currently cannot navigate to learner lists from their sidebar at all.
 
 ## Proposed Change
 
-Add **Subjects** and **Subject Enrollment** to the Teacher's Academics menu so it matches Admin/Registrar. This gives teachers visibility into the subjects catalog and enrollment data for their school.
+Add a **"Learner Records"** group to the Teacher's sidebar, with a subset of items appropriate for their role:
 
-### Updated Teacher Academics Menu
+### Updated Teacher Sidebar Structure
 
 ```text
+Portal Home
+My Info
+  |-- Profile
+Learner Records        (NEW group)
+  |-- Learners         (NEW - view assigned students)
 Academics
   |-- Grades
-  |-- Subjects           (NEW)
-  |-- Subject Enrollment (NEW)
+  |-- Subjects
+  |-- Subject Enrollment
   |-- Attendance
   |-- Schedules
   |-- Assignments
   |-- Exams
+Messages
+...
 ```
 
-### File to Edit
+Teachers get the "Learners" item to view student lists (filtered by their assignments). Items like "LIS", "New Learner", and "Import CSV" are excluded since those are administrative functions.
 
-**`src/components/layout/DashboardLayout.tsx`** -- Add two items to the teacher's `academics` group (around line 376-382):
-- `{ id: 'subjects', icon: SubjectsIcon3D, label: 'Subjects' }`
-- `{ id: 'subject-enrollment', icon: EnrollmentIcon3D, label: 'Subject Enrollment' }`
+## File to Edit
 
-This is a single, small edit with no database or backend changes required.
+**`src/components/layout/DashboardLayout.tsx`** (around line 370) -- Insert a new collapsible group before the `academics` group in the teacher's menu:
 
+```typescript
+{
+  id: 'student-records',
+  icon: StudentIcon3D,
+  label: 'Learner Records',
+  isCollapsible: true,
+  items: [
+    { id: 'students', icon: StudentIcon3D, label: 'Learners' },
+  ]
+},
+```
+
+This is a single small edit with no database or backend changes required.
