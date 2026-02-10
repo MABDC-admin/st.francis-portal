@@ -26,9 +26,16 @@ const STEPS = [
 ];
 
 import { useSchool } from '@/contexts/SchoolContext';
+import { useAuth } from '@/contexts/AuthContext';
 
-export const EnrollmentWizard = () => {
+interface EnrollmentWizardProps {
+    mode?: 'enrollment' | 'admission';
+    onComplete?: () => void;
+}
+
+export const EnrollmentWizard = ({ mode = 'enrollment', onComplete }: EnrollmentWizardProps) => {
     const { selectedSchool } = useSchool();
+    const { user } = useAuth();
     const { selectedYearId } = useAcademicYear();
     const [currentStep, setCurrentStep] = useState(1);
     const [, setDirection] = useState(0);
@@ -165,6 +172,46 @@ export const EnrollmentWizard = () => {
             const finalLrn = formData.lrn.trim() || `TEMP-${Date.now()}`;
             const calculatedAge = formData.birth_date ? differenceInYears(new Date(), new Date(formData.birth_date)) : undefined;
 
+            // --- ADMISSION MODE: insert into admissions table ---
+            if (mode === 'admission') {
+                const { data: inserted, error: admError } = await (supabase.from('admissions') as any).insert([{
+                    student_name: formData.student_name.trim(),
+                    lrn: finalLrn.startsWith('TEMP') ? null : finalLrn,
+                    level: formData.level,
+                    school: formData.school,
+                    school_id: resolvedSchoolId,
+                    academic_year_id: selectedYearId,
+                    birth_date: formData.birth_date || null,
+                    gender: formData.gender || null,
+                    mother_maiden_name: formData.mother_maiden_name.trim() || null,
+                    mother_contact: formData.mother_contact.trim() || null,
+                    father_name: formData.father_name.trim() || null,
+                    father_contact: formData.father_contact.trim() || null,
+                    phil_address: formData.phil_address.trim() || null,
+                    uae_address: formData.uae_address.trim() || null,
+                    previous_school: formData.previous_school.trim() || null,
+                    parent_email: formData.mother_contact.includes('@') ? formData.mother_contact : (formData.father_contact.includes('@') ? formData.father_contact : null),
+                    created_by: user?.id,
+                    status: 'pending',
+                }]).select('id').single();
+                if (admError) throw admError;
+
+                // Audit log
+                if (inserted?.id) {
+                    await (supabase.from('admission_audit_logs') as any).insert([{
+                        admission_id: inserted.id,
+                        action: 'submitted',
+                        performed_by: user?.id,
+                        details: { student_name: formData.student_name.trim() },
+                    }]);
+                }
+
+                toast.success('Admission application submitted successfully!');
+                onComplete?.();
+                return;
+            }
+
+            // --- ENROLLMENT MODE (default): create student directly ---
             // Pre-submit LRN duplicate check
             if (finalLrn && !finalLrn.startsWith('TEMP')) {
                 const { data: existingLrn } = await supabase

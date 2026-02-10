@@ -284,7 +284,6 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
             { id: 'students', icon: StudentIcon3D, label: 'Learners' },
             { id: 'lis', icon: StudentIcon3D, label: 'LIS' },
             { id: 'admissions', icon: EnrollmentIcon3D, label: 'Admissions' },
-            { id: 'enrollment', icon: EnrollmentIcon3D, label: 'New Learner' },
             { id: 'import', icon: ImportIcon3D, label: 'Import CSV' },
             { id: 'attendance-mgmt', icon: ScheduleIcon3D, label: 'Attendance' },
           ]
@@ -360,7 +359,6 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
             { id: 'students', icon: StudentIcon3D, label: 'Learners' },
             { id: 'lis', icon: StudentIcon3D, label: 'LIS' },
             { id: 'admissions', icon: EnrollmentIcon3D, label: 'Admissions' },
-            { id: 'enrollment', icon: EnrollmentIcon3D, label: 'New Learner' },
             { id: 'import', icon: ImportIcon3D, label: 'Import CSV' },
             { id: 'attendance-mgmt', icon: ScheduleIcon3D, label: 'Attendance' },
           ]

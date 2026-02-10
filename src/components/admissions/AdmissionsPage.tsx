@@ -7,7 +7,8 @@ import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSchoolId } from '@/utils/schoolIdMap';
 import { toast } from 'sonner';
-import { ClipboardList, Search, CheckCircle2, XCircle, Clock, Loader2, UserPlus, AlertCircle } from 'lucide-react';
+import { ClipboardList, Search, CheckCircle2, XCircle, Clock, Loader2, UserPlus, AlertCircle, X } from 'lucide-react';
+import { EnrollmentWizard } from '@/components/enrollment/EnrollmentWizard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -70,18 +71,14 @@ export const AdmissionsPage = () => {
 
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
   const [showApproveDialog, setShowApproveDialog] = useState<AdmissionRecord | null>(null);
   const [showRejectDialog, setShowRejectDialog] = useState<AdmissionRecord | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showDetailDialog, setShowDetailDialog] = useState<AdmissionRecord | null>(null);
 
-  // New admission form state
-  const [newAdmission, setNewAdmission] = useState({
-    student_name: '', lrn: '', level: '', birth_date: '', gender: '',
-    mother_maiden_name: '', mother_contact: '', father_name: '', father_contact: '',
-    phil_address: '', uae_address: '', previous_school: '', parent_email: '',
-  });
+  // Note: newAdmission state and createAdmission mutation are no longer used
+  // since we now use the EnrollmentWizard in admission mode
 
   // Fetch admissions
   const { data: admissions = [], isLoading } = useQuery({
@@ -109,40 +106,6 @@ export const AdmissionsPage = () => {
     (a.lrn && a.lrn.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  // Create admission
-  const createAdmission = useMutation({
-    mutationFn: async (data: typeof newAdmission) => {
-      if (!schoolId || !selectedYearId) throw new Error('School or academic year not set');
-      const { error } = await (supabase.from('admissions') as any).insert([{
-        ...data,
-        school: selectedSchool,
-        school_id: schoolId,
-        academic_year_id: selectedYearId,
-        created_by: user?.id,
-        status: 'pending',
-      }]);
-      if (error) throw error;
-
-      // Audit log
-      await (supabase.from('admission_audit_logs') as any).insert([{
-        admission_id: undefined, // We don't have it yet but that's ok
-        action: 'submitted',
-        performed_by: user?.id,
-        details: { student_name: data.student_name },
-      }]);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admissions'] });
-      toast.success('Admission application submitted');
-      setShowAddDialog(false);
-      setNewAdmission({
-        student_name: '', lrn: '', level: '', birth_date: '', gender: '',
-        mother_maiden_name: '', mother_contact: '', father_name: '', father_contact: '',
-        phil_address: '', uae_address: '', previous_school: '', parent_email: '',
-      });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
   // Approve admission
   const approveAdmission = useMutation({
@@ -268,7 +231,7 @@ export const AdmissionsPage = () => {
             Manage enrollment applications {pendingCount > 0 && <span className="text-yellow-600 font-medium">• {pendingCount} pending</span>}
           </p>
         </div>
-        <Button onClick={() => setShowAddDialog(true)} className="bg-stat-purple hover:bg-stat-purple/90 text-white gap-2">
+        <Button onClick={() => setShowWizard(true)} className="bg-stat-purple hover:bg-stat-purple/90 text-white gap-2">
           <UserPlus className="h-4 w-4" /> New Application
         </Button>
       </motion.div>
@@ -340,95 +303,20 @@ export const AdmissionsPage = () => {
         </div>
       )}
 
-      {/* Add Application Dialog */}
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      {/* New Application Wizard Dialog */}
+      <Dialog open={showWizard} onOpenChange={setShowWizard}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>New Admission Application</DialogTitle>
-            <DialogDescription>Submit a new enrollment application for review.</DialogDescription>
+            <DialogDescription>Submit a new enrollment application for review using the multi-step form.</DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-            <div className="space-y-2">
-              <Label>Student Name <span className="text-destructive">*</span></Label>
-              <Input value={newAdmission.student_name} onChange={(e) => setNewAdmission(p => ({ ...p, student_name: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>LRN</Label>
-              <Input placeholder="12-digit LRN (optional)" value={newAdmission.lrn} onChange={(e) => setNewAdmission(p => ({ ...p, lrn: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Grade Level <span className="text-destructive">*</span></Label>
-              <Select value={newAdmission.level} onValueChange={(v) => setNewAdmission(p => ({ ...p, level: v }))}>
-                <SelectTrigger><SelectValue placeholder="Select level" /></SelectTrigger>
-                <SelectContent>{GRADE_LEVELS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Birth Date</Label>
-              <Input type="date" value={newAdmission.birth_date} onChange={(e) => setNewAdmission(p => ({ ...p, birth_date: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Gender</Label>
-              <Select value={newAdmission.gender} onValueChange={(v) => setNewAdmission(p => ({ ...p, gender: v }))}>
-                <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Male">Male</SelectItem>
-                  <SelectItem value="Female">Female</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Parent Email</Label>
-              <Input type="email" placeholder="For notifications" value={newAdmission.parent_email} onChange={(e) => setNewAdmission(p => ({ ...p, parent_email: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Mother's Maiden Name</Label>
-              <Input value={newAdmission.mother_maiden_name} onChange={(e) => setNewAdmission(p => ({ ...p, mother_maiden_name: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Mother's Contact</Label>
-              <Input value={newAdmission.mother_contact} onChange={(e) => setNewAdmission(p => ({ ...p, mother_contact: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Father's Name</Label>
-              <Input value={newAdmission.father_name} onChange={(e) => setNewAdmission(p => ({ ...p, father_name: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Father's Contact</Label>
-              <Input value={newAdmission.father_contact} onChange={(e) => setNewAdmission(p => ({ ...p, father_contact: e.target.value }))} />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>Philippine Address</Label>
-              <Input value={newAdmission.phil_address} onChange={(e) => setNewAdmission(p => ({ ...p, phil_address: e.target.value }))} />
-            </div>
-            {selectedSchool === 'MABDC' && (
-              <div className="space-y-2 md:col-span-2">
-                <Label>UAE Address</Label>
-                <Input value={newAdmission.uae_address} onChange={(e) => setNewAdmission(p => ({ ...p, uae_address: e.target.value }))} />
-              </div>
-            )}
-            <div className="space-y-2 md:col-span-2">
-              <Label>Previous School</Label>
-              <Input value={newAdmission.previous_school} onChange={(e) => setNewAdmission(p => ({ ...p, previous_school: e.target.value }))} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setShowAddDialog(false)}>Cancel</Button>
-            <Button
-              onClick={() => {
-                if (!newAdmission.student_name.trim() || !newAdmission.level) {
-                  toast.error('Student name and grade level are required');
-                  return;
-                }
-                createAdmission.mutate(newAdmission);
-              }}
-              disabled={createAdmission.isPending}
-              className="bg-stat-purple hover:bg-stat-purple/90 text-white"
-            >
-              {createAdmission.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Submit Application
-            </Button>
-          </DialogFooter>
+          <EnrollmentWizard
+            mode="admission"
+            onComplete={() => {
+              setShowWizard(false);
+              queryClient.invalidateQueries({ queryKey: ['admissions'] });
+            }}
+          />
         </DialogContent>
       </Dialog>
 
