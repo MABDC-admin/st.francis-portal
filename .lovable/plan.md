@@ -1,69 +1,58 @@
 
+# Fix Grades Loading Loop in Student Profile
 
-# Add Teal Header and Alternating Row Colors to All Tables
+## Root Cause
 
-## Overview
-Apply a consistent teal header background and light grey alternating row colors to every table across the entire application -- covering both schools and all modules.
+The Grades tab inside each student's profile is stuck in an **infinite loading spinner** because:
 
-## Approach: Global + Targeted
+1. **`StudentDetailPanel.tsx` (line 48)** fetches the current academic year using `.single()`, but there are **2 rows** with `is_current = true` in the database (one per school: MABDC and STFXSA). The `.single()` call **throws an error** when it gets multiple results, so `currentAcademicYearId` is never set, and the Grades tab renders a forever-spinning loader.
 
-The most efficient approach is two-pronged:
-1. **Update the shared UI Table component** (`src/components/ui/table.tsx`) -- this automatically applies to all 36 files using the shadcn Table
-2. **Update the 6 files using raw HTML `<table>` elements** -- apply matching styles individually
+2. **`LISAcademicHistory.tsx` (line 63)** also uses `.single()` inside a nested query to look up the student's LRN, which can similarly fail.
 
-## Visual Style
-- **Header**: Teal background (`bg-teal-600 text-white`) with white text for strong contrast
-- **Alternating rows**: Even rows get a light grey background (`even:[&>tr]:bg-gray-50 dark:even:[&>tr]:bg-gray-800/30`) for readability
-- **Hover**: Preserved on all rows
+## Fix
+
+### 1. `src/components/students/StudentDetailPanel.tsx`
+
+- Change the academic year query from `.single()` to filter by the student's `school_id` (or `school` code), so it returns only the one matching current year
+- Use `.maybeSingle()` as a safety net in case no current year exists
+- Add a fallback message instead of an infinite spinner if no year is found
+
+### 2. `src/components/lis/LISAcademicHistory.tsx`
+
+- Replace the nested `.single()` call on line 63 with `.maybeSingle()` to prevent crashes when the student record isn't found
 
 ## Technical Details
 
-### 1. `src/components/ui/table.tsx` (shared component -- affects 36 files)
+### StudentDetailPanel.tsx (lines 43-53)
 
-**TableHeader**: Change from `[&_tr]:border-b` to include teal background:
-```
-bg-teal-600 text-white [&_tr]:border-b
-```
-
-**TableHead**: Update text color from `text-muted-foreground` to `text-white` so header text is visible on teal:
-```
-text-white font-semibold
-```
-
-**TableBody**: Add alternating row colors:
-```
-[&_tr:last-child]:border-0 [&_tr:nth-child(even)]:bg-gray-50 dark:[&_tr:nth-child(even)]:bg-gray-800/30
+Current (broken):
+```typescript
+const { data } = await supabase
+  .from('academic_years')
+  .select('id')
+  .eq('is_current', true)
+  .single(); // FAILS: 2 rows returned
 ```
 
-### 2. Raw HTML table files (6 files, individual updates)
+Fixed -- filter by the student's school:
+```typescript
+const { data } = await supabase
+  .from('academic_years')
+  .select('id')
+  .eq('is_current', true)
+  .eq('school_id', student.school_id)
+  .maybeSingle();
+```
 
-Each file's `<thead>` and `<tbody>` will get matching teal and alternating styles:
+If the student has no `school_id`, fall back to selecting the first current year with `.limit(1).maybeSingle()`.
 
-| File | Current Header Style |
-|------|---------------------|
-| `src/components/students/StudentTable.tsx` | `bg-secondary/50` |
-| `src/components/tacticalrmm/AgentTable.tsx` | `bg-muted/50` |
-| `src/components/nocodb/NocoDBDashboard.tsx` | `bg-muted/50` |
-| `src/components/teachers/TeacherCSVImport.tsx` | `bg-secondary/50` |
-| `src/components/import/CSVImport.tsx` | `bg-secondary/50` |
-| `src/components/portals/StudentPortal.tsx` | no background |
+### LISAcademicHistory.tsx (line 63)
 
-For each:
-- `<thead>` gets `bg-teal-600 text-white`
-- `<th>` text color changed to white
-- `<tbody>` gets `[&>tr:nth-child(even)]:bg-gray-50`
+Change `.single()` to `.maybeSingle()` to prevent the query from throwing when no student record matches.
 
-### Files to Change (8 total)
+## Files to Change
 
 | File | Change |
 |------|--------|
-| `src/components/ui/table.tsx` | Teal header, white text, alternating rows (global) |
-| `src/components/students/StudentTable.tsx` | Teal header, alternating rows |
-| `src/components/tacticalrmm/AgentTable.tsx` | Teal header, alternating rows |
-| `src/components/nocodb/NocoDBDashboard.tsx` | Teal header, alternating rows |
-| `src/components/teachers/TeacherCSVImport.tsx` | Teal header, alternating rows |
-| `src/components/import/CSVImport.tsx` | Teal header, alternating rows |
-| `src/components/portals/StudentPortal.tsx` | Teal header, alternating rows |
-
-Note: Some files using the shadcn Table also add their own `className="bg-muted/50"` on `TableRow` inside `TableHeader`. These overrides will be removed where found to let the global teal style apply consistently.
-
+| `src/components/students/StudentDetailPanel.tsx` | Filter academic year by student's school_id, use .maybeSingle(), add empty-state fallback |
+| `src/components/lis/LISAcademicHistory.tsx` | Replace .single() with .maybeSingle() on LRN lookup |
