@@ -1,58 +1,45 @@
 
-# Fix Grades Loading Loop in Student Profile
 
-## Root Cause
+# Add Payment Date Field to Payment Collection
 
-The Grades tab inside each student's profile is stuck in an **infinite loading spinner** because:
+## Problem
+The "Collect Payment" dialog has no date picker. All payments are recorded with today's date automatically. Cashiers need to enter previous collection dates for proper timestamping (e.g., recording payments received yesterday or over the weekend).
 
-1. **`StudentDetailPanel.tsx` (line 48)** fetches the current academic year using `.single()`, but there are **2 rows** with `is_current = true` in the database (one per school: MABDC and STFXSA). The `.single()` call **throws an error** when it gets multiple results, so `currentAcademicYearId` is never set, and the Grades tab renders a forever-spinning loader.
-
-2. **`LISAcademicHistory.tsx` (line 63)** also uses `.single()` inside a nested query to look up the student's LRN, which can similarly fail.
-
-## Fix
-
-### 1. `src/components/students/StudentDetailPanel.tsx`
-
-- Change the academic year query from `.single()` to filter by the student's `school_id` (or `school` code), so it returns only the one matching current year
-- Use `.maybeSingle()` as a safety net in case no current year exists
-- Add a fallback message instead of an infinite spinner if no year is found
-
-### 2. `src/components/lis/LISAcademicHistory.tsx`
-
-- Replace the nested `.single()` call on line 63 with `.maybeSingle()` to prevent crashes when the student record isn't found
+## Solution
+Add a "Payment Date" field (defaulting to today) to both the Collect Payment and Edit Payment dialogs. The selected date will be saved as `payment_date` in the database insert.
 
 ## Technical Details
 
-### StudentDetailPanel.tsx (lines 43-53)
+### File: `src/components/finance/PaymentCollection.tsx`
 
-Current (broken):
-```typescript
-const { data } = await supabase
-  .from('academic_years')
-  .select('id')
-  .eq('is_current', true)
-  .single(); // FAILS: 2 rows returned
-```
+**1. Add date import**
+- Import `CalendarIcon` from lucide-react
+- Import `Popover, PopoverContent, PopoverTrigger` from UI
+- Import `Calendar` component
+- Import `format` from date-fns
 
-Fixed -- filter by the student's school:
-```typescript
-const { data } = await supabase
-  .from('academic_years')
-  .select('id')
-  .eq('is_current', true)
-  .eq('school_id', student.school_id)
-  .maybeSingle();
-```
+**2. Add `payment_date` to form state**
+- `paymentForm`: add `payment_date: new Date().toISOString().split('T')[0]` (today as default)
+- `editForm`: same default
+- `resetDialog`: reset date back to today
 
-If the student has no `school_id`, fall back to selecting the first current year with `.limit(1).maybeSingle()`.
+**3. Add date picker UI in Collect Payment dialog (after Amount field, around line 510)**
+- Label: "Payment Date"
+- A date input or calendar popover so the cashier can pick a past date
+- Default: today's date
 
-### LISAcademicHistory.tsx (line 63)
+**4. Add date picker UI in Edit Payment dialog (around line 562)**
+- Same date field for corrections
 
-Change `.single()` to `.maybeSingle()` to prevent the query from throwing when no student record matches.
+**5. Pass date to database insert**
+- In `recordPayment` mutation (line 209): add `payment_date: paymentForm.payment_date`
+- In `editPayment` mutation (line 287): add `payment_date: editForm.payment_date`
 
-## Files to Change
+**6. Update `openEditDialog`** to pre-fill the original payment's date
+
+### Files to Change
 
 | File | Change |
 |------|--------|
-| `src/components/students/StudentDetailPanel.tsx` | Filter academic year by student's school_id, use .maybeSingle(), add empty-state fallback |
-| `src/components/lis/LISAcademicHistory.tsx` | Replace .single() with .maybeSingle() on LRN lookup |
+| `src/components/finance/PaymentCollection.tsx` | Add payment_date to form state, add date input to both dialogs, pass date on insert |
+
