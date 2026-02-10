@@ -28,6 +28,17 @@ const Auth = () => {
   const { data: schoolSettings } = useSchoolSettings('STFXSA');
 
   const [loginData, setLoginData] = useState({ email: '', password: '' });
+  const [rememberMe, setRememberMe] = useState(false);
+
+  // Load saved credentials on mount
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('rememberedEmail');
+    const savedPassword = localStorage.getItem('rememberedPassword');
+    if (savedEmail) {
+      setLoginData({ email: savedEmail, password: savedPassword || '' });
+      setRememberMe(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (user && !loading) {
@@ -93,6 +104,16 @@ const Auth = () => {
     } else {
       setFailedAttempts(0);
       setLockoutUntil(null);
+      
+      // Handle Remember Me
+      if (rememberMe) {
+        localStorage.setItem('rememberedEmail', loginData.email);
+        localStorage.setItem('rememberedPassword', loginData.password);
+      } else {
+        localStorage.removeItem('rememberedEmail');
+        localStorage.removeItem('rememberedPassword');
+      }
+      
       await logAudit('login_success', 'success');
       toast.success('Logged in successfully');
       navigate('/');
@@ -143,11 +164,11 @@ const Auth = () => {
         <Card className="glass-card shadow-2xl border-0 overflow-hidden theme-transition">
           <CardContent className="p-8 pt-10">
             <div className="flex flex-col items-center mb-8 text-center">
-              <div className="w-20 h-20 rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden transition-all duration-700 bg-white/5 border border-white/10 mb-6">
+              <div className="w-40 h-40 rounded-3xl flex items-center justify-center overflow-hidden transition-all duration-700 mb-6">
                 {schoolSettings?.logo_url ? (
-                  <img src={schoolSettings.logo_url} alt="Logo" className="w-full h-full object-contain p-2" />
+                  <img src={schoolSettings.logo_url} alt="Logo" className="w-full h-full object-contain" />
                 ) : (
-                  <GraduationCap className="h-12 w-12 text-white/20" />
+                  <GraduationCap className="h-24 w-24 text-white/20" />
                 )}
               </div>
 
@@ -190,6 +211,22 @@ const Auth = () => {
                     required
                   />
                 </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="remember-me"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 rounded border-white/10 bg-white/5 text-blue-600 focus:ring-blue-500/20 focus:ring-offset-0 cursor-pointer"
+                />
+                <Label
+                  htmlFor="remember-me"
+                  className="text-white/50 text-sm font-medium cursor-pointer select-none"
+                >
+                  Remember me
+                </Label>
               </div>
 
               <Button
