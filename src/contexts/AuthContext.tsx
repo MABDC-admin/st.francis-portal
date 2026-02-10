@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { logAuditAction } from '@/hooks/useAuditLog';
-import { useSchool } from '@/contexts/SchoolContext';
+import { useSchool, SchoolType } from '@/contexts/SchoolContext';
 
 type AppRole = 'admin' | 'registrar' | 'teacher' | 'student' | 'parent' | 'finance';
 
@@ -42,7 +42,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Impersonation state
   const [impersonatedUser, setImpersonatedUser] = useState<{ id: string, role: AppRole, full_name?: string | null } | null>(null);
 
-  const fetchUserRole = async (userId: string) => {
+  const fetchUserRole = async (userId: string, userEmail?: string) => {
     try {
       const { data, error } = await supabase
         .from('user_roles')
@@ -54,19 +54,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const userRole = data.role as AppRole;
         setRole(userRole);
         
-        // Set default school based on user email and role
-        const currentUser = session?.user;
-        if (currentUser?.email) {
-          setDefaultSchoolForUser(currentUser.email, userRole);
+        // Set default school based on user email (passed directly, not from stale state)
+        if (userEmail) {
+          setDefaultSchoolForUser(userEmail, userRole);
         }
       } else if (error) {
         console.warn('Error fetching user role:', error);
-        // Set default role or handle error appropriately
         setRole('student');
       }
     } catch (err) {
       console.error('Exception in fetchUserRole:', err);
       setRole('student');
+    }
+
+    // Database-backed school resolution fallback
+    try {
+      const { data: cred } = await supabase
+        .from('user_credentials')
+        .select('student_id')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (cred?.student_id) {
+        const { data: student } = await supabase
+          .from('students')
+          .select('school')
+          .eq('id', cred.student_id)
+          .maybeSingle();
+        if (student?.school) {
+          setSelectedSchool(student.school.toUpperCase() as SchoolType);
+        }
+      }
+    } catch (err) {
+      console.warn('Could not resolve school from DB:', err);
     }
   };
 
@@ -107,7 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Defer role fetching
         if (session?.user) {
           setTimeout(() => {
-            fetchUserRole(session.user.id);
+            fetchUserRole(session.user.id, session.user.email);
           }, 0);
         } else {
           setRole(null);
@@ -124,7 +143,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchUserRole(session.user.id);
+        fetchUserRole(session.user.id, session.user.email);
       }
       setLoading(false);
     });
