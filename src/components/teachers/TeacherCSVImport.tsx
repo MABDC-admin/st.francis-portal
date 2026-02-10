@@ -387,16 +387,16 @@ export const TeacherCSVImport = () => {
             <div className="border border-border rounded-lg overflow-hidden">
               <div className="max-h-64 overflow-y-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-secondary/50 sticky top-0">
+                  <thead className="bg-teal-600 text-white sticky top-0">
                     <tr>
-                      <th className="px-4 py-2 text-left font-semibold text-muted-foreground">Employee ID</th>
-                      <th className="px-4 py-2 text-left font-semibold text-muted-foreground">Name</th>
-                      <th className="px-4 py-2 text-left font-semibold text-muted-foreground">Email</th>
-                      <th className="px-4 py-2 text-left font-semibold text-muted-foreground">Department</th>
-                      <th className="px-4 py-2 text-left font-semibold text-muted-foreground">Subjects</th>
+                      <th className="px-4 py-2 text-left font-semibold text-white">Employee ID</th>
+                      <th className="px-4 py-2 text-left font-semibold text-white">Name</th>
+                      <th className="px-4 py-2 text-left font-semibold text-white">Email</th>
+                      <th className="px-4 py-2 text-left font-semibold text-white">Department</th>
+                      <th className="px-4 py-2 text-left font-semibold text-white">Subjects</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border">
+                  <tbody className="divide-y divide-border [&>tr:nth-child(even)]:bg-gray-50 dark:[&>tr:nth-child(even)]:bg-gray-800/30">
                     {parsedData.slice(0, 10).map((teacher, i) => (
                       <tr key={i} className="hover:bg-secondary/30">
                         <td className="px-4 py-2 font-mono text-foreground">{teacher.employee_id}</td>

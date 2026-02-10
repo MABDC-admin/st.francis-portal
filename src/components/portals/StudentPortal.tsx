@@ -344,18 +344,18 @@ export const StudentPortal = ({ activeSection = 'dashboard' }: StudentPortalProp
                 ) : grades.length > 0 ? (
                   <div className="overflow-x-auto">
                     <table className="w-full">
-                      <thead>
+                      <thead className="bg-teal-600 text-white">
                         <tr className="border-b">
-                          <th className="text-left py-3 px-2 font-medium">Subject</th>
-                          <th className="text-center py-3 px-2 font-medium">Q1</th>
-                          <th className="text-center py-3 px-2 font-medium">Q2</th>
-                          <th className="text-center py-3 px-2 font-medium">Q3</th>
-                          <th className="text-center py-3 px-2 font-medium">Q4</th>
-                          <th className="text-center py-3 px-2 font-medium">Final</th>
-                          <th className="text-center py-3 px-2 font-medium">Status</th>
+                          <th className="text-left py-3 px-2 font-semibold text-white">Subject</th>
+                          <th className="text-center py-3 px-2 font-semibold text-white">Q1</th>
+                          <th className="text-center py-3 px-2 font-semibold text-white">Q2</th>
+                          <th className="text-center py-3 px-2 font-semibold text-white">Q3</th>
+                          <th className="text-center py-3 px-2 font-semibold text-white">Q4</th>
+                          <th className="text-center py-3 px-2 font-semibold text-white">Final</th>
+                          <th className="text-center py-3 px-2 font-semibold text-white">Status</th>
                         </tr>
                       </thead>
-                      <tbody>
+                      <tbody className="[&>tr:nth-child(even)]:bg-gray-50 dark:[&>tr:nth-child(even)]:bg-gray-800/30">
                         {grades.map((grade: any) => {
                           const finalGrade = grade.final_grade;
                           const passing = isPassing(finalGrade);

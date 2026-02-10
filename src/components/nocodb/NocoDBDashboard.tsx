@@ -205,14 +205,14 @@ export const NocoDBDashboard = () => {
 
           <div className="border rounded-lg overflow-auto max-h-[600px]">
             <table className="w-full text-sm">
-              <thead className="bg-muted/50 sticky top-0">
+              <thead className="bg-teal-600 text-white sticky top-0">
                 <tr>
                   {columns.map(col => (
-                    <th key={col} className="px-4 py-2 text-left font-medium text-muted-foreground whitespace-nowrap">{col}</th>
+                    <th key={col} className="px-4 py-2 text-left font-semibold text-white whitespace-nowrap">{col}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="[&>tr:nth-child(even)]:bg-gray-50 dark:[&>tr:nth-child(even)]:bg-gray-800/30">
                 {filteredRecords.map((record, idx) => (
                   <tr key={idx} className="border-t hover:bg-muted/30">
                     {columns.map(col => (

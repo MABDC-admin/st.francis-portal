@@ -281,15 +281,15 @@ export const CSVImport = () => {
           <div className="border border-border rounded-lg overflow-hidden">
             <div className="max-h-64 overflow-y-auto">
               <table className="w-full text-sm">
-                <thead className="bg-secondary/50 sticky top-0">
+                <thead className="bg-teal-600 text-white sticky top-0">
                   <tr>
-                    <th className="px-4 py-2 text-left font-semibold text-muted-foreground">LRN</th>
-                    <th className="px-4 py-2 text-left font-semibold text-muted-foreground">Name</th>
-                    <th className="px-4 py-2 text-left font-semibold text-muted-foreground">Level</th>
-                    <th className="px-4 py-2 text-left font-semibold text-muted-foreground">Gender</th>
+                    <th className="px-4 py-2 text-left font-semibold text-white">LRN</th>
+                    <th className="px-4 py-2 text-left font-semibold text-white">Name</th>
+                    <th className="px-4 py-2 text-left font-semibold text-white">Level</th>
+                    <th className="px-4 py-2 text-left font-semibold text-white">Gender</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody className="divide-y divide-border [&>tr:nth-child(even)]:bg-gray-50 dark:[&>tr:nth-child(even)]:bg-gray-800/30">
                   {parsedData.slice(0, 10).map((student, i) => {
                     const isTempLRN = student.lrn.startsWith('TEMP-');
                     return (

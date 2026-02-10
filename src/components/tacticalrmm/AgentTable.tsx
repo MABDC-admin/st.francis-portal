@@ -4,17 +4,17 @@ import type { Agent } from './types';
 export const AgentTable = ({ agents, loading, onSelect }: { agents: Agent[]; loading: boolean; onSelect: (a: Agent) => void }) => (
   <div className="border rounded-lg overflow-auto max-h-[500px]">
     <table className="w-full text-sm">
-      <thead className="bg-muted/50 sticky top-0">
+      <thead className="bg-teal-600 text-white sticky top-0">
         <tr>
-          <th className="px-4 py-2 text-left font-medium text-muted-foreground">Status</th>
-          <th className="px-4 py-2 text-left font-medium text-muted-foreground">Name</th>
-          <th className="px-4 py-2 text-left font-medium text-muted-foreground">Site</th>
-          <th className="px-4 py-2 text-left font-medium text-muted-foreground">OS</th>
-          <th className="px-4 py-2 text-left font-medium text-muted-foreground">Last Seen</th>
-          <th className="px-4 py-2 text-left font-medium text-muted-foreground">Flags</th>
+          <th className="px-4 py-2 text-left font-semibold text-white">Status</th>
+          <th className="px-4 py-2 text-left font-semibold text-white">Name</th>
+          <th className="px-4 py-2 text-left font-semibold text-white">Site</th>
+          <th className="px-4 py-2 text-left font-semibold text-white">OS</th>
+          <th className="px-4 py-2 text-left font-semibold text-white">Last Seen</th>
+          <th className="px-4 py-2 text-left font-semibold text-white">Flags</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody className="[&>tr:nth-child(even)]:bg-gray-50 dark:[&>tr:nth-child(even)]:bg-gray-800/30">
         {agents.map(agent => (
           <tr key={agent.agent_id} className="border-t hover:bg-muted/30 cursor-pointer" onClick={() => onSelect(agent)}>
             <td className="px-4 py-2">
