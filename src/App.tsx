@@ -15,8 +15,6 @@ import Auth from "./pages/Auth";
 import Attendance from "./pages/Attendance";
 import NotFound from "./pages/NotFound";
 import Install from "./pages/Install";
-import RMM from "./pages/RMM";
-import RMMLive from "./pages/RMMLive";
 import { ZoomRunner } from "./components/zoom/ZoomRunner";
 
 const queryClient = new QueryClient();
@@ -66,8 +64,6 @@ const App = () => {
                       <Route path="/library/book/:bookId" element={<Index />} />
                       <Route path="/student/:id" element={<StudentProfile />} />
                       <Route path="/admin/zoom-runner" element={<ZoomRunner />} />
-                      <Route path="/rmm" element={<RMM />} />
-                      <Route path="/rmm-live" element={<RMMLive />} />
                       <Route path="/install" element={<Install />} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                       <Route path="*" element={<NotFound />} />

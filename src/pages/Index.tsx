@@ -68,9 +68,9 @@ import { NocoDBDashboard } from '@/components/nocodb/NocoDBDashboard';
 import { GoogleDocsDashboard } from '@/components/googledocs/GoogleDocsDashboard';
 import { ExcalidrawDashboard } from '@/components/excalidraw/ExcalidrawDashboard';
 import { OmadaDashboard } from '@/components/omada/OmadaDashboard';
+import { TacticalRMMDashboard } from '@/components/tacticalrmm/TacticalRMMDashboard';
 import { DocumizeDashboard } from '@/components/documize/DocumizeDashboard';
 import { ImpersonatePage } from '@/components/admin/ImpersonatePage';
-import RMM from './RMM';
 
 // Management CRUD Components
 import { AttendanceManagement, ScheduleManagement, AssignmentManagement, ExamScheduleManagement, AnnouncementManagement } from '@/components/management';
@@ -531,7 +531,7 @@ const Index = () => {
       {activeTab === 'onlyoffice' && role === 'admin' && <GoogleDocsDashboard />}
       {activeTab === 'excalidraw' && role === 'admin' && <ExcalidrawDashboard />}
       {activeTab === 'omada' && role === 'admin' && <OmadaDashboard />}
-      {activeTab === 'tacticalrmm' && role === 'admin' && <RMM />}
+      {activeTab === 'tacticalrmm' && role === 'admin' && <TacticalRMMDashboard />}
       {activeTab === 'documize' && role === 'admin' && <DocumizeDashboard />}
 
       {/* Impersonate - Admin only */}
