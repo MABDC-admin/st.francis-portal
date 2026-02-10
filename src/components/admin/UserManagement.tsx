@@ -57,8 +57,8 @@ export const UserManagement = () => {
   ];
 
   // Form states for creating accounts
-  const [adminForm, setAdminForm] = useState({ email: 'denskie@edutrack.local', password: 'Denskie123', fullName: 'Admin User' });
-  const [registrarForm, setRegistrarForm] = useState({ email: 'registrar@edutrack.local', password: 'registrar123', fullName: 'Registrar User' });
+  const [adminForm, setAdminForm] = useState({ email: '', password: '', fullName: '' });
+  const [registrarForm, setRegistrarForm] = useState({ email: '', password: '', fullName: '' });
 
   const fetchCredentials = async () => {
     // Fetch credentials with student info
@@ -563,7 +563,8 @@ export const UserManagement = () => {
         </Card>
       </div>
 
-      {/* Credentials Table */}
+      {/* Credentials Table - HIDDEN */}
+      {/*
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -751,6 +752,7 @@ export const UserManagement = () => {
           )}
         </CardContent>
       </Card>
+      */}
 
       {/* Reset Student Accounts Dialog */}
       <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>

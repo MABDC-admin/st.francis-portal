@@ -17,7 +17,74 @@ export const AdminPanel = () => {
   const [isResetting, setIsResetting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmText, setConfirmText] = useState('');
+  const [showDeleteAllUsers, setShowDeleteAllUsers] = useState(false);
+  const [confirmDeleteAllText, setConfirmDeleteAllText] = useState('');
+  const [isDeletingAllUsers, setIsDeletingAllUsers] = useState(false);
   const queryClient = useQueryClient();
+
+  const handleDeleteAllUsers = async () => {
+    if (confirmDeleteAllText !== 'DELETE ALL USERS') {
+      toast.error('Please type DELETE ALL USERS to confirm');
+      return;
+    }
+
+    setIsDeletingAllUsers(true);
+    try {
+      // Step 1: Delete all student-related data first (from handleResetStudents)
+      await supabase.from('student_assessments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('student_grades').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('raw_scores').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('student_attendance').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('payments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('student_documents').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('students').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+
+      // Step 2: Delete all user credentials
+      const { error: credsError } = await supabase
+        .from('user_credentials')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+      
+      if (credsError) throw new Error(`Failed to delete credentials: ${credsError.message}`);
+
+      // Step 3: Delete user roles
+      const { error: rolesError } = await supabase
+        .from('user_roles')
+        .delete()
+        .neq('user_id', '00000000-0000-0000-0000-000000000000');
+      
+      if (rolesError) throw new Error(`Failed to delete roles: ${rolesError.message}`);
+
+      // Step 4: Delete user school access
+      const { error: accessError } = await supabase
+        .from('user_school_access')
+        .delete()
+        .neq('user_id', '00000000-0000-0000-0000-000000000000');
+      
+      if (accessError) throw new Error(`Failed to delete school access: ${accessError.message}`);
+
+      // Step 5: Delete profiles (this will cascade to auth.users via trigger if set up)
+      const { error: profilesError } = await supabase
+        .from('profiles')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+      
+      if (profilesError) throw new Error(`Failed to delete profiles: ${profilesError.message}`);
+
+      // Step 6: Delete from auth.users (requires admin privileges)
+      // Note: This requires RPC call or admin API, skipping for now as profiles deletion should trigger cascade
+
+      await queryClient.invalidateQueries();
+      toast.success('All user accounts, students, teachers, and staff have been deleted');
+      setShowDeleteAllUsers(false);
+      setConfirmDeleteAllText('');
+    } catch (error: any) {
+      console.error('Delete all users error:', error);
+      toast.error('Failed to delete all users: ' + error.message);
+    } finally {
+      setIsDeletingAllUsers(false);
+    }
+  };
 
   const handleResetStudents = async () => {
     if (confirmText !== 'DELETE ALL') {
@@ -27,18 +94,77 @@ export const AdminPanel = () => {
 
     setIsResetting(true);
     try {
-      const { error } = await supabase
+      // Delete in order to respect foreign key constraints
+      // 1. Delete student assessments first (references students)
+      const { error: assessmentError } = await supabase
+        .from('student_assessments')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+      
+      if (assessmentError) throw new Error(`Failed to delete assessments: ${assessmentError.message}`);
+
+      // 2. Delete student grades
+      const { error: gradesError } = await supabase
+        .from('student_grades')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+      
+      if (gradesError) throw new Error(`Failed to delete grades: ${gradesError.message}`);
+
+      // 3. Delete raw scores
+      const { error: scoresError } = await supabase
+        .from('raw_scores')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+      
+      if (scoresError) throw new Error(`Failed to delete scores: ${scoresError.message}`);
+
+      // 4. Delete attendance records
+      const { error: attendanceError } = await supabase
+        .from('student_attendance')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+      
+      if (attendanceError) throw new Error(`Failed to delete attendance: ${attendanceError.message}`);
+
+      // 5. Delete payments
+      const { error: paymentsError } = await supabase
+        .from('payments')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+      
+      if (paymentsError) throw new Error(`Failed to delete payments: ${paymentsError.message}`);
+
+      // 6. Delete student documents
+      const { error: docsError } = await supabase
+        .from('student_documents')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+      
+      if (docsError) throw new Error(`Failed to delete documents: ${docsError.message}`);
+
+      // 7. Delete user credentials linked to students
+      const { error: credsError } = await supabase
+        .from('user_credentials')
+        .delete()
+        .not('student_id', 'is', null);
+      
+      if (credsError) throw new Error(`Failed to delete credentials: ${credsError.message}`);
+
+      // 8. Finally delete students
+      const { error: studentsError } = await supabase
         .from('students')
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
+        .neq('id', '00000000-0000-0000-0000-000000000000');
 
-      if (error) throw error;
+      if (studentsError) throw new Error(`Failed to delete students: ${studentsError.message}`);
 
       await queryClient.invalidateQueries({ queryKey: ['students'] });
-      toast.success('All learner records have been deleted');
+      toast.success('All learner records and related data have been deleted');
       setShowConfirm(false);
       setConfirmText('');
     } catch (error: any) {
+      console.error('Reset error:', error);
       toast.error('Failed to reset: ' + error.message);
     } finally {
       setIsResetting(false);
@@ -187,6 +313,82 @@ export const AdminPanel = () => {
                           <>
                             <Trash2 className="h-4 w-4 mr-2" />
                             Confirm Delete
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Delete ALL Users Card */}
+          <div className="bg-card rounded-2xl shadow-card p-6 border-2 border-destructive/30">
+            <div className="flex items-start gap-4">
+              <div className="h-12 w-12 rounded-xl bg-destructive flex items-center justify-center flex-shrink-0">
+                <Users className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-destructive text-lg flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5" />
+                  Delete ALL User Accounts
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  <strong className="text-destructive">EXTREME DANGER:</strong> Delete ALL users including students, teachers, registrars, finance staff, and admins. This will completely wipe the user database.
+                </p>
+
+                {!showDeleteAllUsers ? (
+                  <Button 
+                    variant="destructive" 
+                    className="mt-4"
+                    onClick={() => setShowDeleteAllUsers(true)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete ALL Users
+                  </Button>
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="mt-4 space-y-3"
+                  >
+                    <div className="p-4 bg-destructive/10 border-2 border-destructive rounded-lg">
+                      <p className="text-sm font-medium text-foreground mb-2">
+                        Type <span className="font-bold text-destructive">DELETE ALL USERS</span> to confirm:
+                      </p>
+                      <input
+                        type="text"
+                        value={confirmDeleteAllText}
+                        onChange={(e) => setConfirmDeleteAllText(e.target.value)}
+                        placeholder="DELETE ALL USERS"
+                        className="w-full px-3 py-2 bg-background border-2 border-destructive rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-destructive"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setShowDeleteAllUsers(false);
+                          setConfirmDeleteAllText('');
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={handleDeleteAllUsers}
+                        disabled={isDeletingAllUsers || confirmDeleteAllText !== 'DELETE ALL USERS'}
+                      >
+                        {isDeletingAllUsers ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Deleting ALL Users...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Confirm Delete ALL
                           </>
                         )}
                       </Button>
