@@ -119,6 +119,7 @@ export type Database = {
           school: string | null
           school_id: string
           status: string
+          strand: string | null
           student_name: string
           uae_address: string | null
           updated_at: string
@@ -145,6 +146,7 @@ export type Database = {
           school?: string | null
           school_id: string
           status?: string
+          strand?: string | null
           student_name: string
           uae_address?: string | null
           updated_at?: string
@@ -171,6 +173,7 @@ export type Database = {
           school?: string | null
           school_id?: string
           status?: string
+          strand?: string | null
           student_name?: string
           uae_address?: string | null
           updated_at?: string
@@ -3535,6 +3538,7 @@ export type Database = {
           religion: string | null
           school: string | null
           school_id: string
+          strand: string | null
           student_name: string
           uae_address: string | null
           updated_at: string
@@ -3560,6 +3564,7 @@ export type Database = {
           religion?: string | null
           school?: string | null
           school_id: string
+          strand?: string | null
           student_name: string
           uae_address?: string | null
           updated_at?: string
@@ -3585,6 +3590,7 @@ export type Database = {
           religion?: string | null
           school?: string | null
           school_id?: string
+          strand?: string | null
           student_name?: string
           uae_address?: string | null
           updated_at?: string
