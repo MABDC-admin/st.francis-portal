@@ -190,6 +190,7 @@ const icon3DMap: Record<string, any> = {
   'finance-config': AdminIcon3D,
   'finance-learners': StudentIcon3D,
   'helpdesk': AdminIcon3D,
+  'admissions': EnrollmentIcon3D,
 };
 
 // Icon mapping for Apple style icons
@@ -265,6 +266,7 @@ const iconAppleMap: Record<string, any> = {
   'finance-config': AppleAdminIcon,
   'finance-learners': AppleStudentIcon,
   'helpdesk': AppleAdminIcon,
+  'admissions': AppleEnrollmentIcon,
 };
 
 // Hierarchical navigation structure for each role
@@ -281,6 +283,7 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
           items: [
             { id: 'students', icon: StudentIcon3D, label: 'Learners' },
             { id: 'lis', icon: StudentIcon3D, label: 'LIS' },
+            { id: 'admissions', icon: EnrollmentIcon3D, label: 'Admissions' },
             { id: 'enrollment', icon: EnrollmentIcon3D, label: 'New Learner' },
             { id: 'import', icon: ImportIcon3D, label: 'Import CSV' },
             { id: 'attendance-mgmt', icon: ScheduleIcon3D, label: 'Attendance' },
@@ -356,6 +359,7 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
           items: [
             { id: 'students', icon: StudentIcon3D, label: 'Learners' },
             { id: 'lis', icon: StudentIcon3D, label: 'LIS' },
+            { id: 'admissions', icon: EnrollmentIcon3D, label: 'Admissions' },
             { id: 'enrollment', icon: EnrollmentIcon3D, label: 'New Learner' },
             { id: 'import', icon: ImportIcon3D, label: 'Import CSV' },
             { id: 'attendance-mgmt', icon: ScheduleIcon3D, label: 'Attendance' },
