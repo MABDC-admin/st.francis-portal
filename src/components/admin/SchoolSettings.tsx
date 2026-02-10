@@ -461,7 +461,7 @@ export const SchoolSettings = () => {
               <Input
                 value={formData.acronym || ''}
                 onChange={(e) => setFormData({ ...formData, acronym: e.target.value })}
-                placeholder="e.g., MABDC"
+                placeholder="e.g., SFXSAI"
               />
             </div>
             <div className="space-y-2">

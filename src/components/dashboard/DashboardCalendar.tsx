@@ -246,8 +246,7 @@ export const DashboardCalendar = () => {
                   <SelectValue placeholder="School" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="MABDC">MABDC</SelectItem>
-                  <SelectItem value="STFXSA">STFXSA</SelectItem>
+                  <SelectItem value="SFXSAI">SFXSAI</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -278,8 +277,7 @@ export const DashboardCalendar = () => {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="MABDC">MABDC</SelectItem>
-                                <SelectItem value="STFXSA">STFXSA</SelectItem>
+                                <SelectItem value="SFXSAI">SFXSAI</SelectItem>
                               </SelectContent>
                             </Select>
                             <div className="h-4 w-px bg-slate-300 dark:bg-slate-700 mx-1" />

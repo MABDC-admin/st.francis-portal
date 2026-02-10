@@ -84,7 +84,7 @@ export const StudentDetailPanel = ({ student }: StudentDetailPanelProps) => {
     { label: 'Age', value: student.age?.toString() || '-', icon: User },
     { label: 'Religion', value: student.religion || '-', icon: Heart },
     { label: 'Philippine Address', value: student.phil_address || '-', icon: MapPin, span: true },
-    ...(student.school === 'MABDC' ? [{ label: 'UAE Address', value: student.uae_address || '-', icon: MapPin, span: true }] : []),
+    
     {
       label: 'Father',
       value: student.father_name

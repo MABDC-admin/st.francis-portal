@@ -112,12 +112,9 @@ export const UserManagement = () => {
       let matchesSchool = true;
       if (schoolFilter !== 'all') {
         const school = cred.student_school?.toUpperCase() || '';
-        if (schoolFilter === 'MABDC') {
-          matchesSchool = school.includes('MABDC') || (cred.role === 'student' && !cred.student_school);
-        } else if (schoolFilter === 'STFXSA') {
-          matchesSchool = school.includes('STFXSA') || school.includes('ST. FRANCIS');
+        if (schoolFilter === 'SFXSAI') {
+          matchesSchool = school.includes('SFXSAI') || school.includes('ST. FRANCIS') || (cred.role === 'student' && !cred.student_school);
         }
-        // Non-student roles only show in "All Schools"
         if (cred.role !== 'student') matchesSchool = false;
       }
       return matchesLevel && matchesRole && matchesSchool;
@@ -668,11 +665,7 @@ export const UserManagement = () => {
                       </TableCell>
                       <TableCell>
                         {cred.student_school ? (
-                          <Badge variant="secondary" className="text-xs">
-                            {cred.student_school?.toUpperCase().includes('SFXSAI') ? 'SFXSAI' :
-                             cred.student_school?.toUpperCase().includes('STFXSA') || cred.student_school?.toUpperCase().includes('ST. FRANCIS') ? 'SFXSAI' : 
-                             cred.student_school}
-                          </Badge>
+                          <Badge variant="secondary" className="text-xs">SFXSAI</Badge>
                         ) : '-'}
                       </TableCell>
                       <TableCell>

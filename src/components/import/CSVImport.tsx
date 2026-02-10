@@ -72,7 +72,7 @@ export const CSVImport = () => {
           lrn: hasLRN || generateTempLRN(index),
           student_name: row.student_name?.trim(),
           level: row.level?.trim() || 'Level 1',
-          school: 'MABDC', // Default to MABDC for CSV imports
+          school: 'SFXSAI', // Default to SFXSAI for CSV imports
           birth_date: parseDate(row.birth_date),
           age: row.age ? parseInt(row.age) : undefined,
           gender: row.gender?.trim().toUpperCase(),

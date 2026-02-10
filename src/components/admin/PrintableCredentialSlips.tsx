@@ -137,7 +137,7 @@ export const PrintableCredentialSlips = forwardRef<HTMLDivElement, PrintableCred
               <div className="slip-content">
                 <div className="slip-field" style={{ gridColumn: '1 / -1' }}>
                   <label>Portal Link</label>
-                  <div className="value" style={{ color: '#0066cc', fontWeight: 'bold' }}>https://mabdc.com</div>
+                  <div className="value" style={{ color: '#0066cc', fontWeight: 'bold' }}>https://sfxsai.edu</div>
                 </div>
 
                 <div className="slip-field" style={{ gridColumn: '1 / -1' }}>

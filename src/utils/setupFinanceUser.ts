@@ -1,7 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Setup function for the finance user ivyan@stfxsa.org
+ * Setup function for the finance user ivyan@sfxsai.org
  * This ensures the user has proper school access and role assignments
  */
 export async function setupFinanceUser() {
@@ -42,7 +42,7 @@ export async function setupFinanceUser() {
       return { success: false, error: roleError.message };
     }
     
-    // 3. Get STFXSA school ID
+    // 3. Get SFXSAI school ID
     const { data: schools, error: schoolError } = await supabase
       .from('schools')
       .select('id')

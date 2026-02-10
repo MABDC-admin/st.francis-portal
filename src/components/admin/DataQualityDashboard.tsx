@@ -38,7 +38,7 @@ export const DataQualityDashboard = () => {
 
   // Students table uses text 'school' column, not UUID school_id
   const getStudentSchoolFilter = (query: any) => {
-    return query.or('school.ilike.%sfxsai%,school.ilike.%stfxsa%,school.ilike.%st. francis%');
+    return query.eq('school', 'SFXSAI');
   };
   const [issues, setIssues] = useState<ValidationIssue[]>([]);
   const [isLoading, setIsLoading] = useState(false);

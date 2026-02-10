@@ -98,7 +98,7 @@ export const AcademicHistoryTab = ({ student }: AcademicHistoryTabProps) => {
               </div>
               <div>
                 <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">School</p>
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.school || 'MABDC'}</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.school || 'SFXSAI'}</p>
               </div>
               <div>
                 <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Previous School</p>

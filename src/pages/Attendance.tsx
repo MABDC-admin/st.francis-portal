@@ -121,7 +121,7 @@ export const Attendance = () => {
                 return;
             }
 
-            const schoolToUse = student.school_id || 'MABDC';
+            const schoolToUse = student.school_id || 'SFXSAI';
             const academicYearToUse = selectedYearId || student.academic_year_id;
             const today = format(new Date(), 'yyyy-MM-dd');
             const timeStr = format(new Date(), 'HH:mm:ss');

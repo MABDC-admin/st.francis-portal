@@ -14,7 +14,7 @@ export const useStudents = () => {
       const { data, error } = await supabase
         .from('students')
         .select('*, student_grades(q1_grade, q2_grade, q3_grade, q4_grade)')
-        .or('school.ilike.%sfxsai%,school.ilike.%stfxsa%,school.ilike.%st. francis%')
+        .eq('school', 'SFXSAI')
         .order('student_name', { ascending: true });
 
       if (error) throw error;

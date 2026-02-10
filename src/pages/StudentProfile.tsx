@@ -732,7 +732,7 @@ const StudentProfile = () => {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.4, delay: 0.3 }}
                 >
-                  {student.lrn} • {student.level} • {student.school || 'MABDC'}
+                  {student.lrn} • {student.level} • {student.school || 'SFXSAI'}
                 </motion.p>
 
                 <motion.div
@@ -925,16 +925,7 @@ const StudentProfile = () => {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {student.school === 'MABDC' && (
-                        <div className="space-y-1">
-                          <Label className="text-xs">UAE Address</Label>
-                          <Textarea
-                            value={studentForm.uae_address}
-                            onChange={(e) => setStudentForm({ ...studentForm, uae_address: e.target.value })}
-                            rows={2}
-                          />
-                        </div>
-                      )}
+                      
                       <div className="space-y-1">
                         <Label className="text-xs">Philippine Address</Label>
                         <Textarea
@@ -1043,12 +1034,7 @@ const StudentProfile = () => {
                   </div>
                   <div className="p-5 bg-gradient-to-br from-amber-50/50 to-white dark:from-slate-800/50 dark:to-slate-900 relative z-10">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {student.school === 'MABDC' && (
-                        <div>
-                          <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">UAE Address</p>
-                          <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.uae_address || 'Not provided'}</p>
-                        </div>
-                      )}
+                      
                       <div>
                         <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">Philippine Address</p>
                         <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.phil_address || 'Not provided'}</p>
@@ -1109,8 +1095,7 @@ const StudentProfile = () => {
                           <SelectValue placeholder="Select school" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="MABDC">MABDC</SelectItem>
-                          <SelectItem value="STFXSA">STFXSA</SelectItem>
+                          <SelectItem value="SFXSAI">SFXSAI</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1145,7 +1130,7 @@ const StudentProfile = () => {
                       </div>
                       <div>
                         <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">School</p>
-                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.school || 'MABDC'}</p>
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.school || 'SFXSAI'}</p>
                       </div>
                       <div>
                         <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Previous School</p>

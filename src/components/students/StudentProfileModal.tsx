@@ -176,7 +176,7 @@ export const StudentProfileModal = ({ student, isOpen, onClose }: StudentProfile
                     </Badge>
                   </div>
                   <p className="text-sm text-white/80">
-                    {student.lrn} • {student.level} • {student.school || 'MABDC'}
+                    {student.lrn} • {student.level} • {student.school || 'SFXSAI'}
                   </p>
                 </div>
               </div>
