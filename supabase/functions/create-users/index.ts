@@ -163,9 +163,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       // Apply school filter
       if (school && school !== 'all') {
-        if (school === 'SFXSAI') {
-          query = query.or('school.ilike.%sfxsai%,school.ilike.%stfxsa%,school.ilike.%st. francis%');
-        }
+        query = query.eq('school', school);
       }
 
       // Apply grade level filter
