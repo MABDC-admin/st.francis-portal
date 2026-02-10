@@ -9,7 +9,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Search, CreditCard, Plus, User, Receipt, Banknote, Wallet, DollarSign, Printer, Pencil } from 'lucide-react';
+import { Search, CreditCard, Plus, User, Receipt, Banknote, Wallet, DollarSign, Printer, Pencil, CalendarIcon } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
@@ -106,12 +110,14 @@ export const PaymentCollection = () => {
     payment_method: 'cash',
     reference_number: '',
     notes: '',
+    payment_date: new Date(),
   });
   const [editForm, setEditForm] = useState({
     amount: '',
     payment_method: 'cash',
     reference_number: '',
     notes: '',
+    payment_date: new Date(),
   });
 
   const { data: schoolData } = useQuery({
@@ -219,6 +225,7 @@ export const PaymentCollection = () => {
         status: 'verified',
         or_number: orNumber,
         receipt_type: 'OR',
+        payment_date: paymentForm.payment_date.toISOString(),
       });
       if (payErr) throw payErr;
 
@@ -297,6 +304,7 @@ export const PaymentCollection = () => {
         status: 'verified',
         or_number: orNumber,
         receipt_type: 'OR',
+        payment_date: editForm.payment_date.toISOString(),
       });
       if (payErr) throw payErr;
 
@@ -343,7 +351,7 @@ export const PaymentCollection = () => {
     setStudentSearch('');
     setSelectedStudent(null);
     setSelectedAssessment(null);
-    setPaymentForm({ amount: '', payment_method: 'cash', reference_number: '', notes: '' });
+    setPaymentForm({ amount: '', payment_method: 'cash', reference_number: '', notes: '', payment_date: new Date() });
   };
 
   const openEditDialog = (payment: any) => {
@@ -353,6 +361,7 @@ export const PaymentCollection = () => {
       payment_method: payment.payment_method || 'cash',
       reference_number: payment.reference_number || '',
       notes: '',
+      payment_date: payment.payment_date ? new Date(payment.payment_date) : new Date(),
     });
     setEditDialogOpen(true);
   };
@@ -525,6 +534,27 @@ export const PaymentCollection = () => {
                     </div>
                   )}
                   <div className="space-y-2">
+                    <Label>Payment Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !paymentForm.payment_date && "text-muted-foreground")}>
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {paymentForm.payment_date ? format(paymentForm.payment_date, 'PPP') : <span>Pick a date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={paymentForm.payment_date}
+                          onSelect={(date) => date && setPaymentForm(f => ({ ...f, payment_date: date }))}
+                          disabled={(date) => date > new Date()}
+                          initialFocus
+                          className={cn("p-3 pointer-events-auto")}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div className="space-y-2">
                     <Label>Notes (optional)</Label>
                     <Textarea value={paymentForm.notes} onChange={(e) => setPaymentForm(f => ({ ...f, notes: e.target.value }))} placeholder="Additional remarks..." rows={2} />
                   </div>
@@ -577,6 +607,27 @@ export const PaymentCollection = () => {
                   <Input value={editForm.reference_number} onChange={(e) => setEditForm(f => ({ ...f, reference_number: e.target.value }))} />
                 </div>
               )}
+              <div className="space-y-2">
+                <Label>Payment Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !editForm.payment_date && "text-muted-foreground")}>
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {editForm.payment_date ? format(editForm.payment_date, 'PPP') : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={editForm.payment_date}
+                      onSelect={(date) => date && setEditForm(f => ({ ...f, payment_date: date }))}
+                      disabled={(date) => date > new Date()}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
               <div className="space-y-2">
                 <Label>Notes (optional)</Label>
                 <Textarea value={editForm.notes} onChange={(e) => setEditForm(f => ({ ...f, notes: e.target.value }))} placeholder="Reason for correction..." rows={2} />
