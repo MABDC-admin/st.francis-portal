@@ -60,7 +60,7 @@ export const LISAcademicHistory = ({ studentId }: LISAcademicHistoryProps) => {
       const { data: studentRecords } = await supabase
         .from('students')
         .select('level, school, academic_year_id')
-        .eq('lrn', (await supabase.from('students').select('lrn').eq('id', studentId).single()).data?.lrn || '')
+        .eq('lrn', (await supabase.from('students').select('lrn').eq('id', studentId).maybeSingle()).data?.lrn || '')
         .order('created_at', { ascending: false });
 
       // Fetch school names

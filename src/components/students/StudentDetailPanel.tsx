@@ -42,15 +42,22 @@ export const StudentDetailPanel = ({ student }: StudentDetailPanelProps) => {
 
   useEffect(() => {
     const fetchCurrentYear = async () => {
-      const { data } = await supabase
+      let query = supabase
         .from('academic_years')
         .select('id')
-        .eq('is_current', true)
-        .single();
+        .eq('is_current', true);
+
+      if (student.school_id) {
+        query = query.eq('school_id', student.school_id);
+      } else {
+        query = query.limit(1);
+      }
+
+      const { data } = await query.maybeSingle();
       if (data) setCurrentAcademicYearId(data.id);
     };
     fetchCurrentYear();
-  }, []);
+  }, [student.school_id]);
 
   // Reset tab when student changes
   useEffect(() => {
@@ -245,8 +252,9 @@ export const StudentDetailPanel = ({ student }: StudentDetailPanelProps) => {
               currentAcademicYearId ? (
                 <TransmutationManager student={student} academicYearId={currentAcademicYearId} />
               ) : (
-                <div className="flex items-center justify-center h-64">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+                  <Calculator className="h-10 w-10 mb-2 opacity-30" />
+                  <p className="text-sm">No active academic year found for this school.</p>
                 </div>
               )
             )}
