@@ -1,113 +1,78 @@
 
 
-# Enrollment Fix + Admissions Page Plan
+# Move Learner Form into Admissions + STFXSA Address Fix
 
-## Part 1: Root Cause of "Enrollment failed" Error
+## Summary
 
-The `students` table has two NOT NULL columns with no defaults:
-- `school_id` (uuid, NOT NULL)
-- `academic_year_id` (uuid, NOT NULL)
+Replace the simple "New Application" dialog in AdmissionsPage with the full multi-step EnrollmentWizard (the "New Learner" form), so that for STFXSA the enrollment flow lives inside Admissions. Also fix the STFXSA form to show only Philippine Address (no UAE Address), fix RLS policies, and clean up navigation.
 
-**Root cause**: When `selectedYearId` from `AcademicYearContext` is `null` (e.g. academic years haven't loaded yet, or the school code fails to resolve to a UUID), the enrollment form passes `academic_year_id: undefined`, which violates the NOT NULL constraint. The `useCreateStudent` hook does map school text codes to UUIDs, but if the mapping fails or the school code is unrecognized, `school_id` will also be missing.
+## Changes
 
-**Fix**: Add a pre-submit guard in `EnrollmentWizard.tsx` and `EnrollmentForm.tsx` that blocks submission and shows a clear error if `selectedYearId` or the resolved `school_id` is missing. Also log the actual error message from the database instead of the generic "Enrollment failed" text.
+### 1. AdmissionsPage.tsx -- Replace inline dialog with EnrollmentWizard
 
-## Part 2: New Admissions Page
+Currently the "New Application" button opens a basic dialog with flat input fields. Instead:
 
-Create an Admissions workflow within the Learner Records group for Admin and Registrar roles. This captures enrollment applications with an approval status before they become full student records.
+- Replace the `showAddDialog` state with a `showWizard` boolean
+- When `showWizard` is true, render a full-screen Dialog containing the `EnrollmentWizard` component (modified to accept a `mode` prop)
+- On successful enrollment from the wizard, also insert a row into the `admissions` table with status `'approved'` (since it was created directly by Registrar/Admin) and close the wizard
+- Alternatively (simpler approach): Replace the simple dialog form with the existing EnrollmentWizard component embedded directly, using a `submitToAdmissions` prop that inserts into `admissions` table instead of `students` table, with status `'pending'`
 
-### Database Changes
+**Chosen approach**: Embed the EnrollmentWizard inside AdmissionsPage's dialog. Add a prop `onAdmissionSubmit` to EnrollmentWizard that, when provided, submits to the `admissions` table instead of `students`. This keeps the multi-step wizard experience (Student Info, Parent Info, Address, Agreement) for new applications.
 
-**New table: `admissions`**
-- `id` (uuid, PK, default gen_random_uuid())
-- `student_name` (text, NOT NULL)
-- `lrn` (text, nullable -- may not have one yet)
-- `level` (text, NOT NULL)
-- `school` (text)
-- `school_id` (uuid, NOT NULL)
-- `academic_year_id` (uuid, NOT NULL)
-- `birth_date` (date)
-- `gender` (text)
-- `mother_maiden_name` (text)
-- `mother_contact` (text)
-- `father_name` (text)
-- `father_contact` (text)
-- `phil_address` (text)
-- `uae_address` (text)
-- `previous_school` (text)
-- `parent_email` (text) -- for notification emails
-- `status` (text, default 'pending') -- pending, approved, rejected
-- `reviewed_by` (uuid, references auth.users)
-- `reviewed_at` (timestamptz)
-- `rejection_reason` (text)
-- `created_by` (uuid, references auth.users)
-- `created_at` (timestamptz, default now())
-- `updated_at` (timestamptz, default now())
+### 2. AddressInfoStep.tsx -- Fix STFXSA address fields
 
-**RLS policies**: Admin and Registrar (via `has_role` and `user_has_school_access`) can SELECT, INSERT, UPDATE. No DELETE (audit trail).
+Currently STFXSA shows Philippine Address and MABDC shows UAE Address. This is already correct per the existing code. But the user wants to confirm UAE address is NOT shown for STFXSA. The current code already handles this correctly:
+- `formData.school === 'STFXSA'` shows Phil Address
+- `formData.school === 'MABDC'` shows UAE Address
 
-**New table: `admission_audit_logs`**
-- `id`, `admission_id`, `action` (submitted/approved/rejected), `performed_by`, `details` (jsonb), `created_at`
+No change needed here unless the form is not receiving the correct `school` value. Will verify and ensure `school` is always set from context.
 
-### Email Integration
+### 3. DashboardLayout.tsx -- Remove "New Learner" nav item for STFXSA
 
-- Require user to add `RESEND_API_KEY` secret
-- Create edge function `send-admission-email/index.ts` that sends:
-  - **On approval**: Email to parent (from `enrollment@mabdc.com`) confirming acceptance
-  - **On approval**: Email to admin notifying of the approval action
-- Uses Resend API with sender `Enrollment <enrollment@mabdc.com>`
+Since the learner form is now inside Admissions for STFXSA, remove the standalone "New Learner" (`enrollment`) nav item from the sidebar for both Admin and Registrar roles, or conditionally hide it when school is STFXSA (keeping it for MABDC if needed).
 
-### Frontend Components
+**Decision**: Remove the `enrollment` nav item entirely since all new applications should go through Admissions. The enrollment wizard will be accessible via the "New Application" button inside Admissions.
 
-1. **`src/components/admissions/AdmissionsPage.tsx`** -- Main page with:
-   - Table of all admission applications (filterable by status: All, Pending, Approved, Rejected)
-   - Search by student name or LRN
-   - Approve/Reject action buttons with confirmation dialogs
-   - Rejection reason input when rejecting
-   - On approval: automatically creates the student record in `students` table and sends email notifications
+### 4. RLS Policy Fixes
 
-2. **Navigation**: Add `admissions` item to the "Learner Records" group for Admin and Registrar roles in `DashboardLayout.tsx`
+Current RLS policies look correct -- both Admin and Registrar can SELECT, INSERT, UPDATE on `admissions` and INSERT/SELECT on `admission_audit_logs`. No DELETE policy exists (by design for audit trail). No fixes needed.
 
-3. **Index.tsx**: Add the `admissions` tab rendering `AdmissionsPage`
+### 5. Index.tsx -- Remove standalone enrollment tab rendering
 
-### Approval Flow
+Remove or keep the `enrollment` tab rendering as a fallback. Since the wizard will now be inside AdmissionsPage, the standalone tab is no longer the primary entry point.
 
-```text
-Admission Created (pending)
-        |
-  Admin/Registrar Reviews
-       / \
-  Approve  Reject
-    |         |
-  Create     Log reason
-  Student    Send rejection
-  Record     email (optional)
-    |
-  Send approval
-  email to parent
-  + admin notification
-    |
-  Log audit entry
-```
+**Decision**: Keep the enrollment tab rendering as-is for backward compatibility but remove the nav item so users enter through Admissions instead.
 
-### Files to Create/Modify
+## Technical Details
 
-**New files:**
-- `src/components/admissions/AdmissionsPage.tsx`
-- `supabase/functions/send-admission-email/index.ts`
+### File: `src/components/admissions/AdmissionsPage.tsx`
+- Replace the simple "New Application" dialog with a full-width Dialog that renders `EnrollmentWizard`
+- Pass a callback prop (`onAdmissionSubmit`) to EnrollmentWizard that:
+  1. Inserts into `admissions` table with status `'pending'`
+  2. Logs to `admission_audit_logs`
+  3. Closes the dialog and refreshes the admissions list
+- Remove the inline `newAdmission` state and simple form fields
 
-**Modified files:**
-- `src/components/enrollment/EnrollmentWizard.tsx` -- Fix: guard against null school_id/academic_year_id, show actual DB error
-- `src/components/enrollment/EnrollmentForm.tsx` -- Same fix
-- `src/components/layout/DashboardLayout.tsx` -- Add admissions nav item
-- `src/pages/Index.tsx` -- Add admissions tab rendering
-- Icon maps in DashboardLayout (add 'admissions' key)
+### File: `src/components/enrollment/EnrollmentWizard.tsx`
+- Add optional props: `mode?: 'enrollment' | 'admission'` and `onComplete?: () => void`
+- When `mode === 'admission'`:
+  - Submit to `admissions` table instead of `students` table
+  - Skip credential creation and QR code generation
+  - Skip email sending (handled on approval)
+  - Call `onComplete()` after successful submission
+- Default mode remains `'enrollment'` for backward compatibility
 
-**Database migration:**
-- Create `admissions` table with RLS
-- Create `admission_audit_logs` table with RLS
+### File: `src/components/enrollment/steps/AddressInfoStep.tsx`
+- Already correctly shows Phil Address for STFXSA and UAE Address for MABDC
+- No changes needed (verified)
 
-### Secret Required
+### File: `src/components/layout/DashboardLayout.tsx`
+- Remove `{ id: 'enrollment', icon: EnrollmentIcon3D, label: 'New Learner' }` from both admin and registrar menu items
+- The enrollment wizard is now accessed via "New Application" button in Admissions
 
-The `RESEND_API_KEY` secret must be added before the email functionality works. The user will be prompted to provide it.
+### File: `src/pages/Index.tsx`
+- Keep existing `enrollment` tab rendering as fallback (no visible nav item points to it)
+
+### Database / RLS
+- No additional migration needed -- existing RLS policies are correct for Admin and Registrar roles
 
