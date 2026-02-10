@@ -2,7 +2,7 @@
  * Centralized mapping of school text codes to their database UUIDs.
  */
 export const SCHOOL_ID_MAP: Record<string, string> = {
-  'SFXSAI': '11111111-1111-1111-1111-111111111111',
+  'SFXSAI': '22222222-2222-2222-2222-222222222222',
 };
 
 /**
