@@ -24,27 +24,15 @@ import { useCreateStudent } from '@/hooks/useStudents';
 import { toast } from 'sonner';
 import { differenceInYears } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
+import { GRADE_LEVELS, SHS_STRANDS, GENDERS, requiresStrand, isKindergartenLevel } from './constants';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
-const GRADE_LEVELS = [
-  'Kinder 1', 'Kinder 2',
-  'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5',
-  'Level 6', 'Level 7', 'Level 8', 'Level 9', 'Level 10',
-  'Level 11', 'Level 12'
-];
-
-const KINDER_LEVELS = ['Kinder 1', 'Kinder 2'];
-
-// Generate school years from 2025-2026 to 2039-2040
-const SCHOOL_YEARS = Array.from({ length: 15 }, (_, i) => {
-  const startYear = 2025 + i;
-  return `${startYear}-${startYear + 1}`;
-});
+// Legacy levels for backward compatibility
+const KINDER_LEVELS = ['Kinder 1', 'Kinder 2', 'Kindergarten'];
 
 const SCHOOLS = [
-  { id: 'SFXSAI', name: 'St. Francis Xavier Smart Academy Inc', acronym: 'SFXSAI' },
+  { id: 'STFXSA', name: 'St. Francis Xavier Smart Academy Inc', acronym: 'STFXSA' },
 ];
-
-const GENDERS = ['Male', 'Female'];
 
 interface FormErrors {
   student_name?: string;
@@ -58,21 +46,22 @@ interface FormErrors {
   father_contact?: string;
   phil_address?: string;
   uae_address?: string;
+  strand?: string;
 }
 
 import { useSchool } from '@/contexts/SchoolContext';
-import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { getSchoolId } from '@/utils/schoolIdMap';
 
 export const EnrollmentForm = () => {
   const { selectedSchool } = useSchool();
-  const { selectedYearId } = useAcademicYear();
+  const { selectedYearId, selectedYear } = useAcademicYear();
   const [formData, setFormData] = useState({
     student_name: '',
     lrn: '',
     level: '',
+    strand: '',
     school: selectedSchool,
-    school_year: '2025-2026',
+    school_year: selectedYear?.name || '',
     birth_date: '',
     gender: '',
     mother_maiden_name: '',
@@ -384,8 +373,9 @@ export const EnrollmentForm = () => {
       student_name: '',
       lrn: '',
       level: '',
+      strand: '',
       school: selectedSchool,
-      school_year: '2025-2026',
+      school_year: selectedYear?.name || '',
       birth_date: '',
       gender: '',
       mother_maiden_name: '',
@@ -481,18 +471,16 @@ export const EnrollmentForm = () => {
               </div>
               <div className="space-y-2">
                 <Label className="text-stat-purple">
-                  School Year <span className="text-destructive">*</span>
+                  Academic Year <span className="text-destructive">*</span>
                 </Label>
-                <Select value={formData.school_year} onValueChange={(v) => handleChange('school_year', v)}>
-                  <SelectTrigger className="bg-secondary/50">
-                    <SelectValue placeholder="Select school year" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SCHOOL_YEARS.map(year => (
-                      <SelectItem key={year} value={year}>{year}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input
+                  value={selectedYear?.name || 'No academic year selected'}
+                  disabled
+                  className="bg-secondary/30 text-muted-foreground cursor-not-allowed"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Synced with current academic year selection
+                </p>
               </div>
               <div className="space-y-2">
                 <Label className="text-stat-purple">

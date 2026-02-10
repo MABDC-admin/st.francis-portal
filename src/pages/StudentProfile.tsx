@@ -204,7 +204,7 @@ const StudentProfile = () => {
         dialects: student.dialects || ''
       });
     }
-  }, [student]);
+  }, [student?.id]); // Only re-run when student ID changes
 
   // Fetch current academic year for TransmutationManager
   useEffect(() => {
@@ -401,7 +401,15 @@ const StudentProfile = () => {
         .eq('student_id', student.id)
         .order('created_at', { ascending: false });
 
-      if (gradesError) throw gradesError;
+      if (gradesError) {
+        console.error('Error fetching grades:', gradesError);
+        throw gradesError;
+      }
+
+      if (!gradesData || gradesData.length === 0) {
+        toast.warning('No grades found for this student');
+        return;
+      }
 
       const academicYear = gradesData?.[0]?.academic_years?.name || '2025-2026';
       const yearId = gradesData?.[0]?.academic_year_id || currentAcademicYearId;

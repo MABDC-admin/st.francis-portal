@@ -82,7 +82,8 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
     if (resolvedSchoolId) {
       fetchAcademicYears();
     }
-  }, [resolvedSchoolId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolvedSchoolId, selectedYearId]);
 
   const setSelectedYearId = (id: string) => {
     setSelectedYearIdState(id);

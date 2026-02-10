@@ -53,10 +53,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setRole(data.role as AppRole);
       } else if (error) {
         console.warn('Error fetching user role:', error);
+        // Default to student role if no role found
         setRole('student');
       }
     } catch (err) {
       console.error('Exception in fetchUserRole:', err);
+      // Default to student role on exception
       setRole('student');
     }
   };

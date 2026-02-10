@@ -1,10 +1,12 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Info } from "lucide-react";
 import { useMemo } from "react";
 import { differenceInYears } from "date-fns";
-import { GRADE_LEVELS, SCHOOL_YEARS, GENDERS } from "../constants";
+import { GRADE_LEVELS, SHS_STRANDS, GENDERS, requiresStrand, isKindergartenLevel } from "../constants";
+import { useAcademicYear } from "@/contexts/AcademicYearContext";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface StudentInfoStepProps {
     formData: any;
@@ -15,8 +17,14 @@ interface StudentInfoStepProps {
 }
 
 export const StudentInfoStep = ({ formData, errors, touched, handleChange, handleBlur }: StudentInfoStepProps) => {
+    const { selectedYear, academicYears } = useAcademicYear();
+    
     const isKinderLevel = useMemo(() => {
-        return ['Kinder 1', 'Kinder 2'].includes(formData.level);
+        return isKindergartenLevel(formData.level);
+    }, [formData.level]);
+
+    const needsStrand = useMemo(() => {
+        return requiresStrand(formData.level);
     }, [formData.level]);
 
     const calculatedAge = useMemo(() => {
@@ -38,6 +46,16 @@ export const StudentInfoStep = ({ formData, errors, touched, handleChange, handl
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            {/* Academic Year Info Alert */}
+            {selectedYear && (
+                <Alert className="bg-blue-50 border-blue-200">
+                    <Info className="h-4 w-4 text-blue-600" />
+                    <AlertDescription className="text-blue-800">
+                        <strong>Academic Year:</strong> {selectedYear.name} - Student will be enrolled in this academic year
+                    </AlertDescription>
+                </Alert>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                     <Label className="text-stat-purple">
@@ -70,32 +88,84 @@ export const StudentInfoStep = ({ formData, errors, touched, handleChange, handl
                     <Label className="text-stat-purple">
                         Grade Level <span className="text-destructive">*</span>
                     </Label>
-                    <Select value={formData.level} onValueChange={(v) => handleChange('level', v)}>
+                    <Select value={formData.level} onValueChange={(v) => {
+                        handleChange('level', v);
+                        // Clear strand if switching away from Grade 11/12
+                        if (!requiresStrand(v) && formData.strand) {
+                            handleChange('strand', '');
+                        }
+                    }}>
                         <SelectTrigger className={`bg-secondary/50 ${errors.level && touched.level ? 'border-destructive' : ''}`}>
                             <SelectValue placeholder="Select grade level" />
                         </SelectTrigger>
                         <SelectContent>
-                            {GRADE_LEVELS.map(level => (
-                                <SelectItem key={level} value={level}>{level}</SelectItem>
+                            <SelectItem value="Kindergarten">Kindergarten</SelectItem>
+                            <SelectItem value="" disabled className="font-semibold text-primary">Elementary (Grades 1-6)</SelectItem>
+                            {['Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6'].map(level => (
+                                <SelectItem key={level} value={level} className="pl-6">{level}</SelectItem>
+                            ))}
+                            <SelectItem value="" disabled className="font-semibold text-primary">Junior High School (Grades 7-10)</SelectItem>
+                            {['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'].map(level => (
+                                <SelectItem key={level} value={level} className="pl-6">{level}</SelectItem>
+                            ))}
+                            <SelectItem value="" disabled className="font-semibold text-primary">Senior High School (Grades 11-12)</SelectItem>
+                            {['Grade 11', 'Grade 12'].map(level => (
+                                <SelectItem key={level} value={level} className="pl-6">{level}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
                     {touched.level && <FieldError error={errors.level} />}
+                    {needsStrand && (
+                        <p className="text-xs text-blue-600 flex items-center gap-1 mt-1">
+                            <Info className="h-3 w-3" />
+                            <span>Senior High School requires strand selection below</span>
+                        </p>
+                    )}
                 </div>
+                
+                {/* SHS Strand Selection (only for Grade 11 & 12) */}
+                {needsStrand && (
+                    <div className="space-y-2">
+                        <Label className="text-stat-purple">
+                            SHS Strand <span className="text-destructive">*</span>
+                        </Label>
+                        <Select value={formData.strand || ''} onValueChange={(v) => handleChange('strand', v)}>
+                            <SelectTrigger className={`bg-secondary/50 ${errors.strand && touched.strand ? 'border-destructive' : ''}`}>
+                                <SelectValue placeholder="Select strand" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="" disabled className="font-semibold">Academic Track</SelectItem>
+                                {SHS_STRANDS.filter(s => ['ABM', 'STEM', 'HUMSS', 'GAS'].includes(s.value)).map(strand => (
+                                    <SelectItem key={strand.value} value={strand.value} className="pl-4">{strand.label}</SelectItem>
+                                ))}
+                                <SelectItem value="" disabled className="font-semibold">Technical-Vocational-Livelihood (TVL)</SelectItem>
+                                {SHS_STRANDS.filter(s => s.value.startsWith('TVL')).map(strand => (
+                                    <SelectItem key={strand.value} value={strand.value} className="pl-4">{strand.label}</SelectItem>
+                                ))}
+                                <SelectItem value="" disabled className="font-semibold">Arts & Sports Track</SelectItem>
+                                {SHS_STRANDS.filter(s => ['SPORTS', 'ARTS-DESIGN'].includes(s.value)).map(strand => (
+                                    <SelectItem key={strand.value} value={strand.value} className="pl-4">{strand.label}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {touched.strand && <FieldError error={errors.strand} />}
+                    </div>
+                )}
+                
+                {!needsStrand && <div></div>} {/* Spacer to maintain grid */}
+                
                 <div className="space-y-2">
                     <Label className="text-stat-purple">
-                        School Year <span className="text-destructive">*</span>
+                        Academic Year <span className="text-destructive">*</span>
                     </Label>
-                    <Select value={formData.school_year} onValueChange={(v) => handleChange('school_year', v)}>
-                        <SelectTrigger className="bg-secondary/50">
-                            <SelectValue placeholder="Select school year" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {SCHOOL_YEARS.map(year => (
-                                <SelectItem key={year} value={year}>{year}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    <Input
+                        value={selectedYear?.name || 'No academic year selected'}
+                        disabled
+                        className="bg-secondary/30 text-muted-foreground cursor-not-allowed"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                        Synced with current academic year selection
+                    </p>
                 </div>
                 <div className="space-y-2">
                     <Label className="text-stat-purple">

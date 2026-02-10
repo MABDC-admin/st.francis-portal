@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchool } from '@/contexts/SchoolContext';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { getSchoolId } from '@/utils/schoolIdMap';
 import { AnimatedStudentAvatar } from '@/components/students/AnimatedStudentAvatar';
 
 interface Student {
@@ -20,6 +22,8 @@ interface Student {
 export const GlobalStudentSearch = () => {
   const navigate = useNavigate();
   const { selectedSchool, schoolTheme } = useSchool();
+  const { selectedYearId } = useAcademicYear();
+  const schoolId = getSchoolId(selectedSchool);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,12 +51,18 @@ export const GlobalStudentSearch = () => {
         return;
       }
 
+      if (!schoolId || !selectedYearId) {
+        setResults([]);
+        return;
+      }
+
       setIsLoading(true);
       try {
         const { data, error } = await supabase
           .from('students')
           .select('id, student_name, lrn, level, photo_url, gender')
-          .eq('school', selectedSchool)
+          .eq('school_id', schoolId)
+          .eq('academic_year_id', selectedYearId)
           .or(`student_name.ilike.%${query}%,lrn.ilike.%${query}%`)
           .limit(8);
 
@@ -68,7 +78,7 @@ export const GlobalStudentSearch = () => {
 
     const debounce = setTimeout(searchStudents, 300);
     return () => clearTimeout(debounce);
-  }, [query, selectedSchool]);
+  }, [query, schoolId, selectedYearId]);
 
   const handleSelect = (student: Student) => {
     setQuery('');

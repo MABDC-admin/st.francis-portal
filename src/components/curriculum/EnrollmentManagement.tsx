@@ -64,34 +64,44 @@ export const EnrollmentManagement = () => {
   const fetchEnrollmentStats = async () => {
     if (!selectedYearId) return;
 
-    const stats: EnrollmentStat[] = [];
-    
-    for (const level of GRADE_LEVELS) {
-      // Get students enrolled in the selected academic year for this grade level
-      const { data: enrolledStudents } = await supabase
-        .from('student_subjects')
-        .select('student_id, students!inner(id, level, school)')
-        .eq('academic_year_id', selectedYearId)
-        .eq('students.level', level)
-        .eq('students.school', selectedSchool);
+    try {
+      const stats: EnrollmentStat[] = [];
+      
+      for (const level of GRADE_LEVELS) {
+        // Get students enrolled in the selected academic year for this grade level
+        const { data: enrolledStudents, error } = await supabase
+          .from('student_subjects')
+          .select('student_id, students!inner(id, level, school)')
+          .eq('academic_year_id', selectedYearId)
+          .eq('students.level', level)
+          .eq('students.school', selectedSchool);
 
-      // Get unique student count
-      const uniqueStudentIds = new Set(enrolledStudents?.map(e => e.student_id) || []);
-      const studentCount = uniqueStudentIds.size;
+        if (error) {
+          console.error('Error fetching enrollment stats:', error);
+          continue; // Skip this level and continue with others
+        }
 
-      // Get subject count for this grade level
-      const subjectCount = subjects.filter(s => s.grade_levels.includes(level)).length;
+        // Get unique student count
+        const uniqueStudentIds = new Set(enrolledStudents?.map(e => e.student_id) || []);
+        const studentCount = uniqueStudentIds.size;
 
-      if (studentCount > 0 || subjectCount > 0) {
-        stats.push({
-          grade_level: level,
-          student_count: studentCount,
-          subject_count: subjectCount,
-        });
+        // Get subject count for this grade level
+        const subjectCount = subjects.filter(s => s.grade_levels.includes(level)).length;
+
+        if (studentCount > 0 || subjectCount > 0) {
+          stats.push({
+            grade_level: level,
+            student_count: studentCount,
+            subject_count: subjectCount,
+          });
+        }
       }
-    }
 
-    setEnrollmentStats(stats);
+      setEnrollmentStats(stats);
+    } catch (error) {
+      console.error('Error in fetchEnrollmentStats:', error);
+      toast.error('Failed to fetch enrollment statistics');
+    }
   };
 
   const fetchDetailedEnrollments = async (gradeLevel: string) => {
@@ -200,11 +210,12 @@ export const EnrollmentManagement = () => {
       let enrolled = 0;
       let skipped = 0;
 
-      // Get all students filtered by school
+      // Get all students filtered by school AND academic year
       const { data: students } = await supabase
         .from('students')
         .select('id, level')
-        .eq('school', selectedSchool);
+        .eq('school_id', resolvedSchoolId)
+        .eq('academic_year_id', selectedYearId);
 
       for (const student of students || []) {
         // Get subjects for this student's grade level
@@ -371,7 +382,7 @@ export const EnrollmentManagement = () => {
                                   className="bg-muted/30 border-t border-b"
                                 >
                                   <div className="p-4">
-                                    {detailedEnrollments[stat.grade_level]?.length > 0 ? (
+                                    {detailedEnrollments[stat.grade_level] && detailedEnrollments[stat.grade_level].length > 0 ? (
                                       <div className="space-y-3">
                                         {detailedEnrollments[stat.grade_level].map((student) => (
                                           <div 

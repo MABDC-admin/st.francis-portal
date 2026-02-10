@@ -3,21 +3,32 @@ import { supabase } from '@/integrations/supabase/client';
 import { Student, StudentFormData } from '@/types/student';
 import { toast } from 'sonner';
 import { useSchool } from '@/contexts/SchoolContext';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { getSchoolId } from '@/utils/schoolIdMap';
 
 export const useStudents = () => {
   const { selectedSchool } = useSchool();
+  const { selectedYearId } = useAcademicYear();
+  const schoolId = getSchoolId(selectedSchool);
 
   return useQuery({
-    queryKey: ['students', selectedSchool],
+    queryKey: ['students', selectedSchool, selectedYearId],
     queryFn: async (): Promise<Student[]> => {
+      if (!schoolId || !selectedYearId) {
+        return [];
+      }
+
       const { data, error } = await supabase
         .from('students')
         .select('*, student_grades(q1_grade, q2_grade, q3_grade, q4_grade)')
-        .eq('school', 'SFXSAI')
+        .eq('school_id', schoolId)
+        .eq('academic_year_id', selectedYearId)
         .order('student_name', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching students:', error);
+        throw error;
+      }
 
       return (data || []).map((student: any) => {
         const grades = student.student_grades || [];
@@ -37,6 +48,9 @@ export const useStudents = () => {
         };
       }) as Student[];
     },
+    retry: 2,
+    staleTime: 30000, // Consider data fresh for 30 seconds
+    enabled: !!schoolId && !!selectedYearId,
   });
 };
 
@@ -132,7 +146,7 @@ export const useBulkCreateStudents = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       toast.success(`${data.length} learners imported successfully`);
     },

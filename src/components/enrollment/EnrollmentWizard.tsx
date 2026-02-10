@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserPlus as EnrollIcon, Loader2, CheckCircle2, ChevronRight, ChevronLeft, Printer } from 'lucide-react';
+import { UserPlus as EnrollIcon, Loader2, CheckCircle2, ChevronRight, ChevronLeft, Printer, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useCreateStudent } from '@/hooks/useStudents';
@@ -36,15 +36,16 @@ interface EnrollmentWizardProps {
 export const EnrollmentWizard = ({ mode = 'enrollment', onComplete }: EnrollmentWizardProps) => {
     const { selectedSchool } = useSchool();
     const { user } = useAuth();
-    const { selectedYearId } = useAcademicYear();
+    const { selectedYearId, selectedYear } = useAcademicYear();
     const [currentStep, setCurrentStep] = useState(1);
     const [, setDirection] = useState(0);
     const [formData, setFormData] = useState({
         student_name: '',
         lrn: '',
         level: '',
+        strand: '', // SHS strand for Grade 11/12
         school: selectedSchool,
-        school_year: '2025-2026',
+        school_year: selectedYear?.name || '',
         birth_date: '',
         gender: '',
         mother_maiden_name: '',
@@ -59,10 +60,14 @@ export const EnrollmentWizard = ({ mode = 'enrollment', onComplete }: Enrollment
         signature: ''
     });
 
-    // Update school when selectedSchool changes
+    // Update school and academic year when context changes
     useMemo(() => {
-        setFormData(prev => ({ ...prev, school: selectedSchool }));
-    }, [selectedSchool]);
+        setFormData(prev => ({ 
+            ...prev, 
+            school: selectedSchool,
+            school_year: selectedYear?.name || ''
+        }));
+    }, [selectedSchool, selectedYear]);
 
     const [errors, setErrors] = useState<any>({});
     const [touched, setTouched] = useState<any>({});
@@ -73,16 +78,70 @@ export const EnrollmentWizard = ({ mode = 'enrollment', onComplete }: Enrollment
 
     const createStudent = useCreateStudent();
 
+    // Auto-fill with test data (for testing purposes)
+    const handleAutoFill = () => {
+        const randomNum = Math.floor(Math.random() * 1000);
+        const genders = ['Male', 'Female'];
+        const levels = ['Kindergarten', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
+        const strands = ['ABM', 'STEM', 'HUMSS', 'GAS'];
+        const firstNames = ['John', 'Maria', 'Jose', 'Anna', 'Miguel', 'Sofia', 'Carlos', 'Isabella', 'Luis', 'Elena'];
+        const lastNames = ['Santos', 'Reyes', 'Cruz', 'Garcia', 'Fernandez', 'Lopez', 'Martinez', 'Rodriguez', 'Gonzalez', 'Hernandez'];
+        const previousSchools = ['Manila Central School', 'Quezon City Elementary', 'Makati High School', 'Cebu International School', 'Davao Learning Center'];
+        
+        const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+        const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+        const gender = genders[Math.floor(Math.random() * genders.length)];
+        const level = levels[Math.floor(Math.random() * levels.length)];
+        const isKinder = level === 'Kindergarten';
+        const isSHS = level === 'Grade 11' || level === 'Grade 12';
+        
+        // Generate birth date (6-18 years old)
+        const currentYear = new Date().getFullYear();
+        const birthYear = currentYear - Math.floor(Math.random() * 13 + 6); // 6-18 years old
+        const birthMonth = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0');
+        const birthDay = String(Math.floor(Math.random() * 28) + 1).padStart(2, '0');
+        const birthDate = `${birthYear}-${birthMonth}-${birthDay}`;
+        
+        setFormData({
+            student_name: `${firstName} ${lastName}`,
+            lrn: isKinder ? '' : `1234${String(randomNum).padStart(8, '0')}`,
+            level: level,
+            strand: isSHS ? strands[Math.floor(Math.random() * strands.length)] : '',
+            school: selectedSchool,
+            school_year: selectedYear?.name || '',
+            birth_date: birthDate,
+            gender: gender,
+            mother_maiden_name: `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`,
+            mother_contact: `+971-50-${Math.floor(Math.random() * 900 + 100)}-${Math.floor(Math.random() * 9000 + 1000)}`,
+            father_name: `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastName}`,
+            father_contact: `+971-50-${Math.floor(Math.random() * 900 + 100)}-${Math.floor(Math.random() * 9000 + 1000)}`,
+            phil_address: `${Math.floor(Math.random() * 500 + 1)} ${['Mabini', 'Rizal', 'Bonifacio', 'Luna'][Math.floor(Math.random() * 4)]} Street, ${['Manila', 'Quezon City', 'Makati', 'Taguig'][Math.floor(Math.random() * 4)]}, Metro Manila, Philippines`,
+            uae_address: `Apartment ${Math.floor(Math.random() * 500 + 1)}, ${['Al Nahda', 'Deira', 'Bur Dubai', 'Karama'][Math.floor(Math.random() * 4)]}, Dubai, UAE`,
+            previous_school: previousSchools[Math.floor(Math.random() * previousSchools.length)],
+            mother_tongue: 'Filipino',
+            dialects: 'Tagalog, English',
+            signature: ''
+        });
+        
+        // Clear errors and touched state
+        setErrors({});
+        setTouched({});
+        
+        toast.success('Form auto-filled with test data');
+    };
+
     const validateStep = (step: number) => {
         const newErrors: any = {};
         let isValid = true;
-        const isKinder = ['Kinder 1', 'Kinder 2'].includes(formData.level);
+        const isKinder = formData.level === 'Kindergarten';
+        const isSHS = formData.level === 'Grade 11' || formData.level === 'Grade 12';
 
         if (step === 1) {
             if (!formData.student_name.trim()) newErrors.student_name = 'Required';
             if (!isKinder && !formData.lrn.trim()) newErrors.lrn = 'Required';
             if (formData.lrn && !/^\d{12}$/.test(formData.lrn)) newErrors.lrn = 'Must be 12 digits';
             if (!formData.level) newErrors.level = 'Required';
+            if (isSHS && !formData.strand) newErrors.strand = 'Strand is required for Grade 11 & 12';
             if (!formData.birth_date) newErrors.birth_date = 'Required';
             if (!formData.gender) newErrors.gender = 'Required';
         }
@@ -182,6 +241,7 @@ export const EnrollmentWizard = ({ mode = 'enrollment', onComplete }: Enrollment
                     academic_year_id: selectedYearId,
                     birth_date: formData.birth_date || null,
                     gender: formData.gender || null,
+                    strand: formData.strand || null, // SHS strand for Grade 11/12
                     mother_maiden_name: formData.mother_maiden_name.trim() || null,
                     mother_contact: formData.mother_contact.trim() || null,
                     father_name: formData.father_name.trim() || null,
@@ -231,6 +291,7 @@ export const EnrollmentWizard = ({ mode = 'enrollment', onComplete }: Enrollment
                 student_name: formData.student_name.trim(),
                 lrn: finalLrn,
                 level: formData.level,
+                strand: formData.strand || undefined, // SHS strand for Grade 11/12
                 school: formData.school,
                 birth_date: formData.birth_date || undefined,
                 age: calculatedAge,
@@ -282,6 +343,7 @@ export const EnrollmentWizard = ({ mode = 'enrollment', onComplete }: Enrollment
                     });
                 } catch (qrError) {
                     console.error('QR Code generation failed:', qrError);
+                    toast.warning('QR Code generation failed, but enrollment was successful');
                 }
             }
 
@@ -301,9 +363,12 @@ export const EnrollmentWizard = ({ mode = 'enrollment', onComplete }: Enrollment
                             qrCodeUrl: qrCodeUrl
                         }
                     });
+                } else {
+                    toast.info('No parent email provided, email notification skipped');
                 }
             } catch (emailError) {
                 console.error("Failed to send email:", emailError);
+                toast.warning('Enrollment successful but failed to send email notification');
             }
 
             setIsCompleted(true);
@@ -319,8 +384,9 @@ export const EnrollmentWizard = ({ mode = 'enrollment', onComplete }: Enrollment
             student_name: '',
             lrn: '',
             level: '',
+            strand: '',
             school: selectedSchool,
-            school_year: '2025-2026',
+            school_year: selectedYear?.name || '',
             birth_date: '',
             gender: '',
             mother_maiden_name: '',
@@ -355,6 +421,21 @@ export const EnrollmentWizard = ({ mode = 'enrollment', onComplete }: Enrollment
 
     return (
         <div className="max-w-4xl mx-auto">
+            {/* Auto-fill button (only in admission mode and before completion) */}
+            {mode === 'admission' && currentStep === 1 && (
+                <div className="mb-4 flex justify-end">
+                    <Button
+                        onClick={handleAutoFill}
+                        variant="outline"
+                        size="sm"
+                        className="gap-2 text-purple-600 border-purple-300 hover:bg-purple-50"
+                    >
+                        <Sparkles className="h-4 w-4" />
+                        Auto-fill Test Data
+                    </Button>
+                </div>
+            )}
+            
             {/* Wizard Progress */}
             <div className="mb-8">
                 <div className="flex items-center justify-between relative z-10">

@@ -152,6 +152,7 @@ const Index = () => {
     if (code && state) {
       handleCanvaOAuthCallback(code, state);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, user]);
 
   const [activeTab, setActiveTab] = useState('portal');

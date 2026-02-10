@@ -51,20 +51,34 @@ export const AcademicYearManagement = () => {
   const fetchYears = async () => {
     if (!schoolId) return;
     setIsLoading(true);
-    const { data, error } = await supabase
-      .from('academic_years')
-      .select('*')
-      .eq('school_id', schoolId)
-      .order('start_date', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('academic_years')
+        .select('*')
+        .eq('school_id', schoolId)
+        .order('start_date', { ascending: false });
 
-    if (!error && data) {
-      setYears(data as AcademicYear[]);
+      if (error) {
+        console.error('Error fetching academic years:', error);
+        toast.error('Failed to load academic years');
+        setYears([]);
+      } else if (data) {
+        setYears(data as AcademicYear[]);
+      }
+    } catch (error: any) {
+      console.error('Exception fetching academic years:', error);
+      toast.error('Failed to load academic years');
+      setYears([]);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   useEffect(() => {
-    fetchYears();
+    if (schoolId) {
+      fetchYears();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [schoolId]);
 
   const handleOpenModal = (year?: AcademicYear) => {
@@ -84,9 +98,28 @@ export const AcademicYearManagement = () => {
   };
 
   const handleSave = async () => {
+    // Validation
     if (!formData.name || !formData.start_date || !formData.end_date) {
       toast.error('Please fill in all required fields');
       return;
+    }
+
+    // Validate date range
+    const startDate = new Date(formData.start_date);
+    const endDate = new Date(formData.end_date);
+    
+    if (startDate >= endDate) {
+      toast.error('End date must be after start date');
+      return;
+    }
+
+    // Warn if date range is unusual
+    const daysDiff = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysDiff < 180) {
+      toast.warning('Academic year is less than 6 months');
+    }
+    if (daysDiff > 400) {
+      toast.warning('Academic year is longer than usual (more than 13 months)');
     }
 
     setIsSaving(true);
@@ -99,10 +132,14 @@ export const AcademicYearManagement = () => {
           .eq('is_current', true)
           .eq('school_id', schoolId!);
 
-        if (unsetError) throw unsetError;
+        if (unsetError) {
+          console.error('Error unsetting current year:', unsetError);
+          throw unsetError;
+        }
       }
 
       if (editingYear) {
+        // Update existing year
         const { error } = await supabase
           .from('academic_years')
           .update({
@@ -113,9 +150,13 @@ export const AcademicYearManagement = () => {
           })
           .eq('id', editingYear.id);
 
-        if (error) throw error;
-        toast.success('Academic year updated');
+        if (error) {
+          console.error('Error updating academic year:', error);
+          throw error;
+        }
+        toast.success('Academic year updated successfully');
       } else {
+        // Create new year
         const { error } = await (supabase
           .from('academic_years') as any)
           .insert({
@@ -126,40 +167,62 @@ export const AcademicYearManagement = () => {
             school_id: schoolId!,
           });
 
-        if (error) throw error;
-        toast.success('Academic year added');
+        if (error) {
+          console.error('Error creating academic year:', error);
+          throw error;
+        }
+        toast.success('Academic year created successfully');
       }
 
+      // Reset form and close modal
+      setFormData(initialFormState);
+      setEditingYear(null);
       setIsModalOpen(false);
-      fetchYears();
+      
+      // Refresh the list
+      await fetchYears();
     } catch (error: any) {
-      console.error('Error:', error);
-      toast.error(error.message || 'Failed to save');
+      console.error('Error saving academic year:', error);
+      toast.error(error.message || 'Failed to save academic year. Please try again.');
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleSetCurrent = async (year: AcademicYear) => {
+    if (year.is_archived) {
+      toast.error('Cannot set an archived year as current');
+      return;
+    }
+
     try {
+      // First unset the current year
       const { error: unsetError } = await supabase
         .from('academic_years')
         .update({ is_current: false })
         .eq('is_current', true)
         .eq('school_id', schoolId!);
 
-      if (unsetError) throw unsetError;
+      if (unsetError) {
+        console.error('Error unsetting current year:', unsetError);
+        throw unsetError;
+      }
 
+      // Then set the new current year
       const { error: setError } = await supabase
         .from('academic_years')
         .update({ is_current: true })
         .eq('id', year.id);
 
-      if (setError) throw setError;
+      if (setError) {
+        console.error('Error setting current year:', setError);
+        throw setError;
+      }
 
       toast.success(`${year.name} set as current academic year`);
-      fetchYears();
+      await fetchYears();
     } catch (error: any) {
+      console.error('Error setting current year:', error);
       toast.error(error.message || 'Failed to set current academic year');
     }
   };
@@ -169,7 +232,16 @@ export const AcademicYearManagement = () => {
       toast.error('Cannot delete an archived academic year');
       return;
     }
-    if (!confirm(`Are you sure you want to delete "${year.name}"?`)) return;
+    
+    if (year.is_current) {
+      toast.error('Cannot delete the current academic year. Please set another year as current first.');
+      return;
+    }
+
+    // Use AlertDialog instead of confirm
+    if (!window.confirm(`Are you sure you want to delete "${year.name}"?\n\nThis will also delete:\n• All grades for this year\n• All enrollments for this year\n• All attendance records for this year\n\nThis action cannot be undone.`)) {
+      return;
+    }
 
     try {
       const { error } = await supabase
@@ -177,11 +249,22 @@ export const AcademicYearManagement = () => {
         .delete()
         .eq('id', year.id);
 
-      if (error) throw error;
-      toast.success('Academic year deleted');
-      fetchYears();
+      if (error) {
+        console.error('Error deleting academic year:', error);
+        throw error;
+      }
+      
+      toast.success(`${year.name} deleted successfully`);
+      await fetchYears();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to delete');
+      console.error('Error deleting academic year:', error);
+      
+      // Check for foreign key constraint errors
+      if (error.message?.includes('foreign key') || error.code === '23503') {
+        toast.error('Cannot delete: This academic year has associated records. Please archive it instead.');
+      } else {
+        toast.error(error.message || 'Failed to delete academic year');
+      }
     }
   };
 
@@ -190,6 +273,10 @@ export const AcademicYearManagement = () => {
     setIsArchiving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
 
       // 1. Copy all grades for this year into grade_snapshots
       const { data: grades, error: gradesError } = await supabase
@@ -393,32 +480,42 @@ export const AcademicYearManagement = () => {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div>
-              <Label>Name *</Label>
+              <Label htmlFor="year_name">Name *</Label>
               <Input
+                id="year_name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="2024-2025"
+                placeholder="e.g., 2025-2026"
+                required
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Format: YYYY-YYYY (e.g., 2025-2026)
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Start Date *</Label>
+                <Label htmlFor="start_date">Start Date *</Label>
                 <Input
+                  id="start_date"
                   type="date"
                   value={formData.start_date}
                   onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                  required
                 />
               </div>
               <div>
-                <Label>End Date *</Label>
+                <Label htmlFor="end_date">End Date *</Label>
                 <Input
+                  id="end_date"
                   type="date"
                   value={formData.end_date}
                   onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                  min={formData.start_date || undefined}
+                  required
                 />
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md">
               <input
                 type="checkbox"
                 id="is_current"
@@ -426,7 +523,12 @@ export const AcademicYearManagement = () => {
                 onChange={(e) => setFormData({ ...formData, is_current: e.target.checked })}
                 className="h-4 w-4"
               />
-              <Label htmlFor="is_current">Set as current academic year</Label>
+              <div className="flex-1">
+                <Label htmlFor="is_current" className="cursor-pointer">Set as current academic year</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  This will unset any other current academic year
+                </p>
+              </div>
             </div>
           </div>
           <DialogFooter>

@@ -25,7 +25,7 @@ const Auth = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
-  const { data: schoolSettings } = useSchoolSettings('SFXSAI');
+  const { data: schoolSettings } = useSchoolSettings('STFXSA');
 
   const [loginData, setLoginData] = useState({ email: '', password: '' });
 
