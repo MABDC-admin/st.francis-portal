@@ -211,10 +211,11 @@ export const EnrollmentManagement = () => {
       let skipped = 0;
 
       // Get all students filtered by school AND academic year
+      const schoolId = getSchoolId(selectedSchool) || '';
       const { data: students } = await supabase
         .from('students')
         .select('id, level')
-        .eq('school_id', resolvedSchoolId)
+        .eq('school_id', schoolId)
         .eq('academic_year_id', selectedYearId);
 
       for (const student of students || []) {
