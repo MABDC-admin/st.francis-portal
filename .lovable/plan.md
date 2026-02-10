@@ -1,40 +1,27 @@
 
 
-# Fix: "Loading school context..." Infinite Loop
+# Remove Old Academic Years and Create New One
 
-## Problem
+## Steps
 
-The Academic Years page is stuck on "Loading school context..." because the `useSchoolId` hook fails silently. The hook uses `.single()` which throws an error when the query returns no rows (e.g., during initial page load before auth is fully established). The fallback query also uses `.single()`, so both paths fail, returning `null` forever.
+### 1. Delete stale academic year data
+Remove the academic year record `2025-2026` that was created under the old school UUID (`22222222-2222-2222-2222-222222222222`). This record is orphaned since the school now uses `11111111-1111-1111-1111-111111111111`.
 
-The component at line 244 checks `if (isSchoolLoading || !schoolId)` -- once the query resolves with `null`, `isSchoolLoading` becomes `false` but `schoolId` is still `null`, so the loading spinner shows indefinitely.
+### 2. Create a new academic year for the correct school
+Insert a fresh `2025-2026` academic year for school `11111111-1111-1111-1111-111111111111`, set as the current year.
 
-## Changes
+### Technical Details
 
-### 1. Fix `src/hooks/useSchoolId.ts`
+**Database migration:**
+```sql
+-- Remove orphaned academic year under old school UUID
+DELETE FROM academic_years 
+WHERE school_id = '22222222-2222-2222-2222-222222222222';
 
-- Replace `.single()` with `.maybeSingle()` on both the primary and fallback queries to prevent errors when no row is returned
-- Add `retry: 3` to the query options so transient auth/RLS timing issues self-resolve
-
-### 2. Fix `src/components/curriculum/AcademicYearManagement.tsx`
-
-- Update the loading guard (line 244) to show an error message when `schoolId` is `null` AND loading is complete, instead of showing the spinner forever
-- Display a "School not found" message with a retry button when `isSchoolLoading` is `false` but `schoolId` is `null`
-
-## Technical Details
-
-**useSchoolId.ts changes:**
-```typescript
-// Change .single() to .maybeSingle() on lines 21 and 30
-.maybeSingle();
+-- Insert new academic year for the correct school
+INSERT INTO academic_years (school_id, name, start_date, end_date, is_current)
+VALUES ('11111111-1111-1111-1111-111111111111', '2025-2026', '2025-08-01', '2026-07-31', true);
 ```
 
-**AcademicYearManagement.tsx changes:**
-```typescript
-// Line 244: separate loading from error state
-if (isSchoolLoading) {
-  return <loading spinner />;
-}
-if (!schoolId) {
-  return <error message with retry />;
-}
-```
+No code file changes are needed -- the `AcademicYearManagement` component and `useSchoolId` hook already reference the correct school ID via the updated `schoolIdMap`.
+
