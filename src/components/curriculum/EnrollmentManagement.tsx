@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { getSchoolId } from '@/utils/schoolIdMap';
 
 interface Subject {
   id: string;
@@ -220,11 +221,12 @@ export const EnrollmentManagement = () => {
             .maybeSingle();
 
           if (!existing) {
+            const resolvedSchoolId = getSchoolId(selectedSchool);
             const { error } = await (supabase.from('student_subjects') as any).insert([{
               student_id: student.id,
               subject_id: subject.id,
               academic_year_id: selectedYearId,
-              school_id: '00000000-0000-0000-0000-000000000000', // Placeholder - needs proper school_id
+              school_id: resolvedSchoolId,
               status: 'enrolled',
             }]);
 

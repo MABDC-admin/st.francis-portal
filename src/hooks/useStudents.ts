@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Student, StudentFormData } from '@/types/student';
 import { toast } from 'sonner';
 import { useSchool, SchoolType } from '@/contexts/SchoolContext';
+import { getSchoolId } from '@/utils/schoolIdMap';
 
 export const useStudents = (schoolOverride?: SchoolType) => {
   const { selectedSchool } = useSchool();
@@ -55,9 +56,18 @@ export const useCreateStudent = () => {
 
   return useMutation({
     mutationFn: async (student: StudentFormData) => {
+      // Enrich with school_id UUID if school text code is provided
+      const enriched: any = { ...student };
+      if (student.school && !enriched.school_id) {
+        const schoolId = getSchoolId(student.school);
+        if (schoolId) {
+          enriched.school_id = schoolId;
+        }
+      }
+
       const { data, error } = await (supabase
         .from('students') as any)
-        .insert([student])
+        .insert([enriched])
         .select()
         .single();
 

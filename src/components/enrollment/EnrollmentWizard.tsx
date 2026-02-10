@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { differenceInYears } from 'date-fns';
 import { KINDER_LEVELS } from './constants';
 import QRCode from 'qrcode';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 // Steps
 import { StudentInfoStep } from './steps/StudentInfoStep';
@@ -27,6 +28,7 @@ import { useSchool } from '@/contexts/SchoolContext';
 
 export const EnrollmentWizard = () => {
     const { selectedSchool } = useSchool();
+    const { selectedYearId } = useAcademicYear();
     const [currentStep, setCurrentStep] = useState(1);
     const [direction, setDirection] = useState(0);
     const [formData, setFormData] = useState({
@@ -151,6 +153,21 @@ export const EnrollmentWizard = () => {
             const finalLrn = formData.lrn.trim() || `TEMP-${Date.now()}`;
             const calculatedAge = formData.birth_date ? differenceInYears(new Date(), new Date(formData.birth_date)) : undefined;
 
+            // Pre-submit LRN duplicate check
+            if (finalLrn && !finalLrn.startsWith('TEMP')) {
+                const { data: existingLrn } = await supabase
+                    .from('students')
+                    .select('id')
+                    .eq('lrn', finalLrn)
+                    .eq('school', formData.school)
+                    .maybeSingle();
+
+                if (existingLrn) {
+                    toast.error('A learner with this LRN already exists in this school');
+                    return;
+                }
+            }
+
             // 1. Create Student
             const result = await createStudent.mutateAsync({
                 student_name: formData.student_name.trim(),
@@ -167,8 +184,8 @@ export const EnrollmentWizard = () => {
                 phil_address: formData.phil_address.trim(),
                 uae_address: formData.uae_address.trim(),
                 previous_school: formData.previous_school.trim() || undefined,
-                // TODO: Add signature_url when schema updated
-            });
+                academic_year_id: selectedYearId || undefined,
+            } as any);
 
             // 2. Create Credentials
             try {

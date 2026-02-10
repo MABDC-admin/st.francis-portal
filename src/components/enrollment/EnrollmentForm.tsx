@@ -62,9 +62,11 @@ interface FormErrors {
 }
 
 import { useSchool } from '@/contexts/SchoolContext';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 export const EnrollmentForm = () => {
   const { selectedSchool } = useSchool();
+  const { selectedYearId } = useAcademicYear();
   const [formData, setFormData] = useState({
     student_name: '',
     lrn: '',
@@ -211,6 +213,21 @@ export const EnrollmentForm = () => {
       // Generate temp LRN for Kinder students without LRN
       const finalLrn = formData.lrn.trim() || `TEMP-${Date.now()}`;
 
+      // Pre-submit LRN duplicate check
+      if (finalLrn && !finalLrn.startsWith('TEMP')) {
+        const { data: existingLrn } = await supabase
+          .from('students')
+          .select('id')
+          .eq('lrn', finalLrn)
+          .eq('school', formData.school)
+          .maybeSingle();
+
+        if (existingLrn) {
+          toast.error('A learner with this LRN already exists in this school');
+          return;
+        }
+      }
+
       const result = await createStudent.mutateAsync({
         student_name: formData.student_name.trim(),
         lrn: finalLrn,
@@ -226,7 +243,8 @@ export const EnrollmentForm = () => {
         phil_address: formData.phil_address.trim() || undefined,
         uae_address: formData.uae_address.trim() || undefined,
         previous_school: formData.previous_school.trim() || undefined,
-      });
+        academic_year_id: selectedYearId || undefined,
+      } as any);
 
       // Auto-create student account
       try {
@@ -356,7 +374,7 @@ export const EnrollmentForm = () => {
       student_name: '',
       lrn: '',
       level: '',
-      school: 'MABDC',
+      school: selectedSchool,
       school_year: '2025-2026',
       birth_date: '',
       gender: '',
