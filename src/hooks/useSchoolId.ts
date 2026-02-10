@@ -18,7 +18,7 @@ export const useSchoolId = () => {
         .from('schools')
         .select('id')
         .eq('code', schoolCode)
-        .single();
+        .maybeSingle();
       
       if (error) {
         // If not found by code, try by name pattern
@@ -27,7 +27,7 @@ export const useSchoolId = () => {
           .select('id')
           .or(`name.ilike.%${schoolCode}%,code.ilike.%${schoolCode}%`)
           .limit(1)
-          .single();
+          .maybeSingle();
         
         if (nameError) {
           console.warn('Could not find school:', schoolCode);
@@ -39,5 +39,6 @@ export const useSchoolId = () => {
       return data?.id || null;
     },
     staleTime: 10 * 60 * 1000, // 10 minutes
+    retry: 3,
   });
 };

@@ -241,11 +241,23 @@ export const AcademicYearManagement = () => {
     }
   };
 
-  if (isSchoolLoading || !schoolId) {
+  if (isSchoolLoading) {
     return (
       <div className="flex items-center justify-center py-16">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         <span className="ml-2 text-muted-foreground">Loading school context...</span>
+      </div>
+    );
+  }
+
+  if (!schoolId) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-4">
+        <Calendar className="h-12 w-12 text-muted-foreground opacity-50" />
+        <p className="text-muted-foreground">School not found. Please select a valid school.</p>
+        <Button variant="outline" onClick={() => window.location.reload()}>
+          Retry
+        </Button>
       </div>
     );
   }
