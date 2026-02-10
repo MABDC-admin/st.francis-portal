@@ -18,15 +18,8 @@ serve(async (req) => {
 
     try {
         const supabaseClient = createClient(
-            // Supabase API URL - Env var exported by default.
             Deno.env.get('SUPABASE_URL') ?? '',
-            // Supabase API Anon Key - Env var exported by default.
-            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-            {
-                global: {
-                    headers: { Authorization: req.headers.get('Authorization')! },
-                },
-            }
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
         )
 
         let year: number;
