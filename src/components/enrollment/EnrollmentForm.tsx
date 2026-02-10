@@ -63,6 +63,7 @@ interface FormErrors {
 
 import { useSchool } from '@/contexts/SchoolContext';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { getSchoolId } from '@/utils/schoolIdMap';
 
 export const EnrollmentForm = () => {
   const { selectedSchool } = useSchool();
@@ -209,6 +210,17 @@ export const EnrollmentForm = () => {
   };
 
   const handleConfirmEnrollment = async () => {
+    // Pre-submit guard
+    const resolvedSchoolId = getSchoolId(formData.school);
+    if (!resolvedSchoolId) {
+      toast.error('Unable to resolve school. Please select a valid school and try again.');
+      return;
+    }
+    if (!selectedYearId) {
+      toast.error('No academic year selected. Please select an academic year before enrolling.');
+      return;
+    }
+
     try {
       // Generate temp LRN for Kinder students without LRN
       const finalLrn = formData.lrn.trim() || `TEMP-${Date.now()}`;
@@ -243,7 +255,8 @@ export const EnrollmentForm = () => {
         phil_address: formData.phil_address.trim() || undefined,
         uae_address: formData.uae_address.trim() || undefined,
         previous_school: formData.previous_school.trim() || undefined,
-        academic_year_id: selectedYearId || undefined,
+        academic_year_id: selectedYearId,
+        school_id: resolvedSchoolId,
       } as any);
 
       // Auto-create student account
@@ -274,8 +287,9 @@ export const EnrollmentForm = () => {
       }
 
       setEnrollmentComplete(true);
-    } catch (error) {
-      toast.error('Failed to enroll student');
+    } catch (error: any) {
+      console.error('Enrollment error:', error);
+      toast.error(error?.message || 'Failed to enroll student');
     }
   };
 

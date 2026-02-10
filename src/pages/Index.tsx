@@ -92,6 +92,7 @@ import { FinanceLearnerPage } from '@/components/finance/FinanceLearnerPage';
 
 // Helpdesk
 import HelpdeskIndex from "@/pages/Helpdesk";
+import { AdmissionsPage } from '@/components/admissions/AdmissionsPage';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -561,6 +562,9 @@ const Index = () => {
 
       {/* Helpdesk - All users */}
       {activeTab === 'helpdesk' && <HelpdeskIndex />}
+
+      {/* Admissions - Admin/Registrar only */}
+      {activeTab === 'admissions' && hasAdminAccess && <AdmissionsPage />}
 
       {/* Modals */}
       <AdminPinModal

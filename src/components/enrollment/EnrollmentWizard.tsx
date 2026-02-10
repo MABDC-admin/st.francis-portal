@@ -4,6 +4,7 @@ import { UserPlus as EnrollIcon, Loader2, CheckCircle2, ChevronRight, ChevronLef
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useCreateStudent } from '@/hooks/useStudents';
+import { getSchoolId } from '@/utils/schoolIdMap';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { differenceInYears } from 'date-fns';
@@ -147,6 +148,17 @@ export const EnrollmentWizard = () => {
             return;
         }
 
+        // Pre-submit guard: ensure school_id and academic_year_id are available
+        const resolvedSchoolId = getSchoolId(formData.school);
+        if (!resolvedSchoolId) {
+            toast.error('Unable to resolve school. Please select a valid school and try again.');
+            return;
+        }
+        if (!selectedYearId) {
+            toast.error('No academic year selected. Please select an academic year before enrolling.');
+            return;
+        }
+
         try {
             const _sig = sigPadRef.current.getTrimmedCanvas().toDataURL('image/png');
 
@@ -184,7 +196,8 @@ export const EnrollmentWizard = () => {
                 phil_address: formData.phil_address.trim(),
                 uae_address: formData.uae_address.trim(),
                 previous_school: formData.previous_school.trim() || undefined,
-                academic_year_id: selectedYearId || undefined,
+                academic_year_id: selectedYearId,
+                school_id: resolvedSchoolId,
             } as any);
 
             // 2. Create Credentials
@@ -213,7 +226,6 @@ export const EnrollmentWizard = () => {
             let qrCodeUrl = undefined;
             if (finalLrn && !finalLrn.startsWith('TEMP')) {
                 try {
-                    // Generate Data URL for the QR code
                     qrCodeUrl = await QRCode.toDataURL(finalLrn, {
                         width: 300,
                         margin: 2,
@@ -229,7 +241,6 @@ export const EnrollmentWizard = () => {
 
             // 4. Send Email Notification
             try {
-                // Determine email recipient (Mother or Father)
                 const parentEmail = formData.mother_contact.includes('@') ? formData.mother_contact :
                     (formData.father_contact.includes('@') ? formData.father_contact : undefined);
 
@@ -240,21 +251,20 @@ export const EnrollmentWizard = () => {
                             studentName: formData.student_name,
                             school: formData.school,
                             username: createdCredentials?.username || finalLrn,
-                            password: createdCredentials?.password || '********', // Fallback if creds logic skipped or delayed
+                            password: createdCredentials?.password || '********',
                             qrCodeUrl: qrCodeUrl
                         }
                     });
                 }
             } catch (emailError) {
                 console.error("Failed to send email:", emailError);
-                // Don't block success just because email failed
             }
 
             setIsCompleted(true);
             toast.success('Enrollment submitted successfully!');
-        } catch (error) {
-            console.error(error);
-            toast.error('Enrollment failed. Please try again.');
+        } catch (error: any) {
+            console.error('Enrollment error:', error);
+            toast.error(error?.message || 'Enrollment failed. Please try again.');
         }
     };
 
