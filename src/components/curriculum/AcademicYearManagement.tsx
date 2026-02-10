@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Loader2, Calendar, Edit, Trash2, Check, CalendarCheck, Archive, Lock } from 'lucide-react';
+import { useSchoolId } from '@/hooks/useSchoolId';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -36,6 +37,7 @@ import { PromoteStudentsWorkflow } from './PromoteStudentsWorkflow';
 // ... existing imports
 
 export const AcademicYearManagement = () => {
+  const { data: schoolId, isLoading: isSchoolLoading } = useSchoolId();
   const [years, setYears] = useState<AcademicYear[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -47,10 +49,12 @@ export const AcademicYearManagement = () => {
   const [formData, setFormData] = useState(initialFormState);
 
   const fetchYears = async () => {
+    if (!schoolId) return;
     setIsLoading(true);
     const { data, error } = await supabase
       .from('academic_years')
       .select('*')
+      .eq('school_id', schoolId)
       .order('start_date', { ascending: false });
 
     if (!error && data) {
@@ -61,7 +65,7 @@ export const AcademicYearManagement = () => {
 
   useEffect(() => {
     fetchYears();
-  }, []);
+  }, [schoolId]);
 
   const handleOpenModal = (year?: AcademicYear) => {
     if (year) {
@@ -92,7 +96,8 @@ export const AcademicYearManagement = () => {
         const { error: unsetError } = await supabase
           .from('academic_years')
           .update({ is_current: false })
-          .eq('is_current', true);
+          .eq('is_current', true)
+          .eq('school_id', schoolId!);
 
         if (unsetError) throw unsetError;
       }
@@ -118,7 +123,7 @@ export const AcademicYearManagement = () => {
             start_date: formData.start_date,
             end_date: formData.end_date,
             is_current: formData.is_current,
-            school_id: '00000000-0000-0000-0000-000000000000', // Placeholder - needs proper school_id
+            school_id: schoolId!,
           });
 
         if (error) throw error;
@@ -140,7 +145,8 @@ export const AcademicYearManagement = () => {
       const { error: unsetError } = await supabase
         .from('academic_years')
         .update({ is_current: false })
-        .eq('is_current', true);
+        .eq('is_current', true)
+        .eq('school_id', schoolId!);
 
       if (unsetError) throw unsetError;
 
@@ -234,6 +240,15 @@ export const AcademicYearManagement = () => {
       setIsArchiving(false);
     }
   };
+
+  if (isSchoolLoading || !schoolId) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <span className="ml-2 text-muted-foreground">Loading school context...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
