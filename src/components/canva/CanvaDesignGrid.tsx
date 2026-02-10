@@ -3,7 +3,7 @@ import { ExternalLink, RefreshCw, FileText, Presentation, Eye, Edit } from 'luci
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from 'sonner';
+
 import { supabase } from '@/integrations/supabase/client';
 
 interface CanvaDesign {

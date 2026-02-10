@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface SchoolEvent {
     id: string;
@@ -148,7 +148,7 @@ export const EventsManagement = () => {
             const { error } = await supabase
                 .from("school_events")
                 .update(updatedEvent)
-                .eq("id", editingEvent?.id);
+                .eq("id", editingEvent?.id || '');
             if (error) throw error;
         },
         onSuccess: () => {

@@ -307,7 +307,7 @@ export const AssignmentManagement = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {assignments.map((record: AssignmentRecord) => (
+                  {assignments.map((record: any) => (
                     <TableRow key={record.id}>
                       <TableCell className="font-medium max-w-[200px] truncate">
                         {record.title}

@@ -42,22 +42,40 @@ const Auth = () => {
   useEffect(() => {
     const detectLocation = async () => {
       try {
-        const response = await fetch('https://ipapi.co/json/');
+        // Add timeout to prevent hanging
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
+        const response = await fetch('https://ipapi.co/json/', { 
+          signal: controller.signal,
+          headers: { 'User-Agent': 'registrar2025-app' }
+        });
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        
         const data = await response.json();
         setGeoData({ country: data.country, ip: data.ip, city: data.city });
 
-        if (data.country === 'PH') {
+        // Only set school if no student identification has occurred yet
+        if (data.country === 'PH' && !hasIdentified) {
           setSelectedSchool('STFXSA');
-        } else if (data.country === 'AE') {
+        } else if (data.country === 'AE' && !hasIdentified) {
           setSelectedSchool('MABDC');
         }
       } catch (err) {
-        console.error('Geolocation detection failed:', err);
+        console.warn('Geolocation detection failed, using default:', err);
+        // Fallback to STFXSA as default
+        if (!hasIdentified) {
+          setSelectedSchool('STFXSA');
+        }
       }
     };
 
     detectLocation();
-  }, [setSelectedSchool]);
+  }, [setSelectedSchool, hasIdentified]);
 
   useEffect(() => {
     const debounceTimer = setTimeout(async () => {
@@ -80,8 +98,15 @@ const Auth = () => {
           const isSTFXSA = studentSchool.includes('STFXSA') || studentSchool.includes('ST. FRANCIS');
           setSelectedSchool(isSTFXSA ? 'STFXSA' : 'MABDC');
           setHasIdentified(true);
+          console.log(`Student ${input} identified as ${isSTFXSA ? 'STFXSA' : 'MABDC'} student`);
         } else {
           setHasIdentified(false);
+          // Reset to geolocation-based school if no student found
+          if (geoData?.country === 'PH') {
+            setSelectedSchool('STFXSA');
+          } else if (geoData?.country === 'AE') {
+            setSelectedSchool('MABDC');
+          }
         }
       } catch (err) {
         console.error('School detection check failed:', err);
@@ -248,7 +273,11 @@ const Auth = () => {
                 {hasIdentified ? (currentSettings?.name || currentTheme.fullName) : "Portal"}
               </h1>
               <p className="text-white/30 text-sm mt-1">
-                {hasIdentified ? "School Portal Access" : "Unified Smart Portal"}
+                {hasIdentified 
+                  ? "School Portal Access" 
+                  : geoData?.country 
+                    ? `Detected: ${geoData.country === 'PH' ? 'Philippines' : geoData.country === 'AE' ? 'UAE' : geoData.country}`
+                    : "Unified Smart Portal"}
               </p>
             </div>
 

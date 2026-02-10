@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { Student } from '@/types/student';
 
 interface GenderChartProps {

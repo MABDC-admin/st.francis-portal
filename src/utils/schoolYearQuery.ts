@@ -214,5 +214,5 @@ export function buildSchoolYearFilters<T extends Record<string, any>>(
     return {
         ...baseFilter,
         ...additionalFilters,
-    };
+    } as SchoolYearFilter & Partial<T>;
 }

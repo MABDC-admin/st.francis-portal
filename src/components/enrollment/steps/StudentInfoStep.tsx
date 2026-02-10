@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertCircle } from "lucide-react";
 import { useMemo } from "react";
 import { differenceInYears } from "date-fns";
-import { GRADE_LEVELS, SCHOOLS, SCHOOL_YEARS, GENDERS } from "../constants";
+import { GRADE_LEVELS, SCHOOL_YEARS, GENDERS } from "../constants";
 
 interface StudentInfoStepProps {
     formData: any;

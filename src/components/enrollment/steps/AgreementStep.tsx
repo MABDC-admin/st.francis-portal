@@ -3,7 +3,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Eraser } from "lucide-react";
-import { useRef } from "react";
+
 import SignatureCanvas from "react-signature-canvas";
 
 interface AgreementStepProps {
@@ -11,10 +11,10 @@ interface AgreementStepProps {
     setAgreed: (agreed: boolean) => void;
     sigPadRef: any;
     handleClearSignature: () => void;
-    isCompleted: boolean;
+    isCompleted?: boolean;
 }
 
-export const AgreementStep = ({ agreed, setAgreed, sigPadRef, handleClearSignature, isCompleted }: AgreementStepProps) => {
+export const AgreementStep = ({ agreed, setAgreed, sigPadRef, handleClearSignature }: AgreementStepProps) => {
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="space-y-4">

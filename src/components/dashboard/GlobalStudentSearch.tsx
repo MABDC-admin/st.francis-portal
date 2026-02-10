@@ -76,7 +76,7 @@ export const GlobalStudentSearch = () => {
     navigate(`/student/${student.id}`);
   };
 
-  const getInitials = (name: string) => {
+  const getInitials = (name: string): string => {
     return name
       .split(' ')
       .map(n => n[0])

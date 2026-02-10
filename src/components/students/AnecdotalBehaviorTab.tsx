@@ -82,7 +82,7 @@ export const AnecdotalBehaviorTab = ({ studentId }: AnecdotalBehaviorTabProps) =
       .select('*')
       .eq('student_id', studentId)
       .order('incident_date', { ascending: false });
-    if (!error && data) setIncidents(data);
+    if (!error && data) setIncidents(data as any);
   }, [studentId]);
 
   useEffect(() => { fetchIncidents(); }, [fetchIncidents]);

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -32,7 +32,7 @@ export const FeeSetup = () => {
     },
   });
 
-  const { data: fees = [], isLoading } = useQuery({
+  const { data: fees = [] } = useQuery({
     queryKey: ['fee-catalog', schoolData?.id],
     queryFn: async () => {
       const { data } = await supabase.from('fee_catalog').select('*').eq('school_id', schoolData!.id).order('category');

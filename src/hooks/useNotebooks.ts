@@ -124,12 +124,12 @@ export function useCreateNotebook() {
     mutationFn: async (data: CreateNotebookData) => {
       const { data: notebook, error } = await supabase
         .from('notebooks')
-        .insert({
-          user_id: user?.id,
+        .insert([{
+          user_id: user?.id || '',
           title: data.title,
           description: data.description || null,
           school: data.school || null,
-        })
+        }])
         .select()
         .single();
 

@@ -29,8 +29,8 @@ export const StudentAttendanceTab = ({
 
   // Create attendance map for quick lookup
   const attendanceMap = useMemo(() => {
-    const map = new Map<string, typeof attendance extends (infer T)[] ? T : never>();
-    attendance?.forEach((record) => {
+    const map = new Map<string, any>();
+    (attendance as any[])?.forEach((record: any) => {
       map.set(record.date, record);
     });
     return map;
@@ -154,14 +154,14 @@ export const StudentAttendanceTab = ({
                   className={`
                     aspect-square flex flex-col items-center justify-center rounded-lg text-sm
                     ${dayIsToday ? 'ring-2 ring-primary' : ''}
-                    ${record ? ATTENDANCE_STATUS_COLORS[record.status].bg : 'bg-muted/30'}
+                    ${record ? (ATTENDANCE_STATUS_COLORS as any)[record.status]?.bg || 'bg-muted/30' : 'bg-muted/30'}
                   `}
                 >
                   <span className={`font-medium ${dayIsToday ? 'text-primary' : ''}`}>
                     {format(day, 'd')}
                   </span>
                   {record && (
-                    <span className="mt-0.5">{statusIcons[record.status]}</span>
+                    <span className="mt-0.5">{(statusIcons as any)[record.status]}</span>
                   )}
                 </div>
               );

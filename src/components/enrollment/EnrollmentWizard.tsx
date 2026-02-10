@@ -1,13 +1,13 @@
 import { useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserPlus, Loader2, CheckCircle2, ChevronRight, ChevronLeft, Printer, UserPlus as EnrollIcon } from 'lucide-react';
+import { UserPlus as EnrollIcon, Loader2, CheckCircle2, ChevronRight, ChevronLeft, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useCreateStudent } from '@/hooks/useStudents';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { differenceInYears } from 'date-fns';
-import { KINDER_LEVELS } from './constants';
+
 import QRCode from 'qrcode';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
@@ -30,7 +30,7 @@ export const EnrollmentWizard = () => {
     const { selectedSchool } = useSchool();
     const { selectedYearId } = useAcademicYear();
     const [currentStep, setCurrentStep] = useState(1);
-    const [direction, setDirection] = useState(0);
+    const [, setDirection] = useState(0);
     const [formData, setFormData] = useState({
         student_name: '',
         lrn: '',
@@ -148,7 +148,7 @@ export const EnrollmentWizard = () => {
         }
 
         try {
-            const signatureData = sigPadRef.current.getTrimmedCanvas().toDataURL('image/png');
+            const _sig = sigPadRef.current.getTrimmedCanvas().toDataURL('image/png');
 
             const finalLrn = formData.lrn.trim() || `TEMP-${Date.now()}`;
             const calculatedAge = formData.birth_date ? differenceInYears(new Date(), new Date(formData.birth_date)) : undefined;
@@ -189,7 +189,7 @@ export const EnrollmentWizard = () => {
 
             // 2. Create Credentials
             try {
-                const { data: credResult, error: credError } = await supabase.functions.invoke('create-users', {
+                const { data: credResult } = await supabase.functions.invoke('create-users', {
                     body: {
                         action: 'create_single_student',
                         studentId: result.id,

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { AlertTriangle, CheckCircle2, Search, RefreshCcw, Loader2, User, Phone, Users, FileText, ExternalLink } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Search, RefreshCcw, Loader2, User, Phone, Users, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

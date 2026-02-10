@@ -24,7 +24,7 @@ interface AnnouncementRecord {
   id: string;
   title: string;
   content: string;
-  target_audience: string[] | null;
+  target_audience: string[];
   target_grade_levels?: string[] | null;
   priority: string;
   is_pinned: boolean;
@@ -311,13 +311,15 @@ export const AnnouncementManagement = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {announcements.map((record: AnnouncementRecord) => (
-                    <TableRow key={record.id} className={isExpired(record.expires_at) ? 'opacity-50' : ''}>
+                  {announcements.map((record: any) => {
+                    const rec = record as AnnouncementRecord;
+                    return (
+                    <TableRow key={rec.id} className={isExpired(rec.expires_at ?? undefined) ? 'opacity-50' : ''}>
                       <TableCell>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className={record.is_pinned ? 'text-primary' : 'text-muted-foreground'}
+                          className={rec.is_pinned ? 'text-primary' : 'text-muted-foreground'}
                           onClick={() => togglePinMutation.mutate({ id: record.id, is_pinned: !record.is_pinned })}
                         >
                           <Pin className="h-4 w-4" fill={record.is_pinned ? 'currentColor' : 'none'} />
@@ -333,7 +335,7 @@ export const AnnouncementManagement = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
-                          {record.target_audience.slice(0, 2).map((audience) => (
+                          {(record.target_audience || []).slice(0, 2).map((audience: string) => (
                             <Badge key={audience} variant="outline" className="text-xs">
                               {audience}
                             </Badge>
@@ -387,7 +389,7 @@ export const AnnouncementManagement = () => {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )})}
                 </TableBody>
               </Table>
             </div>

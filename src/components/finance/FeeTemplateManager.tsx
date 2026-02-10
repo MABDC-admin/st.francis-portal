@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Switch } from '@/components/ui/switch';
+
 import { Separator } from '@/components/ui/separator';
 import { Plus, Pencil, Trash2, Package } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
