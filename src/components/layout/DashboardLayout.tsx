@@ -591,26 +591,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
   const { user, role, signOut } = useAuth();
   const [isDragging, setIsDragging] = useState(false);
   const [isMenuLocked, setIsMenuLocked] = useState(true);
-  const { selectedSchool, setSelectedSchool, schoolTheme, setCanSwitchSchool } = useSchool();
-  const [pendingSchool, setPendingSchool] = useState<SchoolType | null>(null);
-  const [isSwitching, setIsSwitching] = useState(false);
-
-  const handleSchoolSwitch = (school: SchoolType) => {
-    if (school === selectedSchool) return;
-    setPendingSchool(school);
-  };
-
-  const confirmSchoolSwitch = () => {
-    if (!pendingSchool) return;
-    setIsSwitching(true);
-    setSelectedSchool(pendingSchool);
-    setPendingSchool(null);
-    setTimeout(() => setIsSwitching(false), 500);
-  };
-
-  const cancelSchoolSwitch = () => {
-    setPendingSchool(null);
-  };
+  const { selectedSchool, schoolTheme } = useSchool();
   const { academicYears, selectedYearId, selectedYear, setSelectedYearId, isLoading: isLoadingYears } = useAcademicYear();
   const { data: schoolSettings } = useSchoolSettings(selectedSchool);
   const { theme, currentTheme, selectTheme } = useColorTheme();
@@ -622,12 +603,8 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
   // Check if Apple theme is active
   const isAppleTheme = layoutStyle === 'apple';
 
-  // Admin and Registrar can switch schools
-  const canSwitch = role === 'admin' || role === 'registrar' || role === 'finance';
-
-  useEffect(() => {
-    setCanSwitchSchool(canSwitch);
-  }, [canSwitch, setCanSwitchSchool]);
+  // Single school - no switching needed
+  const canSwitch = false;
 
   // Use school theme when no custom theme is set
   const hasCustomTheme = currentTheme !== 'default';
@@ -843,29 +820,6 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
           <span className="font-bold text-inherit">
             {schoolSettings?.acronym || selectedSchool}
           </span>
-          {canSwitch && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-6 px-2 text-inherit hover:bg-white/10" disabled={isSwitching}>
-                  {isSwitching ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronDown className="h-4 w-4" />}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Switch School</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => handleSchoolSwitch('MABDC')}>
-                  <Building2 className="h-4 w-4 mr-2 text-emerald-500" />
-                  MABDC
-                  {selectedSchool === 'MABDC' && <span className="ml-auto">✓</span>}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleSchoolSwitch('STFXSA')}>
-                  <Building2 className="h-4 w-4 mr-2 text-blue-500" />
-                  STFXSA
-                  {selectedSchool === 'STFXSA' && <span className="ml-auto">✓</span>}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
         </div>
       </header>
 
@@ -920,50 +874,6 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
           </Button>
         </div>
 
-        {/* School Switcher for Admin/Registrar */}
-        {canSwitch && !isCollapsed && (
-          <div className="px-3 mt-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-between text-inherit hover:bg-white/10 border border-white/20"
-                  disabled={isSwitching}
-                >
-                  <div className="flex items-center gap-2">
-                    {isSwitching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building2 className="h-4 w-4" />}
-                    <span className="text-sm">{selectedSchool === 'MABDC' ? 'M.A Brain Dev Center' : 'St. Francis Xavier'}</span>
-                  </div>
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-[200px]">
-                <DropdownMenuLabel>Switch School Portal</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => handleSchoolSwitch('MABDC')}
-                  className={selectedSchool === 'MABDC' ? 'bg-emerald-50 dark:bg-emerald-950' : ''}
-                >
-                  <div className="flex items-center gap-2 flex-1">
-                    <div className="w-3 h-3 rounded-full bg-emerald-500" />
-                    <span>M.A Brain Development Center</span>
-                  </div>
-                  {selectedSchool === 'MABDC' && <span className="text-emerald-500">✓</span>}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleSchoolSwitch('STFXSA')}
-                  className={selectedSchool === 'STFXSA' ? 'bg-blue-50 dark:bg-blue-950' : ''}
-                >
-                  <div className="flex items-center gap-2 flex-1">
-                    <div className="w-3 h-3 rounded-full bg-blue-500" />
-                    <span>St. Francis Xavier Smart Academy</span>
-                  </div>
-                  {selectedSchool === 'STFXSA' && <span className="text-blue-500">✓</span>}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )}
 
         {/* Academic Year Switcher */}
         {canSwitch && !isCollapsed && (
@@ -1150,21 +1060,6 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
         <StudentBottomNav activeTab={activeTab} onTabChange={onTabChange} />
       )}
 
-      {/* School Switch Confirmation Dialog */}
-      <AlertDialog open={pendingSchool !== null} onOpenChange={(open) => { if (!open) cancelSchoolSwitch(); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Switch School</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to switch to {pendingSchool ? SCHOOL_THEMES[pendingSchool].fullName : ''}? Any unsaved changes will be lost.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={cancelSchoolSwitch}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmSchoolSwitch}>Switch School</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };

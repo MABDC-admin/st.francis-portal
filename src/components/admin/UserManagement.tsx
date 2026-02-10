@@ -53,8 +53,7 @@ export const UserManagement = () => {
   const printRef = useRef<HTMLDivElement>(null);
 
   const schoolOptions = [
-    { value: 'M.A Brain Development Center', label: 'M.A Brain Development Center (MABDC)' },
-    { value: 'St. Francis Xavier Smart Academy Inc', label: 'St. Francis Xavier Smart Academy Inc (STFXSA)' },
+    { value: 'St. Francis Xavier Smart Academy Inc', label: 'St. Francis Xavier Smart Academy Inc (SFXSAI)' },
   ];
 
   // Form states for creating accounts
@@ -532,9 +531,8 @@ export const UserManagement = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Schools</SelectItem>
-                  <SelectItem value="MABDC">MABDC</SelectItem>
-                  <SelectItem value="STFXSA">STFXSA</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="SFXSAI">SFXSAI</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -587,9 +585,8 @@ export const UserManagement = () => {
                     <SelectValue placeholder="School" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Schools</SelectItem>
-                    <SelectItem value="MABDC">MABDC</SelectItem>
-                    <SelectItem value="STFXSA">STFXSA</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="SFXSAI">SFXSAI</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={roleFilter} onValueChange={setRoleFilter}>
@@ -672,8 +669,8 @@ export const UserManagement = () => {
                       <TableCell>
                         {cred.student_school ? (
                           <Badge variant="secondary" className="text-xs">
-                            {cred.student_school.toUpperCase().includes('MABDC') ? 'MABDC' : 
-                             cred.student_school.toUpperCase().includes('STFXSA') || cred.student_school.toUpperCase().includes('ST. FRANCIS') ? 'STFXSA' : 
+                            {cred.student_school?.toUpperCase().includes('SFXSAI') ? 'SFXSAI' :
+                             cred.student_school?.toUpperCase().includes('STFXSA') || cred.student_school?.toUpperCase().includes('ST. FRANCIS') ? 'SFXSAI' : 
                              cred.student_school}
                           </Badge>
                         ) : '-'}

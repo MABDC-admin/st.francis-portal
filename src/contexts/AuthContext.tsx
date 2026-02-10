@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { logAuditAction } from '@/hooks/useAuditLog';
-import { useSchool, SchoolType } from '@/contexts/SchoolContext';
+import { useSchool } from '@/contexts/SchoolContext';
 
 type AppRole = 'admin' | 'registrar' | 'teacher' | 'student' | 'parent' | 'finance';
 
@@ -37,12 +37,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
-  const { setSelectedSchool } = useSchool();
 
   // Impersonation state
   const [impersonatedUser, setImpersonatedUser] = useState<{ id: string, role: AppRole, full_name?: string | null } | null>(null);
 
-  const fetchUserRole = async (userId: string, userEmail?: string) => {
+  const fetchUserRole = async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from('user_roles')
@@ -51,13 +50,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (!error && data) {
-        const userRole = data.role as AppRole;
-        setRole(userRole);
-        
-        // Set default school based on user email (passed directly, not from stale state)
-        if (userEmail) {
-          setDefaultSchoolForUser(userEmail, userRole);
-        }
+        setRole(data.role as AppRole);
       } else if (error) {
         console.warn('Error fetching user role:', error);
         setRole('student');
@@ -66,43 +59,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Exception in fetchUserRole:', err);
       setRole('student');
     }
-
-    // Database-backed school resolution fallback
-    try {
-      const { data: cred } = await supabase
-        .from('user_credentials')
-        .select('student_id')
-        .eq('user_id', userId)
-        .maybeSingle();
-      if (cred?.student_id) {
-        const { data: student } = await supabase
-          .from('students')
-          .select('school')
-          .eq('id', cred.student_id)
-          .maybeSingle();
-        if (student?.school) {
-          setSelectedSchool(student.school.toUpperCase() as SchoolType);
-        }
-      }
-    } catch (err) {
-      console.warn('Could not resolve school from DB:', err);
-    }
-  };
-
-  const setDefaultSchoolForUser = (userEmail: string, userRole: AppRole | null) => {
-    // Special case: finance user ivyan@stfxsa.org should default to STFXSA
-    if (userEmail === 'ivyan@stfxsa.org' && userRole === 'finance') {
-      setSelectedSchool('STFXSA');
-      return;
-    }
-    
-    // Default logic based on email domain
-    if (userEmail.endsWith('@stfxsa.org')) {
-      setSelectedSchool('STFXSA');
-    } else if (userEmail.endsWith('@mabdc.org')) {
-      setSelectedSchool('MABDC');
-    }
-    // For other cases, keep current selection
   };
 
   useEffect(() => {
@@ -126,7 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Defer role fetching
         if (session?.user) {
           setTimeout(() => {
-            fetchUserRole(session.user.id, session.user.email);
+            fetchUserRole(session.user.id);
           }, 0);
         } else {
           setRole(null);
@@ -143,7 +99,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchUserRole(session.user.id, session.user.email);
+        fetchUserRole(session.user.id);
       }
       setLoading(false);
     });
@@ -190,17 +146,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await logAuditAction({ action: 'logout', status: 'success' }, user.id);
       }
 
-      // Clear local state first to ensure UI updates immediately
       setUser(null);
       setSession(null);
       setRole(null);
       setImpersonatedUser(null);
       sessionStorage.removeItem('impersonating_target');
 
-      // Then sign out from Supabase (ignore errors if session already expired)
       await supabase.auth.signOut({ scope: 'local' });
     } catch (error) {
-      // Even if signOut fails (e.g., session not found), we've already cleared local state
       console.warn('Sign out warning:', error);
     }
   };

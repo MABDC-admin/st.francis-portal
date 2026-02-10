@@ -30,9 +30,7 @@ interface BookUploadModalProps {
 }
 
 const SCHOOLS = [
-  { value: 'both', label: 'Both Schools' },
-  { value: 'MABDC', label: 'M.A Brain Development Center' },
-  { value: 'STFXSA', label: 'St. Francis Xavier Smart Academy' },
+  { value: 'SFXSAI', label: 'St. Francis Xavier Smart Academy Inc' },
 ];
 
 export const BookUploadModal = ({

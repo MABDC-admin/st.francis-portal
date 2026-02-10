@@ -41,8 +41,7 @@ const SCHOOL_YEARS = Array.from({ length: 15 }, (_, i) => {
 });
 
 const SCHOOLS = [
-  { id: 'MABDC', name: 'M.A Brain Development Center', acronym: 'MABDC' },
-  { id: 'STFXSA', name: 'St. Francis Xavier Smart Academy Inc', acronym: 'STFXSA' },
+  { id: 'SFXSAI', name: 'St. Francis Xavier Smart Academy Inc', acronym: 'SFXSAI' },
 ];
 
 const GENDERS = ['Male', 'Female'];
@@ -146,9 +145,6 @@ export const EnrollmentForm = () => {
         break;
       case 'phil_address':
         if (!value.trim()) return 'Philippine address is required';
-        break;
-      case 'uae_address':
-        if (formData.school === 'MABDC' && !value.trim()) return 'UAE address is required';
         break;
     }
     return undefined;
@@ -354,7 +350,7 @@ export const EnrollmentForm = () => {
           <div class="section">
             <div class="section-title">Address Information</div>
             <div class="row"><span class="label">Philippine Address</span><span class="value">${formData.phil_address}</span></div>
-            ${formData.school === 'MABDC' ? `<div class="row"><span class="label">UAE Address</span><span class="value">${formData.uae_address}</span></div>` : ''}
+            
           </div>
 
           <div class="section">
@@ -619,21 +615,6 @@ export const EnrollmentForm = () => {
                 />
                 {touched.phil_address && <FieldError error={errors.phil_address} />}
               </div>
-              {formData.school === 'MABDC' && (
-                <div className="space-y-2">
-                  <Label className="text-stat-purple">
-                    UAE Address <span className="text-destructive">*</span>
-                  </Label>
-                  <Textarea
-                    placeholder="Enter complete UAE address"
-                    value={formData.uae_address}
-                    onChange={(e) => handleChange('uae_address', e.target.value)}
-                    onBlur={() => handleBlur('uae_address')}
-                    className={`bg-secondary/50 min-h-[100px] ${errors.uae_address && touched.uae_address ? 'border-destructive' : ''}`}
-                  />
-                  {touched.uae_address && <FieldError error={errors.uae_address} />}
-                </div>
-              )}
             </div>
           </div>
 
@@ -720,7 +701,7 @@ export const EnrollmentForm = () => {
               <h4 className="font-semibold text-foreground mb-2 text-stat-purple">Address Information</h4>
               <div className="bg-secondary/30 rounded-lg p-4">
                 <ReviewItem label="Philippine Address" value={formData.phil_address} />
-                {formData.school === 'MABDC' && <ReviewItem label="UAE Address" value={formData.uae_address} />}
+                
               </div>
             </div>
 

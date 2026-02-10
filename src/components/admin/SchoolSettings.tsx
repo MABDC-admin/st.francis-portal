@@ -149,7 +149,7 @@ const THEME_OPTIONS = [
 
 export const SchoolSettings = () => {
   const [schools, setSchools] = useState<SchoolInfo[]>([]);
-  const [selectedSchool, setSelectedSchool] = useState<string>('MABDC');
+  const [selectedSchool, setSelectedSchool] = useState<string>('SFXSAI');
   const [formData, setFormData] = useState<Partial<SchoolInfo>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);

@@ -95,8 +95,7 @@ export const EnrollmentWizard = ({ mode = 'enrollment', onComplete }: Enrollment
         }
 
         if (step === 3) {
-            if (formData.school === 'STFXSA' && !formData.phil_address.trim()) newErrors.phil_address = 'Required';
-            if (formData.school === 'MABDC' && !formData.uae_address.trim()) newErrors.uae_address = 'Required';
+            if (!formData.phil_address.trim()) newErrors.phil_address = 'Required';
         }
 
         if (Object.keys(newErrors).length > 0) {

@@ -2,34 +2,23 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Student, StudentFormData } from '@/types/student';
 import { toast } from 'sonner';
-import { useSchool, SchoolType } from '@/contexts/SchoolContext';
+import { useSchool } from '@/contexts/SchoolContext';
 import { getSchoolId } from '@/utils/schoolIdMap';
 
-export const useStudents = (schoolOverride?: SchoolType) => {
+export const useStudents = () => {
   const { selectedSchool } = useSchool();
-  const school = schoolOverride || selectedSchool;
 
   return useQuery({
-    queryKey: ['students', school],
+    queryKey: ['students', selectedSchool],
     queryFn: async (): Promise<Student[]> => {
-      let query = supabase
+      const { data, error } = await supabase
         .from('students')
         .select('*, student_grades(q1_grade, q2_grade, q3_grade, q4_grade)')
+        .or('school.ilike.%sfxsai%,school.ilike.%stfxsa%,school.ilike.%st. francis%')
         .order('student_name', { ascending: true });
-
-      // Filter by school
-      if (school === 'STFXSA') {
-        query = query.or('school.ilike.%stfxsa%,school.ilike.%st. francis%');
-      } else {
-        // MABDC - includes MABDC or null/empty school values
-        query = query.or('school.ilike.%mabdc%,school.is.null,school.eq.');
-      }
-
-      const { data, error } = await query;
 
       if (error) throw error;
 
-      // Map the data to include has_grades boolean and quarter indicators
       return (data || []).map((student: any) => {
         const grades = student.student_grades || [];
         const has_grades = grades.length > 0;
@@ -56,7 +45,6 @@ export const useCreateStudent = () => {
 
   return useMutation({
     mutationFn: async (student: StudentFormData) => {
-      // Enrich with school_id UUID if school text code is provided
       const enriched: any = { ...student };
       if (student.school && !enriched.school_id) {
         const schoolId = getSchoolId(student.school);

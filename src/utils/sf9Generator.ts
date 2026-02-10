@@ -67,7 +67,7 @@ export const generateSF9 = (
     doc.setFont('helvetica', 'bold');
     doc.text('Department of Education', pageWidth / 2, margin + 15, { align: 'center' });
     doc.setFont('helvetica', 'normal');
-    doc.text('ST. FRANCIS XAVIER SCHOOL', pageWidth / 2, margin + 20, { align: 'center' });
+    doc.text('ST. FRANCIS XAVIER SMART ACADEMY INC', pageWidth / 2, margin + 20, { align: 'center' });
 
     doc.setFontSize(12);
     doc.text('LEARNER\'S PROGRESS REPORT CARD', pageWidth / 2, margin + 30, { align: 'center' });

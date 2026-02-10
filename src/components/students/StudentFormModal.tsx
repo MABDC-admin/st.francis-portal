@@ -253,18 +253,6 @@ export const StudentFormModal = ({
                         rows={2}
                       />
                     </div>
-                    {formData.school !== 'STFXSA' && (
-                      <div className="space-y-2">
-                        <Label htmlFor="uae_address">UAE Address</Label>
-                        <Textarea
-                          id="uae_address"
-                          value={formData.uae_address || ''}
-                          onChange={(e) => handleChange('uae_address', e.target.value)}
-                          placeholder="Enter UAE address"
-                          rows={2}
-                        />
-                      </div>
-                    )}
                   </div>
                 </div>
 

@@ -65,7 +65,7 @@ export const StudentIDCard = ({ student }: StudentIDCardProps) => {
                                 <ShieldCheck className="h-10 w-10 text-primary" />
                             </div>
                             <h2 className="text-white font-black tracking-tighter text-xl uppercase leading-none">
-                                {student.school || 'St. Francis Xavier'}
+                                {student.school || 'St. Francis Xavier Smart Academy Inc'}
                             </h2>
                             <p className="text-white/60 text-[10px] uppercase tracking-[0.2em] font-medium mt-1">
                                 Student Information System

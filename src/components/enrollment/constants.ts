@@ -11,8 +11,7 @@ export const SCHOOL_YEARS = Array.from({ length: 15 }, (_, i) => {
 });
 
 export const SCHOOLS = [
-    { id: 'MABDC', name: 'M.A Brain Development Center', acronym: 'MABDC' },
-    { id: 'STFXSA', name: 'St. Francis Xavier Smart Academy Inc', acronym: 'STFXSA' },
+    { id: 'SFXSAI', name: 'St. Francis Xavier Smart Academy Inc', acronym: 'SFXSAI' },
 ];
 
 export const GENDERS = ['Male', 'Female'];
