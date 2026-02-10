@@ -26,7 +26,7 @@ export const useSchoolSettings = (schoolId?: string) => {
         query = query.eq('school_id', schoolId);
       }
       
-      const { data, error } = await query.limit(1).single();
+      const { data, error } = await query.limit(1).maybeSingle();
       
       if (error) {
         console.error('Error fetching school settings:', error);
