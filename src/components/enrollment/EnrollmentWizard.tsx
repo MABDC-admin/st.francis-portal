@@ -160,7 +160,7 @@ export const EnrollmentWizard = () => {
         }
 
         try {
-            const _sig = sigPadRef.current.getTrimmedCanvas().toDataURL('image/png');
+            const _sig = sigPadRef.current.getCanvas().toDataURL('image/png');
 
             const finalLrn = formData.lrn.trim() || `TEMP-${Date.now()}`;
             const calculatedAge = formData.birth_date ? differenceInYears(new Date(), new Date(formData.birth_date)) : undefined;
