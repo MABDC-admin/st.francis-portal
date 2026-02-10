@@ -175,12 +175,12 @@ export async function logSchoolAccess(params: {
     const { data, error } = await supabase.rpc('log_school_access', {
         p_user_id: session.session.user.id,
         p_school_id: params.schoolId,
-        p_academic_year_id: params.academicYearId || null,
+        p_academic_year_id: params.academicYearId || '',
         p_action: params.action,
         p_table_name: params.tableName,
-        p_record_id: params.recordId || null,
+        p_record_id: params.recordId || '',
         p_success: params.success ?? true,
-        p_error_message: params.errorMessage || null,
+        p_error_message: params.errorMessage || '',
     });
 
     if (error) {
@@ -210,7 +210,7 @@ export async function getSchoolAccessLogs(
         return [];
     }
 
-    return data || [];
+    return (data || []) as any;
 }
 
 // ============================================================================

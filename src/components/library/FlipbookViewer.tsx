@@ -833,9 +833,9 @@ export const FlipbookViewer = ({
               <AnimatePresence mode="wait" custom={slideDirection}>
                 <motion.div
                   key={currentPage}
-                  ref={(el) => {
-                    if (containerRef) containerRef.current = el;
-                    pageContainerRef.current = el;
+                  ref={(el: HTMLDivElement | null) => {
+                    if (containerRef && 'current' in containerRef) (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+                    (pageContainerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
                   }}
                   custom={slideDirection}
                   variants={flipVariants}
@@ -890,9 +890,9 @@ export const FlipbookViewer = ({
               <AnimatePresence mode="wait" custom={slideDirection}>
                 <motion.div
                   key={currentPage}
-                  ref={(el) => {
-                    if (containerRef) containerRef.current = el;
-                    pageContainerRef.current = el;
+                  ref={(el: HTMLDivElement | null) => {
+                    if (containerRef && 'current' in containerRef) (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+                    (pageContainerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
                   }}
                   custom={slideDirection}
                   variants={flipVariants}

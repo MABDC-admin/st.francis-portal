@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { 
   Shield, 
@@ -7,7 +7,7 @@ import {
   Users, 
   Building2,
   ChevronRight,
-  Check
+  
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from 'sonner';
+
 import { RoleAssignmentDialog } from './RoleAssignmentDialog';
 import { SchoolAccessManager } from './SchoolAccessManager';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -61,7 +61,6 @@ const roleDescriptions: Record<string, string> = {
 
 export const PermissionManagement = () => {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);

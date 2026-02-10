@@ -274,7 +274,7 @@ export function validatePartialData<T>(schema: z.ZodSchema<T>, data: unknown): {
   success: false; 
   errors: z.ZodError; 
 } {
-  const partialSchema = schema.partial();
+  const partialSchema = (schema as any).partial();
   const result = partialSchema.safeParse(data);
   if (result.success) {
     return { success: true, data: result.data };

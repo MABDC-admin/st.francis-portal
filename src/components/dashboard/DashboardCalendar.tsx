@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Calendar, Maximize2, Plus, Loader2, Trash2, Edit2 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

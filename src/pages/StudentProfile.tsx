@@ -299,7 +299,7 @@ const StudentProfile = () => {
       .order('incident_date', { ascending: false });
 
     if (!error && data) {
-      setIncidents(data);
+      setIncidents(data as any);
     }
   };
 
@@ -335,7 +335,7 @@ const StudentProfile = () => {
       await updateStudent.mutateAsync({
         id: student.id,
         ...studentForm,
-        age: studentForm.age ? parseInt(studentForm.age) : null
+        age: studentForm.age ? parseInt(studentForm.age) : undefined
       });
       toast.success('Student information updated');
       setIsEditingPersonal(false);
@@ -498,10 +498,10 @@ const StudentProfile = () => {
       } else {
         const { error } = await supabase
           .from('student_incidents')
-          .insert({
+          .insert([{
             student_id: id,
             ...incidentForm
-          });
+          }] as any);
 
         if (error) throw error;
         toast.success('Incident recorded successfully');

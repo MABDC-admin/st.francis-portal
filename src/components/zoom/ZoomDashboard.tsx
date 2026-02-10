@@ -14,7 +14,7 @@ import { useZoomSession } from '@/hooks/useZoomSession';
 export const ZoomDashboard = () => {
   const { data: schoolId, isLoading: schoolLoading } = useSchoolId();
   const { role } = useAuth();
-  const { settings, loading, uaeTime, inSession, countdown, refresh } = useZoomSession(schoolId);
+  const { settings, loading, uaeTime, inSession, countdown, refresh } = useZoomSession(schoolId ?? null);
   const [showSettings, setShowSettings] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [manualOverride, setManualOverride] = useState(false);

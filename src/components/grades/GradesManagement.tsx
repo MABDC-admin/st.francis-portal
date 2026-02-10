@@ -235,7 +235,7 @@ export const GradesManagement = () => {
         .from('academic_years')
         .select('id, name, is_current')
         .order('start_date', { ascending: false });
-      setAcademicYears(yearsData || []);
+      setAcademicYears((yearsData || []).map(y => ({ ...y, is_current: y.is_current ?? false })));
 
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -429,7 +429,7 @@ export const GradesManagement = () => {
       if (isEditModalOpen && selectedGrade) {
         const { error } = await supabase
           .from('student_grades')
-          .update(gradeData)
+          .update(gradeData as any)
           .eq('id', selectedGrade.id);
         if (error) throw error;
         toast.success('Grade updated successfully');
@@ -715,7 +715,7 @@ export const GradesManagement = () => {
                 <SelectContent>
                   <SelectItem value="all">All Levels</SelectItem>
                   {levelOptions.map(level => (
-                    <SelectItem key={level} value={level}>{level}</SelectItem>
+                    <SelectItem key={level} value={level || 'unknown'}>{level}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

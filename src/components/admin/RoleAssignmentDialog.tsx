@@ -79,13 +79,13 @@ export const RoleAssignmentDialog = ({ user, isOpen, onClose }: RoleAssignmentDi
       // Log the role change
       const { error: logError } = await supabase
         .from('role_change_logs')
-        .insert({
+        .insert([{
           user_id: user.id,
-          changed_by: currentUser?.id,
+          changed_by: currentUser?.id || '',
           old_role: user.role,
           new_role: newRole,
           reason: reason || null,
-        });
+        }]);
 
       if (logError) {
         console.error('Failed to log role change:', logError);

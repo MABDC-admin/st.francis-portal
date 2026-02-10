@@ -54,8 +54,8 @@ interface School {
   contact_number: string | null;
   email: string | null;
   principal_name: string | null;
-  is_active: boolean;
-  created_at: string;
+  is_active: boolean | null;
+  created_at: string | null;
 }
 
 const emptySchool = {

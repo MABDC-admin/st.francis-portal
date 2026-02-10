@@ -12,7 +12,7 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  Legend
+  
 } from 'recharts';
 import { Student } from '@/types/student';
 
@@ -37,7 +37,7 @@ export const StudentOverview = ({ students }: StudentOverviewProps) => {
 
   const total = gradeDistribution.reduce((sum, item) => sum + item.value, 0);
   
-  const pieData = gradeDistribution.map((item, index) => ({
+  const pieData = gradeDistribution.map((item, _index) => ({
     ...item,
     percent: total > 0 ? Math.round((item.value / total) * 100) : 0,
   }));

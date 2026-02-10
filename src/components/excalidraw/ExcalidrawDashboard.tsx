@@ -15,7 +15,7 @@ import { TldrawEditor } from './TldrawEditor';
 interface Drawing {
   id: string;
   title: string;
-  is_shared: boolean;
+  is_shared: boolean | null;
   created_at: string;
   updated_at: string;
   created_by: string;
