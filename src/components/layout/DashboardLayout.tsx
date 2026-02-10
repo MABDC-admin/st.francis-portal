@@ -189,6 +189,7 @@ const icon3DMap: Record<string, any> = {
   'accounts': ProfileIcon3D,
   'finance-config': AdminIcon3D,
   'finance-learners': StudentIcon3D,
+  'helpdesk': AdminIcon3D,
 };
 
 // Icon mapping for Apple style icons
@@ -263,6 +264,7 @@ const iconAppleMap: Record<string, any> = {
   'accounts': AppleProfileIcon,
   'finance-config': AppleAdminIcon,
   'finance-learners': AppleStudentIcon,
+  'helpdesk': AppleAdminIcon,
 };
 
 // Hierarchical navigation structure for each role
@@ -341,6 +343,7 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
           ]
         },
         { id: 'impersonate', icon: AdminIcon3D, label: 'Impersonate' },
+        { id: 'helpdesk', icon: AdminIcon3D, label: 'Helpdesk' },
       ];
     case 'registrar':
       return [
@@ -397,6 +400,7 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
           ]
         },
         { id: 'reports', icon: ReportsIcon3D, label: 'Reports' },
+        { id: 'helpdesk', icon: AdminIcon3D, label: 'Helpdesk' },
       ];
     case 'teacher':
       return [
@@ -449,6 +453,7 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
           ]
         },
         { id: 'reports', icon: ReportsIcon3D, label: 'Reports' },
+        { id: 'helpdesk', icon: AdminIcon3D, label: 'Helpdesk' },
       ];
     case 'student':
       return [
@@ -478,12 +483,14 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
         },
         { id: 'library', icon: LibraryIcon3D, label: 'Library' },
         { id: 'student-announcements', icon: EventsIcon3D, label: 'Announcements' },
+        { id: 'helpdesk', icon: AdminIcon3D, label: 'Helpdesk' },
       ];
     case 'parent':
       return [
         { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
         { id: 'children', icon: StudentIcon3D, label: 'My Children' },
         { id: 'library', icon: LibraryIcon3D, label: 'Library' },
+        { id: 'helpdesk', icon: AdminIcon3D, label: 'Helpdesk' },
       ];
     case 'finance':
       return [
@@ -532,6 +539,7 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
           ]
         },
         { id: 'library', icon: LibraryIcon3D, label: 'Library' },
+        { id: 'helpdesk', icon: AdminIcon3D, label: 'Helpdesk' },
       ];
     default:
       return [

@@ -90,6 +90,9 @@ import { FinanceAuditLogs } from '@/components/finance/FinanceAuditLogs';
 import { YearEndClose } from '@/components/finance/YearEndClose';
 import { FinanceLearnerPage } from '@/components/finance/FinanceLearnerPage';
 
+// Helpdesk
+import HelpdeskIndex from "@/pages/Helpdesk";
+
 const Index = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -539,7 +542,7 @@ const Index = () => {
 
       {/* Announcement Management - Admin/Registrar */}
       {activeTab === 'announcement-mgmt' && hasAdminAccess && (
-      <AnnouncementManagement />
+        <AnnouncementManagement />
       )}
 
       {/* Finance Module Tabs */}
@@ -555,6 +558,9 @@ const Index = () => {
       {activeTab === 'year-end-close' && (role === 'finance' || role === 'admin') && <YearEndClose />}
       {activeTab === 'finance-audit' && (role === 'finance' || role === 'admin') && <FinanceAuditLogs />}
       {activeTab === 'finance-learners' && (role === 'finance' || role === 'admin') && <FinanceLearnerPage />}
+
+      {/* Helpdesk - All users */}
+      {activeTab === 'helpdesk' && <HelpdeskIndex />}
 
       {/* Modals */}
       <AdminPinModal
