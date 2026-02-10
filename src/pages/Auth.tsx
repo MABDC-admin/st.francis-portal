@@ -213,20 +213,34 @@ const Auth = () => {
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="remember-me"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 rounded border-white/10 bg-white/5 text-blue-600 focus:ring-blue-500/20 focus:ring-offset-0 cursor-pointer"
-                />
-                <Label
-                  htmlFor="remember-me"
-                  className="text-white/50 text-sm font-medium cursor-pointer select-none"
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="remember-me"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="h-4 w-4 rounded border-white/10 bg-white/5 text-blue-600 focus:ring-blue-500/20 focus:ring-offset-0 cursor-pointer"
+                  />
+                  <Label
+                    htmlFor="remember-me"
+                    className="text-white/50 text-sm font-medium cursor-pointer select-none"
+                  >
+                    Remember me
+                  </Label>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setLoginData({ email: 'sottodennis@gmail.com', password: 'Denskie123' });
+                  }}
+                  className="text-white/40 hover:text-white hover:bg-white/5 text-xs h-8 px-3"
                 >
-                  Remember me
-                </Label>
+                  <ShieldCheck className="h-3 w-3 mr-1" />
+                  Admin Login
+                </Button>
               </div>
 
               <Button
