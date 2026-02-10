@@ -15,6 +15,8 @@ import { toast } from "sonner";
 import { Database } from "@/integrations/supabase/types";
 import { AttachmentUpload } from "@/components/helpdesk/AttachmentUpload";
 import { AttachmentList } from "@/components/helpdesk/AttachmentList";
+import { EditTicketDialog } from "@/components/helpdesk/EditTicketDialog";
+import { DeleteTicketDialog } from "@/components/helpdesk/DeleteTicketDialog";
 
 type TicketDetailType = Database["public"]["Tables"]["helpdesk_tickets"]["Row"] & {
     creator: { email: string | null } | null;
@@ -47,7 +49,6 @@ export default function TicketDetail() {
         enabled: !!ticketId,
     });
 
-    // Fetch requester profile
     const { data: requesterProfile } = useQuery({
         queryKey: ["helpdesk-requester-profile", ticket?.created_by],
         queryFn: async () => {
@@ -142,14 +143,24 @@ export default function TicketDetail() {
     }
 
     const isAdmin = role === 'admin';
+    const isOwner = user?.id === ticket.created_by;
+    const canEdit = isAdmin || isOwner;
     const requesterName = requesterProfile?.full_name || ticket.creator?.email || "Unknown";
 
     return (
         <div className="container mx-auto py-8 space-y-8 max-w-5xl">
-            <Button variant="ghost" onClick={() => navigate("/helpdesk")} className="mb-4">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Helpdesk
-            </Button>
+            <div className="flex items-center justify-between mb-4">
+                <Button variant="ghost" onClick={() => navigate("/helpdesk")}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to Helpdesk
+                </Button>
+                {canEdit && (
+                    <div className="flex gap-2">
+                        <EditTicketDialog ticket={ticket} />
+                        <DeleteTicketDialog ticketId={ticket.id} ticketTitle={ticket.title} />
+                    </div>
+                )}
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="md:col-span-2 space-y-6">
