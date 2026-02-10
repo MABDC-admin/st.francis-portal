@@ -4,10 +4,18 @@ import path from "path";
 import { VitePWA } from "vite-plugin-pwa";
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+  },
+  define: {
+    // Fallback values for when env vars aren't injected
+    ...(mode === 'development' && !process.env.VITE_SUPABASE_URL ? {
+      'import.meta.env.VITE_SUPABASE_URL': JSON.stringify('https://fkvijsazmfvmlmtoyhsf.supabase.co'),
+      'import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY': JSON.stringify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrdmlqc2F6bWZ2bWxtdG95aHNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5ODgyMzUsImV4cCI6MjA4MTU2NDIzNX0.fDriAcK-av556SpRE9r3d-xZfq8j_cfwxlBZDLhCSQA'),
+      'import.meta.env.VITE_SUPABASE_PROJECT_ID': JSON.stringify('fkvijsazmfvmlmtoyhsf'),
+    } : {}),
   },
   plugins: [
     react(),
@@ -75,4 +83,4 @@ export default defineConfig({
     },
     dedupe: ["react", "react-dom", "react/jsx-runtime", "embla-carousel-react"],
   },
-});
+}));
