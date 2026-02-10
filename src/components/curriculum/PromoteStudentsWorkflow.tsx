@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
-    Users,
+    
     ArrowRight,
     Check,
     AlertTriangle,
@@ -26,8 +26,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useSchool } from '@/contexts/SchoolContext';
-import { useAcademicYear, AcademicYear } from '@/contexts/AcademicYearContext';
-import { Student } from '@/types/student';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 interface PromoteStudentsWorkflowProps {
     onClose: () => void;
@@ -121,7 +120,7 @@ export const PromoteStudentsWorkflow = ({ onClose, onSuccess }: PromoteStudentsW
         setIsLoading(true);
         try {
             // 1. Update Student Levels
-            const updates = promotions
+            const pendingUpdates = promotions
                 .filter(p => p.selected && p.status !== 'retain')
                 .map(p => ({
                     id: p.studentId,

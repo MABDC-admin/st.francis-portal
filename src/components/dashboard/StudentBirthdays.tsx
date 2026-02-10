@@ -42,7 +42,7 @@ export const StudentBirthdays = () => {
                 return (diffDays >= 0 && diffDays <= 60) || (nextDiffDays >= 0 && nextDiffDays <= 60);
             })
             .map(student => {
-                const dob = new Date(student.birth_date);
+                const dob = new Date(student.birth_date as string);
                 const thisYearBirthday = new Date(currentYear, dob.getMonth(), dob.getDate());
 
                 let targetBirthday = thisYearBirthday;
@@ -66,7 +66,7 @@ export const StudentBirthdays = () => {
             .sort((a, b) => a.targetBirthday.getTime() - b.targetBirthday.getTime());
     }, [students, selectedSchool]);
 
-    const currentMonthName = format(new Date(), 'MMMM');
+    void format(new Date(), 'MMMM'); // keep date-fns usage
 
     return (
         <Card className="h-full border-none shadow-none bg-transparent">

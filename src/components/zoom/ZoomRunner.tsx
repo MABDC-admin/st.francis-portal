@@ -14,7 +14,7 @@ declare global {
 
 export const ZoomRunner = () => {
     const { data: schoolId } = useSchoolId();
-    const { settings, inSession, loading: sessionLoading } = useZoomSession(schoolId);
+    const { settings, inSession, loading: sessionLoading } = useZoomSession(schoolId ?? null);
     const [isJoined, setIsJoined] = useState(false);
     const [sdkLoading, setSdkLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);

@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { UserPlus, Loader2, AlertCircle, CheckCircle2, Printer, Download, Key } from 'lucide-react';
+import { UserPlus, Loader2, AlertCircle, CheckCircle2, Printer, Key } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';

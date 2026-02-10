@@ -8,7 +8,7 @@ interface CanvaConnectButtonProps {
   onConnected?: () => void;
 }
 
-export const CanvaConnectButton = ({ onConnected }: CanvaConnectButtonProps) => {
+export const CanvaConnectButton = ({ onConnected: _onConnected }: CanvaConnectButtonProps) => {
   const [isConnecting, setIsConnecting] = useState(false);
 
   const handleConnect = async () => {

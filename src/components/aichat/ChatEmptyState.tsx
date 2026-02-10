@@ -1,4 +1,4 @@
-import { Bot, FileText, Sparkles, Image as ImageIcon, Download, Code, GraduationCap, BookOpen } from 'lucide-react';
+import { FileText, Sparkles, Image as ImageIcon, Download, Code, GraduationCap, BookOpen } from 'lucide-react';
 
 export const ChatEmptyState = () => (
   <div className="flex flex-col items-center justify-center h-full text-center gap-4 opacity-70">

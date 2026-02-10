@@ -38,10 +38,10 @@ interface SchoolAccess {
   user_id: string;
   school_id: string;
   role: string;
-  is_active: boolean;
-  granted_at: string;
-  user_email?: string;
-  user_name?: string;
+  is_active: boolean | null;
+  granted_at: string | null;
+  user_email?: string | null;
+  user_name?: string | null;
   school_name?: string;
   school_code?: string;
 }
@@ -54,7 +54,7 @@ interface School {
 
 interface Profile {
   id: string;
-  email: string;
+  email: string | null;
   full_name: string | null;
 }
 
@@ -92,11 +92,11 @@ export const SchoolAccessManager = () => {
 
       return access.map(a => ({
         ...a,
-        user_email: profileMap.get(a.user_id)?.email,
-        user_name: profileMap.get(a.user_id)?.full_name,
+        user_email: profileMap.get(a.user_id)?.email ?? undefined,
+        user_name: profileMap.get(a.user_id)?.full_name ?? undefined,
         school_name: (a.schools as any)?.name,
         school_code: (a.schools as any)?.code,
-      }));
+      })) as SchoolAccess[];
     },
   });
 
@@ -336,7 +336,7 @@ export const SchoolAccessManager = () => {
       <GrantAccessDialog
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
-        profiles={profiles}
+        profiles={profiles as any}
         schools={schools}
         isPending={addAccessMutation.isPending}
         onGrant={(userIds, schoolId, role) =>

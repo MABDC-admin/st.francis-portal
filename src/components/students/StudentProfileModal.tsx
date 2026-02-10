@@ -93,7 +93,7 @@ export const StudentProfileModal = ({ student, isOpen, onClose }: StudentProfile
           subjects:subject_id (code, name),
           academic_years:academic_year_id (name)
         `)
-        .eq('student_id', student.id)
+        .eq('student_id', student!.id)
         .order('created_at', { ascending: false });
 
       if (gradesError) throw gradesError;

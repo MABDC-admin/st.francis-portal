@@ -189,7 +189,7 @@ export class SectionErrorBoundary extends ErrorBoundary {
             {this.state.error?.message || 'An error occurred while loading this section.'}
           </p>
           <Button 
-            onClick={this.handleReset} 
+            onClick={() => this.setState({ hasError: false, error: null, errorInfo: null })} 
             size="sm" 
             variant="outline"
           >

@@ -242,7 +242,7 @@ export const SchoolSettings = () => {
     const fileExt = file.name.split('.').pop();
     const fileName = `school-logo-${selectedSchool}.${fileExt}`;
 
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from('student-photos')
       .upload(fileName, file, { upsert: true });
 
