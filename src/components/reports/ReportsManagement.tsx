@@ -449,8 +449,7 @@ export const ReportsManagement = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="MABDC">M.A Brain Development Center</SelectItem>
-                  <SelectItem value="STFXSA">St. Francis Xavier Smart Academy</SelectItem>
+                  <SelectItem value="SFXSAI">St. Francis Xavier Smart Academy Inc</SelectItem>
                 </SelectContent>
               </Select>
             </div>

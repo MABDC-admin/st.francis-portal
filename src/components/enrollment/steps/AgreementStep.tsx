@@ -21,7 +21,7 @@ export const AgreementStep = ({ agreed, setAgreed, sigPadRef, handleClearSignatu
                 <h3 className="font-semibold text-lg text-foreground">Terms and Conditions</h3>
                 <ScrollArea className="h-[200px] w-full rounded-md border p-4 bg-muted/30">
                     <div className="space-y-4 text-sm text-muted-foreground">
-                        <p><strong>1. ENROLLMENT AGREEMENT:</strong> By submitting this form, I hereby request enrollment for the learner named above in M.A. Brain Development Center (MABDC) / St. Francis Xavier Smart Academy (STFXSA).</p>
+                        <p><strong>1. ENROLLMENT AGREEMENT:</strong> By submitting this form, I hereby request enrollment for the learner named above in St. Francis Xavier Smart Academy Inc (SFXSAI).</p>
 
                         <p><strong>2. PARENTAL CONSENT:</strong> I certify that I am the parent or legal guardian of the learner and have the authority to make educational decisions on their behalf.</p>
 

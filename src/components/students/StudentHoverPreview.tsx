@@ -88,16 +88,6 @@ export const StudentHoverPreview = ({ student, children }: StudentHoverPreviewPr
             </div>
           )}
 
-          {/* Address */}
-          {student.school === 'MABDC' && student.uae_address && (
-            <div className="space-y-1">
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">UAE Address</p>
-              <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                <MapPin className="h-3 w-3 text-stat-orange flex-shrink-0 mt-0.5" />
-                <span className="line-clamp-2">{student.uae_address}</span>
-              </div>
-            </div>
-          )}
 
           {/* Previous School */}
           {student.previous_school && (

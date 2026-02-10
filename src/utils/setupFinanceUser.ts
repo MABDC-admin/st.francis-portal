@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
  * This ensures the user has proper school access and role assignments
  */
 export async function setupFinanceUser() {
-  const financeEmail = 'ivyan@stfxsa.org';
+  const financeEmail = 'ivyan@sfxsai.org';
   
   try {
     // 1. Check if user exists in auth
@@ -46,23 +46,23 @@ export async function setupFinanceUser() {
     const { data: schools, error: schoolError } = await supabase
       .from('schools')
       .select('id')
-      .eq('code', 'STFXSA')
+      .eq('code', 'SFXSAI')
       .eq('is_active', true)
       .limit(1);
     
     if (schoolError || !schools || schools.length === 0) {
-      console.error('STFXSA school not found:', schoolError);
-      return { success: false, error: 'STFXSA school not found' };
+      console.error('SFXSAI school not found:', schoolError);
+      return { success: false, error: 'SFXSAI school not found' };
     }
     
-    const stfxsaSchoolId = schools[0].id;
+    const sfxsaiSchoolId = schools[0].id;
     
     // 4. Grant school access
     const { error: accessError } = await supabase
       .from('user_school_access')
       .upsert({
         user_id: userId,
-        school_id: stfxsaSchoolId,
+        school_id: sfxsaiSchoolId,
         role: 'finance',
         is_active: true
       }, { 
@@ -75,7 +75,7 @@ export async function setupFinanceUser() {
       return { success: false, error: accessError.message };
     }
     
-    console.log('Successfully set up finance user ivyan@stfxsa.org with STFXSA access');
+    console.log('Successfully set up finance user ivyan@sfxsai.org with SFXSAI access');
     return { success: true };
     
   } catch (error) {

@@ -38,10 +38,7 @@ export const DataQualityDashboard = () => {
 
   // Students table uses text 'school' column, not UUID school_id
   const getStudentSchoolFilter = (query: any) => {
-    if (selectedSchool === 'STFXSA') {
-      return query.or('school.ilike.%stfxsa%,school.ilike.%st. francis%');
-    }
-    return query.or('school.ilike.%mabdc%,school.is.null,school.eq.');
+    return query.or('school.ilike.%sfxsai%,school.ilike.%stfxsa%,school.ilike.%st. francis%');
   };
   const [issues, setIssues] = useState<ValidationIssue[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -162,12 +159,8 @@ export const DataQualityDashboard = () => {
         if (!student.gender) missingFields.push('gender');
         if (!student.mother_maiden_name && !student.father_name) missingFields.push('guardian name');
 
-        // School-specific address validation
-        if (selectedSchool === 'MABDC') {
-          if (!student.uae_address) missingFields.push('UAE address');
-        } else {
-          if (!student.phil_address) missingFields.push('PH address');
-        }
+        // Address validation - always check Philippine address
+        if (!student.phil_address) missingFields.push('PH address');
 
         if (!student.mother_contact && !student.father_contact) missingFields.push('guardian contact');
 

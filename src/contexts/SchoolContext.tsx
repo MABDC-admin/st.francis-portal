@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode } from 'react';
 
-export type SchoolType = 'MABDC' | 'STFXSA';
+export type SchoolType = 'SFXSAI';
 
 interface SchoolTheme {
   name: string;
@@ -20,24 +20,8 @@ interface SchoolTheme {
 }
 
 export const SCHOOL_THEMES: Record<SchoolType, SchoolTheme> = {
-  MABDC: {
-    name: 'MABDC',
-    fullName: 'M.A Brain Development Center',
-    sidebarBg: 'from-emerald-900 to-emerald-800',
-    sidebarText: 'text-emerald-100',
-    menuActiveBg: 'bg-emerald-500',
-    menuActiveText: 'text-white',
-    menuHoverBg: 'hover:bg-emerald-700/50',
-    pageBg: 'bg-gradient-to-br from-emerald-50 to-lime-50 dark:from-emerald-950/20 dark:to-lime-950/20',
-    accentColor: '#10b981',
-    primaryHue: '152',
-    schoolId: '401234', // Dummy School ID
-    region: 'Region III',
-    division: 'Tarlac',
-    district: 'Capas',
-  },
-  STFXSA: {
-    name: 'STFXSA',
+  SFXSAI: {
+    name: 'SFXSAI',
     fullName: 'St. Francis Xavier Smart Academy Inc',
     sidebarBg: 'from-blue-900 to-indigo-800',
     sidebarText: 'text-blue-100',
@@ -47,7 +31,7 @@ export const SCHOOL_THEMES: Record<SchoolType, SchoolTheme> = {
     pageBg: 'bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20',
     accentColor: '#3b82f6',
     primaryHue: '217',
-    schoolId: '405678', // Dummy School ID
+    schoolId: '405678',
     region: 'Region III',
     division: 'Tarlac',
     district: 'Capas',
@@ -65,16 +49,10 @@ interface SchoolContextType {
 const SchoolContext = createContext<SchoolContextType | undefined>(undefined);
 
 export const SchoolProvider = ({ children }: { children: ReactNode }) => {
-  const [selectedSchool, setSelectedSchoolState] = useState<SchoolType>(() => {
-    const saved = localStorage.getItem('selected-school');
-    return (saved as SchoolType) || 'MABDC';
-  });
-  const [canSwitchSchool, setCanSwitchSchool] = useState(false);
+  const [selectedSchool] = useState<SchoolType>('SFXSAI');
 
-  const setSelectedSchool = (school: SchoolType) => {
-    setSelectedSchoolState(school);
-    localStorage.setItem('selected-school', school);
-  };
+  // No-op since single school
+  const setSelectedSchool = (_school: SchoolType) => {};
 
   const schoolTheme = SCHOOL_THEMES[selectedSchool];
 
@@ -83,8 +61,8 @@ export const SchoolProvider = ({ children }: { children: ReactNode }) => {
       selectedSchool,
       setSelectedSchool,
       schoolTheme,
-      canSwitchSchool,
-      setCanSwitchSchool
+      canSwitchSchool: false,
+      setCanSwitchSchool: () => {}
     }}>
       {children}
     </SchoolContext.Provider>

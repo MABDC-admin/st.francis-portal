@@ -59,9 +59,8 @@ type ViewMode = 'cards' | 'table' | 'compact' | 'split';
 const ITEMS_PER_PAGE = 18;
 
 const SCHOOLS = [
-  { id: 'all', name: 'All Schools', acronym: 'ALL', dbValue: '' },
-  { id: 'mabdc', name: 'M.A Brain Development Center', acronym: 'MABDC', dbValue: 'MABDC' },
-  { id: 'stfxsa', name: 'St. Francis Xavier Smart Academy Inc', acronym: 'STFXSA', dbValue: 'STFXSA' },
+  { id: 'all', name: 'All', acronym: 'ALL', dbValue: '' },
+  { id: 'sfxsai', name: 'St. Francis Xavier Smart Academy Inc', acronym: 'SFXSAI', dbValue: 'SFXSAI' },
 ];
 
 export const StudentTable = ({

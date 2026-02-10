@@ -51,12 +51,7 @@ function generateSecurePassword(length = 12): string {
 // Generate email from LRN and school
 function generateEmail(lrn: string, school?: string | null): string {
   const cleanLrn = lrn.replace(/[^a-zA-Z0-9]/g, "");
-  // Use school-specific domain
-  if (school?.toLowerCase().includes('stfxsa') || school?.toLowerCase().includes('st. francis')) {
-    return `${cleanLrn}@stfxsa.org`;
-  }
-  // Default to MABDC
-  return `${cleanLrn}@mabdc.org`;
+  return `${cleanLrn}@sfxsai.org`;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -168,10 +163,8 @@ const handler = async (req: Request): Promise<Response> => {
 
       // Apply school filter
       if (school && school !== 'all') {
-        if (school === 'MABDC') {
-          query = query.or('school.ilike.%mabdc%,school.is.null');
-        } else if (school === 'STFXSA') {
-          query = query.or('school.ilike.%stfxsa%,school.ilike.%st. francis%');
+        if (school === 'SFXSAI') {
+          query = query.or('school.ilike.%sfxsai%,school.ilike.%stfxsa%,school.ilike.%st. francis%');
         }
       }
 
