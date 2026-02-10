@@ -192,7 +192,7 @@ export const StudentProfileCard = ({
                 </Badge>
               </div>
               <p className="text-white/80 text-sm">
-                {student.lrn} • {student.level} • {student.school || 'MABDC'}
+                {student.lrn} • {student.level} • {student.school || 'SFXSAI'}
               </p>
               <div className="flex items-center gap-4 text-sm text-white/70 flex-wrap">
                 {(student.mother_contact || student.father_contact) && (
@@ -345,12 +345,7 @@ export const StudentProfileCard = ({
           {/* Content */}
           <div className="p-5 bg-gradient-to-br from-amber-50/50 to-white dark:from-slate-800/50 dark:to-slate-900">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {student.school === 'MABDC' && (
-                <div>
-                  <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">UAE Address</p>
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.uae_address || 'Not provided'}</p>
-                </div>
-              )}
+              
               <div>
                 <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">Philippine Address</p>
                 <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.phil_address || 'Not provided'}</p>

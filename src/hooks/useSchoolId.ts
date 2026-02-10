@@ -12,7 +12,7 @@ export const useSchoolId = () => {
     queryKey: ['school-id', selectedSchool],
     queryFn: async () => {
       // Map the display name to the database code
-      const schoolCode = selectedSchool; // MABDC or STFXSA
+      const schoolCode = selectedSchool; // SFXSAI
       
       const { data, error } = await supabase
         .from('schools')

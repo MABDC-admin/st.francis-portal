@@ -34,7 +34,7 @@ export const TeacherCSVImport = () => {
 
   // Map school context to school code for the teachers table
   const getSchoolCode = () => {
-    return selectedSchool || 'MABDC';
+    return selectedSchool || 'SFXSAI';
   };
 
   const normalizeHeaders = (headers: string[]): Record<string, string> => {

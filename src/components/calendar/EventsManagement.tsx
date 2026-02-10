@@ -67,7 +67,7 @@ export const EventsManagement = () => {
         description: "",
         event_date: format(new Date(), "yyyy-MM-dd"),
         event_type: "general",
-        school: (selectedSchool as SchoolType) || "MABDC",
+        school: (selectedSchool as SchoolType) || "SFXSAI",
     });
 
     const resetForm = () => {
@@ -76,7 +76,7 @@ export const EventsManagement = () => {
             description: "",
             event_date: format(new Date(), "yyyy-MM-dd"),
             event_type: "general",
-            school: (selectedSchool as SchoolType) || "MABDC",
+            school: (selectedSchool as SchoolType) || "SFXSAI",
         });
         setEditingEvent(null);
     };
@@ -88,7 +88,7 @@ export const EventsManagement = () => {
             description: event.description || "",
             event_date: event.event_date,
             event_type: event.event_type,
-            school: (event.school as SchoolType) || "MABDC",
+            school: (event.school as SchoolType) || "SFXSAI",
         });
         setIsDialogOpen(true);
     };
@@ -290,8 +290,7 @@ export const EventsManagement = () => {
                                             <SelectValue placeholder="Select school" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="MABDC">MABDC (UAE)</SelectItem>
-                                            <SelectItem value="STFXSA">STFXSA (Philippines)</SelectItem>
+                                            <SelectItem value="SFXSAI">SFXSAI</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>

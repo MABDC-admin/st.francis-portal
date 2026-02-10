@@ -150,7 +150,7 @@ export class SchoolYearQueryBuilder<T> {
 /**
  * Hook to get a query builder with current school context
  * Note: This requires school_id and academic_year_id to be passed directly
- * since SchoolContext uses school codes (MABDC, STFXSA) not UUIDs
+ * since SchoolContext uses school codes (SFXSAI) not UUIDs
  */
 export function useSchoolYearQuery<T = any>(
     tableName: string,

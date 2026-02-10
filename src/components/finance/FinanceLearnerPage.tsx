@@ -43,7 +43,7 @@ export const FinanceLearnerPage = () => {
     queryFn: async () => {
       if (!schoolId) return [];
 
-      // Students table uses text 'school' column (MABDC/STFXSA), not UUID school_id
+      // Students table uses text 'school' column (SFXSAI), not UUID school_id
       const { data, error } = await supabase
         .from('students')
         .select('*')

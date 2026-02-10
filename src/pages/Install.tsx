@@ -47,7 +47,7 @@ const Install = () => {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
             <Download className="h-8 w-8 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold">Install MABDC Portal</h1>
+          <h1 className="text-2xl font-bold">Install SFXSAI Portal</h1>
           <p className="text-muted-foreground">
             Install the app on your device for quick access, offline support, and a native app experience.
           </p>

@@ -377,7 +377,7 @@ export const SchoolManagement = () => {
                 <Input
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                  placeholder="e.g., MABDC"
+                  placeholder="e.g., SFXSAI"
                   maxLength={10}
                 />
               </div>

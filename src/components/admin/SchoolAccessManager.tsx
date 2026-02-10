@@ -285,7 +285,7 @@ export const SchoolAccessManager = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${record.school_code === 'MABDC' ? 'bg-emerald-500' : 'bg-blue-500'}`} />
+                      <div className={`w-2 h-2 rounded-full bg-blue-500`} />
                       <span>{record.school_name}</span>
                     </div>
                   </TableCell>

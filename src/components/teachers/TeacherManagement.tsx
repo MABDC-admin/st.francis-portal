@@ -42,7 +42,7 @@ const initialFormState = {
   department: '',
   grade_level: '',
   subjects: '',
-  school: 'MABDC',
+  school: 'SFXSAI',
 };
 
 export const TeacherManagement = () => {

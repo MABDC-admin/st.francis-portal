@@ -168,7 +168,7 @@ export const StudentIDCard = ({ student }: StudentIDCardProps) => {
                                 <p className="text-white/40 text-[10px] uppercase font-bold tracking-wider px-2">Contacts</p>
                                 <div className="flex items-center gap-3 text-white/80 text-xs px-2">
                                     <Phone className="h-3 w-3 text-primary" />
-                                    <span>{student.school_id === 'STFXSA' ? '+971 04 123 4567' : '+971 04 987 6543'}</span>
+                                    <span>+63 45 123 4567</span>
                                 </div>
                                 <div className="flex items-center gap-3 text-white/80 text-xs px-2">
                                     <Globe className="h-3 w-3 text-primary" />

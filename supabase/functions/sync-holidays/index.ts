@@ -47,8 +47,7 @@ serve(async (req) => {
         console.log(`Syncing holidays for year ${year}...`);
 
         const schools = [
-            { code: 'MABDC', country: 'AE' },
-            { code: 'STFXSA', country: 'PH' }
+            { code: 'SFXSAI', country: 'PH' }
         ];
 
         const results = [];

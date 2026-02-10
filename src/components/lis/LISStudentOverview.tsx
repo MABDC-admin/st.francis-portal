@@ -44,7 +44,7 @@ export const LISStudentOverview = ({ student }: LISStudentOverviewProps) => {
           <InfoItem icon={User} label="Father's Name" value={student.father_name} />
           <InfoItem icon={Phone} label="Father's Contact" value={student.father_contact} />
           <InfoItem icon={MapPin} label="Philippine Address" value={student.phil_address} />
-          {student.school === 'MABDC' && <InfoItem icon={MapPin} label="UAE Address" value={student.uae_address} />}
+          
         </CardContent>
       </Card>
 
