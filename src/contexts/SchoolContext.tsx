@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 
-export type SchoolType = 'STFXSA';
+export type SchoolType = 'SFXSAI';
 
 interface SchoolTheme {
   name: string;
@@ -20,8 +20,8 @@ interface SchoolTheme {
 }
 
 export const SCHOOL_THEMES: Record<SchoolType, SchoolTheme> = {
-  STFXSA: {
-    name: 'STFXSA',
+  SFXSAI: {
+    name: 'SFXSAI',
     fullName: 'St. Francis Xavier Smart Academy Inc',
     sidebarBg: 'from-blue-900 to-indigo-800',
     sidebarText: 'text-blue-100',
@@ -49,7 +49,7 @@ interface SchoolContextType {
 const SchoolContext = createContext<SchoolContextType | undefined>(undefined);
 
 export const SchoolProvider = ({ children }: { children: ReactNode }) => {
-  const [selectedSchool] = useState<SchoolType>('STFXSA');
+  const [selectedSchool] = useState<SchoolType>('SFXSAI');
 
   // No-op since single school
   const setSelectedSchool = (_school: SchoolType) => {};
