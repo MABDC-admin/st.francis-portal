@@ -130,7 +130,7 @@ export const ScheduleManagement = () => {
         ...data,
         school_id: schoolId,
         academic_year_id: selectedYearId,
-        teacher_id: data.teacher_id || null,
+        teacher_id: data.teacher_id && data.teacher_id !== 'none' ? data.teacher_id : null,
       };
       
       if (editingRecord) {
@@ -481,7 +481,7 @@ export const ScheduleManagement = () => {
                     <SelectValue placeholder="Select teacher" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No teacher</SelectItem>
+                    <SelectItem value="none">No teacher</SelectItem>
                     {teachers.map((teacher: any) => (
                       <SelectItem key={teacher.id} value={teacher.id}>
                         {teacher.full_name}

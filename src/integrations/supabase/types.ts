@@ -2205,6 +2205,90 @@ export type Database = {
         }
         Relationships: []
       }
+      online_registrations: {
+        Row: {
+          academic_year_id: string
+          birth_date: string | null
+          created_at: string
+          dialects: string | null
+          father_contact: string | null
+          father_name: string | null
+          gender: string | null
+          id: string
+          level: string
+          lrn: string | null
+          mother_contact: string | null
+          mother_maiden_name: string | null
+          mother_tongue: string | null
+          parent_email: string | null
+          phil_address: string | null
+          previous_school: string | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          school_id: string
+          status: string
+          strand: string | null
+          student_name: string
+          uae_address: string | null
+          updated_at: string
+        }
+        Insert: {
+          academic_year_id: string
+          birth_date?: string | null
+          created_at?: string
+          dialects?: string | null
+          father_contact?: string | null
+          father_name?: string | null
+          gender?: string | null
+          id?: string
+          level: string
+          lrn?: string | null
+          mother_contact?: string | null
+          mother_maiden_name?: string | null
+          mother_tongue?: string | null
+          parent_email?: string | null
+          phil_address?: string | null
+          previous_school?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          school_id: string
+          status?: string
+          strand?: string | null
+          student_name: string
+          uae_address?: string | null
+          updated_at?: string
+        }
+        Update: {
+          academic_year_id?: string
+          birth_date?: string | null
+          created_at?: string
+          dialects?: string | null
+          father_contact?: string | null
+          father_name?: string | null
+          gender?: string | null
+          id?: string
+          level?: string
+          lrn?: string | null
+          mother_contact?: string | null
+          mother_maiden_name?: string | null
+          mother_tongue?: string | null
+          parent_email?: string | null
+          phil_address?: string | null
+          previous_school?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          school_id?: string
+          status?: string
+          strand?: string | null
+          student_name?: string
+          uae_address?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payment_plan_installments: {
         Row: {
           amount: number
