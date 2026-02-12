@@ -1,105 +1,80 @@
 
 
-# Enhance School Showcase: Gallery Upload, Map Fix, and Visit Confirmation
-
-## Overview
-
-This plan addresses five key issues: removing the "Back to School Info" button, fixing the map embed, fixing the gallery slider, adding photo upload for admins, and ensuring responsiveness.
+# Auto-Play Photo Gallery + Auto-Close After Visit Booking
 
 ## Changes
 
-### 1. Remove "Back to School Info" Button
+### 1. Auto-rotating photo gallery in SchoolShowcaseDialog
+Add a `useEffect` interval that automatically cycles through gallery photos every 4 seconds. The auto-play pauses when the user manually interacts (clicks arrows or dots) and resumes after a short delay.
 
-In `VisitScheduler.tsx`, the confirmation screen (line 100-102) shows a "Back to School Info" button after booking. This will be removed and replaced with a simple "Close" or "Done" action that closes the dialog.
+**File:** `src/components/registration/SchoolShowcaseDialog.tsx`
+- Add a `useEffect` with `setInterval` to call `nextPhoto()` every 4 seconds
+- Add a pause mechanism: when user clicks prev/next/dot, pause auto-play for 8 seconds before resuming
+- Clean up interval on unmount
 
-### 2. Fix Map Integration
+### 2. Auto-close dialog after visit is scheduled
+After the visit is successfully booked, automatically close the entire dialog after a 3-second delay so the user sees the confirmation briefly before it closes.
 
-The current map uses an `iframe` with `map_embed_url`, which requires admins to paste a full Google Maps embed URL -- error-prone and often broken. The fix:
+**File:** `src/components/registration/VisitScheduler.tsx`
+- Add an `onClose` prop to the `VisitSchedulerProps` interface
+- After `setIsBooked(true)`, start a `setTimeout` of 3 seconds that calls `onClose()`
+- Clean up timeout on unmount
 
-- Use the existing `latitude` and `longitude` columns in `school_info` to construct a reliable Google Maps embed URL automatically
-- Fall back to `map_embed_url` if lat/lng are not set
-- Add latitude/longitude input fields to the `SchoolInfoManager` admin form
-- The embed URL will be constructed as: `https://www.google.com/maps/embed/v1/place?key=...&q={lat},{lng}` or use the simpler no-API-key approach: `https://maps.google.com/maps?q={lat},{lng}&output=embed`
-
-### 3. Fix Gallery Image Slider
-
-The current `AnimatePresence` + `motion.img` approach can cause flickering when images fail to load. Fixes:
-
-- Add `onError` handler to images with a fallback placeholder
-- Add image loading state with a skeleton/spinner
-- Reset `photoIndex` to 0 when photos array changes
-- Add touch/swipe support for mobile using simple touch event handlers
-
-### 4. Photo Upload for Admin Gallery
-
-**Database**: Create a new storage bucket `school-gallery` (public) with appropriate RLS policies.
-
-**SchoolInfoManager changes**:
-- Replace the "paste URL" input with a drag-and-drop upload zone using `react-dropzone` (already installed)
-- Accept JPEG, PNG, WebP formats, max 5MB per file
-- Show upload preview before confirming
-- Upload to `school-gallery/{school_id}/{filename}` in storage
-- Get the public URL and append it to the `facility_photos` JSONB array
-- Show existing photos with delete capability
-
-### 5. Responsive Design
-
-All components already use Tailwind responsive classes. The gallery and map will use `aspect-video` containers that scale properly. The upload dropzone will be full-width on mobile.
-
----
+**File:** `src/components/registration/SchoolShowcaseDialog.tsx`
+- Pass `onClose={() => onOpenChange(false)}` to the `VisitScheduler` component
 
 ## Technical Details
 
-### Database Migration
+### Auto-play gallery (SchoolShowcaseDialog)
+```typescript
+// Add useEffect for auto-rotation
+const [autoPaused, setAutoPaused] = useState(false);
 
-```sql
--- Create storage bucket for school gallery photos
-INSERT INTO storage.buckets (id, name, public) VALUES ('school-gallery', 'school-gallery', true);
+useEffect(() => {
+  if (!hasPhotos || photos.length <= 1 || autoPaused) return;
+  const interval = setInterval(nextPhoto, 4000);
+  return () => clearInterval(interval);
+}, [hasPhotos, photos.length, nextPhoto, autoPaused]);
 
--- Allow authenticated users to upload
-CREATE POLICY "Authenticated users can upload school gallery photos"
-ON storage.objects FOR INSERT TO authenticated
-WITH CHECK (bucket_id = 'school-gallery');
-
--- Allow public read access
-CREATE POLICY "Public can view school gallery photos"
-ON storage.objects FOR SELECT TO anon, authenticated
-USING (bucket_id = 'school-gallery');
-
--- Allow authenticated users to delete
-CREATE POLICY "Authenticated users can delete school gallery photos"
-ON storage.objects FOR DELETE TO authenticated
-USING (bucket_id = 'school-gallery');
+// On manual interaction, pause briefly
+const pauseAutoPlay = () => {
+  setAutoPaused(true);
+  setTimeout(() => setAutoPaused(false), 8000);
+};
 ```
 
-### Files to Modify
+### Auto-close visit scheduler (VisitScheduler)
+```typescript
+// Add onClose prop
+interface VisitSchedulerProps {
+  schoolId: string;
+  registrationId?: string;
+  onBack: () => void;
+  onClose?: () => void;  // new
+}
 
-| File | Changes |
-|------|---------|
-| `src/components/registration/VisitScheduler.tsx` | Remove "Back to School Info" button from confirmation view |
-| `src/components/registration/SchoolShowcaseDialog.tsx` | Fix map to use lat/lng fallback, add image error handling and loading states, add swipe support to gallery |
-| `src/components/registration/SchoolInfoManager.tsx` | Add lat/lng fields, replace URL input with drag-and-drop upload using `react-dropzone`, upload to storage bucket |
-| Database migration | Create `school-gallery` bucket with RLS policies |
-
-### Upload Flow (SchoolInfoManager)
-
-```text
-Admin drops image file
-  --> Validate format (JPEG/PNG/WebP) and size (max 5MB)
-  --> Show preview thumbnail
-  --> Upload to storage: school-gallery/{schoolId}/{timestamp}_{filename}
-  --> Get public URL from Supabase storage
-  --> Append URL to facility_photos array in form state
-  --> Save to school_info table on "Save" click
+// After booking success, auto-close after 3s
+useEffect(() => {
+  if (!isBooked || !onClose) return;
+  const timer = setTimeout(onClose, 3000);
+  return () => clearTimeout(timer);
+}, [isBooked, onClose]);
 ```
 
-### Map Rendering Logic (SchoolShowcaseDialog)
-
-```text
-If latitude AND longitude exist:
-  --> Render iframe with constructed Google Maps embed URL
-Else if map_embed_url exists:
-  --> Render iframe with the raw embed URL (current behavior)
-Else:
-  --> Show "Location not available" placeholder
+### Pass onClose from SchoolShowcaseDialog
+```tsx
+<VisitScheduler
+  schoolId={schoolId}
+  registrationId={registrationId}
+  onBack={() => setShowVisitScheduler(false)}
+  onClose={() => onOpenChange(false)}
+/>
 ```
+
+## Files to Modify
+
+| File | Change |
+|------|--------|
+| `src/components/registration/SchoolShowcaseDialog.tsx` | Add auto-play interval for gallery, pass `onClose` to VisitScheduler |
+| `src/components/registration/VisitScheduler.tsx` | Add `onClose` prop, auto-close dialog 3s after successful booking |
+
