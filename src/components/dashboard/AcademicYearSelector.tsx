@@ -16,7 +16,7 @@ export const AcademicYearSelector = () => {
           <Calendar className="h-4 w-4" />
           <span>Academic Year:</span>
         </div>
-        <Select value={selectedYearId || ''} onValueChange={setSelectedYearId}>
+        <Select value={selectedYearId || undefined} onValueChange={setSelectedYearId}>
           <SelectTrigger className="w-[220px] h-9 bg-background">
             <SelectValue placeholder="Select year" />
           </SelectTrigger>
