@@ -7,12 +7,15 @@ import { CSVStudent, StudentFormData } from '@/types/student';
 import { normalizeGradeLevel } from '@/components/enrollment/constants';
 import Papa from 'papaparse';
 import { cn } from '@/lib/utils';
+import { useYearGuard } from '@/hooks/useYearGuard';
+import { YearLockedBanner } from '@/components/ui/YearLockedBanner';
 
 export const CSVImport = () => {
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<StudentFormData[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const { isReadOnly, guardMutation } = useYearGuard();
 
   const bulkCreate = useBulkCreateStudents();
 
@@ -142,6 +145,7 @@ export const CSVImport = () => {
 
   const handleImport = async () => {
     if (parsedData.length === 0) return;
+    if (!guardMutation()) return;
     
     await bulkCreate.mutateAsync(parsedData);
     setFile(null);
@@ -161,6 +165,8 @@ export const CSVImport = () => {
       className="bg-card rounded-2xl shadow-card p-6"
     >
       <h2 className="text-xl font-bold text-foreground mb-6">Import Students from CSV</h2>
+
+      <YearLockedBanner />
 
       {/* Drop Zone */}
       <div
@@ -263,7 +269,7 @@ export const CSVImport = () => {
                 </p>
               )}
             </div>
-            <Button onClick={handleImport} disabled={bulkCreate.isPending}>
+            <Button onClick={handleImport} disabled={bulkCreate.isPending || isReadOnly}>
               {bulkCreate.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />

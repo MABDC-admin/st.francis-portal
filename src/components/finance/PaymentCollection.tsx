@@ -17,6 +17,8 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { useYearGuard } from '@/hooks/useYearGuard';
+import { YearLockedBanner } from '@/components/ui/YearLockedBanner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -133,6 +135,7 @@ const printReceipt = async (payment: any, schoolName: string, schoolId: string, 
 export const PaymentCollection = () => {
   const { selectedSchool } = useSchool();
   const { selectedYearId } = useAcademicYear();
+  const { isReadOnly } = useYearGuard();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -492,6 +495,7 @@ export const PaymentCollection = () => {
 
   return (
     <div className="space-y-6">
+      <YearLockedBanner />
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -502,7 +506,7 @@ export const PaymentCollection = () => {
             <p className="text-muted-foreground">Accept and record payments</p>
           </div>
         </div>
-        <Button onClick={() => setDialogOpen(true)} className="gap-2">
+        <Button onClick={() => setDialogOpen(true)} className="gap-2" disabled={isReadOnly}>
           <Plus className="h-4 w-4" /> Collect Payment
         </Button>
       </motion.div>

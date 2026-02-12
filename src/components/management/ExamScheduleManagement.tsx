@@ -17,6 +17,8 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchoolId } from '@/hooks/useSchoolId';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { useYearGuard } from '@/hooks/useYearGuard';
+import { YearLockedBanner } from '@/components/ui/YearLockedBanner';
 import { GRADE_LEVELS } from '@/components/enrollment/constants';
 
 interface ExamRecord {
@@ -49,6 +51,7 @@ export const ExamScheduleManagement = () => {
   const queryClient = useQueryClient();
   const { data: schoolId } = useSchoolId();
   const { selectedYearId } = useAcademicYear();
+  const { isReadOnly, guardMutation } = useYearGuard();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -210,6 +213,7 @@ export const ExamScheduleManagement = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!guardMutation()) return;
     if (!formData.subject_id || !formData.grade_level) {
       toast.error('Please fill in required fields');
       return;
@@ -223,6 +227,7 @@ export const ExamScheduleManagement = () => {
 
   return (
     <div className="space-y-6">
+      <YearLockedBanner />
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -233,7 +238,7 @@ export const ExamScheduleManagement = () => {
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Exam Schedule</h1>
           <p className="text-muted-foreground mt-1">Schedule and manage examinations</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)}>
+        <Button onClick={() => setIsModalOpen(true)} disabled={isReadOnly}>
           <Plus className="h-4 w-4 mr-2" />
           Schedule Exam
         </Button>

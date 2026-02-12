@@ -10,6 +10,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { useYearGuard } from '@/hooks/useYearGuard';
+import { YearLockedBanner } from '@/components/ui/YearLockedBanner';
 import { getSchoolId } from '@/utils/schoolIdMap';
 import { GRADE_LEVELS } from '@/components/enrollment/constants';
 
@@ -36,6 +38,7 @@ interface StudentEnrollment {
 export const EnrollmentManagement = () => {
   const { selectedSchool } = useSchool();
   const { selectedYearId, selectedYear, isLoading: isLoadingYear } = useAcademicYear();
+  const { isReadOnly, guardMutation } = useYearGuard();
   const [isLoading, setIsLoading] = useState(false);
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -196,6 +199,7 @@ export const EnrollmentManagement = () => {
   }, [selectedYearId, subjects, selectedSchool]);
 
   const handleAutoEnroll = async () => {
+    if (!guardMutation()) return;
     if (!selectedYearId) {
       toast.error('Please select an academic year from the sidebar');
       return;
@@ -257,6 +261,7 @@ export const EnrollmentManagement = () => {
 
   return (
     <div className="space-y-6">
+      <YearLockedBanner />
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -296,7 +301,7 @@ export const EnrollmentManagement = () => {
                 Change the academic year from the sidebar switcher
               </p>
             </div>
-            <Button onClick={handleAutoEnroll} disabled={isEnrolling || !selectedYearId}>
+            <Button onClick={handleAutoEnroll} disabled={isEnrolling || !selectedYearId || isReadOnly}>
               {isEnrolling ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
