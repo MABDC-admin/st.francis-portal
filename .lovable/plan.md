@@ -1,155 +1,106 @@
 
-# Phase 1: Redesign Online Registration System
+# Phase 2: Email Notifications, School Showcase & Visit Scheduling
 
 ## Overview
-Rebuild the online registration form as a multi-step wizard with a public URL, add a Religion field, update address fields, include a digital signature agreement page, and show an animated success screen. This phase focuses on the core form experience without email notifications or school showcase dialog (Phase 2).
+After successful registration, send email confirmations via Resend, show an interactive school showcase dialog with map/photos/registrar info, and allow scheduling school visits.
 
 ---
 
-## 1. Public Route for Online Registration
+## 1. Email Confirmation via Resend Edge Function
 
-Create a dedicated route `/register` accessible without authentication. This gives a shareable URL.
-
-**File: `src/App.tsx`**
-- Add route: `<Route path="/register" element={<PublicRegistrationPage />} />`
-
-**New file: `src/pages/PublicRegistrationPage.tsx`**
-- A standalone page wrapper (no `DashboardLayout`, no auth required)
-- Renders a branded header (school logo/name) and the multi-step form
-- Uses `SchoolProvider` and `AcademicYearProvider` contexts with defaults (hardcoded school, fetches current academic year)
+**New file: `supabase/functions/send-registration-email/index.ts`**
+- Triggered after successful registration submission
+- Sends confirmation email to parent email (if provided)
+- Sends notification email to school administration
+- Uses existing `RESEND_API_KEY` secret
+- Professional HTML email template with school branding
 
 ---
 
-## 2. Database Schema Changes
+## 2. School Info Database Table
 
-**Migration: Add columns to `online_registrations`**
+**Migration: Create `school_info` table**
+```sql
+CREATE TABLE public.school_info (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  school_id uuid REFERENCES schools(id) NOT NULL,
+  registrar_name text,
+  registrar_photo_url text,
+  registrar_phone text,
+  registrar_email text,
+  office_hours text,
+  latitude numeric,
+  longitude numeric,
+  map_embed_url text,
+  facility_photos jsonb DEFAULT '[]',
+  visit_slots_config jsonb DEFAULT '{"morning": "9:00 AM - 12:00 PM", "afternoon": "1:00 PM - 4:00 PM", "max_per_slot": 5}',
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
 ```
-ALTER TABLE online_registrations ADD COLUMN IF NOT EXISTS religion text;
-ALTER TABLE online_registrations ADD COLUMN IF NOT EXISTS current_address text;
-ALTER TABLE online_registrations ADD COLUMN IF NOT EXISTS signature_data text;
-ALTER TABLE online_registrations ADD COLUMN IF NOT EXISTS agreements_accepted jsonb DEFAULT '{}';
+- RLS: Public SELECT, admin UPDATE/INSERT
+
+**Migration: Create `school_visits` table**
+```sql
+CREATE TABLE public.school_visits (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  school_id uuid REFERENCES schools(id) NOT NULL,
+  registration_id uuid REFERENCES online_registrations(id),
+  visitor_name text NOT NULL,
+  visitor_email text,
+  visitor_phone text,
+  visit_date date NOT NULL,
+  visit_slot text NOT NULL,
+  status text DEFAULT 'scheduled',
+  created_at timestamptz DEFAULT now()
+);
 ```
-
-- `religion`: new required field
-- `current_address`: replaces both `phil_address` and `uae_address`
-- `signature_data`: stores base64 of drawn signature (small data, acceptable for signatures)
-- `agreements_accepted`: JSON object tracking which agreements were accepted and timestamps
-
-**RLS**: The existing public INSERT policy for `online_registrations` already allows anonymous inserts. No RLS changes needed.
+- RLS: Public INSERT (for scheduling), admin SELECT/UPDATE
 
 ---
 
-## 3. Multi-Step Registration Form
+## 3. School Showcase Dialog
 
-**Rewrite: `src/components/registration/OnlineRegistrationForm.tsx`**
+**New file: `src/components/registration/SchoolShowcaseDialog.tsx`**
 
-Split into 3 steps with a progress indicator at the top.
-
-### Step 1: Student Information
-Fields (in order):
-1. Grade Level (required, dropdown with grouped options)
-2. LRN Toggle (Yes/No switch) + LRN input (conditional)
-3. Full Name (required)
-4. Birth Date (required)
-5. Age (auto-calculated, read-only)
-6. Gender (required, dropdown)
-7. Religion (required, dropdown with common options + "Other" text input)
-8. SHS Strand (conditional, only for Grade 11-12)
-9. Mother Tongue
-10. Dialects
-
-### Step 2: Parent/Guardian and Address
-Fields:
-1. Mother's Maiden Name (required)
-2. Mother's Contact Number (required)
-3. Father's Name
-4. Father's Contact Number
-5. Parent Email
-6. Current Address (required -- replaces Phil/UAE fields)
-7. Previous School
-
-### Step 3: Agreement and Signature
-Content sections:
-1. Terms and Conditions (scrollable text area)
-2. Privacy Policy
-3. Payment Terms
-4. Refund Policy
-5. Checkbox for each agreement (all required)
-6. Parent/Guardian consent checkbox (for minors -- auto-detected from birth date)
-7. Digital signature canvas (using `react-signature-canvas`, already installed)
-8. Submit button
-
-### UI Features
-- Progress bar at top showing Step 1/2/3
-- "Next" and "Back" navigation buttons
-- Per-step validation before allowing "Next"
-- Smooth framer-motion transitions between steps
-- Mobile-responsive card layout
-- Gradient background on the public page
-- Real-time field validation (error clears on change)
+Shown after successful submission. Contains:
+- School location map (Google Maps embed or static map image)
+- Photo gallery of school facilities (slider with framer-motion)
+- Registrar info card (name, photo, phone with click-to-call)
+- Office hours display
+- "Schedule a School Visit" button → opens visit scheduler
 
 ---
 
-## 4. Religion Field Options
+## 4. Visit Scheduler
 
-Dropdown with these common options:
-- Roman Catholic
-- Islam
-- Iglesia ni Cristo
-- Protestant/Evangelical
-- Seventh-Day Adventist
-- Aglipayan
-- Buddhism
-- Hinduism
-- Other (shows a text input when selected)
+**New file: `src/components/registration/VisitScheduler.tsx`**
 
----
-
-## 5. Digital Signature
-
-Use `react-signature-canvas` (already in dependencies) to render a drawing pad.
-- Canvas with border, clear button, and instruction text
-- On submit, capture signature as base64 PNG via `toDataURL()`
-- Store the base64 string in `signature_data` column (signatures are typically 5-15KB, acceptable for text storage)
+Interactive date/time picker:
+- Calendar showing available dates (next 30 days, weekdays only)
+- Morning/Afternoon slot selection
+- Shows remaining capacity per slot (max 5)
+- Collects visitor name and contact
+- Submits to `school_visits` table
+- Confirmation message after booking
 
 ---
 
-## 6. Success Screen
+## 5. Integration Points
 
-After submission, show an animated confirmation:
-- Animated checkmark (framer-motion scale-in)
-- "Registration Submitted Successfully!" heading
-- Confirmation message with next steps
-- "Submit Another Registration" button to reset the form
+- `OnlineRegistrationForm.tsx`: After successful submission, call edge function for email, then show SchoolShowcaseDialog
+- `RegistrationManagement.tsx`: Add visit schedule management tab
+- `supabase/config.toml`: Add function config with `verify_jwt = false`
 
 ---
 
-## 7. Update Registration Management
-
-**File: `src/components/registration/RegistrationManagement.tsx`**
-- Update the `RegistrationRecord` interface to include `religion`, `current_address`, `signature_data`, `agreements_accepted`
-- Update the detail dialog to show the new fields
-- Remove references to `uae_address`, use `current_address` instead
-
----
-
-## 8. Files Summary
+## Files Summary
 
 | Action | File |
 |--------|------|
-| Create | `src/pages/PublicRegistrationPage.tsx` |
-| Rewrite | `src/components/registration/OnlineRegistrationForm.tsx` |
-| Modify | `src/components/registration/RegistrationManagement.tsx` |
-| Modify | `src/App.tsx` (add `/register` route) |
-| Migration | Add `religion`, `current_address`, `signature_data`, `agreements_accepted` columns |
-
----
-
-## Technical Notes
-
-- The form will auto-detect the current academic year by querying `academic_years` where `is_current = true`
-- School ID will be determined from a URL parameter or default to the primary school
-- No authentication is required for the `/register` page
-- The existing RLS policy allowing public inserts on `online_registrations` will be used
-- `react-signature-canvas` is already installed (v1.1.0-alpha.2)
-- Validation uses inline error state (no zod for this simple form to match existing patterns)
+| Create | `supabase/functions/send-registration-email/index.ts` |
+| Create | `src/components/registration/SchoolShowcaseDialog.tsx` |
+| Create | `src/components/registration/VisitScheduler.tsx` |
+| Modify | `src/components/registration/OnlineRegistrationForm.tsx` |
+| Migration | Create `school_info` and `school_visits` tables |
+| Config | Update `supabase/config.toml` for edge function |
