@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from '@/components/ui/textarea';
+import { GRADE_LEVELS, SHS_STRANDS, GENDERS, requiresStrand } from '@/components/enrollment/constants';
 
 interface StudentFormModalProps {
   student: Student | null;
@@ -21,9 +22,6 @@ interface StudentFormModalProps {
   onSubmit: (data: StudentFormData & { id?: string }) => void;
   isLoading?: boolean;
 }
-
-const LEVELS = ['Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5', 'Level 6'];
-const GENDERS = ['MALE', 'FEMALE'];
 
 export const StudentFormModal = ({
   student,
@@ -35,7 +33,7 @@ export const StudentFormModal = ({
   const [formData, setFormData] = useState<StudentFormData>({
     lrn: '',
     student_name: '',
-    level: 'Level 1',
+    level: 'Kindergarten',
     school: '',
   });
 
@@ -57,12 +55,13 @@ export const StudentFormModal = ({
         previous_school: student.previous_school || undefined,
         religion: student.religion || undefined,
         school: student.school || undefined,
+        strand: (student as any).strand || undefined,
       });
     } else {
       setFormData({
         lrn: '',
         student_name: '',
-        level: 'Level 1',
+        level: 'Kindergarten',
       });
     }
   }, [student, isOpen]);
@@ -73,7 +72,14 @@ export const StudentFormModal = ({
   };
 
   const handleChange = (field: keyof StudentFormData, value: string | number) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const updated = { ...prev, [field]: value };
+      // Clear strand when grade level doesn't require it
+      if (field === 'level' && !requiresStrand(value as string)) {
+        updated.strand = undefined;
+      }
+      return updated;
+    });
   };
 
   return (
@@ -134,21 +140,39 @@ export const StudentFormModal = ({
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="level">Level *</Label>
+                      <Label htmlFor="level">Grade Level *</Label>
                       <Select
                         value={formData.level}
                         onValueChange={(v) => handleChange('level', v)}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select level" />
+                          <SelectValue placeholder="Select grade level" />
                         </SelectTrigger>
                         <SelectContent>
-                          {LEVELS.map(level => (
+                          {GRADE_LEVELS.map(level => (
                             <SelectItem key={level} value={level}>{level}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
+                    {requiresStrand(formData.level) && (
+                      <div className="space-y-2">
+                        <Label htmlFor="strand">Strand *</Label>
+                        <Select
+                          value={formData.strand || ''}
+                          onValueChange={(v) => handleChange('strand' as any, v)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select strand" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SHS_STRANDS.map(strand => (
+                              <SelectItem key={strand.value} value={strand.value}>{strand.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <Label htmlFor="gender">Gender</Label>
                       <Select

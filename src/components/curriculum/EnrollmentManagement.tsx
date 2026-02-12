@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { getSchoolId } from '@/utils/schoolIdMap';
+import { GRADE_LEVELS } from '@/components/enrollment/constants';
 
 interface Subject {
   id: string;
@@ -42,11 +43,6 @@ export const EnrollmentManagement = () => {
   const [expandedLevels, setExpandedLevels] = useState<Set<string>>(new Set());
   const [detailedEnrollments, setDetailedEnrollments] = useState<Record<string, StudentEnrollment[]>>({});
   const [loadingLevel, setLoadingLevel] = useState<string | null>(null);
-  const GRADE_LEVELS = [
-    'Kinder 1', 'Kinder 2',
-    'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5', 'Level 6',
-    'Level 7', 'Level 8', 'Level 9', 'Level 10', 'Level 11', 'Level 12'
-  ];
 
   const fetchSubjects = async () => {
     setIsLoading(true);
