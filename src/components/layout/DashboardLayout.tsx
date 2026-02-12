@@ -603,8 +603,8 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
   // Check if Apple theme is active
   const isAppleTheme = layoutStyle === 'apple';
 
-  // Single school - no switching needed
-  const canSwitch = false;
+  // Enable academic year switching in sidebar
+  const canSwitch = true;
 
   // Use school theme when no custom theme is set
   const hasCustomTheme = currentTheme !== 'default';
@@ -876,13 +876,18 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
 
 
         {/* Academic Year Switcher */}
-        {canSwitch && !isCollapsed && (
+        {!isCollapsed && (
           <div className="px-3 mt-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="w-full justify-between text-inherit hover:bg-white/10 border border-white/20"
+                  className={cn(
+                    "w-full justify-between text-inherit border",
+                    isAppleTheme
+                      ? "hover:bg-black/5 border-black/10"
+                      : "hover:bg-white/10 border-white/20"
+                  )}
                 >
                   <div className="flex items-center gap-2">
                     <CalendarDays className="h-4 w-4" />
@@ -895,7 +900,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-[200px] max-h-[300px] overflow-y-auto">
+              <DropdownMenuContent align="start" className="w-[220px] max-h-[300px] overflow-y-auto bg-popover z-50">
                 <DropdownMenuLabel>Academic Year</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {academicYears.map((year) => (
@@ -905,7 +910,11 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
                     className={selectedYearId === year.id ? 'bg-primary/10' : ''}
                   >
                     <div className="flex items-center gap-2 flex-1">
-                      <CalendarDays className="h-3 w-3 opacity-50" />
+                      {year.is_archived ? (
+                        <Lock className="h-3 w-3 opacity-50" />
+                      ) : (
+                        <CalendarDays className="h-3 w-3 opacity-50" />
+                      )}
                       <span>{year.name}</span>
                       {year.is_current && (
                         <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">Current</Badge>
@@ -921,6 +930,23 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
+            {/* Read-only indicator */}
+            {selectedYear && !selectedYear.is_current && (
+              <div className={cn(
+                "mt-1.5 flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-md",
+                isAppleTheme
+                  ? "text-amber-600 bg-amber-50"
+                  : "text-amber-300 bg-amber-900/30"
+              )}>
+                <Lock className="h-3 w-3 shrink-0" />
+                <span>Read-only</span>
+              </div>
+            )}
+          </div>
+        )}
+        {isCollapsed && (
+          <div className="px-2 mt-2 flex justify-center" title={selectedYear?.name || 'Academic Year'}>
+            <CalendarDays className="h-5 w-5 opacity-70" />
           </div>
         )}
 
