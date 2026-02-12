@@ -97,9 +97,6 @@ export const VisitScheduler = ({ schoolId, registrationId, onBack }: VisitSchedu
         <p className="text-muted-foreground text-sm">
           Your visit is confirmed for <strong>{selectedDate && format(selectedDate, 'MMMM d, yyyy')}</strong> ({selectedSlot === 'morning' ? '9:00 AM - 12:00 PM' : '1:00 PM - 4:00 PM'}).
         </p>
-        <Button variant="outline" onClick={onBack}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back to School Info
-        </Button>
       </motion.div>
     );
   }

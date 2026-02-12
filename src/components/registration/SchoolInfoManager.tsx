@@ -1,13 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchool } from '@/contexts/SchoolContext';
 import { getSchoolId } from '@/utils/schoolIdMap';
 import { toast } from 'sonner';
+import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Plus, Trash2, Save } from 'lucide-react';
+import { Loader2, Trash2, Save, Upload, ImagePlus } from 'lucide-react';
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ACCEPTED_TYPES: Record<string, string[]> = {
+  'image/jpeg': ['.jpg', '.jpeg'],
+  'image/png': ['.png'],
+  'image/webp': ['.webp'],
+};
 
 export const SchoolInfoManager = () => {
   const { selectedSchool } = useSchool();
@@ -21,6 +29,8 @@ export const SchoolInfoManager = () => {
     registrar_email: '',
     office_hours: '',
     map_embed_url: '',
+    latitude: '',
+    longitude: '',
     facility_photos: [] as string[],
     visit_slots_config: {
       morning: '9:00 AM - 12:00 PM',
@@ -28,7 +38,7 @@ export const SchoolInfoManager = () => {
       max_per_slot: 5,
     },
   });
-  const [newPhotoUrl, setNewPhotoUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
 
   const { data: schoolInfo, isLoading } = useQuery({
     queryKey: ['school_info', schoolId],
@@ -52,6 +62,8 @@ export const SchoolInfoManager = () => {
         registrar_email: schoolInfo.registrar_email || '',
         office_hours: schoolInfo.office_hours || '',
         map_embed_url: schoolInfo.map_embed_url || '',
+        latitude: schoolInfo.latitude?.toString() || '',
+        longitude: schoolInfo.longitude?.toString() || '',
         facility_photos: Array.isArray(schoolInfo.facility_photos) ? schoolInfo.facility_photos : [],
         visit_slots_config: schoolInfo.visit_slots_config || {
           morning: '9:00 AM - 12:00 PM',
@@ -61,6 +73,44 @@ export const SchoolInfoManager = () => {
       });
     }
   }, [schoolInfo]);
+
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    if (!schoolId) return;
+    setUploading(true);
+    try {
+      const newUrls: string[] = [];
+      for (const file of acceptedFiles) {
+        if (file.size > MAX_FILE_SIZE) {
+          toast.error(`${file.name} exceeds 5MB limit`);
+          continue;
+        }
+        const ext = file.name.split('.').pop();
+        const path = `${schoolId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error } = await supabase.storage.from('school-gallery').upload(path, file);
+        if (error) {
+          toast.error(`Failed to upload ${file.name}: ${error.message}`);
+          continue;
+        }
+        const { data: urlData } = supabase.storage.from('school-gallery').getPublicUrl(path);
+        newUrls.push(urlData.publicUrl);
+      }
+      if (newUrls.length > 0) {
+        setForm(prev => ({ ...prev, facility_photos: [...prev.facility_photos, ...newUrls] }));
+        toast.success(`${newUrls.length} photo(s) uploaded`);
+      }
+    } catch (err: any) {
+      toast.error('Upload failed: ' + (err?.message || 'Unknown error'));
+    } finally {
+      setUploading(false);
+    }
+  }, [schoolId]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: ACCEPTED_TYPES,
+    maxSize: MAX_FILE_SIZE,
+    disabled: uploading,
+  });
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -73,6 +123,8 @@ export const SchoolInfoManager = () => {
         registrar_email: form.registrar_email || null,
         office_hours: form.office_hours || null,
         map_embed_url: form.map_embed_url || null,
+        latitude: form.latitude ? parseFloat(form.latitude) : null,
+        longitude: form.longitude ? parseFloat(form.longitude) : null,
         facility_photos: form.facility_photos,
         visit_slots_config: form.visit_slots_config,
         updated_at: new Date().toISOString(),
@@ -94,13 +146,6 @@ export const SchoolInfoManager = () => {
     },
     onError: (e: Error) => toast.error('Save failed: ' + e.message),
   });
-
-  const addPhoto = () => {
-    if (newPhotoUrl.trim()) {
-      setForm(prev => ({ ...prev, facility_photos: [...prev.facility_photos, newPhotoUrl.trim()] }));
-      setNewPhotoUrl('');
-    }
-  };
 
   const removePhoto = (index: number) => {
     setForm(prev => ({ ...prev, facility_photos: prev.facility_photos.filter((_, i) => i !== index) }));
@@ -131,29 +176,75 @@ export const SchoolInfoManager = () => {
           <Label>Office Hours</Label>
           <Input value={form.office_hours} onChange={e => setForm(p => ({ ...p, office_hours: e.target.value }))} placeholder="Mon-Fri 8:00 AM - 5:00 PM" />
         </div>
-        <div className="space-y-2 md:col-span-2">
-          <Label>Map Embed URL</Label>
+      </div>
+
+      {/* Map / Location */}
+      <div className="space-y-3">
+        <Label className="text-base font-semibold">Location</Label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">Latitude</Label>
+            <Input value={form.latitude} onChange={e => setForm(p => ({ ...p, latitude: e.target.value }))} placeholder="e.g. 25.2048" type="number" step="any" />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">Longitude</Label>
+            <Input value={form.longitude} onChange={e => setForm(p => ({ ...p, longitude: e.target.value }))} placeholder="e.g. 55.2708" type="number" step="any" />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label className="text-xs text-muted-foreground">Or paste a Google Maps Embed URL (fallback)</Label>
           <Input value={form.map_embed_url} onChange={e => setForm(p => ({ ...p, map_embed_url: e.target.value }))} placeholder="https://www.google.com/maps/embed?..." />
         </div>
       </div>
 
+      {/* Facility Photos Upload */}
       <div className="space-y-3">
-        <Label>Facility Photos</Label>
-        <div className="flex gap-2">
-          <Input value={newPhotoUrl} onChange={e => setNewPhotoUrl(e.target.value)} placeholder="Paste image URL" className="flex-1" />
-          <Button type="button" size="sm" onClick={addPhoto} disabled={!newPhotoUrl.trim()}><Plus className="h-4 w-4" /></Button>
+        <Label className="text-base font-semibold">Facility Photos</Label>
+        <div
+          {...getRootProps()}
+          className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+            isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'
+          } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+        >
+          <input {...getInputProps()} />
+          {uploading ? (
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Uploading...</p>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2">
+              <ImagePlus className="h-8 w-8 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                {isDragActive ? 'Drop photos here...' : 'Drag & drop photos, or click to browse'}
+              </p>
+              <p className="text-xs text-muted-foreground">JPEG, PNG, WebP • Max 5MB each</p>
+            </div>
+          )}
         </div>
-        {form.facility_photos.map((url, i) => (
-          <div key={i} className="flex items-center gap-2 bg-muted/50 p-2 rounded-lg">
-            <img src={url} alt="" className="h-10 w-16 object-cover rounded" />
-            <span className="text-xs text-muted-foreground truncate flex-1">{url}</span>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removePhoto(i)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+
+        {form.facility_photos.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {form.facility_photos.map((url, i) => (
+              <div key={i} className="relative group rounded-lg overflow-hidden border bg-muted aspect-video">
+                <img src={url} alt={`Facility ${i + 1}`} className="w-full h-full object-cover" />
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => removePhoto(i)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
 
+      {/* Visit Slot Config */}
       <div className="space-y-3">
-        <Label>Visit Slot Configuration</Label>
+        <Label className="text-base font-semibold">Visit Slot Configuration</Label>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label className="text-xs text-muted-foreground">Morning Slot</Label>
