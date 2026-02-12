@@ -109,7 +109,7 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
     try {
       const religion = formData.religion === 'Other' ? formData.religion_other.trim() : formData.religion;
 
-      const { data: insertedData, error } = await (supabase.from('online_registrations') as any).insert([{
+      const { error } = await (supabase.from('online_registrations') as any).insert([{
         student_name: formData.student_name.trim(),
         lrn: hasLrn && formData.lrn.trim() ? formData.lrn.trim() : null,
         level: formData.level,
@@ -137,10 +137,10 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
         school_id: schoolId,
         academic_year_id: academicYearId,
         status: 'pending',
-      }]).select('id').single();
+      }]);
       if (error) throw error;
 
-      setLastRegistrationId(insertedData?.id || null);
+      setLastRegistrationId(null);
       setIsSuccess(true);
       toast.success('Registration submitted successfully!');
 
@@ -207,7 +207,7 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
     );
   }
 
-  const FieldError = ({ field }: { field: string }) => errors[field] ? <p className="text-destructive text-xs mt-1">{errors[field]}</p> : null;
+  const fieldError = (field: string) => errors[field] ? <p className="text-destructive text-xs mt-1">{errors[field]}</p> : null;
   const progressValue = ((step + 1) / STEP_LABELS.length) * 100;
 
   const slideVariants = {
@@ -216,7 +216,7 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
     exit: (dir: number) => ({ x: dir > 0 ? -80 : 80, opacity: 0 }),
   };
 
-  const ReviewRow = ({ label, value }: { label: string; value: string | null | undefined }) => (
+  const reviewRow = (label: string, value: string | null | undefined) => (
     <div className="flex justify-between py-1.5 border-b border-border/50 last:border-0">
       <span className="text-sm text-muted-foreground">{label}</span>
       <span className="text-sm font-medium text-foreground text-right max-w-[60%]">{value || '—'}</span>
@@ -314,7 +314,7 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                         </SelectGroup>
                       </SelectContent>
                     </Select>
-                    <FieldError field="level" />
+                    {fieldError("level")}
                   </div>
 
                   {/* LRN Toggle */}
@@ -329,7 +329,7 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                     {hasLrn && (
                       <>
                         <Input placeholder="12-digit LRN" value={formData.lrn} onChange={(e) => handleChange('lrn', e.target.value)} className={errors.lrn ? 'border-destructive' : ''} />
-                        <FieldError field="lrn" />
+                        {fieldError("lrn")}
                       </>
                     )}
                   </div>
@@ -338,14 +338,14 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                   <div className="space-y-1.5 md:col-span-2">
                     <Label>Full Name <span className="text-destructive">*</span></Label>
                     <Input placeholder="Learner's full name (Last, First, Middle)" value={formData.student_name} onChange={(e) => handleChange('student_name', e.target.value)} className={errors.student_name ? 'border-destructive' : ''} />
-                    <FieldError field="student_name" />
+                    {fieldError("student_name")}
                   </div>
 
                   {/* Birth Date */}
                   <div className="space-y-1.5">
                     <Label>Birth Date <span className="text-destructive">*</span></Label>
                     <Input type="date" value={formData.birth_date} onChange={(e) => handleChange('birth_date', e.target.value)} className={errors.birth_date ? 'border-destructive' : ''} />
-                    <FieldError field="birth_date" />
+                    {fieldError("birth_date")}
                   </div>
 
                   {/* Age */}
@@ -361,7 +361,7 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                       <SelectTrigger className={errors.gender ? 'border-destructive' : ''}><SelectValue placeholder="Select gender" /></SelectTrigger>
                       <SelectContent>{GENDERS.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
                     </Select>
-                    <FieldError field="gender" />
+                    {fieldError("gender")}
                   </div>
 
                   {/* Religion */}
@@ -374,8 +374,8 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                     {formData.religion === 'Other' && (
                       <Input placeholder="Please specify religion" value={formData.religion_other} onChange={(e) => handleChange('religion_other', e.target.value)} className={errors.religion_other ? 'border-destructive mt-1.5' : 'mt-1.5'} />
                     )}
-                    <FieldError field="religion" />
-                    <FieldError field="religion_other" />
+                    {fieldError("religion")}
+                    {fieldError("religion_other")}
                   </div>
 
                   {/* SHS Strand */}
@@ -396,7 +396,7 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                           </SelectGroup>
                         </SelectContent>
                       </Select>
-                      <FieldError field="strand" />
+                      {fieldError("strand")}
                     </div>
                   )}
 
@@ -431,12 +431,12 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                   <div className="space-y-1.5">
                     <Label>Mother's Maiden Name <span className="text-destructive">*</span></Label>
                     <Input value={formData.mother_maiden_name} onChange={(e) => handleChange('mother_maiden_name', e.target.value)} className={errors.mother_maiden_name ? 'border-destructive' : ''} />
-                    <FieldError field="mother_maiden_name" />
+                    {fieldError("mother_maiden_name")}
                   </div>
                   <div className="space-y-1.5">
                     <Label>Mother's Contact <span className="text-destructive">*</span></Label>
                     <Input value={formData.mother_contact} onChange={(e) => handleChange('mother_contact', e.target.value)} className={errors.mother_contact ? 'border-destructive' : ''} />
-                    <FieldError field="mother_contact" />
+                    {fieldError("mother_contact")}
                   </div>
                   <div className="space-y-1.5">
                     <Label>Father's Name</Label>
@@ -457,7 +457,7 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                   <div className="space-y-1.5 md:col-span-2">
                     <Label>Current Address <span className="text-destructive">*</span></Label>
                     <Input placeholder="Full current address" value={formData.current_address} onChange={(e) => handleChange('current_address', e.target.value)} className={errors.current_address ? 'border-destructive' : ''} />
-                    <FieldError field="current_address" />
+                    {fieldError("current_address")}
                   </div>
                   <div className="space-y-1.5 md:col-span-2">
                     <Label>Previous School</Label>
@@ -491,7 +491,7 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                     <Checkbox id="terms" checked={agreements.terms} onCheckedChange={(v) => { setAgreements(p => ({ ...p, terms: !!v })); if (errors.terms) setErrors(p => ({ ...p, terms: '' })); }} />
                     <label htmlFor="terms" className="text-sm cursor-pointer">I accept the Terms and Conditions <span className="text-destructive">*</span></label>
                   </div>
-                  <FieldError field="terms" />
+                  {fieldError("terms")}
                 </div>
 
                 {isMinor && (
@@ -502,7 +502,7 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                       <Checkbox id="consent" checked={agreements.consent} onCheckedChange={(v) => { setAgreements(p => ({ ...p, consent: !!v })); if (errors.consent) setErrors(p => ({ ...p, consent: '' })); }} />
                       <label htmlFor="consent" className="text-sm cursor-pointer">I am the parent/legal guardian and I consent to this registration <span className="text-destructive">*</span></label>
                     </div>
-                    <FieldError field="consent" />
+                    {fieldError("consent")}
                   </div>
                 )}
 
@@ -537,14 +537,14 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                     </div>
                   </CardHeader>
                   <CardContent className="px-4 pb-4 pt-0 space-y-1 text-sm">
-                    <ReviewRow label="Full Name" value={formData.student_name} />
-                    <ReviewRow label="LRN" value={hasLrn ? formData.lrn : 'N/A'} />
-                    <ReviewRow label="Grade Level" value={formData.level} />
-                    {formData.strand && <ReviewRow label="Strand" value={formData.strand} />}
-                    <ReviewRow label="Birth Date" value={formData.birth_date} />
-                    <ReviewRow label="Age" value={calculatedAge !== null ? `${calculatedAge} years old` : undefined} />
-                    <ReviewRow label="Gender" value={formData.gender} />
-                    <ReviewRow label="Religion" value={formData.religion === 'Other' ? formData.religion_other : formData.religion} />
+                    {reviewRow("Full Name", formData.student_name)}
+                    {reviewRow("LRN", hasLrn ? formData.lrn : 'N/A')}
+                    {reviewRow("Grade Level", formData.level)}
+                    {formData.strand && reviewRow("Strand", formData.strand)}
+                    {reviewRow("Birth Date", formData.birth_date)}
+                    {reviewRow("Age", calculatedAge !== null ? `${calculatedAge} years old` : undefined)}
+                    {reviewRow("Gender", formData.gender)}
+                    {reviewRow("Religion", formData.religion === 'Other' ? formData.religion_other : formData.religion)}
                   </CardContent>
                 </Card>
 
@@ -557,8 +557,8 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                     </div>
                   </CardHeader>
                   <CardContent className="px-4 pb-4 pt-0 space-y-1 text-sm">
-                    <ReviewRow label="Mother Tongue" value={formData.mother_tongue} />
-                    <ReviewRow label="Dialects" value={formData.dialects} />
+                    {reviewRow("Mother Tongue", formData.mother_tongue)}
+                    {reviewRow("Dialects", formData.dialects)}
                   </CardContent>
                 </Card>
 
@@ -571,12 +571,12 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                     </div>
                   </CardHeader>
                   <CardContent className="px-4 pb-4 pt-0 space-y-1 text-sm">
-                    <ReviewRow label="Mother's Name" value={formData.mother_maiden_name} />
-                    <ReviewRow label="Mother's Contact" value={formData.mother_contact} />
-                    <ReviewRow label="Father's Name" value={formData.father_name} />
-                    <ReviewRow label="Father's Contact" value={formData.father_contact} />
-                    <ReviewRow label="Mobile" value={formData.mobile_number} />
-                    <ReviewRow label="Email" value={formData.parent_email} />
+                    {reviewRow("Mother's Name", formData.mother_maiden_name)}
+                    {reviewRow("Mother's Contact", formData.mother_contact)}
+                    {reviewRow("Father's Name", formData.father_name)}
+                    {reviewRow("Father's Contact", formData.father_contact)}
+                    {reviewRow("Mobile", formData.mobile_number)}
+                    {reviewRow("Email", formData.parent_email)}
                   </CardContent>
                 </Card>
 
@@ -589,8 +589,8 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                     </div>
                   </CardHeader>
                   <CardContent className="px-4 pb-4 pt-0 space-y-1 text-sm">
-                    <ReviewRow label="Current Address" value={formData.current_address} />
-                    <ReviewRow label="Previous School" value={formData.previous_school} />
+                    {reviewRow("Current Address", formData.current_address)}
+                    {reviewRow("Previous School", formData.previous_school)}
                   </CardContent>
                 </Card>
 
