@@ -2863,6 +2863,65 @@ export type Database = {
           },
         ]
       }
+      school_info: {
+        Row: {
+          created_at: string | null
+          facility_photos: Json | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          map_embed_url: string | null
+          office_hours: string | null
+          registrar_email: string | null
+          registrar_name: string | null
+          registrar_phone: string | null
+          registrar_photo_url: string | null
+          school_id: string
+          updated_at: string | null
+          visit_slots_config: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          facility_photos?: Json | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          map_embed_url?: string | null
+          office_hours?: string | null
+          registrar_email?: string | null
+          registrar_name?: string | null
+          registrar_phone?: string | null
+          registrar_photo_url?: string | null
+          school_id: string
+          updated_at?: string | null
+          visit_slots_config?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          facility_photos?: Json | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          map_embed_url?: string | null
+          office_hours?: string | null
+          registrar_email?: string | null
+          registrar_name?: string | null
+          registrar_phone?: string | null
+          registrar_photo_url?: string | null
+          school_id?: string
+          updated_at?: string | null
+          visit_slots_config?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_info_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_settings: {
         Row: {
           acronym: string | null
@@ -2967,6 +3026,60 @@ export type Database = {
           {
             foreignKeyName: "school_switch_log_to_school_id_fkey"
             columns: ["to_school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_visits: {
+        Row: {
+          created_at: string | null
+          id: string
+          registration_id: string | null
+          school_id: string
+          status: string | null
+          visit_date: string
+          visit_slot: string
+          visitor_email: string | null
+          visitor_name: string
+          visitor_phone: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          registration_id?: string | null
+          school_id: string
+          status?: string | null
+          visit_date: string
+          visit_slot: string
+          visitor_email?: string | null
+          visitor_name: string
+          visitor_phone?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          registration_id?: string | null
+          school_id?: string
+          status?: string | null
+          visit_date?: string
+          visit_slot?: string
+          visitor_email?: string | null
+          visitor_name?: string
+          visitor_phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_visits_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "online_registrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_visits_school_id_fkey"
+            columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
             referencedColumns: ["id"]

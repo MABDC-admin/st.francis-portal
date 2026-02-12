@@ -1,7 +1,8 @@
 import { useState, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Loader2, UserPlus, ArrowRight, ArrowLeft, Eraser, PenTool } from 'lucide-react';
+import { CheckCircle2, Loader2, UserPlus, ArrowRight, ArrowLeft, Eraser, PenTool, Building2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { SchoolShowcaseDialog } from './SchoolShowcaseDialog';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +42,8 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [hasLrn, setHasLrn] = useState(true);
+  const [showShowcase, setShowShowcase] = useState(false);
+  const [lastRegistrationId, setLastRegistrationId] = useState<string | null>(null);
   const sigCanvasRef = useRef<SignatureCanvas | null>(null);
 
   const [formData, setFormData] = useState({
@@ -114,7 +117,7 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
       const signatureData = sigCanvasRef.current?.toDataURL('image/png') || null;
       const religion = formData.religion === 'Other' ? formData.religion_other.trim() : formData.religion;
 
-      const { error } = await (supabase.from('online_registrations') as any).insert([{
+      const { data: insertedData, error } = await (supabase.from('online_registrations') as any).insert([{
         student_name: formData.student_name.trim(),
         lrn: hasLrn && formData.lrn.trim() ? formData.lrn.trim() : null,
         level: formData.level,
@@ -144,10 +147,26 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
         school_id: schoolId,
         academic_year_id: academicYearId,
         status: 'pending',
-      }]);
+      }]).select('id').single();
       if (error) throw error;
+
+      setLastRegistrationId(insertedData?.id || null);
       setIsSuccess(true);
       toast.success('Registration submitted successfully!');
+
+      // Send email notification (fire-and-forget)
+      try {
+        await supabase.functions.invoke('send-registration-email', {
+          body: {
+            studentName: formData.student_name.trim(),
+            parentEmail: formData.parent_email.trim() || null,
+            level: formData.level,
+            schoolId,
+          },
+        });
+      } catch (emailErr) {
+        console.warn('Email notification failed (non-critical):', emailErr);
+      }
     } catch (err: any) {
       toast.error(err?.message || 'Failed to submit');
     } finally {
@@ -157,6 +176,8 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
 
   const resetForm = () => {
     setIsSuccess(false);
+    setShowShowcase(false);
+    setLastRegistrationId(null);
     setStep(0);
     setFormData({ student_name: '', lrn: '', level: '', strand: '', birth_date: '', gender: '', religion: '', religion_other: '', mother_tongue: '', dialects: '', mother_maiden_name: '', mother_contact: '', father_name: '', father_contact: '', parent_email: '', current_address: '', previous_school: '' });
     setAgreements({ terms: false, privacy: false, payment: false, refund: false, consent: false });
@@ -165,24 +186,35 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
 
   if (isSuccess) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 200, damping: 15 }} className="text-center space-y-6">
-          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2, type: 'spring', stiffness: 300 }}>
-            <CheckCircle2 className="h-24 w-24 text-green-500 mx-auto" />
+      <>
+        <div className="flex items-center justify-center py-16">
+          <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 200, damping: 15 }} className="text-center space-y-6">
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2, type: 'spring', stiffness: 300 }}>
+              <CheckCircle2 className="h-24 w-24 text-green-500 mx-auto" />
+            </motion.div>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+              <h2 className="text-3xl font-bold text-foreground">Registration Submitted!</h2>
+              <p className="text-muted-foreground mt-3 max-w-md mx-auto">
+                Your registration has been received and is pending review by the school registrar. You will be notified once it has been processed.
+              </p>
+            </motion.div>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="flex flex-col gap-3 items-center">
+              <Button onClick={() => setShowShowcase(true)} size="lg" variant="outline" className="gap-2">
+                <Building2 className="h-4 w-4" /> View School Info & Schedule Visit
+              </Button>
+              <Button onClick={resetForm} size="lg" className="mt-2">
+                Submit Another Registration
+              </Button>
+            </motion.div>
           </motion.div>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-            <h2 className="text-3xl font-bold text-foreground">Registration Submitted!</h2>
-            <p className="text-muted-foreground mt-3 max-w-md mx-auto">
-              Your registration has been received and is pending review by the school registrar. You will be notified once it has been processed.
-            </p>
-          </motion.div>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}>
-            <Button onClick={resetForm} size="lg" className="mt-4">
-              Submit Another Registration
-            </Button>
-          </motion.div>
-        </motion.div>
-      </div>
+        </div>
+        <SchoolShowcaseDialog
+          open={showShowcase}
+          onOpenChange={setShowShowcase}
+          schoolId={schoolId}
+          registrationId={lastRegistrationId || undefined}
+        />
+      </>
     );
   }
 
