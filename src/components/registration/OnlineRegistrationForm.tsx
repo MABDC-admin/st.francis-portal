@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Loader2, UserPlus, ArrowRight, ArrowLeft, Eraser, PenTool, Building2 } from 'lucide-react';
+import { CheckCircle2, Loader2, UserPlus, ArrowRight, ArrowLeft, Eraser, PenTool, Building2, Wand2, Phone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { SchoolShowcaseDialog } from './SchoolShowcaseDialog';
 import { toast } from 'sonner';
@@ -53,7 +53,7 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
     mother_maiden_name: '', mother_contact: '',
     father_name: '', father_contact: '',
     parent_email: '', current_address: '',
-    previous_school: '',
+    previous_school: '', mobile_number: '',
   });
 
   const [agreements, setAgreements] = useState({
@@ -135,6 +135,7 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
         previous_school: formData.previous_school.trim() || null,
         mother_tongue: formData.mother_tongue.trim() || null,
         dialects: formData.dialects.trim() || null,
+        mobile_number: formData.mobile_number.trim() || null,
         signature_data: signatureData,
         agreements_accepted: {
           terms: agreements.terms,
@@ -179,7 +180,7 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
     setShowShowcase(false);
     setLastRegistrationId(null);
     setStep(0);
-    setFormData({ student_name: '', lrn: '', level: '', strand: '', birth_date: '', gender: '', religion: '', religion_other: '', mother_tongue: '', dialects: '', mother_maiden_name: '', mother_contact: '', father_name: '', father_contact: '', parent_email: '', current_address: '', previous_school: '' });
+    setFormData({ student_name: '', lrn: '', level: '', strand: '', birth_date: '', gender: '', religion: '', religion_other: '', mother_tongue: '', dialects: '', mother_maiden_name: '', mother_contact: '', father_name: '', father_contact: '', parent_email: '', current_address: '', previous_school: '', mobile_number: '' });
     setAgreements({ terms: false, privacy: false, payment: false, refund: false, consent: false });
     setHasLrn(true);
   };
@@ -229,6 +230,54 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      {/* Autofill & Progress */}
+      <div className="flex items-center justify-between">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-1.5 text-xs"
+          onClick={() => {
+            const testNames = ['Dela Cruz, Juan Miguel M.', 'Santos, Maria Clara P.', 'Reyes, Jose Andres L.', 'Garcia, Ana Sofia R.'];
+            const testLevels = ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 1', 'Grade 2', 'Grade 3'];
+            const testReligions = ['Roman Catholic', 'Islam', 'Iglesia ni Cristo', 'Protestant/Evangelical'];
+            const testGenders = ['Male', 'Female'];
+            const randomPick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+            const year = 2010 + Math.floor(Math.random() * 10);
+            const month = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0');
+            const day = String(Math.floor(Math.random() * 28) + 1).padStart(2, '0');
+            const lrn = Array.from({ length: 12 }, () => Math.floor(Math.random() * 10)).join('');
+            const phone = `09${Math.floor(100000000 + Math.random() * 900000000)}`;
+
+            setFormData({
+              student_name: randomPick(testNames),
+              lrn,
+              level: randomPick(testLevels),
+              strand: '',
+              birth_date: `${year}-${month}-${day}`,
+              gender: randomPick(testGenders),
+              religion: randomPick(testReligions),
+              religion_other: '',
+              mother_tongue: 'Filipino',
+              dialects: 'Tagalog, English',
+              mother_maiden_name: `${randomPick(['Fernandez', 'Lopez', 'Aquino', 'Bautista'])}, ${randomPick(['Maria', 'Ana', 'Rosa', 'Carmen'])}`,
+              mother_contact: `09${Math.floor(100000000 + Math.random() * 900000000)}`,
+              father_name: `${randomPick(['Dela Cruz', 'Santos', 'Reyes', 'Garcia'])}, ${randomPick(['Pedro', 'Jose', 'Miguel', 'Carlos'])}`,
+              father_contact: `09${Math.floor(100000000 + Math.random() * 900000000)}`,
+              parent_email: `parent.test${Math.floor(Math.random() * 999)}@example.com`,
+              current_address: `${Math.floor(Math.random() * 999) + 1} ${randomPick(['Rizal', 'Mabini', 'Bonifacio', 'Luna'])} St., ${randomPick(['Al Nahda', 'Deira', 'Bur Dubai', 'Sharjah'])}, UAE`,
+              previous_school: randomPick(['Manila Elementary School', 'Quezon City National HS', 'Cebu International School', 'Davao Central Academy']),
+              mobile_number: phone,
+            });
+            setHasLrn(true);
+            setErrors({});
+            toast.success('Test data filled! Review and adjust as needed.');
+          }}
+        >
+          <Wand2 className="h-3.5 w-3.5" /> Fill Test Data
+        </Button>
+      </div>
+
       {/* Progress */}
       <div className="space-y-2">
         <div className="flex justify-between text-sm font-medium">
@@ -399,6 +448,10 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                   <div className="space-y-1.5">
                     <Label>Father's Contact</Label>
                     <Input value={formData.father_contact} onChange={(e) => handleChange('father_contact', e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" /> Student/Guardian Mobile Number</Label>
+                    <Input type="tel" placeholder="+971 XX XXX XXXX or 09XX XXX XXXX" value={formData.mobile_number} onChange={(e) => handleChange('mobile_number', e.target.value)} />
                   </div>
                   <div className="space-y-1.5 md:col-span-2">
                     <Label>Parent Email</Label>

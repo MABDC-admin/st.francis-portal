@@ -186,6 +186,7 @@ export const RegistrationManagement = () => {
       'Birth Date': r.birth_date || '',
       'Religion': r.religion || '',
       'Parent Email': r.parent_email || '',
+      'Mobile Number': (r as any).mobile_number || '',
       'Mother': r.mother_maiden_name || '',
       'Mother Contact': r.mother_contact || '',
       'Father': r.father_name || '',
@@ -439,6 +440,7 @@ export const RegistrationManagement = () => {
               <div className="flex justify-between"><span className="text-muted-foreground">Religion</span><span>{showDetailDialog.religion || '—'}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Birth Date</span><span>{showDetailDialog.birth_date || '—'}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Email</span><span>{showDetailDialog.parent_email || '—'}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Mobile</span><span>{(showDetailDialog as any).mobile_number || '—'}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Mother</span><span>{showDetailDialog.mother_maiden_name || '—'}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Father</span><span>{showDetailDialog.father_name || '—'}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Current Address</span><span>{showDetailDialog.current_address || showDetailDialog.phil_address || '—'}</span></div>
