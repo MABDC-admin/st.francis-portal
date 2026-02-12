@@ -1,94 +1,70 @@
 
-# Phase 3: Real-Time Notifications, Visit Management & Admin Enhancements
 
-## Overview
-Add real-time notification system for the registrar dashboard when new registrations arrive, a visit schedule management tab in the Registration Management page, and data export functionality.
+# Fix RLS Error, Simplify Agreements & Add Review Step
 
----
+## Problem
+The `online_registrations` table has RLS policies defined but **no GRANT permissions** for the `anon` or `authenticated` roles. Without table-level grants, all operations are rejected regardless of RLS policies.
 
-## 1. Real-Time Notifications for New Registrations
+## Changes
 
-**Concept:** When a new registration is submitted on the public form, the registrar dashboard instantly shows a notification badge and plays a sound alert.
+### 1. Database Migration -- Grant Table Permissions
 
-### Database Changes
-- Enable Supabase Realtime on `online_registrations` table:
-  ```sql
-  ALTER PUBLICATION supabase_realtime ADD TABLE public.online_registrations;
-  ```
+```sql
+GRANT SELECT, INSERT ON public.online_registrations TO anon;
+GRANT SELECT, INSERT, UPDATE ON public.online_registrations TO authenticated;
+```
 
-### New file: `src/hooks/useRegistrationNotifications.ts`
-- Subscribes to `postgres_changes` on `online_registrations` (INSERT events)
-- Maintains an unread count in state
-- Plays a short notification sound on new registration
-- Provides `unreadCount`, `markAllRead()`, and `newRegistrations` list
+This allows the public registration form (which runs as `anon`) to insert rows, while the existing RLS policy (`WITH CHECK (status = 'pending')`) still enforces that only pending registrations can be created.
 
-### Modify: `src/components/layout/DashboardLayout.tsx`
-- Import and use `useRegistrationNotifications` hook
-- Add a notification bell icon next to the "Registrations" sidebar item
-- Show a red badge with unread count when > 0
-- Clicking the badge navigates to registrations tab and marks as read
+### 2. Simplify Step 3 -- Agreement Only
 
-### New file: `src/components/registration/NotificationBell.tsx`
-- Bell icon component with animated badge counter
-- Dropdown showing recent registrations (name, level, time ago)
-- "View All" link to registrations page
+Remove from the form:
+- Privacy Policy agreement and scrollable text
+- Payment Terms agreement and scrollable text
+- Refund Policy agreement and scrollable text
+- Digital Signature canvas (`SignatureCanvas`, `sigCanvasRef`, related imports)
 
----
+Keep:
+- Terms and Conditions (scrollable text + checkbox)
+- Minor consent checkbox (shown only when under 18)
 
-## 2. Visit Schedule Management Tab
+Remove unused imports: `SignatureCanvas`, `Eraser`, `PenTool`
 
-### Modify: `src/components/registration/RegistrationManagement.tsx`
-- Add a 4th tab: "Scheduled Visits"
-- Query `school_visits` table joined with `online_registrations` for student name
-- Display table with: Visitor Name, Date, Slot (Morning/Afternoon), Status, Student Name (from registration)
-- Actions: Mark as Completed, Cancel Visit
-- Filter by upcoming vs past visits
+### 3. Add Step 4 -- Review and Submit
 
----
+Convert the form from 3 steps to 4:
 
-## 3. Data Export
+```text
+Step 1: Student Information (unchanged)
+Step 2: Parent & Address (unchanged)
+Step 3: Agreement (simplified, no submit button)
+Step 4: Review & Submit (new)
+```
 
-### Modify: `src/components/registration/RegistrationManagement.tsx`
-- Add "Export to CSV" button in each tab header
-- Uses the existing `papaparse` dependency to generate CSV
-- Exports filtered data (pending, approved, or rejected registrations)
-- Includes all relevant fields: student name, LRN, level, religion, address, parent info, status, dates
+The Review step will display all entered data in a read-only summary grouped into sections:
+- **Student Details**: Name, LRN, Level, Strand, Birth Date, Age, Gender, Religion, Mother Tongue, Dialects
+- **Parent/Guardian**: Mother name/contact, Father name/contact, Mobile, Email, Address, Previous School
+- **Agreement**: Shows checkmark for accepted terms
 
----
+Each section will have an "Edit" button to jump back to the relevant step. The "Submit Registration" button appears only on this final review step.
 
-## 4. School Info Admin Management
+### 4. Update State and Validation
 
-### New file: `src/components/registration/SchoolInfoManager.tsx`
-- Admin form to populate the `school_info` table
-- Fields: Registrar Name, Photo URL, Phone, Email, Office Hours
-- Map Embed URL input
-- Facility photos management (add/remove URLs from JSON array)
-- Visit slot configuration (morning/afternoon times, max per slot)
-- Save/update to `school_info` table
-
-### Modify: `src/components/registration/RegistrationManagement.tsx`
-- Add a 5th tab: "School Info" (admin only)
-- Renders the `SchoolInfoManager` component
+- Remove `privacy`, `payment`, `refund` from `agreements` state (keep `terms` and `consent`)
+- Remove `sigCanvasRef` and all signature-related logic
+- Set `signature_data` to `null` in the insert payload
+- Update `agreements_accepted` JSON to only include `terms` and `consent`
+- Update `STEP_LABELS` to 4 items
+- Step 2 validation: unchanged
+- Step 3 validation: only `agreements.terms` (and `consent` if minor)
+- Step 4: no validation needed, just submit
 
 ---
 
-## Files Summary
+## Technical Details
 
 | Action | File |
 |--------|------|
-| Create | `src/hooks/useRegistrationNotifications.ts` |
-| Create | `src/components/registration/NotificationBell.tsx` |
-| Create | `src/components/registration/SchoolInfoManager.tsx` |
-| Modify | `src/components/registration/RegistrationManagement.tsx` |
-| Modify | `src/components/layout/DashboardLayout.tsx` |
-| Migration | Enable realtime on `online_registrations` |
+| Migration | Grant `anon`/`authenticated` permissions on `online_registrations` |
+| Modify | `src/components/registration/OnlineRegistrationForm.tsx` |
 
----
-
-## Technical Notes
-
-- Realtime subscription uses Supabase channel API with `postgres_changes` event type
-- Notification sound uses the Web Audio API (short beep, no external file needed)
-- CSV export leverages the already-installed `papaparse` library (`unparse` method)
-- The `SchoolInfoManager` uses upsert logic since each school has at most one `school_info` row
-- Visit management queries use the existing RLS policies (admin SELECT on `school_visits`)
