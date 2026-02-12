@@ -1,63 +1,105 @@
 
 
-# Fix: RLS Error on online_registrations + React Ref Warnings
+# Enhance School Showcase: Gallery Upload, Map Fix, and Visit Confirmation
 
-## Root Cause (Finally Found)
+## Overview
 
-The table-level GRANTs are working correctly. The real problem is the **INSERT + SELECT chain**:
+This plan addresses five key issues: removing the "Back to School Info" button, fixing the map embed, fixing the gallery slider, adding photo upload for admins, and ensuring responsiveness.
 
-```typescript
-await supabase.from('online_registrations')
-  .insert([{...}])
-  .select('id')   // <-- THIS requires a SELECT RLS policy
-  .single();
+## Changes
+
+### 1. Remove "Back to School Info" Button
+
+In `VisitScheduler.tsx`, the confirmation screen (line 100-102) shows a "Back to School Info" button after booking. This will be removed and replaced with a simple "Close" or "Done" action that closes the dialog.
+
+### 2. Fix Map Integration
+
+The current map uses an `iframe` with `map_embed_url`, which requires admins to paste a full Google Maps embed URL -- error-prone and often broken. The fix:
+
+- Use the existing `latitude` and `longitude` columns in `school_info` to construct a reliable Google Maps embed URL automatically
+- Fall back to `map_embed_url` if lat/lng are not set
+- Add latitude/longitude input fields to the `SchoolInfoManager` admin form
+- The embed URL will be constructed as: `https://www.google.com/maps/embed/v1/place?key=...&q={lat},{lng}` or use the simpler no-API-key approach: `https://maps.google.com/maps?q={lat},{lng}&output=embed`
+
+### 3. Fix Gallery Image Slider
+
+The current `AnimatePresence` + `motion.img` approach can cause flickering when images fail to load. Fixes:
+
+- Add `onError` handler to images with a fallback placeholder
+- Add image loading state with a skeleton/spinner
+- Reset `photoIndex` to 0 when photos array changes
+- Add touch/swipe support for mobile using simple touch event handlers
+
+### 4. Photo Upload for Admin Gallery
+
+**Database**: Create a new storage bucket `school-gallery` (public) with appropriate RLS policies.
+
+**SchoolInfoManager changes**:
+- Replace the "paste URL" input with a drag-and-drop upload zone using `react-dropzone` (already installed)
+- Accept JPEG, PNG, WebP formats, max 5MB per file
+- Show upload preview before confirming
+- Upload to `school-gallery/{school_id}/{filename}` in storage
+- Get the public URL and append it to the `facility_photos` JSONB array
+- Show existing photos with delete capability
+
+### 5. Responsive Design
+
+All components already use Tailwind responsive classes. The gallery and map will use `aspect-video` containers that scale properly. The upload dropzone will be full-width on mobile.
+
+---
+
+## Technical Details
+
+### Database Migration
+
+```sql
+-- Create storage bucket for school gallery photos
+INSERT INTO storage.buckets (id, name, public) VALUES ('school-gallery', 'school-gallery', true);
+
+-- Allow authenticated users to upload
+CREATE POLICY "Authenticated users can upload school gallery photos"
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (bucket_id = 'school-gallery');
+
+-- Allow public read access
+CREATE POLICY "Public can view school gallery photos"
+ON storage.objects FOR SELECT TO anon, authenticated
+USING (bucket_id = 'school-gallery');
+
+-- Allow authenticated users to delete
+CREATE POLICY "Authenticated users can delete school gallery photos"
+ON storage.objects FOR DELETE TO authenticated
+USING (bucket_id = 'school-gallery');
 ```
 
-The existing RLS policies:
-- **"Public can submit registrations"** -- INSERT only, WITH CHECK `status = 'pending'` (works fine)
-- **"Admin can manage"** -- ALL, USING `has_role(auth.uid(), 'admin')` (anon fails)
-- **"Registrar can manage"** -- ALL, USING `has_role(auth.uid(), 'registrar')` (anon fails)
+### Files to Modify
 
-The `anon` role has NO SELECT policy, so the `.select('id')` after the insert fails with a 401 error.
+| File | Changes |
+|------|---------|
+| `src/components/registration/VisitScheduler.tsx` | Remove "Back to School Info" button from confirmation view |
+| `src/components/registration/SchoolShowcaseDialog.tsx` | Fix map to use lat/lng fallback, add image error handling and loading states, add swipe support to gallery |
+| `src/components/registration/SchoolInfoManager.tsx` | Add lat/lng fields, replace URL input with drag-and-drop upload using `react-dropzone`, upload to storage bucket |
+| Database migration | Create `school-gallery` bucket with RLS policies |
 
-## Fix 1: Remove `.select('id').single()` from insert
+### Upload Flow (SchoolInfoManager)
 
-The simplest and most secure fix. The `lastRegistrationId` is only used for the SchoolShowcaseDialog's optional `registrationId` prop. We can remove the select chain and set `lastRegistrationId` to null.
-
-**Before:**
-```typescript
-const { data: insertedData, error } = await supabase
-  .from('online_registrations')
-  .insert([{...}])
-  .select('id').single();
+```text
+Admin drops image file
+  --> Validate format (JPEG/PNG/WebP) and size (max 5MB)
+  --> Show preview thumbnail
+  --> Upload to storage: school-gallery/{schoolId}/{timestamp}_{filename}
+  --> Get public URL from Supabase storage
+  --> Append URL to facility_photos array in form state
+  --> Save to school_info table on "Save" click
 ```
 
-**After:**
-```typescript
-const { error } = await supabase
-  .from('online_registrations')
-  .insert([{...}]);
+### Map Rendering Logic (SchoolShowcaseDialog)
+
+```text
+If latitude AND longitude exist:
+  --> Render iframe with constructed Google Maps embed URL
+Else if map_embed_url exists:
+  --> Render iframe with the raw embed URL (current behavior)
+Else:
+  --> Show "Location not available" placeholder
 ```
-
-This avoids the need for a SELECT policy for `anon`, which would be a security concern (exposing all registration records to unauthenticated users).
-
-## Fix 2: React Ref Warnings
-
-The `FieldError` and `ReviewRow` components are defined inside the render function and receive refs from `framer-motion`. Fix by moving them outside the component as standalone functions (not components that receive refs).
-
-**Current (inside component body, line 210 and 219):**
-```typescript
-const FieldError = ({ field }) => errors[field] ? <p>...</p> : null;
-const ReviewRow = ({ label, value }) => (<div>...</div>);
-```
-
-**Fix:** Convert `FieldError` to a simple inline expression or move both components outside the parent component with proper `React.forwardRef` wrapping. The simplest fix is to replace `FieldError` usages with inline JSX and move `ReviewRow` outside.
-
-## Files to Modify
-
-| Action | File |
-|--------|------|
-| Modify | `src/components/registration/OnlineRegistrationForm.tsx` |
-
-No database changes needed -- the GRANTs are already in place and working.
-
