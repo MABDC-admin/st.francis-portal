@@ -1,144 +1,155 @@
 
-# Fix Admission Form Crash and Enhance Admission/Registration System
+# Phase 1: Redesign Online Registration System
 
-## Summary
-Fix the crash caused by empty-string `SelectItem` values in the enrollment form, restructure the form fields per DepEd standards, add an LRN toggle, upgrade the Admissions page with tabbed Pending/Approved views, and create a new Online Registration system with its own database table and management page.
-
----
-
-## Part 1: Fix the Crash (Critical)
-
-**Root cause:** `<SelectItem value="">` is used as section headers in the Grade Level and SHS Strand dropdowns in `StudentInfoStep.tsx`. Radix UI Select forbids empty-string values.
-
-**Fix:** Replace all `<SelectItem value="" disabled>` section headers with `<SelectGroup>` + `<SelectLabel>` from the Radix Select component, which are designed for non-selectable group labels.
-
-**File:** `src/components/enrollment/steps/StudentInfoStep.tsx`
-- Lines 103, 107, 111: Replace grade level section headers
-- Lines 137, 141, 145: Replace strand section headers
-
-Also fix `src/components/management/ScheduleManagement.tsx` line 484 (`SelectItem value=""` for "No teacher") -- change to a placeholder value like `"none"`.
+## Overview
+Rebuild the online registration form as a multi-step wizard with a public URL, add a Religion field, update address fields, include a digital signature agreement page, and show an animated success screen. This phase focuses on the core form experience without email notifications or school showcase dialog (Phase 2).
 
 ---
 
-## Part 2: Reorder Form Fields and Add LRN Toggle
+## 1. Public Route for Online Registration
 
-**File:** `src/components/enrollment/steps/StudentInfoStep.tsx`
+Create a dedicated route `/register` accessible without authentication. This gives a shareable URL.
 
-Changes:
-1. Move **Grade Level** to be the first field (before Full Name)
-2. Add an **LRN Toggle** (Yes/No switch) after Grade Level
-   - Default to "Yes" for non-Kindergarten, "No" for Kindergarten
-   - When "No", hide the LRN input field entirely
-   - When "Yes", show the LRN input field
-3. Reorder remaining fields: Full Name, Academic Year, Birth Date, Age, Gender, SHS Strand (conditional), Mother Tongue, Dialects
+**File: `src/App.tsx`**
+- Add route: `<Route path="/register" element={<PublicRegistrationPage />} />`
 
-**File:** `src/components/enrollment/EnrollmentWizard.tsx`
-- Add `hasLrn` boolean to form state (default `true`)
-- Update validation in `validateStep`: skip LRN validation when `hasLrn` is false
-- Pass `hasLrn` and `setHasLrn` to `StudentInfoStep`
-
-**File:** `src/components/enrollment/steps/StudentInfoStep.tsx`
-- Accept new props: `hasLrn`, `onToggleLrn`
-- Render a toggle/switch for LRN visibility
-- Conditionally show/hide LRN input
+**New file: `src/pages/PublicRegistrationPage.tsx`**
+- A standalone page wrapper (no `DashboardLayout`, no auth required)
+- Renders a branded header (school logo/name) and the multi-step form
+- Uses `SchoolProvider` and `AcademicYearProvider` contexts with defaults (hardcoded school, fetches current academic year)
 
 ---
 
-## Part 3: Upgrade Admissions Page with Tabs
+## 2. Database Schema Changes
 
-**File:** `src/components/admissions/AdmissionsPage.tsx`
+**Migration: Add columns to `online_registrations`**
+```
+ALTER TABLE online_registrations ADD COLUMN IF NOT EXISTS religion text;
+ALTER TABLE online_registrations ADD COLUMN IF NOT EXISTS current_address text;
+ALTER TABLE online_registrations ADD COLUMN IF NOT EXISTS signature_data text;
+ALTER TABLE online_registrations ADD COLUMN IF NOT EXISTS agreements_accepted jsonb DEFAULT '{}';
+```
 
-Replace the single status-filter dropdown with a proper tabbed layout:
-- **Tab 1: Pending** -- shows only pending admissions with Approve/Reject actions
-- **Tab 2: Approved** -- shows approved admissions (read-only)
-- **Tab 3: Rejected** -- shows rejected admissions with rejection reason
+- `religion`: new required field
+- `current_address`: replaces both `phil_address` and `uae_address`
+- `signature_data`: stores base64 of drawn signature (small data, acceptable for signatures)
+- `agreements_accepted`: JSON object tracking which agreements were accepted and timestamps
 
-Uses the existing `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` components. Each tab queries with the appropriate status filter. Remove the old Select-based status filter.
-
----
-
-## Part 4: Online Registration System
-
-### 4a. Database Table
-
-Create a new `online_registrations` table:
-- `id` (uuid, PK)
-- `student_name` (text, NOT NULL)
-- `lrn` (text, nullable)
-- `level` (text, NOT NULL)
-- `strand` (text, nullable)
-- `birth_date` (date, nullable)
-- `gender` (text, nullable)
-- `mother_maiden_name`, `mother_contact`, `father_name`, `father_contact` (text, nullable)
-- `phil_address`, `uae_address` (text, nullable)
-- `previous_school` (text, nullable)
-- `parent_email` (text, nullable)
-- `mother_tongue`, `dialects` (text, nullable)
-- `school_id` (uuid, NOT NULL)
-- `academic_year_id` (uuid, NOT NULL)
-- `status` (text, NOT NULL, default 'pending')
-- `reviewed_by` (uuid, nullable)
-- `reviewed_at` (timestamptz, nullable)
-- `rejection_reason` (text, nullable)
-- `created_at`, `updated_at` (timestamptz, defaults)
-
-RLS policies: Admin and Registrar can SELECT, INSERT, UPDATE. Public INSERT for the online form (with check constraint on status = 'pending').
-
-### 4b. Online Registration Form Page
-
-**New file:** `src/components/registration/OnlineRegistrationForm.tsx`
-
-A standalone, public-facing registration form (simpler than the enrollment wizard):
-- Grade Level first, LRN toggle, basic student info, parent info, address
-- Submits to `online_registrations` table with status 'pending'
-- Success confirmation screen after submission
-- No authentication required
-
-### 4c. Registration Management Page
-
-**New file:** `src/components/registration/RegistrationManagement.tsx`
-
-Admin/Registrar page with:
-- **Pending Registrations** tab -- with Approve/Reject actions
-- **Approved Registrations** tab -- read-only list
-- Approval creates a student record (similar to admission approval flow)
-- Detail dialog for viewing full registration info
-
-### 4d. Wire into Navigation
-
-**File:** `src/pages/Index.tsx`
-- Import and render `RegistrationManagement` for a new `activeTab === 'registrations'`
-- Import and render `OnlineRegistrationForm` for a public route or tab
-
-**File:** Sidebar navigation (DashboardLayout or nav config)
-- Add "Registrations" menu item for Admin/Registrar roles
+**RLS**: The existing public INSERT policy for `online_registrations` already allows anonymous inserts. No RLS changes needed.
 
 ---
 
-## Part 5: Additional Fixes
+## 3. Multi-Step Registration Form
 
-- Fix `ScheduleManagement.tsx` line 484: change `<SelectItem value="">No teacher</SelectItem>` to `<SelectItem value="none">No teacher</SelectItem>` and handle "none" as null in the save logic
-- Add `SelectGroup` and `SelectLabel` imports to `src/components/ui/select.tsx` if not already exported
+**Rewrite: `src/components/registration/OnlineRegistrationForm.tsx`**
+
+Split into 3 steps with a progress indicator at the top.
+
+### Step 1: Student Information
+Fields (in order):
+1. Grade Level (required, dropdown with grouped options)
+2. LRN Toggle (Yes/No switch) + LRN input (conditional)
+3. Full Name (required)
+4. Birth Date (required)
+5. Age (auto-calculated, read-only)
+6. Gender (required, dropdown)
+7. Religion (required, dropdown with common options + "Other" text input)
+8. SHS Strand (conditional, only for Grade 11-12)
+9. Mother Tongue
+10. Dialects
+
+### Step 2: Parent/Guardian and Address
+Fields:
+1. Mother's Maiden Name (required)
+2. Mother's Contact Number (required)
+3. Father's Name
+4. Father's Contact Number
+5. Parent Email
+6. Current Address (required -- replaces Phil/UAE fields)
+7. Previous School
+
+### Step 3: Agreement and Signature
+Content sections:
+1. Terms and Conditions (scrollable text area)
+2. Privacy Policy
+3. Payment Terms
+4. Refund Policy
+5. Checkbox for each agreement (all required)
+6. Parent/Guardian consent checkbox (for minors -- auto-detected from birth date)
+7. Digital signature canvas (using `react-signature-canvas`, already installed)
+8. Submit button
+
+### UI Features
+- Progress bar at top showing Step 1/2/3
+- "Next" and "Back" navigation buttons
+- Per-step validation before allowing "Next"
+- Smooth framer-motion transitions between steps
+- Mobile-responsive card layout
+- Gradient background on the public page
+- Real-time field validation (error clears on change)
 
 ---
 
-## Technical Details
+## 4. Religion Field Options
 
-### Files to Create
-- `src/components/registration/OnlineRegistrationForm.tsx`
-- `src/components/registration/RegistrationManagement.tsx`
+Dropdown with these common options:
+- Roman Catholic
+- Islam
+- Iglesia ni Cristo
+- Protestant/Evangelical
+- Seventh-Day Adventist
+- Aglipayan
+- Buddhism
+- Hinduism
+- Other (shows a text input when selected)
 
-### Files to Modify
-- `src/components/enrollment/steps/StudentInfoStep.tsx` -- fix crash, reorder fields, add LRN toggle
-- `src/components/enrollment/EnrollmentWizard.tsx` -- add `hasLrn` state, update validation
-- `src/components/admissions/AdmissionsPage.tsx` -- replace filter with tabs
-- `src/components/management/ScheduleManagement.tsx` -- fix empty value SelectItem
-- `src/components/ui/select.tsx` -- export SelectGroup/SelectLabel if needed
-- `src/pages/Index.tsx` -- add registrations tab routing
+---
 
-### Database Migration
-- Create `online_registrations` table with RLS policies
+## 5. Digital Signature
 
-### Component Dependencies
-- Uses existing: `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent`, `Switch`, `Select`, `SelectGroup`, `SelectLabel`
-- Uses existing contexts: `useAcademicYear`, `useSchool`, `useAuth`
+Use `react-signature-canvas` (already in dependencies) to render a drawing pad.
+- Canvas with border, clear button, and instruction text
+- On submit, capture signature as base64 PNG via `toDataURL()`
+- Store the base64 string in `signature_data` column (signatures are typically 5-15KB, acceptable for text storage)
+
+---
+
+## 6. Success Screen
+
+After submission, show an animated confirmation:
+- Animated checkmark (framer-motion scale-in)
+- "Registration Submitted Successfully!" heading
+- Confirmation message with next steps
+- "Submit Another Registration" button to reset the form
+
+---
+
+## 7. Update Registration Management
+
+**File: `src/components/registration/RegistrationManagement.tsx`**
+- Update the `RegistrationRecord` interface to include `religion`, `current_address`, `signature_data`, `agreements_accepted`
+- Update the detail dialog to show the new fields
+- Remove references to `uae_address`, use `current_address` instead
+
+---
+
+## 8. Files Summary
+
+| Action | File |
+|--------|------|
+| Create | `src/pages/PublicRegistrationPage.tsx` |
+| Rewrite | `src/components/registration/OnlineRegistrationForm.tsx` |
+| Modify | `src/components/registration/RegistrationManagement.tsx` |
+| Modify | `src/App.tsx` (add `/register` route) |
+| Migration | Add `religion`, `current_address`, `signature_data`, `agreements_accepted` columns |
+
+---
+
+## Technical Notes
+
+- The form will auto-detect the current academic year by querying `academic_years` where `is_current = true`
+- School ID will be determined from a URL parameter or default to the primary school
+- No authentication is required for the `/register` page
+- The existing RLS policy allowing public inserts on `online_registrations` will be used
+- `react-signature-canvas` is already installed (v1.1.0-alpha.2)
+- Validation uses inline error state (no zod for this simple form to match existing patterns)
