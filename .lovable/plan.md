@@ -1,96 +1,74 @@
 
-# Phase 2: Email Notifications, School Showcase & Visit Scheduling
+# Phase 3: Real-Time Notifications, Visit Management & Admin Enhancements
 
 ## Overview
-After successful registration, send email confirmations via Resend, show an interactive school showcase dialog with map/photos/registrar info, and allow scheduling school visits.
+Add real-time notification system for the registrar dashboard when new registrations arrive, a visit schedule management tab in the Registration Management page, and data export functionality.
 
 ---
 
-## 1. Email Confirmation via Resend Edge Function
+## 1. Real-Time Notifications for New Registrations
 
-**New file: `supabase/functions/send-registration-email/index.ts`**
-- Triggered after successful registration submission
-- Sends confirmation email to parent email (if provided)
-- Sends notification email to school administration
-- Uses existing `RESEND_API_KEY` secret
-- Professional HTML email template with school branding
+**Concept:** When a new registration is submitted on the public form, the registrar dashboard instantly shows a notification badge and plays a sound alert.
 
----
+### Database Changes
+- Enable Supabase Realtime on `online_registrations` table:
+  ```sql
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.online_registrations;
+  ```
 
-## 2. School Info Database Table
+### New file: `src/hooks/useRegistrationNotifications.ts`
+- Subscribes to `postgres_changes` on `online_registrations` (INSERT events)
+- Maintains an unread count in state
+- Plays a short notification sound on new registration
+- Provides `unreadCount`, `markAllRead()`, and `newRegistrations` list
 
-**Migration: Create `school_info` table**
-```sql
-CREATE TABLE public.school_info (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  school_id uuid REFERENCES schools(id) NOT NULL,
-  registrar_name text,
-  registrar_photo_url text,
-  registrar_phone text,
-  registrar_email text,
-  office_hours text,
-  latitude numeric,
-  longitude numeric,
-  map_embed_url text,
-  facility_photos jsonb DEFAULT '[]',
-  visit_slots_config jsonb DEFAULT '{"morning": "9:00 AM - 12:00 PM", "afternoon": "1:00 PM - 4:00 PM", "max_per_slot": 5}',
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
-```
-- RLS: Public SELECT, admin UPDATE/INSERT
+### Modify: `src/components/layout/DashboardLayout.tsx`
+- Import and use `useRegistrationNotifications` hook
+- Add a notification bell icon next to the "Registrations" sidebar item
+- Show a red badge with unread count when > 0
+- Clicking the badge navigates to registrations tab and marks as read
 
-**Migration: Create `school_visits` table**
-```sql
-CREATE TABLE public.school_visits (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  school_id uuid REFERENCES schools(id) NOT NULL,
-  registration_id uuid REFERENCES online_registrations(id),
-  visitor_name text NOT NULL,
-  visitor_email text,
-  visitor_phone text,
-  visit_date date NOT NULL,
-  visit_slot text NOT NULL,
-  status text DEFAULT 'scheduled',
-  created_at timestamptz DEFAULT now()
-);
-```
-- RLS: Public INSERT (for scheduling), admin SELECT/UPDATE
+### New file: `src/components/registration/NotificationBell.tsx`
+- Bell icon component with animated badge counter
+- Dropdown showing recent registrations (name, level, time ago)
+- "View All" link to registrations page
 
 ---
 
-## 3. School Showcase Dialog
+## 2. Visit Schedule Management Tab
 
-**New file: `src/components/registration/SchoolShowcaseDialog.tsx`**
-
-Shown after successful submission. Contains:
-- School location map (Google Maps embed or static map image)
-- Photo gallery of school facilities (slider with framer-motion)
-- Registrar info card (name, photo, phone with click-to-call)
-- Office hours display
-- "Schedule a School Visit" button → opens visit scheduler
+### Modify: `src/components/registration/RegistrationManagement.tsx`
+- Add a 4th tab: "Scheduled Visits"
+- Query `school_visits` table joined with `online_registrations` for student name
+- Display table with: Visitor Name, Date, Slot (Morning/Afternoon), Status, Student Name (from registration)
+- Actions: Mark as Completed, Cancel Visit
+- Filter by upcoming vs past visits
 
 ---
 
-## 4. Visit Scheduler
+## 3. Data Export
 
-**New file: `src/components/registration/VisitScheduler.tsx`**
-
-Interactive date/time picker:
-- Calendar showing available dates (next 30 days, weekdays only)
-- Morning/Afternoon slot selection
-- Shows remaining capacity per slot (max 5)
-- Collects visitor name and contact
-- Submits to `school_visits` table
-- Confirmation message after booking
+### Modify: `src/components/registration/RegistrationManagement.tsx`
+- Add "Export to CSV" button in each tab header
+- Uses the existing `papaparse` dependency to generate CSV
+- Exports filtered data (pending, approved, or rejected registrations)
+- Includes all relevant fields: student name, LRN, level, religion, address, parent info, status, dates
 
 ---
 
-## 5. Integration Points
+## 4. School Info Admin Management
 
-- `OnlineRegistrationForm.tsx`: After successful submission, call edge function for email, then show SchoolShowcaseDialog
-- `RegistrationManagement.tsx`: Add visit schedule management tab
-- `supabase/config.toml`: Add function config with `verify_jwt = false`
+### New file: `src/components/registration/SchoolInfoManager.tsx`
+- Admin form to populate the `school_info` table
+- Fields: Registrar Name, Photo URL, Phone, Email, Office Hours
+- Map Embed URL input
+- Facility photos management (add/remove URLs from JSON array)
+- Visit slot configuration (morning/afternoon times, max per slot)
+- Save/update to `school_info` table
+
+### Modify: `src/components/registration/RegistrationManagement.tsx`
+- Add a 5th tab: "School Info" (admin only)
+- Renders the `SchoolInfoManager` component
 
 ---
 
@@ -98,9 +76,19 @@ Interactive date/time picker:
 
 | Action | File |
 |--------|------|
-| Create | `supabase/functions/send-registration-email/index.ts` |
-| Create | `src/components/registration/SchoolShowcaseDialog.tsx` |
-| Create | `src/components/registration/VisitScheduler.tsx` |
-| Modify | `src/components/registration/OnlineRegistrationForm.tsx` |
-| Migration | Create `school_info` and `school_visits` tables |
-| Config | Update `supabase/config.toml` for edge function |
+| Create | `src/hooks/useRegistrationNotifications.ts` |
+| Create | `src/components/registration/NotificationBell.tsx` |
+| Create | `src/components/registration/SchoolInfoManager.tsx` |
+| Modify | `src/components/registration/RegistrationManagement.tsx` |
+| Modify | `src/components/layout/DashboardLayout.tsx` |
+| Migration | Enable realtime on `online_registrations` |
+
+---
+
+## Technical Notes
+
+- Realtime subscription uses Supabase channel API with `postgres_changes` event type
+- Notification sound uses the Web Audio API (short beep, no external file needed)
+- CSV export leverages the already-installed `papaparse` library (`unparse` method)
+- The `SchoolInfoManager` uses upsert logic since each school has at most one `school_info` row
+- Visit management queries use the existing RLS policies (admin SELECT on `school_visits`)
