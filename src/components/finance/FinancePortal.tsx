@@ -6,6 +6,7 @@ import { useSchool } from '@/contexts/SchoolContext';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import { AcademicYearSelector } from '@/components/dashboard/AcademicYearSelector';
 
 interface FinancePortalProps {
   onNavigate: (tab: string) => void;
@@ -62,6 +63,8 @@ export const FinancePortal = ({ onNavigate }: FinancePortalProps) => {
         <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Finance Portal</h1>
         <p className="text-muted-foreground mt-1">School finance management dashboard</p>
       </motion.div>
+
+      <AcademicYearSelector />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((stat, i) => (

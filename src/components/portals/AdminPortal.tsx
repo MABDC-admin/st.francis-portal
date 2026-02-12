@@ -6,6 +6,7 @@ import { QuickActions } from '@/components/dashboard/QuickActions';
 import { StudentOverview } from '@/components/dashboard/StudentOverview';
 import { DashboardCalendar } from '@/components/dashboard/DashboardCalendar';
 import { BottomActions } from '@/components/dashboard/BottomActions';
+import { AcademicYearSelector } from '@/components/dashboard/AcademicYearSelector';
 import { useStudents } from '@/hooks/useStudents';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -59,6 +60,9 @@ export const AdminPortal = ({ onNavigate }: AdminPortalProps) => {
     )}>
       {/* Header */}
       <DashboardHeader onNavigateToMessages={() => onNavigate('messages')} />
+
+      {/* Academic Year Selector */}
+      <AcademicYearSelector />
 
       {/* Stats Row */}
       <DashboardStatsRow

@@ -10,6 +10,7 @@ import { GradesManagement } from '@/components/grades/GradesManagement';
 import { AttendanceManagement } from '@/components/management/AttendanceManagement';
 import { AssignmentManagement } from '@/components/management/AssignmentManagement';
 import { ScheduleManagement } from '@/components/management/ScheduleManagement';
+import { AcademicYearSelector } from '@/components/dashboard/AcademicYearSelector';
 
 interface TeacherPortalProps {
   activeSection?: 'dashboard' | 'profile' | 'grades' | 'attendance' | 'schedule' | 'assignments';
@@ -81,6 +82,9 @@ export const TeacherPortal = ({ activeSection = 'dashboard', onNavigate }: Teach
       default:
         return (
           <div className="space-y-6">
+            {/* Academic Year Selector */}
+            <AcademicYearSelector />
+
             {/* Stats Row */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}>
