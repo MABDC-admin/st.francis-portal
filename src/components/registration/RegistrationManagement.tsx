@@ -7,7 +7,8 @@ import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSchoolId } from '@/utils/schoolIdMap';
 import { toast } from 'sonner';
-import { ClipboardList, Search, CheckCircle2, XCircle, Clock, Loader2 } from 'lucide-react';
+import Papa from 'papaparse';
+import { ClipboardList, Search, CheckCircle2, XCircle, Clock, Loader2, Download, CalendarDays, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +25,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { SchoolInfoManager } from './SchoolInfoManager';
 
 interface RegistrationRecord {
   id: string;
@@ -59,7 +61,7 @@ interface RegistrationRecord {
 export const RegistrationManagement = () => {
   const { selectedSchool } = useSchool();
   const { selectedYearId } = useAcademicYear();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const queryClient = useQueryClient();
   const schoolId = getSchoolId(selectedSchool);
 
@@ -68,7 +70,9 @@ export const RegistrationManagement = () => {
   const [showRejectDialog, setShowRejectDialog] = useState<RegistrationRecord | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showDetailDialog, setShowDetailDialog] = useState<RegistrationRecord | null>(null);
+  const [visitFilter, setVisitFilter] = useState<'upcoming' | 'past'>('upcoming');
 
+  // Fetch registrations
   const { data: registrations = [], isLoading } = useQuery({
     queryKey: ['online_registrations', schoolId, selectedYearId],
     queryFn: async () => {
@@ -84,6 +88,21 @@ export const RegistrationManagement = () => {
     enabled: !!schoolId && !!selectedYearId,
   });
 
+  // Fetch visits
+  const { data: visits = [], isLoading: visitsLoading } = useQuery({
+    queryKey: ['school_visits', schoolId],
+    queryFn: async () => {
+      if (!schoolId) return [];
+      const { data, error } = await (supabase.from('school_visits') as any)
+        .select('*, online_registrations(student_name)')
+        .eq('school_id', schoolId)
+        .order('visit_date', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!schoolId,
+  });
+
   const filterByStatus = (status: string) =>
     registrations.filter((r: RegistrationRecord) =>
       r.status === status &&
@@ -95,31 +114,25 @@ export const RegistrationManagement = () => {
   const approvedList = filterByStatus('approved');
   const rejectedList = filterByStatus('rejected');
 
+  const today = new Date().toISOString().split('T')[0];
+  const filteredVisits = visits.filter((v: any) =>
+    visitFilter === 'upcoming' ? v.visit_date >= today : v.visit_date < today
+  );
+
+  // Mutations
   const approveRegistration = useMutation({
     mutationFn: async (reg: RegistrationRecord) => {
       const { error: updateError } = await (supabase.from('online_registrations') as any)
         .update({ status: 'approved', reviewed_by: user?.id, reviewed_at: new Date().toISOString() })
         .eq('id', reg.id);
       if (updateError) throw updateError;
-
-      // Create student record
       const { error: studentError } = await (supabase.from('students') as any).insert([{
-        student_name: reg.student_name,
-        lrn: reg.lrn || `TEMP-${Date.now()}`,
-        level: reg.level,
-        school: selectedSchool,
-        school_id: reg.school_id,
-        academic_year_id: reg.academic_year_id,
-        birth_date: reg.birth_date,
-        gender: reg.gender,
-        mother_maiden_name: reg.mother_maiden_name,
-        mother_contact: reg.mother_contact,
-        father_name: reg.father_name,
-        father_contact: reg.father_contact,
-        phil_address: reg.current_address || reg.phil_address,
-        previous_school: reg.previous_school,
-        mother_tongue: reg.mother_tongue,
-        dialects: reg.dialects,
+        student_name: reg.student_name, lrn: reg.lrn || `TEMP-${Date.now()}`, level: reg.level,
+        school: selectedSchool, school_id: reg.school_id, academic_year_id: reg.academic_year_id,
+        birth_date: reg.birth_date, gender: reg.gender, mother_maiden_name: reg.mother_maiden_name,
+        mother_contact: reg.mother_contact, father_name: reg.father_name, father_contact: reg.father_contact,
+        phil_address: reg.current_address || reg.phil_address, previous_school: reg.previous_school,
+        mother_tongue: reg.mother_tongue, dialects: reg.dialects,
       }]);
       if (studentError) throw studentError;
     },
@@ -147,6 +160,49 @@ export const RegistrationManagement = () => {
     },
     onError: (e: Error) => toast.error('Rejection failed: ' + e.message),
   });
+
+  const updateVisitStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { error } = await (supabase.from('school_visits') as any)
+        .update({ status })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['school_visits'] });
+      toast.success('Visit updated');
+    },
+    onError: (e: Error) => toast.error('Update failed: ' + e.message),
+  });
+
+  // CSV Export
+  const exportToCsv = (data: RegistrationRecord[], filename: string) => {
+    const exportData = data.map(r => ({
+      'Student Name': r.student_name,
+      'LRN': r.lrn || '',
+      'Level': r.level,
+      'Strand': r.strand || '',
+      'Gender': r.gender || '',
+      'Birth Date': r.birth_date || '',
+      'Religion': r.religion || '',
+      'Parent Email': r.parent_email || '',
+      'Mother': r.mother_maiden_name || '',
+      'Mother Contact': r.mother_contact || '',
+      'Father': r.father_name || '',
+      'Father Contact': r.father_contact || '',
+      'Address': r.current_address || r.phil_address || '',
+      'Previous School': r.previous_school || '',
+      'Status': r.status,
+      'Submitted': new Date(r.created_at).toLocaleDateString(),
+    }));
+    const csv = Papa.unparse(exportData);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${filename}.csv`;
+    link.click();
+    toast.success(`Exported ${data.length} records`);
+  };
 
   const statusBadge = (status: string) => {
     switch (status) {
@@ -226,14 +282,103 @@ export const RegistrationManagement = () => {
       </div>
 
       <Tabs defaultValue="pending" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="pending"><Clock className="h-3.5 w-3.5 mr-1" /> Pending ({pendingList.length})</TabsTrigger>
           <TabsTrigger value="approved"><CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Approved ({approvedList.length})</TabsTrigger>
           <TabsTrigger value="rejected"><XCircle className="h-3.5 w-3.5 mr-1" /> Rejected ({rejectedList.length})</TabsTrigger>
+          <TabsTrigger value="visits"><CalendarDays className="h-3.5 w-3.5 mr-1" /> Visits</TabsTrigger>
+          {(role === 'admin' || role === 'registrar') && (
+            <TabsTrigger value="school-info"><Building2 className="h-3.5 w-3.5 mr-1" /> School Info</TabsTrigger>
+          )}
         </TabsList>
-        <TabsContent value="pending">{renderTable(pendingList, true)}</TabsContent>
-        <TabsContent value="approved">{renderTable(approvedList, false)}</TabsContent>
-        <TabsContent value="rejected">{renderTable(rejectedList, false)}</TabsContent>
+
+        <TabsContent value="pending">
+          <div className="flex justify-end mb-3">
+            <Button variant="outline" size="sm" onClick={() => exportToCsv(pendingList, 'pending-registrations')} disabled={pendingList.length === 0}>
+              <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
+            </Button>
+          </div>
+          {renderTable(pendingList, true)}
+        </TabsContent>
+        <TabsContent value="approved">
+          <div className="flex justify-end mb-3">
+            <Button variant="outline" size="sm" onClick={() => exportToCsv(approvedList, 'approved-registrations')} disabled={approvedList.length === 0}>
+              <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
+            </Button>
+          </div>
+          {renderTable(approvedList, false)}
+        </TabsContent>
+        <TabsContent value="rejected">
+          <div className="flex justify-end mb-3">
+            <Button variant="outline" size="sm" onClick={() => exportToCsv(rejectedList, 'rejected-registrations')} disabled={rejectedList.length === 0}>
+              <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
+            </Button>
+          </div>
+          {renderTable(rejectedList, false)}
+        </TabsContent>
+
+        <TabsContent value="visits">
+          <div className="flex gap-2 mb-4">
+            <Button variant={visitFilter === 'upcoming' ? 'default' : 'outline'} size="sm" onClick={() => setVisitFilter('upcoming')}>Upcoming</Button>
+            <Button variant={visitFilter === 'past' ? 'default' : 'outline'} size="sm" onClick={() => setVisitFilter('past')}>Past</Button>
+          </div>
+          {visitsLoading ? (
+            <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+          ) : filteredVisits.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <CalendarDays className="h-12 w-12 mx-auto mb-3 opacity-30" />
+              <p>No {visitFilter} visits</p>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Visitor</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Slot</TableHead>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredVisits.map((v: any) => (
+                    <TableRow key={v.id}>
+                      <TableCell className="font-medium">{v.visitor_name}</TableCell>
+                      <TableCell>{new Date(v.visit_date).toLocaleDateString()}</TableCell>
+                      <TableCell><Badge variant="outline">{v.visit_slot === 'morning' ? '🌅 Morning' : '🌇 Afternoon'}</Badge></TableCell>
+                      <TableCell className="text-muted-foreground">{v.online_registrations?.student_name || '—'}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={
+                          v.status === 'completed' ? 'bg-green-50 text-green-700 border-green-300' :
+                          v.status === 'cancelled' ? 'bg-red-50 text-red-700 border-red-300' :
+                          'bg-blue-50 text-blue-700 border-blue-300'
+                        }>{v.status}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {v.status === 'scheduled' && (
+                          <div className="flex gap-2 justify-end">
+                            <Button size="sm" variant="outline" className="text-green-600" onClick={() => updateVisitStatus.mutate({ id: v.id, status: 'completed' })}>
+                              <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Complete
+                            </Button>
+                            <Button size="sm" variant="outline" className="text-red-600" onClick={() => updateVisitStatus.mutate({ id: v.id, status: 'cancelled' })}>
+                              <XCircle className="h-3.5 w-3.5 mr-1" /> Cancel
+                            </Button>
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="school-info">
+          <SchoolInfoManager />
+        </TabsContent>
       </Tabs>
 
       {/* Approve Confirmation */}

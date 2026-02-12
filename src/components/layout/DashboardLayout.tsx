@@ -62,6 +62,8 @@ import { ColorThemeSelector } from '@/components/ColorThemeSelector';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { StudentBottomNav } from './StudentBottomNav';
+import { useRegistrationNotifications } from '@/hooks/useRegistrationNotifications';
+import { NotificationBell } from '@/components/registration/NotificationBell';
 import {
   HomeIcon3D,
   StudentIcon3D,
@@ -600,6 +602,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
   const { data: schoolSettings } = useSchoolSettings(selectedSchool);
   const { theme, currentTheme, selectTheme } = useColorTheme();
   const { layoutStyle } = useDashboardLayout();
+  const { unreadCount, newRegistrations, markAllRead } = useRegistrationNotifications();
 
   // Track open groups
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
@@ -709,6 +712,16 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
           isAppleTheme && !isActive && "text-gray-500"
         )} />
         {!isCollapsed && <span className={cn("truncate z-10", isAppleTheme && "text-[13px]")}>{item.label}</span>}
+        {!isCollapsed && (item.id === 'registrations' || item.id === 'online-registration') && unreadCount > 0 && (
+          <div className="ml-auto z-10" onClick={(e) => e.stopPropagation()}>
+            <NotificationBell
+              unreadCount={unreadCount}
+              newRegistrations={newRegistrations}
+              onViewAll={() => { onTabChange('registrations'); markAllRead(); setSidebarOpen(false); }}
+              onMarkRead={markAllRead}
+            />
+          </div>
+        )}
       </motion.button>
     );
   };
