@@ -2208,8 +2208,10 @@ export type Database = {
       online_registrations: {
         Row: {
           academic_year_id: string
+          agreements_accepted: Json | null
           birth_date: string | null
           created_at: string
+          current_address: string | null
           dialects: string | null
           father_contact: string | null
           father_name: string | null
@@ -2224,9 +2226,11 @@ export type Database = {
           phil_address: string | null
           previous_school: string | null
           rejection_reason: string | null
+          religion: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           school_id: string
+          signature_data: string | null
           status: string
           strand: string | null
           student_name: string
@@ -2235,8 +2239,10 @@ export type Database = {
         }
         Insert: {
           academic_year_id: string
+          agreements_accepted?: Json | null
           birth_date?: string | null
           created_at?: string
+          current_address?: string | null
           dialects?: string | null
           father_contact?: string | null
           father_name?: string | null
@@ -2251,9 +2257,11 @@ export type Database = {
           phil_address?: string | null
           previous_school?: string | null
           rejection_reason?: string | null
+          religion?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           school_id: string
+          signature_data?: string | null
           status?: string
           strand?: string | null
           student_name: string
@@ -2262,8 +2270,10 @@ export type Database = {
         }
         Update: {
           academic_year_id?: string
+          agreements_accepted?: Json | null
           birth_date?: string | null
           created_at?: string
+          current_address?: string | null
           dialects?: string | null
           father_contact?: string | null
           father_name?: string | null
@@ -2278,9 +2288,11 @@ export type Database = {
           phil_address?: string | null
           previous_school?: string | null
           rejection_reason?: string | null
+          religion?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           school_id?: string
+          signature_data?: string | null
           status?: string
           strand?: string | null
           student_name?: string

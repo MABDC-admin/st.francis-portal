@@ -94,7 +94,7 @@ import { FinanceLearnerPage } from '@/components/finance/FinanceLearnerPage';
 import HelpdeskIndex from "@/pages/Helpdesk";
 import { AdmissionsPage } from '@/components/admissions/AdmissionsPage';
 import { RegistrationManagement } from '@/components/registration/RegistrationManagement';
-import { OnlineRegistrationForm } from '@/components/registration/OnlineRegistrationForm';
+
 const Index = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -572,7 +572,19 @@ const Index = () => {
       {activeTab === 'registrations' && hasAdminAccess && <RegistrationManagement />}
 
       {/* Online Registration Form - Admin/Registrar only */}
-      {activeTab === 'online-registration' && hasAdminAccess && <OnlineRegistrationForm />}
+      {activeTab === 'online-registration' && hasAdminAccess && (
+        <div className="text-center py-12 space-y-4">
+          <h2 className="text-xl font-semibold text-foreground">Online Registration Form</h2>
+          <p className="text-muted-foreground">Share the link below with parents/guardians to register online.</p>
+          <div className="inline-flex items-center gap-2 bg-muted px-4 py-2 rounded-lg">
+            <code className="text-sm text-primary">{window.location.origin}/register</code>
+            <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/register`); toast.success('Link copied!'); }}>Copy</Button>
+          </div>
+          <div className="pt-2">
+            <Button onClick={() => window.open('/register', '_blank')}>Open Registration Form</Button>
+          </div>
+        </div>
+      )}
 
       {/* Modals */}
       <AdminPinModal

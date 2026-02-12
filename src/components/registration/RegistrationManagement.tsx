@@ -33,16 +33,19 @@ interface RegistrationRecord {
   strand: string | null;
   birth_date: string | null;
   gender: string | null;
+  religion: string | null;
   mother_maiden_name: string | null;
   mother_contact: string | null;
   father_name: string | null;
   father_contact: string | null;
   phil_address: string | null;
-  uae_address: string | null;
+  current_address: string | null;
   previous_school: string | null;
   parent_email: string | null;
   mother_tongue: string | null;
   dialects: string | null;
+  signature_data: string | null;
+  agreements_accepted: Record<string, any> | null;
   school_id: string;
   academic_year_id: string;
   status: string;
@@ -113,8 +116,7 @@ export const RegistrationManagement = () => {
         mother_contact: reg.mother_contact,
         father_name: reg.father_name,
         father_contact: reg.father_contact,
-        phil_address: reg.phil_address,
-        uae_address: reg.uae_address,
+        phil_address: reg.current_address || reg.phil_address,
         previous_school: reg.previous_school,
         mother_tongue: reg.mother_tongue,
         dialects: reg.dialects,
@@ -289,11 +291,19 @@ export const RegistrationManagement = () => {
               {showDetailDialog.strand && <div className="flex justify-between"><span className="text-muted-foreground">Strand</span><span>{showDetailDialog.strand}</span></div>}
               <div className="flex justify-between"><span className="text-muted-foreground">Status</span>{statusBadge(showDetailDialog.status)}</div>
               <div className="flex justify-between"><span className="text-muted-foreground">Gender</span><span>{showDetailDialog.gender || '—'}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Religion</span><span>{showDetailDialog.religion || '—'}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Birth Date</span><span>{showDetailDialog.birth_date || '—'}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Email</span><span>{showDetailDialog.parent_email || '—'}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Mother</span><span>{showDetailDialog.mother_maiden_name || '—'}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Father</span><span>{showDetailDialog.father_name || '—'}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Current Address</span><span>{showDetailDialog.current_address || showDetailDialog.phil_address || '—'}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Mother Tongue</span><span>{showDetailDialog.mother_tongue || '—'}</span></div>
+              {showDetailDialog.signature_data && (
+                <div className="space-y-1">
+                  <span className="text-muted-foreground">Signature</span>
+                  <img src={showDetailDialog.signature_data} alt="Signature" className="border rounded h-16 bg-white" />
+                </div>
+              )}
               {showDetailDialog.rejection_reason && (
                 <div className="bg-red-50 p-3 rounded-lg border border-red-200">
                   <p className="text-red-700 font-medium text-xs mb-1">Rejection Reason</p>

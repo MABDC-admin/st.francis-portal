@@ -1,37 +1,62 @@
-import { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
-import { CheckCircle2, Loader2, UserPlus } from 'lucide-react';
+import { useState, useMemo, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CheckCircle2, Loader2, UserPlus, ArrowRight, ArrowLeft, Eraser, PenTool } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectGroup, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { GENDERS, SHS_STRANDS, requiresStrand, isKindergartenLevel } from '@/components/enrollment/constants';
-import { useAcademicYear } from '@/contexts/AcademicYearContext';
-import { useSchool } from '@/contexts/SchoolContext';
-import { getSchoolId } from '@/utils/schoolIdMap';
 import { differenceInYears } from 'date-fns';
+import SignatureCanvas from 'react-signature-canvas';
 
-export const OnlineRegistrationForm = () => {
-  const { selectedYearId, selectedYear } = useAcademicYear();
-  const { selectedSchool } = useSchool();
-  const schoolId = getSchoolId(selectedSchool);
+const RELIGIONS = [
+  'Roman Catholic',
+  'Islam',
+  'Iglesia ni Cristo',
+  'Protestant/Evangelical',
+  'Seventh-Day Adventist',
+  'Aglipayan',
+  'Buddhism',
+  'Hinduism',
+  'Other',
+];
 
+const STEP_LABELS = ['Student Information', 'Parent & Address', 'Agreement & Signature'];
+
+interface OnlineRegistrationFormProps {
+  schoolId: string;
+  academicYearId: string;
+  academicYearName?: string;
+}
+
+export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearName }: OnlineRegistrationFormProps) => {
+  const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [hasLrn, setHasLrn] = useState(true);
+  const sigCanvasRef = useRef<SignatureCanvas | null>(null);
+
   const [formData, setFormData] = useState({
     student_name: '', lrn: '', level: '', strand: '',
-    birth_date: '', gender: '',
+    birth_date: '', gender: '', religion: '', religion_other: '',
+    mother_tongue: '', dialects: '',
     mother_maiden_name: '', mother_contact: '',
     father_name: '', father_contact: '',
-    phil_address: '', uae_address: '',
-    previous_school: '', parent_email: '',
-    mother_tongue: '', dialects: '',
+    parent_email: '', current_address: '',
+    previous_school: '',
   });
+
+  const [agreements, setAgreements] = useState({
+    terms: false, privacy: false, payment: false, refund: false, consent: false,
+  });
+
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const needsStrand = useMemo(() => requiresStrand(formData.level), [formData.level]);
@@ -40,33 +65,55 @@ export const OnlineRegistrationForm = () => {
     const age = differenceInYears(new Date(), new Date(formData.birth_date));
     return age >= 0 ? age : null;
   }, [formData.birth_date]);
+  const isMinor = calculatedAge !== null && calculatedAge < 18;
 
-  const handleChange = (field: string, value: string) => {
+  const handleChange = useCallback((field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
-  };
+  }, [errors]);
 
-  const validate = () => {
+  const validateStep = (s: number): boolean => {
     const errs: Record<string, string> = {};
-    if (!formData.student_name.trim()) errs.student_name = 'Required';
-    if (!formData.level) errs.level = 'Required';
-    if (hasLrn && !isKindergartenLevel(formData.level) && !formData.lrn.trim()) errs.lrn = 'Required';
-    if (hasLrn && formData.lrn && !/^\d{12}$/.test(formData.lrn)) errs.lrn = 'Must be 12 digits';
-    if (needsStrand && !formData.strand) errs.strand = 'Required for SHS';
-    if (!formData.birth_date) errs.birth_date = 'Required';
-    if (!formData.gender) errs.gender = 'Required';
-    if (!formData.mother_maiden_name.trim()) errs.mother_maiden_name = 'Required';
-    if (!formData.mother_contact.trim()) errs.mother_contact = 'Required';
+    if (s === 0) {
+      if (!formData.level) errs.level = 'Required';
+      if (hasLrn && !isKindergartenLevel(formData.level) && !formData.lrn.trim()) errs.lrn = 'Required';
+      if (hasLrn && formData.lrn && !/^\d{12}$/.test(formData.lrn)) errs.lrn = 'Must be 12 digits';
+      if (!formData.student_name.trim()) errs.student_name = 'Required';
+      if (!formData.birth_date) errs.birth_date = 'Required';
+      if (!formData.gender) errs.gender = 'Required';
+      if (!formData.religion) errs.religion = 'Required';
+      if (formData.religion === 'Other' && !formData.religion_other.trim()) errs.religion_other = 'Please specify';
+      if (needsStrand && !formData.strand) errs.strand = 'Required for SHS';
+    } else if (s === 1) {
+      if (!formData.mother_maiden_name.trim()) errs.mother_maiden_name = 'Required';
+      if (!formData.mother_contact.trim()) errs.mother_contact = 'Required';
+      if (!formData.current_address.trim()) errs.current_address = 'Required';
+    } else if (s === 2) {
+      if (!agreements.terms) errs.terms = 'Required';
+      if (!agreements.privacy) errs.privacy = 'Required';
+      if (!agreements.payment) errs.payment = 'Required';
+      if (!agreements.refund) errs.refund = 'Required';
+      if (isMinor && !agreements.consent) errs.consent = 'Required';
+      if (sigCanvasRef.current?.isEmpty()) errs.signature = 'Signature is required';
+    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = async () => {
-    if (!validate()) { toast.error('Please fix the errors before submitting'); return; }
-    if (!schoolId || !selectedYearId) { toast.error('School or academic year not available'); return; }
+  const goNext = () => {
+    if (validateStep(step)) setStep(s => s + 1);
+    else toast.error('Please fix the highlighted errors');
+  };
 
+  const goBack = () => setStep(s => s - 1);
+
+  const handleSubmit = async () => {
+    if (!validateStep(2)) { toast.error('Please complete all required fields'); return; }
     setIsSubmitting(true);
     try {
+      const signatureData = sigCanvasRef.current?.toDataURL('image/png') || null;
+      const religion = formData.religion === 'Other' ? formData.religion_other.trim() : formData.religion;
+
       const { error } = await (supabase.from('online_registrations') as any).insert([{
         student_name: formData.student_name.trim(),
         lrn: hasLrn && formData.lrn.trim() ? formData.lrn.trim() : null,
@@ -74,222 +121,380 @@ export const OnlineRegistrationForm = () => {
         strand: formData.strand || null,
         birth_date: formData.birth_date || null,
         gender: formData.gender || null,
+        religion,
         mother_maiden_name: formData.mother_maiden_name.trim() || null,
         mother_contact: formData.mother_contact.trim() || null,
         father_name: formData.father_name.trim() || null,
         father_contact: formData.father_contact.trim() || null,
-        phil_address: formData.phil_address.trim() || null,
-        uae_address: formData.uae_address.trim() || null,
-        previous_school: formData.previous_school.trim() || null,
         parent_email: formData.parent_email.trim() || null,
+        current_address: formData.current_address.trim() || null,
+        phil_address: formData.current_address.trim() || null,
+        previous_school: formData.previous_school.trim() || null,
         mother_tongue: formData.mother_tongue.trim() || null,
         dialects: formData.dialects.trim() || null,
+        signature_data: signatureData,
+        agreements_accepted: {
+          terms: agreements.terms,
+          privacy: agreements.privacy,
+          payment: agreements.payment,
+          refund: agreements.refund,
+          consent: agreements.consent,
+          accepted_at: new Date().toISOString(),
+        },
         school_id: schoolId,
-        academic_year_id: selectedYearId,
+        academic_year_id: academicYearId,
         status: 'pending',
       }]);
       if (error) throw error;
       setIsSuccess(true);
       toast.success('Registration submitted successfully!');
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to submit registration');
+      toast.error(err?.message || 'Failed to submit');
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const resetForm = () => {
+    setIsSuccess(false);
+    setStep(0);
+    setFormData({ student_name: '', lrn: '', level: '', strand: '', birth_date: '', gender: '', religion: '', religion_other: '', mother_tongue: '', dialects: '', mother_maiden_name: '', mother_contact: '', father_name: '', father_contact: '', parent_email: '', current_address: '', previous_school: '' });
+    setAgreements({ terms: false, privacy: false, payment: false, refund: false, consent: false });
+    setHasLrn(true);
+  };
+
   if (isSuccess) {
     return (
       <div className="flex items-center justify-center py-16">
-        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center space-y-4">
-          <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto" />
-          <h2 className="text-2xl font-bold text-foreground">Registration Submitted!</h2>
-          <p className="text-muted-foreground max-w-md">Your registration has been received and is pending review. You will be notified once it has been processed.</p>
-          <Button onClick={() => { setIsSuccess(false); setFormData({ student_name: '', lrn: '', level: '', strand: '', birth_date: '', gender: '', mother_maiden_name: '', mother_contact: '', father_name: '', father_contact: '', phil_address: '', uae_address: '', previous_school: '', parent_email: '', mother_tongue: '', dialects: '' }); }}>
-            Submit Another Registration
-          </Button>
+        <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 200, damping: 15 }} className="text-center space-y-6">
+          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2, type: 'spring', stiffness: 300 }}>
+            <CheckCircle2 className="h-24 w-24 text-green-500 mx-auto" />
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+            <h2 className="text-3xl font-bold text-foreground">Registration Submitted!</h2>
+            <p className="text-muted-foreground mt-3 max-w-md mx-auto">
+              Your registration has been received and is pending review by the school registrar. You will be notified once it has been processed.
+            </p>
+          </motion.div>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}>
+            <Button onClick={resetForm} size="lg" className="mt-4">
+              Submit Another Registration
+            </Button>
+          </motion.div>
         </motion.div>
       </div>
     );
   }
 
-  const FieldError = ({ field }: { field: string }) => errors[field] ? <p className="text-destructive text-sm mt-1">{errors[field]}</p> : null;
+  const FieldError = ({ field }: { field: string }) => errors[field] ? <p className="text-destructive text-xs mt-1">{errors[field]}</p> : null;
+  const progressValue = ((step + 1) / STEP_LABELS.length) * 100;
+
+  const slideVariants = {
+    enter: (dir: number) => ({ x: dir > 0 ? 80 : -80, opacity: 0 }),
+    center: { x: 0, opacity: 1 },
+    exit: (dir: number) => ({ x: dir > 0 ? -80 : 80, opacity: 0 }),
+  };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-2xl lg:text-3xl font-bold text-foreground flex items-center gap-2">
-          <UserPlus className="h-7 w-7 text-stat-purple" /> Online Registration
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Submit a registration application for the {selectedYear?.name || 'current'} academic year
-        </p>
-      </motion.div>
+    <div className="max-w-2xl mx-auto space-y-6">
+      {/* Progress */}
+      <div className="space-y-2">
+        <div className="flex justify-between text-sm font-medium">
+          {STEP_LABELS.map((label, i) => (
+            <span key={i} className={i <= step ? 'text-primary' : 'text-muted-foreground'}>
+              {i + 1}. {label}
+            </span>
+          ))}
+        </div>
+        <Progress value={progressValue} className="h-2" />
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Student Information</CardTitle>
-          <CardDescription>Fill in the learner's details below</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Grade Level */}
-            <div className="space-y-2">
-              <Label>Grade Level <span className="text-destructive">*</span></Label>
-              <Select value={formData.level} onValueChange={(v) => {
-                handleChange('level', v);
-                if (!requiresStrand(v)) handleChange('strand', '');
-                if (isKindergartenLevel(v)) setHasLrn(false);
-              }}>
-                <SelectTrigger className={errors.level ? 'border-destructive' : ''}><SelectValue placeholder="Select grade level" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Kindergarten">Kindergarten</SelectItem>
-                  <SelectGroup><SelectLabel>Elementary (Grades 1-6)</SelectLabel>
-                    {['Grade 1','Grade 2','Grade 3','Grade 4','Grade 5','Grade 6'].map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-                  </SelectGroup>
-                  <SelectGroup><SelectLabel>Junior High School (Grades 7-10)</SelectLabel>
-                    {['Grade 7','Grade 8','Grade 9','Grade 10'].map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-                  </SelectGroup>
-                  <SelectGroup><SelectLabel>Senior High School (Grades 11-12)</SelectLabel>
-                    {['Grade 11','Grade 12'].map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-              <FieldError field="level" />
-            </div>
+      <AnimatePresence mode="wait" custom={step}>
+        {step === 0 && (
+          <motion.div key="step0" custom={1} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25 }}>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><UserPlus className="h-5 w-5" /> Student Information</CardTitle>
+                <CardDescription>Enter the learner's personal details{academicYearName ? ` for ${academicYearName}` : ''}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Grade Level */}
+                  <div className="space-y-1.5">
+                    <Label>Grade Level <span className="text-destructive">*</span></Label>
+                    <Select value={formData.level} onValueChange={(v) => { handleChange('level', v); if (!requiresStrand(v)) handleChange('strand', ''); if (isKindergartenLevel(v)) setHasLrn(false); }}>
+                      <SelectTrigger className={errors.level ? 'border-destructive' : ''}><SelectValue placeholder="Select grade level" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Kindergarten">Kindergarten</SelectItem>
+                        <SelectGroup><SelectLabel>Elementary</SelectLabel>
+                          {['Grade 1','Grade 2','Grade 3','Grade 4','Grade 5','Grade 6'].map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                        </SelectGroup>
+                        <SelectGroup><SelectLabel>Junior High School</SelectLabel>
+                          {['Grade 7','Grade 8','Grade 9','Grade 10'].map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                        </SelectGroup>
+                        <SelectGroup><SelectLabel>Senior High School</SelectLabel>
+                          {['Grade 11','Grade 12'].map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    <FieldError field="level" />
+                  </div>
 
-            {/* LRN Toggle + Input */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Has LRN?</Label>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">{hasLrn ? 'Yes' : 'No'}</span>
-                  <Switch checked={hasLrn} onCheckedChange={setHasLrn} />
+                  {/* LRN Toggle */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label>Has LRN?</Label>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">{hasLrn ? 'Yes' : 'No'}</span>
+                        <Switch checked={hasLrn} onCheckedChange={setHasLrn} />
+                      </div>
+                    </div>
+                    {hasLrn && (
+                      <>
+                        <Input placeholder="12-digit LRN" value={formData.lrn} onChange={(e) => handleChange('lrn', e.target.value)} className={errors.lrn ? 'border-destructive' : ''} />
+                        <FieldError field="lrn" />
+                      </>
+                    )}
+                  </div>
+
+                  {/* Full Name */}
+                  <div className="space-y-1.5 md:col-span-2">
+                    <Label>Full Name <span className="text-destructive">*</span></Label>
+                    <Input placeholder="Learner's full name (Last, First, Middle)" value={formData.student_name} onChange={(e) => handleChange('student_name', e.target.value)} className={errors.student_name ? 'border-destructive' : ''} />
+                    <FieldError field="student_name" />
+                  </div>
+
+                  {/* Birth Date */}
+                  <div className="space-y-1.5">
+                    <Label>Birth Date <span className="text-destructive">*</span></Label>
+                    <Input type="date" value={formData.birth_date} onChange={(e) => handleChange('birth_date', e.target.value)} className={errors.birth_date ? 'border-destructive' : ''} />
+                    <FieldError field="birth_date" />
+                  </div>
+
+                  {/* Age */}
+                  <div className="space-y-1.5">
+                    <Label>Age</Label>
+                    <Input value={calculatedAge !== null ? `${calculatedAge} years old` : ''} placeholder="Auto-calculated" disabled className="bg-muted/50" />
+                  </div>
+
+                  {/* Gender */}
+                  <div className="space-y-1.5">
+                    <Label>Gender <span className="text-destructive">*</span></Label>
+                    <Select value={formData.gender} onValueChange={(v) => handleChange('gender', v)}>
+                      <SelectTrigger className={errors.gender ? 'border-destructive' : ''}><SelectValue placeholder="Select gender" /></SelectTrigger>
+                      <SelectContent>{GENDERS.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <FieldError field="gender" />
+                  </div>
+
+                  {/* Religion */}
+                  <div className="space-y-1.5">
+                    <Label>Religion <span className="text-destructive">*</span></Label>
+                    <Select value={formData.religion} onValueChange={(v) => { handleChange('religion', v); if (v !== 'Other') handleChange('religion_other', ''); }}>
+                      <SelectTrigger className={errors.religion ? 'border-destructive' : ''}><SelectValue placeholder="Select religion" /></SelectTrigger>
+                      <SelectContent>{RELIGIONS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+                    </Select>
+                    {formData.religion === 'Other' && (
+                      <Input placeholder="Please specify religion" value={formData.religion_other} onChange={(e) => handleChange('religion_other', e.target.value)} className={errors.religion_other ? 'border-destructive mt-1.5' : 'mt-1.5'} />
+                    )}
+                    <FieldError field="religion" />
+                    <FieldError field="religion_other" />
+                  </div>
+
+                  {/* SHS Strand */}
+                  {needsStrand && (
+                    <div className="space-y-1.5 md:col-span-2">
+                      <Label>SHS Strand <span className="text-destructive">*</span></Label>
+                      <Select value={formData.strand || undefined} onValueChange={(v) => handleChange('strand', v)}>
+                        <SelectTrigger className={errors.strand ? 'border-destructive' : ''}><SelectValue placeholder="Select strand" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup><SelectLabel>Academic Track</SelectLabel>
+                            {SHS_STRANDS.filter(s => ['ABM','STEM','HUMSS','GAS'].includes(s.value)).map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                          </SelectGroup>
+                          <SelectGroup><SelectLabel>TVL Track</SelectLabel>
+                            {SHS_STRANDS.filter(s => s.value.startsWith('TVL')).map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                          </SelectGroup>
+                          <SelectGroup><SelectLabel>Arts & Sports</SelectLabel>
+                            {SHS_STRANDS.filter(s => ['SPORTS','ARTS-DESIGN'].includes(s.value)).map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                      <FieldError field="strand" />
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <Label>Mother Tongue</Label>
+                    <Input placeholder="e.g. Cebuano" value={formData.mother_tongue} onChange={(e) => handleChange('mother_tongue', e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Dialects</Label>
+                    <Input placeholder="e.g. English, Tagalog" value={formData.dialects} onChange={(e) => handleChange('dialects', e.target.value)} />
+                  </div>
                 </div>
-              </div>
-              {hasLrn && (
-                <>
-                  <Input placeholder="12-digit LRN" value={formData.lrn} onChange={(e) => handleChange('lrn', e.target.value)} className={errors.lrn ? 'border-destructive' : ''} />
-                  <FieldError field="lrn" />
-                </>
-              )}
-            </div>
 
-            {/* Full Name */}
-            <div className="space-y-2">
-              <Label>Full Name <span className="text-destructive">*</span></Label>
-              <Input placeholder="Learner's full name" value={formData.student_name} onChange={(e) => handleChange('student_name', e.target.value)} className={errors.student_name ? 'border-destructive' : ''} />
-              <FieldError field="student_name" />
-            </div>
+                <div className="flex justify-end pt-2">
+                  <Button onClick={goNext}> Next <ArrowRight className="h-4 w-4 ml-1" /></Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
-            {/* Birth Date */}
-            <div className="space-y-2">
-              <Label>Birth Date <span className="text-destructive">*</span></Label>
-              <Input type="date" value={formData.birth_date} onChange={(e) => handleChange('birth_date', e.target.value)} className={errors.birth_date ? 'border-destructive' : ''} />
-              <FieldError field="birth_date" />
-            </div>
+        {step === 1 && (
+          <motion.div key="step1" custom={1} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25 }}>
+            <Card>
+              <CardHeader>
+                <CardTitle>Parent/Guardian & Address</CardTitle>
+                <CardDescription>Contact information and current address</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label>Mother's Maiden Name <span className="text-destructive">*</span></Label>
+                    <Input value={formData.mother_maiden_name} onChange={(e) => handleChange('mother_maiden_name', e.target.value)} className={errors.mother_maiden_name ? 'border-destructive' : ''} />
+                    <FieldError field="mother_maiden_name" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Mother's Contact <span className="text-destructive">*</span></Label>
+                    <Input value={formData.mother_contact} onChange={(e) => handleChange('mother_contact', e.target.value)} className={errors.mother_contact ? 'border-destructive' : ''} />
+                    <FieldError field="mother_contact" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Father's Name</Label>
+                    <Input value={formData.father_name} onChange={(e) => handleChange('father_name', e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Father's Contact</Label>
+                    <Input value={formData.father_contact} onChange={(e) => handleChange('father_contact', e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5 md:col-span-2">
+                    <Label>Parent Email</Label>
+                    <Input type="email" placeholder="parent@example.com" value={formData.parent_email} onChange={(e) => handleChange('parent_email', e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5 md:col-span-2">
+                    <Label>Current Address <span className="text-destructive">*</span></Label>
+                    <Input placeholder="Full current address" value={formData.current_address} onChange={(e) => handleChange('current_address', e.target.value)} className={errors.current_address ? 'border-destructive' : ''} />
+                    <FieldError field="current_address" />
+                  </div>
+                  <div className="space-y-1.5 md:col-span-2">
+                    <Label>Previous School</Label>
+                    <Input placeholder="Name of previous school attended" value={formData.previous_school} onChange={(e) => handleChange('previous_school', e.target.value)} />
+                  </div>
+                </div>
 
-            {/* Age */}
-            <div className="space-y-2">
-              <Label>Age</Label>
-              <Input value={calculatedAge !== null ? `${calculatedAge} years old` : ''} placeholder="Auto-calculated" disabled className="bg-secondary/30" />
-            </div>
+                <div className="flex justify-between pt-2">
+                  <Button variant="outline" onClick={goBack}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
+                  <Button onClick={goNext}>Next <ArrowRight className="h-4 w-4 ml-1" /></Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
-            {/* Gender */}
-            <div className="space-y-2">
-              <Label>Gender <span className="text-destructive">*</span></Label>
-              <Select value={formData.gender} onValueChange={(v) => handleChange('gender', v)}>
-                <SelectTrigger className={errors.gender ? 'border-destructive' : ''}><SelectValue placeholder="Select gender" /></SelectTrigger>
-                <SelectContent>{GENDERS.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
-              </Select>
-              <FieldError field="gender" />
-            </div>
+        {step === 2 && (
+          <motion.div key="step2" custom={1} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25 }}>
+            <Card>
+              <CardHeader>
+                <CardTitle>Agreements & Signature</CardTitle>
+                <CardDescription>Please review and accept the following before submitting</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {/* Terms */}
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm">Terms and Conditions</h4>
+                  <ScrollArea className="h-28 rounded-md border p-3 text-xs text-muted-foreground">
+                    By submitting this registration form, you agree to abide by the rules and regulations of St. Francis Xavier Smart Academy Inc. The school reserves the right to verify all information provided and to deny admission based on incomplete or inaccurate data. Students are expected to follow the school's code of conduct, academic policies, and disciplinary guidelines. The school may update these terms as necessary, and continued enrollment constitutes acceptance of any changes.
+                  </ScrollArea>
+                  <div className="flex items-center gap-2">
+                    <Checkbox id="terms" checked={agreements.terms} onCheckedChange={(v) => { setAgreements(p => ({ ...p, terms: !!v })); if (errors.terms) setErrors(p => ({ ...p, terms: '' })); }} />
+                    <label htmlFor="terms" className="text-sm cursor-pointer">I accept the Terms and Conditions <span className="text-destructive">*</span></label>
+                  </div>
+                  <FieldError field="terms" />
+                </div>
 
-            {/* SHS Strand */}
-            {needsStrand && (
-              <div className="space-y-2">
-                <Label>SHS Strand <span className="text-destructive">*</span></Label>
-                <Select value={formData.strand || undefined} onValueChange={(v) => handleChange('strand', v)}>
-                  <SelectTrigger className={errors.strand ? 'border-destructive' : ''}><SelectValue placeholder="Select strand" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup><SelectLabel>Academic Track</SelectLabel>
-                      {SHS_STRANDS.filter(s => ['ABM','STEM','HUMSS','GAS'].includes(s.value)).map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-                    </SelectGroup>
-                    <SelectGroup><SelectLabel>TVL Track</SelectLabel>
-                      {SHS_STRANDS.filter(s => s.value.startsWith('TVL')).map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-                    </SelectGroup>
-                    <SelectGroup><SelectLabel>Arts & Sports</SelectLabel>
-                      {SHS_STRANDS.filter(s => ['SPORTS','ARTS-DESIGN'].includes(s.value)).map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-                <FieldError field="strand" />
-              </div>
-            )}
+                {/* Privacy */}
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm">Privacy Policy</h4>
+                  <ScrollArea className="h-28 rounded-md border p-3 text-xs text-muted-foreground">
+                    We are committed to protecting your personal information in accordance with the Data Privacy Act of 2012 (Republic Act No. 10173). All personal data collected through this form will be used solely for enrollment processing, student records management, and communication purposes. Your data will not be shared with third parties without your consent, except as required by law or regulatory authorities. You have the right to access, correct, or request deletion of your personal data at any time.
+                  </ScrollArea>
+                  <div className="flex items-center gap-2">
+                    <Checkbox id="privacy" checked={agreements.privacy} onCheckedChange={(v) => { setAgreements(p => ({ ...p, privacy: !!v })); if (errors.privacy) setErrors(p => ({ ...p, privacy: '' })); }} />
+                    <label htmlFor="privacy" className="text-sm cursor-pointer">I accept the Privacy Policy <span className="text-destructive">*</span></label>
+                  </div>
+                  <FieldError field="privacy" />
+                </div>
 
-            <div className="space-y-2">
-              <Label>Mother Tongue</Label>
-              <Input placeholder="e.g. Cebuano" value={formData.mother_tongue} onChange={(e) => handleChange('mother_tongue', e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Dialects</Label>
-              <Input placeholder="e.g. English, Tagalog" value={formData.dialects} onChange={(e) => handleChange('dialects', e.target.value)} />
-            </div>
-          </div>
+                {/* Payment */}
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm">Payment Terms</h4>
+                  <ScrollArea className="h-28 rounded-md border p-3 text-xs text-muted-foreground">
+                    Registration and tuition fees must be paid according to the schedule provided by the Finance Office. Late payments may incur additional charges. Payment plans and installment options are available upon request and are subject to approval. All fees paid are applied to the current academic year and are non-transferable. The school reserves the right to withhold academic records, report cards, and certificates for accounts with outstanding balances.
+                  </ScrollArea>
+                  <div className="flex items-center gap-2">
+                    <Checkbox id="payment" checked={agreements.payment} onCheckedChange={(v) => { setAgreements(p => ({ ...p, payment: !!v })); if (errors.payment) setErrors(p => ({ ...p, payment: '' })); }} />
+                    <label htmlFor="payment" className="text-sm cursor-pointer">I accept the Payment Terms <span className="text-destructive">*</span></label>
+                  </div>
+                  <FieldError field="payment" />
+                </div>
 
-          {/* Parent Info */}
-          <div>
-            <h3 className="text-lg font-semibold mb-3">Parent/Guardian Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Mother's Maiden Name <span className="text-destructive">*</span></Label>
-                <Input value={formData.mother_maiden_name} onChange={(e) => handleChange('mother_maiden_name', e.target.value)} className={errors.mother_maiden_name ? 'border-destructive' : ''} />
-                <FieldError field="mother_maiden_name" />
-              </div>
-              <div className="space-y-2">
-                <Label>Mother's Contact <span className="text-destructive">*</span></Label>
-                <Input value={formData.mother_contact} onChange={(e) => handleChange('mother_contact', e.target.value)} className={errors.mother_contact ? 'border-destructive' : ''} />
-                <FieldError field="mother_contact" />
-              </div>
-              <div className="space-y-2">
-                <Label>Father's Name</Label>
-                <Input value={formData.father_name} onChange={(e) => handleChange('father_name', e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Father's Contact</Label>
-                <Input value={formData.father_contact} onChange={(e) => handleChange('father_contact', e.target.value)} />
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label>Parent Email</Label>
-                <Input type="email" placeholder="parent@example.com" value={formData.parent_email} onChange={(e) => handleChange('parent_email', e.target.value)} />
-              </div>
-            </div>
-          </div>
+                {/* Refund */}
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm">Refund Policy</h4>
+                  <ScrollArea className="h-28 rounded-md border p-3 text-xs text-muted-foreground">
+                    Refund requests must be submitted in writing to the Finance Office within the first two weeks of classes. Registration fees and miscellaneous fees are non-refundable. Tuition refunds will be calculated based on the number of days attended and in accordance with CHED/DepEd guidelines. Processing of approved refunds may take 30-45 working days. No refunds will be issued after the midterm period of any academic term.
+                  </ScrollArea>
+                  <div className="flex items-center gap-2">
+                    <Checkbox id="refund" checked={agreements.refund} onCheckedChange={(v) => { setAgreements(p => ({ ...p, refund: !!v })); if (errors.refund) setErrors(p => ({ ...p, refund: '' })); }} />
+                    <label htmlFor="refund" className="text-sm cursor-pointer">I accept the Refund Policy <span className="text-destructive">*</span></label>
+                  </div>
+                  <FieldError field="refund" />
+                </div>
 
-          {/* Address Info */}
-          <div>
-            <h3 className="text-lg font-semibold mb-3">Address Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Philippines Address</Label>
-                <Input value={formData.phil_address} onChange={(e) => handleChange('phil_address', e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>UAE Address</Label>
-                <Input value={formData.uae_address} onChange={(e) => handleChange('uae_address', e.target.value)} />
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label>Previous School</Label>
-                <Input value={formData.previous_school} onChange={(e) => handleChange('previous_school', e.target.value)} />
-              </div>
-            </div>
-          </div>
+                {/* Minor Consent */}
+                {isMinor && (
+                  <div className="space-y-2 bg-muted/50 rounded-lg p-4 border">
+                    <h4 className="font-semibold text-sm">Parent/Guardian Consent</h4>
+                    <p className="text-xs text-muted-foreground">As the registrant is a minor (under 18), a parent or legal guardian must provide consent.</p>
+                    <div className="flex items-center gap-2">
+                      <Checkbox id="consent" checked={agreements.consent} onCheckedChange={(v) => { setAgreements(p => ({ ...p, consent: !!v })); if (errors.consent) setErrors(p => ({ ...p, consent: '' })); }} />
+                      <label htmlFor="consent" className="text-sm cursor-pointer">I am the parent/legal guardian and I consent to this registration <span className="text-destructive">*</span></label>
+                    </div>
+                    <FieldError field="consent" />
+                  </div>
+                )}
 
-          <Button onClick={handleSubmit} disabled={isSubmitting} className="w-full bg-stat-purple hover:bg-stat-purple/90 text-white">
-            {isSubmitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Submitting...</> : 'Submit Registration'}
-          </Button>
-        </CardContent>
-      </Card>
+                {/* Signature */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="flex items-center gap-1.5"><PenTool className="h-4 w-4" /> Digital Signature <span className="text-destructive">*</span></Label>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => sigCanvasRef.current?.clear()}>
+                      <Eraser className="h-3.5 w-3.5 mr-1" /> Clear
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Draw your signature in the box below using your mouse or finger</p>
+                  <div className={`border-2 rounded-lg bg-white ${errors.signature ? 'border-destructive' : 'border-border'}`}>
+                    <SignatureCanvas
+                      ref={sigCanvasRef}
+                      canvasProps={{ className: 'w-full h-32 rounded-lg', style: { width: '100%', height: '128px' } }}
+                      penColor="black"
+                    />
+                  </div>
+                  <FieldError field="signature" />
+                </div>
+
+                <div className="flex justify-between pt-2">
+                  <Button variant="outline" onClick={goBack}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
+                  <Button onClick={handleSubmit} disabled={isSubmitting} size="lg">
+                    {isSubmitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Submitting...</> : 'Submit Registration'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
