@@ -61,6 +61,7 @@ export interface StudentFormData {
   religion?: string;
   mother_tongue?: string;
   dialects?: string;
+  strand?: string;
 }
 
 export interface CSVStudent {

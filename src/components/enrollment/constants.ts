@@ -1,17 +1,9 @@
-// DepEd-compliant grade levels
+// DepEd-compliant grade levels (K-12 curriculum)
 export const GRADE_LEVELS = [
     'Kindergarten',
     'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', // Elementary
     'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', // Junior High School
     'Grade 11', 'Grade 12' // Senior High School (requires strand selection)
-];
-
-// Legacy support for existing data
-export const LEGACY_GRADE_LEVELS = [
-    'Kinder 1', 'Kinder 2',
-    'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5',
-    'Level 6', 'Level 7', 'Level 8', 'Level 9', 'Level 10',
-    'Level 11', 'Level 12'
 ];
 
 // Senior High School strands (DepEd K-12 curriculum)
@@ -49,4 +41,22 @@ export const requiresStrand = (gradeLevel: string): boolean => {
 // Helper function to check if kindergarten level
 export const isKindergartenLevel = (gradeLevel: string): boolean => {
     return KINDER_LEVELS.includes(gradeLevel);
+};
+
+// Normalize legacy grade level formats to DepEd-compliant values
+export const normalizeGradeLevel = (level: string): string => {
+    if (!level) return level;
+    const trimmed = level.trim();
+    
+    // Handle "Level X" -> "Grade X"
+    const levelMatch = trimmed.match(/^Level\s+(\d+)$/i);
+    if (levelMatch) return `Grade ${levelMatch[1]}`;
+    
+    // Handle "Kinder 1" / "Kinder 2" -> "Kindergarten"
+    if (/^Kinder\s*[12]?$/i.test(trimmed)) return 'Kindergarten';
+    
+    // Handle "Kinder" alone
+    if (trimmed.toLowerCase() === 'kinder') return 'Kindergarten';
+    
+    return trimmed;
 };

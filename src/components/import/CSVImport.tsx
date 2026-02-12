@@ -4,6 +4,7 @@ import { Upload, FileText, CheckCircle, AlertCircle, Loader2, X } from 'lucide-r
 import { Button } from '@/components/ui/button';
 import { useBulkCreateStudents } from '@/hooks/useStudents';
 import { CSVStudent, StudentFormData } from '@/types/student';
+import { normalizeGradeLevel } from '@/components/enrollment/constants';
 import Papa from 'papaparse';
 import { cn } from '@/lib/utils';
 
@@ -71,7 +72,7 @@ export const CSVImport = () => {
         return {
           lrn: hasLRN || generateTempLRN(index),
           student_name: row.student_name?.trim(),
-          level: row.level?.trim() || 'Level 1',
+          level: normalizeGradeLevel(row.level?.trim() || 'Kindergarten'),
           school: 'SFXSAI', // Default to SFXSAI for CSV imports
           birth_date: parseDate(row.birth_date),
           age: row.age ? parseInt(row.age) : undefined,

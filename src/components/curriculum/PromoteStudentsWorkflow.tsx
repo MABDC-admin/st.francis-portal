@@ -27,6 +27,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { GRADE_LEVELS, normalizeGradeLevel } from '@/components/enrollment/constants';
 
 interface PromoteStudentsWorkflowProps {
     onClose: () => void;
@@ -42,20 +43,12 @@ interface PromotionEntry {
     selected: boolean;
 }
 
-const GRADE_ORDER = [
-    'Kinder 1', 'Kinder 2',
-    'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6',
-    'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'
-];
-
 const getNextLevel = (current: string): string => {
-    // Normalize input
-    const normalized = current.replace('Level ', 'Grade ');
-
-    const index = GRADE_ORDER.indexOf(normalized);
+    const normalized = normalizeGradeLevel(current);
+    const index = GRADE_LEVELS.indexOf(normalized);
     if (index === -1) return current; // Keep same if unknown
-    if (index === GRADE_ORDER.length - 1) return 'Graduated'; // Last level
-    return GRADE_ORDER[index + 1];
+    if (index === GRADE_LEVELS.length - 1) return 'Graduated'; // Last level
+    return GRADE_LEVELS[index + 1];
 };
 
 export const PromoteStudentsWorkflow = ({ onClose, onSuccess }: PromoteStudentsWorkflowProps) => {

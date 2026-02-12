@@ -17,11 +17,7 @@ import { useSchool } from '@/contexts/SchoolContext';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-
-const GRADE_LEVELS = [
-  'Kinder', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6',
-  'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12',
-];
+import { GRADE_LEVELS } from '@/components/enrollment/constants';
 
 interface TemplateFormItem {
   fee_catalog_id: string;

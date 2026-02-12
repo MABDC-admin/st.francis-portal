@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchoolId } from '@/hooks/useSchoolId';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { GRADE_LEVELS } from '@/components/enrollment/constants';
 
 interface ExamRecord {
   id: string;
@@ -32,7 +33,7 @@ interface ExamRecord {
   subjects?: { code: string; name: string } | null;
 }
 
-const GRADE_LEVELS = ['Kinder 1', 'Kinder 2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
+
 const EXAM_TYPES = ['quarterly', 'midterm', 'final', 'quiz', 'special'];
 const QUARTERS = [1, 2, 3, 4];
 
