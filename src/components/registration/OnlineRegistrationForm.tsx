@@ -518,19 +518,25 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
         {/* Step 3: Review & Submit */}
         {step === 3 && (
           <motion.div key="step3" custom={1} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25 }}>
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2"><CheckCircle className="h-5 w-5 text-green-500" /> Review Your Information</CardTitle>
-                <CardDescription>Please verify all details before submitting your registration</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Student Details */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-semibold text-sm">Student Details</h4>
-                    <Button variant="ghost" size="sm" className="gap-1 text-xs h-7" onClick={() => setStep(0)}><Edit2 className="h-3 w-3" /> Edit</Button>
-                  </div>
-                  <div className="rounded-lg border p-3 bg-muted/30">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle className="h-6 w-6 text-primary" />
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">Review Your Information</h2>
+                  <p className="text-sm text-muted-foreground">Please verify all details before submitting</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Student Details Card */}
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-2 pt-4 px-4">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold flex items-center gap-1.5"><UserPlus className="h-4 w-4 text-primary" /> Student Details</CardTitle>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setStep(0)}><Edit2 className="h-3.5 w-3.5" /></Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4 pt-0 space-y-1 text-sm">
                     <ReviewRow label="Full Name" value={formData.student_name} />
                     <ReviewRow label="LRN" value={hasLrn ? formData.lrn : 'N/A'} />
                     <ReviewRow label="Grade Level" value={formData.level} />
@@ -539,57 +545,85 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                     <ReviewRow label="Age" value={calculatedAge !== null ? `${calculatedAge} years old` : undefined} />
                     <ReviewRow label="Gender" value={formData.gender} />
                     <ReviewRow label="Religion" value={formData.religion === 'Other' ? formData.religion_other : formData.religion} />
+                  </CardContent>
+                </Card>
+
+                {/* Language Card */}
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-2 pt-4 px-4">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold">Language</CardTitle>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setStep(0)}><Edit2 className="h-3.5 w-3.5" /></Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4 pt-0 space-y-1 text-sm">
                     <ReviewRow label="Mother Tongue" value={formData.mother_tongue} />
                     <ReviewRow label="Dialects" value={formData.dialects} />
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
 
-                {/* Parent/Guardian */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-semibold text-sm">Parent/Guardian & Address</h4>
-                    <Button variant="ghost" size="sm" className="gap-1 text-xs h-7" onClick={() => setStep(1)}><Edit2 className="h-3 w-3" /> Edit</Button>
-                  </div>
-                  <div className="rounded-lg border p-3 bg-muted/30">
+                {/* Parent/Guardian Card */}
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-2 pt-4 px-4">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold flex items-center gap-1.5"><Phone className="h-4 w-4 text-primary" /> Parent/Guardian</CardTitle>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setStep(1)}><Edit2 className="h-3.5 w-3.5" /></Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4 pt-0 space-y-1 text-sm">
                     <ReviewRow label="Mother's Name" value={formData.mother_maiden_name} />
                     <ReviewRow label="Mother's Contact" value={formData.mother_contact} />
                     <ReviewRow label="Father's Name" value={formData.father_name} />
                     <ReviewRow label="Father's Contact" value={formData.father_contact} />
-                    <ReviewRow label="Mobile Number" value={formData.mobile_number} />
+                    <ReviewRow label="Mobile" value={formData.mobile_number} />
                     <ReviewRow label="Email" value={formData.parent_email} />
+                  </CardContent>
+                </Card>
+
+                {/* Address & School Card */}
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-2 pt-4 px-4">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold flex items-center gap-1.5"><Building2 className="h-4 w-4 text-primary" /> Address & School</CardTitle>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setStep(1)}><Edit2 className="h-3.5 w-3.5" /></Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4 pt-0 space-y-1 text-sm">
                     <ReviewRow label="Current Address" value={formData.current_address} />
                     <ReviewRow label="Previous School" value={formData.previous_school} />
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
 
-                {/* Agreement */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-semibold text-sm">Agreement</h4>
-                    <Button variant="ghost" size="sm" className="gap-1 text-xs h-7" onClick={() => setStep(2)}><Edit2 className="h-3 w-3" /> Edit</Button>
-                  </div>
-                  <div className="rounded-lg border p-3 bg-muted/30">
+                {/* Agreement Card - full width */}
+                <Card className="shadow-sm md:col-span-2">
+                  <CardHeader className="pb-2 pt-4 px-4">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold flex items-center gap-1.5"><CheckCircle className="h-4 w-4 text-primary" /> Agreement</CardTitle>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setStep(2)}><Edit2 className="h-3.5 w-3.5" /></Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4 pt-0">
                     <div className="flex items-center gap-2 text-sm">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      <span>Terms and Conditions accepted</span>
+                      <CheckCircle2 className="h-4 w-4 text-primary" />
+                      <span className="text-foreground">Terms and Conditions accepted</span>
                     </div>
                     {isMinor && agreements.consent && (
                       <div className="flex items-center gap-2 text-sm mt-1.5">
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                        <span>Parent/Guardian consent provided</span>
+                        <CheckCircle2 className="h-4 w-4 text-primary" />
+                        <span className="text-foreground">Parent/Guardian consent provided</span>
                       </div>
                     )}
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
+              </div>
 
-                <div className="flex justify-between pt-2">
-                  <Button variant="outline" onClick={goBack}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
-                  <Button onClick={handleSubmit} disabled={isSubmitting} size="lg">
-                    {isSubmitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Submitting...</> : 'Submit Registration'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+              <div className="flex justify-between pt-2">
+                <Button variant="outline" onClick={goBack}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
+                <Button onClick={handleSubmit} disabled={isSubmitting} size="lg">
+                  {isSubmitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Submitting...</> : 'Submit Registration'}
+                </Button>
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
