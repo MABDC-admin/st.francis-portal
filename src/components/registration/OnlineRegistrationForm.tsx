@@ -191,9 +191,6 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
               <Button onClick={() => setShowShowcase(true)} size="lg" variant="outline" className="gap-2">
                 <Building2 className="h-4 w-4" /> View School Info & Schedule Visit
               </Button>
-              <Button onClick={resetForm} size="lg" className="mt-2">
-                Submit Another Registration
-              </Button>
             </motion.div>
           </motion.div>
         </div>
