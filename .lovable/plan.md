@@ -1,70 +1,43 @@
 
 
-# Fix RLS Error, Simplify Agreements & Add Review Step
+# Fix: RLS Policy Violation on online_registrations
 
-## Problem
-The `online_registrations` table has RLS policies defined but **no GRANT permissions** for the `anon` or `authenticated` roles. Without table-level grants, all operations are rejected regardless of RLS policies.
+## Root Cause (Confirmed)
 
-## Changes
+The table `online_registrations` has three RLS policies, including one that should allow public inserts:
 
-### 1. Database Migration -- Grant Table Permissions
+```
+"Public can submit registrations" FOR INSERT WITH CHECK (status = 'pending')
+```
+
+The application correctly inserts with `status: 'pending'`, so the policy logic is fine.
+
+**The real problem**: The `anon` role has **zero table-level GRANT permissions**. I confirmed this by querying `information_schema.role_table_grants` which returned empty results. Without a `GRANT INSERT`, PostgreSQL rejects the operation before RLS policies are even evaluated.
+
+Two previous migrations attempted to add grants but they did not take effect (they were recorded in migration history but the actual permissions were never applied).
+
+## Fix
+
+Run a new migration with the grants. This time we will also verify the grants took effect.
 
 ```sql
+-- Grant permissions for the public registration form (anon role)
 GRANT SELECT, INSERT ON public.online_registrations TO anon;
-GRANT SELECT, INSERT, UPDATE ON public.online_registrations TO authenticated;
+
+-- Grant permissions for authenticated users (admin/registrar dashboard)  
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.online_registrations TO authenticated;
 ```
 
-This allows the public registration form (which runs as `anon`) to insert rows, while the existing RLS policy (`WITH CHECK (status = 'pending')`) still enforces that only pending registrations can be created.
+No code changes are needed -- the form already inserts with `status: 'pending'` which satisfies the existing RLS policy.
 
-### 2. Simplify Step 3 -- Agreement Only
+## Verification
 
-Remove from the form:
-- Privacy Policy agreement and scrollable text
-- Payment Terms agreement and scrollable text
-- Refund Policy agreement and scrollable text
-- Digital Signature canvas (`SignatureCanvas`, `sigCanvasRef`, related imports)
+After the migration, I will query `information_schema.role_table_grants` to confirm the grants actually applied this time.
 
-Keep:
-- Terms and Conditions (scrollable text + checkbox)
-- Minor consent checkbox (shown only when under 18)
-
-Remove unused imports: `SignatureCanvas`, `Eraser`, `PenTool`
-
-### 3. Add Step 4 -- Review and Submit
-
-Convert the form from 3 steps to 4:
-
-```text
-Step 1: Student Information (unchanged)
-Step 2: Parent & Address (unchanged)
-Step 3: Agreement (simplified, no submit button)
-Step 4: Review & Submit (new)
-```
-
-The Review step will display all entered data in a read-only summary grouped into sections:
-- **Student Details**: Name, LRN, Level, Strand, Birth Date, Age, Gender, Religion, Mother Tongue, Dialects
-- **Parent/Guardian**: Mother name/contact, Father name/contact, Mobile, Email, Address, Previous School
-- **Agreement**: Shows checkmark for accepted terms
-
-Each section will have an "Edit" button to jump back to the relevant step. The "Submit Registration" button appears only on this final review step.
-
-### 4. Update State and Validation
-
-- Remove `privacy`, `payment`, `refund` from `agreements` state (keep `terms` and `consent`)
-- Remove `sigCanvasRef` and all signature-related logic
-- Set `signature_data` to `null` in the insert payload
-- Update `agreements_accepted` JSON to only include `terms` and `consent`
-- Update `STEP_LABELS` to 4 items
-- Step 2 validation: unchanged
-- Step 3 validation: only `agreements.terms` (and `consent` if minor)
-- Step 4: no validation needed, just submit
-
----
-
-## Technical Details
+## Files
 
 | Action | File |
 |--------|------|
-| Migration | Grant `anon`/`authenticated` permissions on `online_registrations` |
-| Modify | `src/components/registration/OnlineRegistrationForm.tsx` |
+| Migration | Grant `anon` and `authenticated` permissions on `online_registrations` |
 
+No frontend changes required.
