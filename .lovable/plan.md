@@ -1,43 +1,63 @@
 
 
-# Fix: RLS Policy Violation on online_registrations
+# Fix: RLS Error on online_registrations + React Ref Warnings
 
-## Root Cause (Confirmed)
+## Root Cause (Finally Found)
 
-The table `online_registrations` has three RLS policies, including one that should allow public inserts:
+The table-level GRANTs are working correctly. The real problem is the **INSERT + SELECT chain**:
 
-```
-"Public can submit registrations" FOR INSERT WITH CHECK (status = 'pending')
-```
-
-The application correctly inserts with `status: 'pending'`, so the policy logic is fine.
-
-**The real problem**: The `anon` role has **zero table-level GRANT permissions**. I confirmed this by querying `information_schema.role_table_grants` which returned empty results. Without a `GRANT INSERT`, PostgreSQL rejects the operation before RLS policies are even evaluated.
-
-Two previous migrations attempted to add grants but they did not take effect (they were recorded in migration history but the actual permissions were never applied).
-
-## Fix
-
-Run a new migration with the grants. This time we will also verify the grants took effect.
-
-```sql
--- Grant permissions for the public registration form (anon role)
-GRANT SELECT, INSERT ON public.online_registrations TO anon;
-
--- Grant permissions for authenticated users (admin/registrar dashboard)  
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.online_registrations TO authenticated;
+```typescript
+await supabase.from('online_registrations')
+  .insert([{...}])
+  .select('id')   // <-- THIS requires a SELECT RLS policy
+  .single();
 ```
 
-No code changes are needed -- the form already inserts with `status: 'pending'` which satisfies the existing RLS policy.
+The existing RLS policies:
+- **"Public can submit registrations"** -- INSERT only, WITH CHECK `status = 'pending'` (works fine)
+- **"Admin can manage"** -- ALL, USING `has_role(auth.uid(), 'admin')` (anon fails)
+- **"Registrar can manage"** -- ALL, USING `has_role(auth.uid(), 'registrar')` (anon fails)
 
-## Verification
+The `anon` role has NO SELECT policy, so the `.select('id')` after the insert fails with a 401 error.
 
-After the migration, I will query `information_schema.role_table_grants` to confirm the grants actually applied this time.
+## Fix 1: Remove `.select('id').single()` from insert
 
-## Files
+The simplest and most secure fix. The `lastRegistrationId` is only used for the SchoolShowcaseDialog's optional `registrationId` prop. We can remove the select chain and set `lastRegistrationId` to null.
+
+**Before:**
+```typescript
+const { data: insertedData, error } = await supabase
+  .from('online_registrations')
+  .insert([{...}])
+  .select('id').single();
+```
+
+**After:**
+```typescript
+const { error } = await supabase
+  .from('online_registrations')
+  .insert([{...}]);
+```
+
+This avoids the need for a SELECT policy for `anon`, which would be a security concern (exposing all registration records to unauthenticated users).
+
+## Fix 2: React Ref Warnings
+
+The `FieldError` and `ReviewRow` components are defined inside the render function and receive refs from `framer-motion`. Fix by moving them outside the component as standalone functions (not components that receive refs).
+
+**Current (inside component body, line 210 and 219):**
+```typescript
+const FieldError = ({ field }) => errors[field] ? <p>...</p> : null;
+const ReviewRow = ({ label, value }) => (<div>...</div>);
+```
+
+**Fix:** Convert `FieldError` to a simple inline expression or move both components outside the parent component with proper `React.forwardRef` wrapping. The simplest fix is to replace `FieldError` usages with inline JSX and move `ReviewRow` outside.
+
+## Files to Modify
 
 | Action | File |
 |--------|------|
-| Migration | Grant `anon` and `authenticated` permissions on `online_registrations` |
+| Modify | `src/components/registration/OnlineRegistrationForm.tsx` |
 
-No frontend changes required.
+No database changes needed -- the GRANTs are already in place and working.
+
