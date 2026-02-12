@@ -8,6 +8,7 @@ export interface AcademicYear {
   start_date: string;
   end_date: string;
   is_current: boolean;
+  is_archived: boolean;
   school_id: string;
 }
 
@@ -17,6 +18,7 @@ interface AcademicYearContextType {
   selectedYear: AcademicYear | null;
   setSelectedYearId: (id: string) => void;
   isLoading: boolean;
+  isReadOnly: boolean;
   refetch: () => Promise<void>;
 }
 
@@ -91,6 +93,9 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const selectedYear = academicYears.find(y => y.id === selectedYearId) || null;
+  const isReadOnly = selectedYear
+    ? !selectedYear.is_current || selectedYear.is_archived === true
+    : false;
 
   return (
     <AcademicYearContext.Provider value={{ 
@@ -99,6 +104,7 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
       selectedYear,
       setSelectedYearId,
       isLoading,
+      isReadOnly,
       refetch: fetchAcademicYears
     }}>
       {children}

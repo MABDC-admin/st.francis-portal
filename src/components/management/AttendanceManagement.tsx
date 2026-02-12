@@ -17,6 +17,8 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchoolId } from '@/hooks/useSchoolId';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { useYearGuard } from '@/hooks/useYearGuard';
+import { YearLockedBanner } from '@/components/ui/YearLockedBanner';
 import { GRADE_LEVELS } from '@/components/enrollment/constants';
 
 interface AttendanceRecord {
@@ -47,6 +49,7 @@ export const AttendanceManagement = () => {
   const queryClient = useQueryClient();
   const { data: schoolId } = useSchoolId();
   const { selectedYearId } = useAcademicYear();
+  const { isReadOnly, guardMutation } = useYearGuard();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -208,6 +211,7 @@ export const AttendanceManagement = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!guardMutation()) return;
     if (!formData.student_id) {
       toast.error('Please select a learner');
       return;
@@ -217,6 +221,7 @@ export const AttendanceManagement = () => {
 
   return (
     <div className="space-y-6">
+      <YearLockedBanner />
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -227,7 +232,7 @@ export const AttendanceManagement = () => {
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Attendance Management</h1>
           <p className="text-muted-foreground mt-1">Record and manage learner attendance</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)}>
+        <Button onClick={() => setIsModalOpen(true)} disabled={isReadOnly}>
           <Plus className="h-4 w-4 mr-2" />
           Record Attendance
         </Button>
