@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,9 +15,10 @@ interface VisitSchedulerProps {
   schoolId: string;
   registrationId?: string;
   onBack: () => void;
+  onClose?: () => void;
 }
 
-export const VisitScheduler = ({ schoolId, registrationId, onBack }: VisitSchedulerProps) => {
+export const VisitScheduler = ({ schoolId, registrationId, onBack, onClose }: VisitSchedulerProps) => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedSlot, setSelectedSlot] = useState<string>('');
   const [visitorName, setVisitorName] = useState('');
@@ -88,6 +89,12 @@ export const VisitScheduler = ({ schoolId, registrationId, onBack }: VisitSchedu
       setIsSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    if (!isBooked || !onClose) return;
+    const timer = setTimeout(onClose, 3000);
+    return () => clearTimeout(timer);
+  }, [isBooked, onClose]);
 
   if (isBooked) {
     return (

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
@@ -48,12 +48,26 @@ export const SchoolShowcaseDialog = ({ open, onOpenChange, schoolId, registratio
 
   const photos: string[] = (schoolInfo?.facility_photos as string[]) || [];
   const hasPhotos = photos.length > 0;
+  const [autoPaused, setAutoPaused] = useState(false);
+  const pauseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const pauseAutoPlay = useCallback(() => {
+    setAutoPaused(true);
+    if (pauseTimerRef.current) clearTimeout(pauseTimerRef.current);
+    pauseTimerRef.current = setTimeout(() => setAutoPaused(false), 8000);
+  }, []);
 
   const nextPhoto = useCallback(() => {
     setPhotoIndex((i) => (i + 1) % photos.length);
     setImageLoading(true);
     setImageError(false);
   }, [photos.length]);
+
+  useEffect(() => {
+    if (!hasPhotos || photos.length <= 1 || autoPaused) return;
+    const interval = setInterval(nextPhoto, 4000);
+    return () => clearInterval(interval);
+  }, [hasPhotos, photos.length, nextPhoto, autoPaused]);
 
   const prevPhoto = useCallback(() => {
     setPhotoIndex((i) => (i - 1 + photos.length) % photos.length);
@@ -97,6 +111,7 @@ export const SchoolShowcaseDialog = ({ open, onOpenChange, schoolId, registratio
             schoolId={schoolId}
             registrationId={registrationId}
             onBack={() => setShowVisitScheduler(false)}
+            onClose={() => onOpenChange(false)}
           />
         </DialogContent>
       </Dialog>
@@ -146,10 +161,10 @@ export const SchoolShowcaseDialog = ({ open, onOpenChange, schoolId, registratio
               )}
               {photos.length > 1 && (
                 <>
-                  <Button size="icon" variant="secondary" className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full opacity-80" onClick={prevPhoto}>
+                  <Button size="icon" variant="secondary" className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full opacity-80" onClick={() => { prevPhoto(); pauseAutoPlay(); }}>
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  <Button size="icon" variant="secondary" className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full opacity-80" onClick={nextPhoto}>
+                  <Button size="icon" variant="secondary" className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full opacity-80" onClick={() => { nextPhoto(); pauseAutoPlay(); }}>
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                   <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
@@ -157,7 +172,7 @@ export const SchoolShowcaseDialog = ({ open, onOpenChange, schoolId, registratio
                       <button
                         key={i}
                         className={`w-2 h-2 rounded-full transition-colors ${i === photoIndex ? 'bg-white' : 'bg-white/40'}`}
-                        onClick={() => { setPhotoIndex(i); setImageLoading(true); setImageError(false); }}
+                        onClick={() => { setPhotoIndex(i); setImageLoading(true); setImageError(false); pauseAutoPlay(); }}
                       />
                     ))}
                   </div>
