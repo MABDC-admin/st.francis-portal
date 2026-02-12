@@ -1,6 +1,6 @@
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Loader2, UserPlus, ArrowRight, ArrowLeft, Eraser, PenTool, Building2, Wand2, Phone } from 'lucide-react';
+import { CheckCircle2, Loader2, UserPlus, ArrowRight, ArrowLeft, Building2, Wand2, Phone, Edit2, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { SchoolShowcaseDialog } from './SchoolShowcaseDialog';
 import { toast } from 'sonner';
@@ -15,7 +15,6 @@ import { Select, SelectContent, SelectItem, SelectGroup, SelectLabel, SelectTrig
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { GENDERS, SHS_STRANDS, requiresStrand, isKindergartenLevel } from '@/components/enrollment/constants';
 import { differenceInYears } from 'date-fns';
-import SignatureCanvas from 'react-signature-canvas';
 
 const RELIGIONS = [
   'Roman Catholic',
@@ -29,7 +28,7 @@ const RELIGIONS = [
   'Other',
 ];
 
-const STEP_LABELS = ['Student Information', 'Parent & Address', 'Agreement & Signature'];
+const STEP_LABELS = ['Student Information', 'Parent & Address', 'Agreement', 'Review & Submit'];
 
 interface OnlineRegistrationFormProps {
   schoolId: string;
@@ -44,7 +43,6 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
   const [hasLrn, setHasLrn] = useState(true);
   const [showShowcase, setShowShowcase] = useState(false);
   const [lastRegistrationId, setLastRegistrationId] = useState<string | null>(null);
-  const sigCanvasRef = useRef<SignatureCanvas | null>(null);
 
   const [formData, setFormData] = useState({
     student_name: '', lrn: '', level: '', strand: '',
@@ -57,7 +55,7 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
   });
 
   const [agreements, setAgreements] = useState({
-    terms: false, privacy: false, payment: false, refund: false, consent: false,
+    terms: false, consent: false,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -93,11 +91,7 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
       if (!formData.current_address.trim()) errs.current_address = 'Required';
     } else if (s === 2) {
       if (!agreements.terms) errs.terms = 'Required';
-      if (!agreements.privacy) errs.privacy = 'Required';
-      if (!agreements.payment) errs.payment = 'Required';
-      if (!agreements.refund) errs.refund = 'Required';
       if (isMinor && !agreements.consent) errs.consent = 'Required';
-      if (sigCanvasRef.current?.isEmpty()) errs.signature = 'Signature is required';
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -111,10 +105,8 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
   const goBack = () => setStep(s => s - 1);
 
   const handleSubmit = async () => {
-    if (!validateStep(2)) { toast.error('Please complete all required fields'); return; }
     setIsSubmitting(true);
     try {
-      const signatureData = sigCanvasRef.current?.toDataURL('image/png') || null;
       const religion = formData.religion === 'Other' ? formData.religion_other.trim() : formData.religion;
 
       const { data: insertedData, error } = await (supabase.from('online_registrations') as any).insert([{
@@ -136,12 +128,9 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
         mother_tongue: formData.mother_tongue.trim() || null,
         dialects: formData.dialects.trim() || null,
         mobile_number: formData.mobile_number.trim() || null,
-        signature_data: signatureData,
+        signature_data: null,
         agreements_accepted: {
           terms: agreements.terms,
-          privacy: agreements.privacy,
-          payment: agreements.payment,
-          refund: agreements.refund,
           consent: agreements.consent,
           accepted_at: new Date().toISOString(),
         },
@@ -155,7 +144,6 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
       setIsSuccess(true);
       toast.success('Registration submitted successfully!');
 
-      // Send email notification (fire-and-forget)
       try {
         await supabase.functions.invoke('send-registration-email', {
           body: {
@@ -181,7 +169,7 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
     setLastRegistrationId(null);
     setStep(0);
     setFormData({ student_name: '', lrn: '', level: '', strand: '', birth_date: '', gender: '', religion: '', religion_other: '', mother_tongue: '', dialects: '', mother_maiden_name: '', mother_contact: '', father_name: '', father_contact: '', parent_email: '', current_address: '', previous_school: '', mobile_number: '' });
-    setAgreements({ terms: false, privacy: false, payment: false, refund: false, consent: false });
+    setAgreements({ terms: false, consent: false });
     setHasLrn(true);
   };
 
@@ -227,6 +215,13 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
     center: { x: 0, opacity: 1 },
     exit: (dir: number) => ({ x: dir > 0 ? -80 : 80, opacity: 0 }),
   };
+
+  const ReviewRow = ({ label, value }: { label: string; value: string | null | undefined }) => (
+    <div className="flex justify-between py-1.5 border-b border-border/50 last:border-0">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className="text-sm font-medium text-foreground text-right max-w-[60%]">{value || '—'}</span>
+    </div>
+  );
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -291,6 +286,7 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
       </div>
 
       <AnimatePresence mode="wait" custom={step}>
+        {/* Step 0: Student Information */}
         {step === 0 && (
           <motion.div key="step0" custom={1} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25 }}>
             <Card>
@@ -422,6 +418,7 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
           </motion.div>
         )}
 
+        {/* Step 1: Parent & Address */}
         {step === 1 && (
           <motion.div key="step1" custom={1} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25 }}>
             <Card>
@@ -477,19 +474,18 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
           </motion.div>
         )}
 
+        {/* Step 2: Agreement (simplified) */}
         {step === 2 && (
           <motion.div key="step2" custom={1} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25 }}>
             <Card>
               <CardHeader>
-                <CardTitle>Agreements & Signature</CardTitle>
-                <CardDescription>Please review and accept the following before submitting</CardDescription>
+                <CardTitle>Terms and Conditions</CardTitle>
+                <CardDescription>Please review and accept before proceeding</CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
-                {/* Terms */}
                 <div className="space-y-2">
-                  <h4 className="font-semibold text-sm">Terms and Conditions</h4>
-                  <ScrollArea className="h-28 rounded-md border p-3 text-xs text-muted-foreground">
-                    By submitting this registration form, you agree to abide by the rules and regulations of St. Francis Xavier Smart Academy Inc. The school reserves the right to verify all information provided and to deny admission based on incomplete or inaccurate data. Students are expected to follow the school's code of conduct, academic policies, and disciplinary guidelines. The school may update these terms as necessary, and continued enrollment constitutes acceptance of any changes.
+                  <ScrollArea className="h-36 rounded-md border p-3 text-xs text-muted-foreground">
+                    By submitting this registration form, you agree to abide by the rules and regulations of St. Francis Xavier Smart Academy Inc. The school reserves the right to verify all information provided and to deny admission based on incomplete or inaccurate data. Students are expected to follow the school's code of conduct, academic policies, and disciplinary guidelines. The school may update these terms as necessary, and continued enrollment constitutes acceptance of any changes. We are committed to protecting your personal information in accordance with the Data Privacy Act of 2012. All personal data collected will be used solely for enrollment processing, student records management, and communication purposes.
                   </ScrollArea>
                   <div className="flex items-center gap-2">
                     <Checkbox id="terms" checked={agreements.terms} onCheckedChange={(v) => { setAgreements(p => ({ ...p, terms: !!v })); if (errors.terms) setErrors(p => ({ ...p, terms: '' })); }} />
@@ -498,46 +494,6 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                   <FieldError field="terms" />
                 </div>
 
-                {/* Privacy */}
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-sm">Privacy Policy</h4>
-                  <ScrollArea className="h-28 rounded-md border p-3 text-xs text-muted-foreground">
-                    We are committed to protecting your personal information in accordance with the Data Privacy Act of 2012 (Republic Act No. 10173). All personal data collected through this form will be used solely for enrollment processing, student records management, and communication purposes. Your data will not be shared with third parties without your consent, except as required by law or regulatory authorities. You have the right to access, correct, or request deletion of your personal data at any time.
-                  </ScrollArea>
-                  <div className="flex items-center gap-2">
-                    <Checkbox id="privacy" checked={agreements.privacy} onCheckedChange={(v) => { setAgreements(p => ({ ...p, privacy: !!v })); if (errors.privacy) setErrors(p => ({ ...p, privacy: '' })); }} />
-                    <label htmlFor="privacy" className="text-sm cursor-pointer">I accept the Privacy Policy <span className="text-destructive">*</span></label>
-                  </div>
-                  <FieldError field="privacy" />
-                </div>
-
-                {/* Payment */}
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-sm">Payment Terms</h4>
-                  <ScrollArea className="h-28 rounded-md border p-3 text-xs text-muted-foreground">
-                    Registration and tuition fees must be paid according to the schedule provided by the Finance Office. Late payments may incur additional charges. Payment plans and installment options are available upon request and are subject to approval. All fees paid are applied to the current academic year and are non-transferable. The school reserves the right to withhold academic records, report cards, and certificates for accounts with outstanding balances.
-                  </ScrollArea>
-                  <div className="flex items-center gap-2">
-                    <Checkbox id="payment" checked={agreements.payment} onCheckedChange={(v) => { setAgreements(p => ({ ...p, payment: !!v })); if (errors.payment) setErrors(p => ({ ...p, payment: '' })); }} />
-                    <label htmlFor="payment" className="text-sm cursor-pointer">I accept the Payment Terms <span className="text-destructive">*</span></label>
-                  </div>
-                  <FieldError field="payment" />
-                </div>
-
-                {/* Refund */}
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-sm">Refund Policy</h4>
-                  <ScrollArea className="h-28 rounded-md border p-3 text-xs text-muted-foreground">
-                    Refund requests must be submitted in writing to the Finance Office within the first two weeks of classes. Registration fees and miscellaneous fees are non-refundable. Tuition refunds will be calculated based on the number of days attended and in accordance with CHED/DepEd guidelines. Processing of approved refunds may take 30-45 working days. No refunds will be issued after the midterm period of any academic term.
-                  </ScrollArea>
-                  <div className="flex items-center gap-2">
-                    <Checkbox id="refund" checked={agreements.refund} onCheckedChange={(v) => { setAgreements(p => ({ ...p, refund: !!v })); if (errors.refund) setErrors(p => ({ ...p, refund: '' })); }} />
-                    <label htmlFor="refund" className="text-sm cursor-pointer">I accept the Refund Policy <span className="text-destructive">*</span></label>
-                  </div>
-                  <FieldError field="refund" />
-                </div>
-
-                {/* Minor Consent */}
                 {isMinor && (
                   <div className="space-y-2 bg-muted/50 rounded-lg p-4 border">
                     <h4 className="font-semibold text-sm">Parent/Guardian Consent</h4>
@@ -550,23 +506,80 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                   </div>
                 )}
 
-                {/* Signature */}
-                <div className="space-y-2">
+                <div className="flex justify-between pt-2">
+                  <Button variant="outline" onClick={goBack}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
+                  <Button onClick={goNext}>Next: Review <ArrowRight className="h-4 w-4 ml-1" /></Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Step 3: Review & Submit */}
+        {step === 3 && (
+          <motion.div key="step3" custom={1} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25 }}>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><CheckCircle className="h-5 w-5 text-green-500" /> Review Your Information</CardTitle>
+                <CardDescription>Please verify all details before submitting your registration</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Student Details */}
+                <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <Label className="flex items-center gap-1.5"><PenTool className="h-4 w-4" /> Digital Signature <span className="text-destructive">*</span></Label>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => sigCanvasRef.current?.clear()}>
-                      <Eraser className="h-3.5 w-3.5 mr-1" /> Clear
-                    </Button>
+                    <h4 className="font-semibold text-sm">Student Details</h4>
+                    <Button variant="ghost" size="sm" className="gap-1 text-xs h-7" onClick={() => setStep(0)}><Edit2 className="h-3 w-3" /> Edit</Button>
                   </div>
-                  <p className="text-xs text-muted-foreground">Draw your signature in the box below using your mouse or finger</p>
-                  <div className={`border-2 rounded-lg bg-white ${errors.signature ? 'border-destructive' : 'border-border'}`}>
-                    <SignatureCanvas
-                      ref={sigCanvasRef}
-                      canvasProps={{ className: 'w-full h-32 rounded-lg', style: { width: '100%', height: '128px' } }}
-                      penColor="black"
-                    />
+                  <div className="rounded-lg border p-3 bg-muted/30">
+                    <ReviewRow label="Full Name" value={formData.student_name} />
+                    <ReviewRow label="LRN" value={hasLrn ? formData.lrn : 'N/A'} />
+                    <ReviewRow label="Grade Level" value={formData.level} />
+                    {formData.strand && <ReviewRow label="Strand" value={formData.strand} />}
+                    <ReviewRow label="Birth Date" value={formData.birth_date} />
+                    <ReviewRow label="Age" value={calculatedAge !== null ? `${calculatedAge} years old` : undefined} />
+                    <ReviewRow label="Gender" value={formData.gender} />
+                    <ReviewRow label="Religion" value={formData.religion === 'Other' ? formData.religion_other : formData.religion} />
+                    <ReviewRow label="Mother Tongue" value={formData.mother_tongue} />
+                    <ReviewRow label="Dialects" value={formData.dialects} />
                   </div>
-                  <FieldError field="signature" />
+                </div>
+
+                {/* Parent/Guardian */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold text-sm">Parent/Guardian & Address</h4>
+                    <Button variant="ghost" size="sm" className="gap-1 text-xs h-7" onClick={() => setStep(1)}><Edit2 className="h-3 w-3" /> Edit</Button>
+                  </div>
+                  <div className="rounded-lg border p-3 bg-muted/30">
+                    <ReviewRow label="Mother's Name" value={formData.mother_maiden_name} />
+                    <ReviewRow label="Mother's Contact" value={formData.mother_contact} />
+                    <ReviewRow label="Father's Name" value={formData.father_name} />
+                    <ReviewRow label="Father's Contact" value={formData.father_contact} />
+                    <ReviewRow label="Mobile Number" value={formData.mobile_number} />
+                    <ReviewRow label="Email" value={formData.parent_email} />
+                    <ReviewRow label="Current Address" value={formData.current_address} />
+                    <ReviewRow label="Previous School" value={formData.previous_school} />
+                  </div>
+                </div>
+
+                {/* Agreement */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold text-sm">Agreement</h4>
+                    <Button variant="ghost" size="sm" className="gap-1 text-xs h-7" onClick={() => setStep(2)}><Edit2 className="h-3 w-3" /> Edit</Button>
+                  </div>
+                  <div className="rounded-lg border p-3 bg-muted/30">
+                    <div className="flex items-center gap-2 text-sm">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <span>Terms and Conditions accepted</span>
+                    </div>
+                    {isMinor && agreements.consent && (
+                      <div className="flex items-center gap-2 text-sm mt-1.5">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <span>Parent/Guardian consent provided</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex justify-between pt-2">
