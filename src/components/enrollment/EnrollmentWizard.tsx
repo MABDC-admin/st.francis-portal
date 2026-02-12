@@ -39,6 +39,7 @@ export const EnrollmentWizard = ({ mode = 'enrollment', onComplete }: Enrollment
     const { selectedYearId, selectedYear } = useAcademicYear();
     const [currentStep, setCurrentStep] = useState(1);
     const [, setDirection] = useState(0);
+    const [hasLrn, setHasLrn] = useState(true);
     const [formData, setFormData] = useState({
         student_name: '',
         lrn: '',
@@ -138,8 +139,8 @@ export const EnrollmentWizard = ({ mode = 'enrollment', onComplete }: Enrollment
 
         if (step === 1) {
             if (!formData.student_name.trim()) newErrors.student_name = 'Required';
-            if (!isKinder && !formData.lrn.trim()) newErrors.lrn = 'Required';
-            if (formData.lrn && !/^\d{12}$/.test(formData.lrn)) newErrors.lrn = 'Must be 12 digits';
+            if (hasLrn && !isKinder && !formData.lrn.trim()) newErrors.lrn = 'Required';
+            if (hasLrn && formData.lrn && !/^\d{12}$/.test(formData.lrn)) newErrors.lrn = 'Must be 12 digits';
             if (!formData.level) newErrors.level = 'Required';
             if (isSHS && !formData.strand) newErrors.strand = 'Strand is required for Grade 11 & 12';
             if (!formData.birth_date) newErrors.birth_date = 'Required';
@@ -479,6 +480,8 @@ export const EnrollmentWizard = ({ mode = 'enrollment', onComplete }: Enrollment
                                 touched={touched}
                                 handleChange={handleChange}
                                 handleBlur={handleBlur}
+                                hasLrn={hasLrn}
+                                onToggleLrn={setHasLrn}
                             />
                         )}
                         {currentStep === 2 && (

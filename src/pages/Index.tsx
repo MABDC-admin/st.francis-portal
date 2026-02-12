@@ -93,7 +93,8 @@ import { FinanceLearnerPage } from '@/components/finance/FinanceLearnerPage';
 // Helpdesk
 import HelpdeskIndex from "@/pages/Helpdesk";
 import { AdmissionsPage } from '@/components/admissions/AdmissionsPage';
-
+import { RegistrationManagement } from '@/components/registration/RegistrationManagement';
+import { OnlineRegistrationForm } from '@/components/registration/OnlineRegistrationForm';
 const Index = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -566,6 +567,12 @@ const Index = () => {
 
       {/* Admissions - Admin/Registrar only */}
       {activeTab === 'admissions' && hasAdminAccess && <AdmissionsPage />}
+
+      {/* Registrations - Admin/Registrar only */}
+      {activeTab === 'registrations' && hasAdminAccess && <RegistrationManagement />}
+
+      {/* Online Registration Form - Admin/Registrar only */}
+      {activeTab === 'online-registration' && hasAdminAccess && <OnlineRegistrationForm />}
 
       {/* Modals */}
       <AdminPinModal
