@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
-import { MapPin, Phone, Mail, Clock, ChevronLeft, ChevronRight, CalendarDays, Building2 } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock, ChevronLeft, ChevronRight, CalendarDays, Building2, ImageOff } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
 import { VisitScheduler } from './VisitScheduler';
 
 interface SchoolShowcaseDialogProps {
@@ -18,6 +19,9 @@ interface SchoolShowcaseDialogProps {
 export const SchoolShowcaseDialog = ({ open, onOpenChange, schoolId, registrationId }: SchoolShowcaseDialogProps) => {
   const [showVisitScheduler, setShowVisitScheduler] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
+  const touchStartX = useRef<number | null>(null);
 
   const { data: schoolInfo } = useQuery({
     queryKey: ['school-info', schoolId],
@@ -45,8 +49,40 @@ export const SchoolShowcaseDialog = ({ open, onOpenChange, schoolId, registratio
   const photos: string[] = (schoolInfo?.facility_photos as string[]) || [];
   const hasPhotos = photos.length > 0;
 
-  const nextPhoto = () => setPhotoIndex((i) => (i + 1) % photos.length);
-  const prevPhoto = () => setPhotoIndex((i) => (i - 1 + photos.length) % photos.length);
+  const nextPhoto = useCallback(() => {
+    setPhotoIndex((i) => (i + 1) % photos.length);
+    setImageLoading(true);
+    setImageError(false);
+  }, [photos.length]);
+
+  const prevPhoto = useCallback(() => {
+    setPhotoIndex((i) => (i - 1 + photos.length) % photos.length);
+    setImageLoading(true);
+    setImageError(false);
+  }, [photos.length]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) {
+      diff > 0 ? nextPhoto() : prevPhoto();
+    }
+    touchStartX.current = null;
+  };
+
+  // Build map URL from lat/lng or fall back to map_embed_url
+  const mapUrl = (() => {
+    const lat = schoolInfo?.latitude;
+    const lng = schoolInfo?.longitude;
+    if (lat && lng) {
+      return `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`;
+    }
+    return schoolInfo?.map_embed_url || null;
+  })();
 
   if (showVisitScheduler) {
     return (
@@ -79,19 +115,35 @@ export const SchoolShowcaseDialog = ({ open, onOpenChange, schoolId, registratio
         <div className="space-y-5">
           {/* Photo Gallery */}
           {hasPhotos && (
-            <div className="relative rounded-lg overflow-hidden bg-muted aspect-video">
-              <AnimatePresence mode="wait">
-                <motion.img
-                  key={photoIndex}
-                  src={photos[photoIndex]}
-                  alt={`Facility ${photoIndex + 1}`}
-                  className="w-full h-full object-cover"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.3 }}
-                />
-              </AnimatePresence>
+            <div
+              className="relative rounded-lg overflow-hidden bg-muted aspect-video"
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+            >
+              {imageLoading && !imageError && (
+                <Skeleton className="absolute inset-0 w-full h-full" />
+              )}
+              {imageError ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
+                  <ImageOff className="h-10 w-10 mb-2 opacity-40" />
+                  <p className="text-sm">Image unavailable</p>
+                </div>
+              ) : (
+                <AnimatePresence mode="wait">
+                  <motion.img
+                    key={photoIndex}
+                    src={photos[photoIndex]}
+                    alt={`Facility ${photoIndex + 1}`}
+                    className="w-full h-full object-cover"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    onLoad={() => setImageLoading(false)}
+                    onError={() => { setImageLoading(false); setImageError(true); }}
+                  />
+                </AnimatePresence>
+              )}
               {photos.length > 1 && (
                 <>
                   <Button size="icon" variant="secondary" className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full opacity-80" onClick={prevPhoto}>
@@ -102,7 +154,11 @@ export const SchoolShowcaseDialog = ({ open, onOpenChange, schoolId, registratio
                   </Button>
                   <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
                     {photos.map((_, i) => (
-                      <div key={i} className={`w-2 h-2 rounded-full transition-colors ${i === photoIndex ? 'bg-white' : 'bg-white/40'}`} />
+                      <button
+                        key={i}
+                        className={`w-2 h-2 rounded-full transition-colors ${i === photoIndex ? 'bg-white' : 'bg-white/40'}`}
+                        onClick={() => { setPhotoIndex(i); setImageLoading(true); setImageError(false); }}
+                      />
                     ))}
                   </div>
                 </>
@@ -111,10 +167,10 @@ export const SchoolShowcaseDialog = ({ open, onOpenChange, schoolId, registratio
           )}
 
           {/* Map */}
-          {schoolInfo?.map_embed_url && (
+          {mapUrl ? (
             <div className="rounded-lg overflow-hidden border">
               <iframe
-                src={schoolInfo.map_embed_url}
+                src={mapUrl}
                 width="100%"
                 height="200"
                 style={{ border: 0 }}
@@ -123,6 +179,10 @@ export const SchoolShowcaseDialog = ({ open, onOpenChange, schoolId, registratio
                 referrerPolicy="no-referrer-when-downgrade"
                 title="School Location"
               />
+            </div>
+          ) : (
+            <div className="rounded-lg border p-4 flex items-center justify-center text-muted-foreground text-sm gap-2">
+              <MapPin className="h-4 w-4" /> Location not available
             </div>
           )}
 
