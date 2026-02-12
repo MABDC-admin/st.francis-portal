@@ -54,7 +54,7 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
         .from('academic_years')
         .select('*')
         .eq('school_id', resolvedSchoolId)
-        .order('start_date', { ascending: false });
+        .order('start_date', { ascending: true });
 
       if (error) throw error;
 

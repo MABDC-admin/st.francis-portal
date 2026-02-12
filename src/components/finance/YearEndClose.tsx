@@ -34,7 +34,7 @@ export const YearEndClose = () => {
   const { data: academicYears = [] } = useQuery({
     queryKey: ['academic-years', schoolData?.id],
     queryFn: async () => {
-      const { data } = await supabase.from('academic_years').select('*').eq('school_id', schoolData!.id).order('start_date', { ascending: false });
+      const { data } = await supabase.from('academic_years').select('*').eq('school_id', schoolData!.id).order('start_date', { ascending: true });
       return data || [];
     },
     enabled: !!schoolData?.id,
