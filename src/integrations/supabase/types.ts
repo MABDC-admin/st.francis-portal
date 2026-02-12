@@ -108,6 +108,7 @@ export type Database = {
           id: string
           level: string
           lrn: string | null
+          mobile_number: string | null
           mother_contact: string | null
           mother_maiden_name: string | null
           parent_email: string | null
@@ -135,6 +136,7 @@ export type Database = {
           id?: string
           level: string
           lrn?: string | null
+          mobile_number?: string | null
           mother_contact?: string | null
           mother_maiden_name?: string | null
           parent_email?: string | null
@@ -162,6 +164,7 @@ export type Database = {
           id?: string
           level?: string
           lrn?: string | null
+          mobile_number?: string | null
           mother_contact?: string | null
           mother_maiden_name?: string | null
           parent_email?: string | null
@@ -2219,6 +2222,7 @@ export type Database = {
           id: string
           level: string
           lrn: string | null
+          mobile_number: string | null
           mother_contact: string | null
           mother_maiden_name: string | null
           mother_tongue: string | null
@@ -2250,6 +2254,7 @@ export type Database = {
           id?: string
           level: string
           lrn?: string | null
+          mobile_number?: string | null
           mother_contact?: string | null
           mother_maiden_name?: string | null
           mother_tongue?: string | null
@@ -2281,6 +2286,7 @@ export type Database = {
           id?: string
           level?: string
           lrn?: string | null
+          mobile_number?: string | null
           mother_contact?: string | null
           mother_maiden_name?: string | null
           mother_tongue?: string | null
