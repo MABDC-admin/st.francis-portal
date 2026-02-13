@@ -1,50 +1,31 @@
 
 
-# Show Student Details in Visits Table
+# Fix: Show Visitor Details When No Registration is Linked
 
-## Overview
-Enhance the Visits table in the Online Registrations management screen to display full student details (name, grade level, address, age, and contact number) instead of just the student name.
+## Problem
+The code change to show student details is working correctly, but all existing visit records have `registration_id = null` (they were not created through the registration flow). This means the `online_registrations` join returns `null`, and the Student column shows "---".
 
-## Changes
+## Solution
+Update the Student column to fall back to showing the visitor's own details (`visitor_name`, `visitor_phone`) when there is no linked registration. This way, every visit row will show useful information regardless of whether it was linked to a registration or not.
 
 ### File: `src/components/registration/RegistrationManagement.tsx`
 
-**1. Expand the data query (line 97)**
-Update the `select` statement for school visits to fetch additional fields from the linked `online_registrations` record:
-- `student_name`
-- `level` (grade level)
-- `current_address` / `phil_address`
-- `birth_date` (to calculate age)
-- `mobile_number`
+**Update the Student cell rendering (around line 352):**
+- When `online_registrations` exists: show student name, grade, address, age, and contact (current behavior)
+- When `online_registrations` is null: show the visitor's name and phone number from the visit record itself (`visitor_name`, `visitor_phone`)
 
-**2. Update the Student column in the table (lines 341, 352)**
-Replace the single-line student name cell with a richer display showing:
-- Student name (bold)
-- Grade level
-- Address
-- Age (calculated from birth_date)
-- Contact number
-
-The Student column will show this information stacked vertically in a compact format when a linked registration exists, or a dash when there is none.
-
-## Technical Details
-
-### Query change
-```typescript
-.select('*, online_registrations(student_name, level, current_address, phil_address, birth_date, mobile_number)')
+```
+Student Column Logic:
+  IF registration is linked:
+    -> Student Name (bold)
+    -> Grade Level
+    -> Address
+    -> Age
+    -> Contact Number
+  ELSE:
+    -> Visitor Name (bold)
+    -> Visitor Phone (if available)
+    -> Small label: "No linked registration"
 ```
 
-### Age calculation helper
-```typescript
-const calculateAge = (birthDate: string) => {
-  const today = new Date();
-  const birth = new Date(birthDate);
-  let age = today.getFullYear() - birth.getFullYear();
-  const m = today.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-  return age;
-};
-```
-
-### Student cell rendering
-Replace the simple text cell with a stacked layout showing all details in a compact, readable format using smaller text for secondary information.
+This is a single-line change to the fallback case in the table cell.
