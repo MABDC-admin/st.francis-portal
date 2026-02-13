@@ -196,6 +196,7 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
           visitor_level: formData.level || null,
           visitor_birth_date: formData.birth_date || null,
           visitor_address: formData.current_address?.trim() || null,
+          visitor_student_name: formData.student_name?.trim() || null,
         }] as any);
         if (visitError) {
           console.warn('Visit scheduling failed (non-critical):', visitError);
