@@ -5,7 +5,7 @@ import { logAuditAction } from '@/hooks/useAuditLog';
 import { useSchool } from '@/contexts/SchoolContext';
 import { toast } from 'sonner';
 
-type AppRole = 'admin' | 'registrar' | 'teacher' | 'student' | 'parent' | 'finance' | 'principal';
+type AppRole = 'admin' | 'registrar' | 'teacher' | 'student' | 'parent' | 'finance' | 'principal' | 'it';
 
 interface AuthContextType {
   user: User | null;

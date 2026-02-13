@@ -30,6 +30,7 @@ import { TeacherPortal } from '@/components/portals/TeacherPortal';
 import { StudentPortal } from '@/components/portals/StudentPortal';
 import { ParentPortal } from '@/components/portals/ParentPortal';
 import { PrincipalPortal } from '@/components/portals/PrincipalPortal';
+import { ITPortal } from '@/components/portals/ITPortal';
 import { TeacherManagement } from '@/components/teachers/TeacherManagement';
 import { TeacherCSVImport } from '@/components/teachers/TeacherCSVImport';
 
@@ -288,6 +289,8 @@ const Index = () => {
         return <FinancePortal onNavigate={handleTabChange} />;
       case 'principal':
         return <PrincipalPortal onNavigate={handleTabChange} />;
+      case 'it':
+        return <ITPortal onNavigate={handleTabChange} />;
       default:
         return null;
     }
@@ -476,14 +479,14 @@ const Index = () => {
         <MessagingPage />
       )}
 
-      {/* AI Chat - Admin, Teacher, and Registrar */}
-      {activeTab === 'ai-chat' && (role === 'admin' || role === 'teacher' || role === 'registrar') && (
+      {/* AI Chat - Admin, Teacher, Registrar, and IT */}
+      {activeTab === 'ai-chat' && (role === 'admin' || role === 'teacher' || role === 'registrar' || role === 'it') && (
         <AIChatPage />
       )}
 
 
-      {/* Admin Panel - Admin only */}
-      {activeTab === 'admin' && role === 'admin' && isAdminUnlocked && (
+      {/* Admin Panel - Admin and IT */}
+      {activeTab === 'admin' && (role === 'admin' || role === 'it') && isAdminUnlocked && (
         <AdminPanel />
       )}
 
@@ -538,13 +541,13 @@ const Index = () => {
         <ExamScheduleManagement />
       )}
 
-      {/* Docker App Integrations - Admin only */}
-      {activeTab === 'nocodb' && role === 'admin' && <NocoDBDashboard />}
-      {activeTab === 'onlyoffice' && role === 'admin' && <GoogleDocsDashboard />}
-      {activeTab === 'excalidraw' && role === 'admin' && <ExcalidrawDashboard />}
-      {activeTab === 'omada' && role === 'admin' && <OmadaDashboard />}
-      {activeTab === 'tacticalrmm' && role === 'admin' && <TacticalRMMDashboard />}
-      {activeTab === 'documize' && role === 'admin' && <DocumizeDashboard />}
+      {/* Docker App Integrations - Admin and IT */}
+      {activeTab === 'nocodb' && (role === 'admin' || role === 'it') && <NocoDBDashboard />}
+      {activeTab === 'onlyoffice' && (role === 'admin' || role === 'it') && <GoogleDocsDashboard />}
+      {activeTab === 'excalidraw' && (role === 'admin' || role === 'it') && <ExcalidrawDashboard />}
+      {activeTab === 'omada' && (role === 'admin' || role === 'it') && <OmadaDashboard />}
+      {activeTab === 'tacticalrmm' && (role === 'admin' || role === 'it') && <TacticalRMMDashboard />}
+      {activeTab === 'documize' && (role === 'admin' || role === 'it') && <DocumizeDashboard />}
 
       {/* Impersonate - Admin only */}
       {activeTab === 'impersonate' && role === 'admin' && <ImpersonatePage />}

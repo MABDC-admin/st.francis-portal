@@ -54,6 +54,7 @@ const roleColors: Record<string, string> = {
   parent: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
   principal: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
   finance: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200',
+  it: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200',
 };
 
 const roleDescriptions: Record<string, string> = {
@@ -64,6 +65,7 @@ const roleDescriptions: Record<string, string> = {
   parent: 'View linked children\'s information',
   principal: 'Administrative oversight with read access to all modules',
   finance: 'Manage tuition fees, payments, and financial reports',
+  it: 'IT system administration, user management, and infrastructure monitoring',
 };
 
 export const PermissionManagement = () => {
@@ -198,6 +200,7 @@ export const PermissionManagement = () => {
                   <SelectItem value="parent">Parent</SelectItem>
                   <SelectItem value="finance">Finance</SelectItem>
                   <SelectItem value="principal">Principal</SelectItem>
+                  <SelectItem value="it">IT</SelectItem>
                 </SelectContent>
               </Select>
             </div>

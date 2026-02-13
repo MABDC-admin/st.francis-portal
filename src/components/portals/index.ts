@@ -4,3 +4,4 @@ export { TeacherPortal } from './TeacherPortal';
 export { StudentPortal } from './StudentPortal';
 export { ParentPortal } from './ParentPortal';
 export { PrincipalPortal } from './PrincipalPortal';
+export { ITPortal } from './ITPortal';
