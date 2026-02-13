@@ -178,6 +178,7 @@ export const GrantAccessDialog = ({
                 <SelectItem value="admin">Admin</SelectItem>
                 <SelectItem value="registrar">Registrar</SelectItem>
                 <SelectItem value="teacher">Teacher</SelectItem>
+                <SelectItem value="finance">Finance</SelectItem>
               </SelectContent>
             </Select>
           </div>
