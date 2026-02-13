@@ -1,25 +1,37 @@
 
 
-# Fix Finance User Login - Password Reset
+# Fix Finance Role in Admin UI
 
 ## Problem
-The user `ivyann@sfxsai.com` was created on Feb 11 (before the edge function ran on Feb 13). The edge function successfully assigned the `finance` role but could NOT update the password because the user already existed. The login fails because the stored password doesn't match `dargantes`.
+The database correctly stores Ivy Ann's role as `finance`, but the admin UI components don't include `finance` as a valid role option. This causes her to appear incorrectly (as "student" or unrecognized) in management views, even though she correctly gets the Finance Portal on login.
 
-## Solution
-Update the existing `create-finance-user` edge function to also handle updating the password for an existing user using `supabase.auth.admin.updateUserById()`. Then re-invoke it.
+## Root Cause
+Four UI components hardcode a list of roles that does NOT include `finance`:
 
-### File: `supabase/functions/create-finance-user/index.ts`
-Add logic after the "user already exists" path:
-```typescript
-// If user already exists, update their password
-const { error: updateError } = await supabase.auth.admin.updateUserById(existingUserId, {
-  password: 'dargantes',
-});
-```
+1. **RoleAssignmentDialog.tsx** (line 40) - Only lists: admin, registrar, teacher, student, parent
+2. **UserManagement.tsx** (line 594-600) - Role filter dropdown missing finance
+3. **PermissionManagement.tsx** (line 181-188) - Role filter dropdown missing finance
+4. **GrantAccessDialog.tsx** (line 177-181) - School access role selector missing finance
 
-### Execution Steps
-1. Update the edge function to include password reset logic
-2. Deploy the updated function
-3. Call the function to reset the password
-4. Verify login works with ivyann@sfxsai.com / dargantes
+## Changes
+
+### 1. RoleAssignmentDialog.tsx
+- Add `'finance'` to the `roles` array (line 40)
+- Add finance color styling to `roleColors` (line 43-49)
+
+### 2. UserManagement.tsx
+- Add `<SelectItem value="finance">Finance</SelectItem>` to the role filter dropdown (after line 599)
+
+### 3. PermissionManagement.tsx
+- Add `<SelectItem value="finance">Finance</SelectItem>` to the role filter dropdown (after line 187)
+
+### 4. GrantAccessDialog.tsx
+- Add `<SelectItem value="finance">Finance</SelectItem>` to the school access role selector (after line 180)
+
+### 5. AuthContext.tsx
+- Verify `AppRole` type already includes `finance` -- it does (line 8: `'admin' | 'registrar' | 'teacher' | 'student' | 'parent' | 'finance'`)
+
+## Technical Details
+
+All changes are adding `finance` as a selectable option in existing role dropdowns. No database or backend changes needed -- the data is already correct.
 
