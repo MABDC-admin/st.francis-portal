@@ -1,8 +1,7 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Loader2, UserPlus, ArrowRight, ArrowLeft, Building2, Wand2, Phone, Edit2, CheckCircle } from 'lucide-react';
+import { CheckCircle2, Loader2, UserPlus, ArrowRight, ArrowLeft, Building2, Wand2, Phone, Edit2, CheckCircle, MapPin, CalendarDays, Sun, Sunset } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { SchoolShowcaseDialog } from './SchoolShowcaseDialog';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,22 +12,20 @@ import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectGroup, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { GENDERS, SHS_STRANDS, requiresStrand, isKindergartenLevel } from '@/components/enrollment/constants';
-import { differenceInYears } from 'date-fns';
+import { differenceInYears, format, addDays, isWeekend } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from '@/components/ui/carousel';
 
 const RELIGIONS = [
-  'Roman Catholic',
-  'Islam',
-  'Iglesia ni Cristo',
-  'Protestant/Evangelical',
-  'Seventh-Day Adventist',
-  'Aglipayan',
-  'Buddhism',
-  'Hinduism',
-  'Other',
+  'Roman Catholic', 'Islam', 'Iglesia ni Cristo', 'Protestant/Evangelical',
+  'Seventh-Day Adventist', 'Aglipayan', 'Buddhism', 'Hinduism', 'Other',
 ];
 
-const STEP_LABELS = ['Student Information', 'Parent & Address', 'Agreement', 'Review & Submit'];
+const STEP_LABELS = ['Student Information', 'Parent & Address', 'Agreement', 'School Visit', 'Review & Submit'];
+const SLOT_CAPACITY = 5;
 
 interface OnlineRegistrationFormProps {
   schoolId: string;
@@ -41,8 +38,6 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [hasLrn, setHasLrn] = useState(true);
-  const [showShowcase, setShowShowcase] = useState(false);
-  const [lastRegistrationId, setLastRegistrationId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     student_name: '', lrn: '', level: '', strand: '',
@@ -54,11 +49,40 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
     previous_school: '', mobile_number: '',
   });
 
-  const [agreements, setAgreements] = useState({
-    terms: false, consent: false,
-  });
-
+  const [agreements, setAgreements] = useState({ terms: false, consent: false });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Visit-related state
+  const [wantsVisit, setWantsVisit] = useState(false);
+  const [visitDate, setVisitDate] = useState<Date | undefined>();
+  const [visitSlot, setVisitSlot] = useState<'morning' | 'afternoon' | ''>('');
+  const [visitorName, setVisitorName] = useState('');
+
+  // School info & visit capacity
+  const [schoolInfo, setSchoolInfo] = useState<any>(null);
+  const [existingVisits, setExistingVisits] = useState<{ visit_date: string; visit_slot: string }[]>([]);
+
+  // Fetch school info and existing visits
+  useEffect(() => {
+    const fetchData = async () => {
+      const [infoRes, visitsRes] = await Promise.all([
+        supabase.from('school_info').select('*').eq('school_id', schoolId).maybeSingle(),
+        supabase.from('school_visits').select('visit_date, visit_slot')
+          .eq('school_id', schoolId).eq('status', 'scheduled')
+          .gte('visit_date', format(new Date(), 'yyyy-MM-dd')),
+      ]);
+      if (infoRes.data) setSchoolInfo(infoRes.data);
+      if (visitsRes.data) setExistingVisits(visitsRes.data);
+    };
+    fetchData();
+  }, [schoolId]);
+
+  // Pre-fill visitor name from parent info
+  useEffect(() => {
+    if (wantsVisit && !visitorName) {
+      setVisitorName(formData.mother_maiden_name || formData.father_name || '');
+    }
+  }, [wantsVisit]);
 
   const needsStrand = useMemo(() => requiresStrand(formData.level), [formData.level]);
   const calculatedAge = useMemo(() => {
@@ -67,6 +91,11 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
     return age >= 0 ? age : null;
   }, [formData.birth_date]);
   const isMinor = calculatedAge !== null && calculatedAge < 18;
+
+  const getSlotCount = useCallback((date: Date, slot: string) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return existingVisits.filter(v => v.visit_date === dateStr && v.visit_slot === slot).length;
+  }, [existingVisits]);
 
   const handleChange = useCallback((field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -92,6 +121,16 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
     } else if (s === 2) {
       if (!agreements.terms) errs.terms = 'Required';
       if (isMinor && !agreements.consent) errs.consent = 'Required';
+    } else if (s === 3) {
+      if (wantsVisit) {
+        if (!visitDate) errs.visitDate = 'Please select a visit date';
+        if (!visitSlot) errs.visitSlot = 'Please select a time slot';
+        if (!visitorName.trim()) errs.visitorName = 'Visitor name is required';
+        if (visitDate && visitSlot) {
+          const count = getSlotCount(visitDate, visitSlot);
+          if (count >= SLOT_CAPACITY) errs.visitSlot = 'This slot is fully booked';
+        }
+      }
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -109,7 +148,8 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
     try {
       const religion = formData.religion === 'Other' ? formData.religion_other.trim() : formData.religion;
 
-      const { error } = await (supabase.from('online_registrations') as any).insert([{
+      // 1. Insert registration and get ID
+      const { data: regData, error: regError } = await (supabase.from('online_registrations') as any).insert([{
         student_name: formData.student_name.trim(),
         lrn: hasLrn && formData.lrn.trim() ? formData.lrn.trim() : null,
         level: formData.level,
@@ -137,10 +177,25 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
         school_id: schoolId,
         academic_year_id: academicYearId,
         status: 'pending',
-      }]);
-      if (error) throw error;
+      }]).select('id').single();
+      if (regError) throw regError;
 
-      setLastRegistrationId(null);
+      // 2. If visit was requested, insert visit linked to registration
+      if (wantsVisit && regData?.id && visitDate && visitSlot) {
+        const { error: visitError } = await supabase.from('school_visits').insert([{
+          school_id: schoolId,
+          registration_id: regData.id,
+          visitor_name: visitorName.trim(),
+          visit_date: format(visitDate, 'yyyy-MM-dd'),
+          visit_slot: visitSlot,
+          status: 'scheduled',
+        }]);
+        if (visitError) {
+          console.warn('Visit scheduling failed (non-critical):', visitError);
+          toast.warning('Registration saved but visit scheduling failed. Please contact the school.');
+        }
+      }
+
       setIsSuccess(true);
       toast.success('Registration submitted successfully!');
 
@@ -165,42 +220,32 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
 
   const resetForm = () => {
     setIsSuccess(false);
-    setShowShowcase(false);
-    setLastRegistrationId(null);
     setStep(0);
     setFormData({ student_name: '', lrn: '', level: '', strand: '', birth_date: '', gender: '', religion: '', religion_other: '', mother_tongue: '', dialects: '', mother_maiden_name: '', mother_contact: '', father_name: '', father_contact: '', parent_email: '', current_address: '', previous_school: '', mobile_number: '' });
     setAgreements({ terms: false, consent: false });
     setHasLrn(true);
+    setWantsVisit(false);
+    setVisitDate(undefined);
+    setVisitSlot('');
+    setVisitorName('');
   };
 
   if (isSuccess) {
     return (
-      <>
-        <div className="flex items-center justify-center py-16">
-          <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 200, damping: 15 }} className="text-center space-y-6">
-            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2, type: 'spring', stiffness: 300 }}>
-              <CheckCircle2 className="h-24 w-24 text-green-500 mx-auto" />
-            </motion.div>
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-              <h2 className="text-3xl font-bold text-foreground">Registration Submitted!</h2>
-              <p className="text-muted-foreground mt-3 max-w-md mx-auto">
-                Your registration has been received and is pending review by the school registrar. You will be notified once it has been processed.
-              </p>
-            </motion.div>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="flex flex-col gap-3 items-center">
-              <Button onClick={() => setShowShowcase(true)} size="lg" variant="outline" className="gap-2">
-                <Building2 className="h-4 w-4" /> View School Info & Schedule Visit
-              </Button>
-            </motion.div>
+      <div className="flex items-center justify-center py-16">
+        <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 200, damping: 15 }} className="text-center space-y-6">
+          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2, type: 'spring', stiffness: 300 }}>
+            <CheckCircle2 className="h-24 w-24 text-green-500 mx-auto" />
           </motion.div>
-        </div>
-        <SchoolShowcaseDialog
-          open={showShowcase}
-          onOpenChange={setShowShowcase}
-          schoolId={schoolId}
-          registrationId={lastRegistrationId || undefined}
-        />
-      </>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+            <h2 className="text-3xl font-bold text-foreground">Registration Submitted!</h2>
+            <p className="text-muted-foreground mt-3 max-w-md mx-auto">
+              Your registration has been received and is pending review by the school registrar.
+              {wantsVisit && visitDate && ` Your school visit is scheduled for ${format(visitDate, 'MMMM d, yyyy')} (${visitSlot === 'morning' ? 'Morning' : 'Afternoon'}).`}
+            </p>
+          </motion.div>
+        </motion.div>
+      </div>
     );
   }
 
@@ -220,15 +265,15 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
     </div>
   );
 
+  const photos: string[] = schoolInfo?.facility_photos || [];
+  const today = new Date();
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Autofill & Progress */}
       <div className="flex items-center justify-between">
         <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="gap-1.5 text-xs"
+          type="button" variant="outline" size="sm" className="gap-1.5 text-xs"
           onClick={() => {
             const testNames = ['Dela Cruz, Juan Miguel M.', 'Santos, Maria Clara P.', 'Reyes, Jose Andres L.', 'Garcia, Ana Sofia R.'];
             const testLevels = ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 1', 'Grade 2', 'Grade 3'];
@@ -240,18 +285,11 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
             const day = String(Math.floor(Math.random() * 28) + 1).padStart(2, '0');
             const lrn = Array.from({ length: 12 }, () => Math.floor(Math.random() * 10)).join('');
             const phone = `09${Math.floor(100000000 + Math.random() * 900000000)}`;
-
             setFormData({
-              student_name: randomPick(testNames),
-              lrn,
-              level: randomPick(testLevels),
-              strand: '',
-              birth_date: `${year}-${month}-${day}`,
-              gender: randomPick(testGenders),
-              religion: randomPick(testReligions),
-              religion_other: '',
-              mother_tongue: 'Filipino',
-              dialects: 'Tagalog, English',
+              student_name: randomPick(testNames), lrn, level: randomPick(testLevels), strand: '',
+              birth_date: `${year}-${month}-${day}`, gender: randomPick(testGenders),
+              religion: randomPick(testReligions), religion_other: '',
+              mother_tongue: 'Filipino', dialects: 'Tagalog, English',
               mother_maiden_name: `${randomPick(['Fernandez', 'Lopez', 'Aquino', 'Bautista'])}, ${randomPick(['Maria', 'Ana', 'Rosa', 'Carmen'])}`,
               mother_contact: `09${Math.floor(100000000 + Math.random() * 900000000)}`,
               father_name: `${randomPick(['Dela Cruz', 'Santos', 'Reyes', 'Garcia'])}, ${randomPick(['Pedro', 'Jose', 'Miguel', 'Carlos'])}`,
@@ -261,9 +299,8 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
               previous_school: randomPick(['Manila Elementary School', 'Quezon City National HS', 'Cebu International School', 'Davao Central Academy']),
               mobile_number: phone,
             });
-            setHasLrn(true);
-            setErrors({});
-            toast.success('Test data filled! Review and adjust as needed.');
+            setHasLrn(true); setErrors({});
+            toast.success('Test data filled!');
           }}
         >
           <Wand2 className="h-3.5 w-3.5" /> Fill Test Data
@@ -272,9 +309,9 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
 
       {/* Progress */}
       <div className="space-y-2">
-        <div className="flex justify-between text-sm font-medium">
+        <div className="flex justify-between text-xs font-medium gap-1">
           {STEP_LABELS.map((label, i) => (
-            <span key={i} className={i <= step ? 'text-primary' : 'text-muted-foreground'}>
+            <span key={i} className={cn("text-center flex-1", i <= step ? 'text-primary' : 'text-muted-foreground')}>
               {i + 1}. {label}
             </span>
           ))}
@@ -293,7 +330,6 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Grade Level */}
                   <div className="space-y-1.5">
                     <Label>Grade Level <span className="text-destructive">*</span></Label>
                     <Select value={formData.level} onValueChange={(v) => { handleChange('level', v); if (!requiresStrand(v)) handleChange('strand', ''); if (isKindergartenLevel(v)) setHasLrn(false); }}>
@@ -313,8 +349,6 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                     </Select>
                     {fieldError("level")}
                   </div>
-
-                  {/* LRN Toggle */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <Label>Has LRN?</Label>
@@ -330,28 +364,20 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                       </>
                     )}
                   </div>
-
-                  {/* Full Name */}
                   <div className="space-y-1.5 md:col-span-2">
                     <Label>Full Name <span className="text-destructive">*</span></Label>
                     <Input placeholder="Learner's full name (Last, First, Middle)" value={formData.student_name} onChange={(e) => handleChange('student_name', e.target.value)} className={errors.student_name ? 'border-destructive' : ''} />
                     {fieldError("student_name")}
                   </div>
-
-                  {/* Birth Date */}
                   <div className="space-y-1.5">
                     <Label>Birth Date <span className="text-destructive">*</span></Label>
                     <Input type="date" value={formData.birth_date} onChange={(e) => handleChange('birth_date', e.target.value)} className={errors.birth_date ? 'border-destructive' : ''} />
                     {fieldError("birth_date")}
                   </div>
-
-                  {/* Age */}
                   <div className="space-y-1.5">
                     <Label>Age</Label>
                     <Input value={calculatedAge !== null ? `${calculatedAge} years old` : ''} placeholder="Auto-calculated" disabled className="bg-muted/50" />
                   </div>
-
-                  {/* Gender */}
                   <div className="space-y-1.5">
                     <Label>Gender <span className="text-destructive">*</span></Label>
                     <Select value={formData.gender} onValueChange={(v) => handleChange('gender', v)}>
@@ -360,8 +386,6 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                     </Select>
                     {fieldError("gender")}
                   </div>
-
-                  {/* Religion */}
                   <div className="space-y-1.5">
                     <Label>Religion <span className="text-destructive">*</span></Label>
                     <Select value={formData.religion} onValueChange={(v) => { handleChange('religion', v); if (v !== 'Other') handleChange('religion_other', ''); }}>
@@ -374,8 +398,6 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                     {fieldError("religion")}
                     {fieldError("religion_other")}
                   </div>
-
-                  {/* SHS Strand */}
                   {needsStrand && (
                     <div className="space-y-1.5 md:col-span-2">
                       <Label>SHS Strand <span className="text-destructive">*</span></Label>
@@ -396,7 +418,6 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                       {fieldError("strand")}
                     </div>
                   )}
-
                   <div className="space-y-1.5">
                     <Label>Mother Tongue</Label>
                     <Input placeholder="e.g. Cebuano" value={formData.mother_tongue} onChange={(e) => handleChange('mother_tongue', e.target.value)} />
@@ -406,7 +427,6 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                     <Input placeholder="e.g. English, Tagalog" value={formData.dialects} onChange={(e) => handleChange('dialects', e.target.value)} />
                   </div>
                 </div>
-
                 <div className="flex justify-end pt-2">
                   <Button onClick={goNext}> Next <ArrowRight className="h-4 w-4 ml-1" /></Button>
                 </div>
@@ -461,7 +481,6 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                     <Input placeholder="Name of previous school attended" value={formData.previous_school} onChange={(e) => handleChange('previous_school', e.target.value)} />
                   </div>
                 </div>
-
                 <div className="flex justify-between pt-2">
                   <Button variant="outline" onClick={goBack}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
                   <Button onClick={goNext}>Next <ArrowRight className="h-4 w-4 ml-1" /></Button>
@@ -471,7 +490,7 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
           </motion.div>
         )}
 
-        {/* Step 2: Agreement (simplified) */}
+        {/* Step 2: Agreement */}
         {step === 2 && (
           <motion.div key="step2" custom={1} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25 }}>
             <Card>
@@ -490,7 +509,6 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                   </div>
                   {fieldError("terms")}
                 </div>
-
                 {isMinor && (
                   <div className="space-y-2 bg-muted/50 rounded-lg p-4 border">
                     <h4 className="font-semibold text-sm">Parent/Guardian Consent</h4>
@@ -500,6 +518,154 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                       <label htmlFor="consent" className="text-sm cursor-pointer">I am the parent/legal guardian and I consent to this registration <span className="text-destructive">*</span></label>
                     </div>
                     {fieldError("consent")}
+                  </div>
+                )}
+                <div className="flex justify-between pt-2">
+                  <Button variant="outline" onClick={goBack}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
+                  <Button onClick={goNext}>Next: School Visit <ArrowRight className="h-4 w-4 ml-1" /></Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Step 3: School Visit */}
+        {step === 3 && (
+          <motion.div key="step3" custom={1} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25 }}>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Building2 className="h-5 w-5" /> School Visit</CardTitle>
+                <CardDescription>Would you like to visit the school before enrollment?</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {/* Toggle */}
+                <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
+                  <div>
+                    <p className="font-medium text-sm">Schedule a school visit</p>
+                    <p className="text-xs text-muted-foreground">Tour our facilities and meet the registrar</p>
+                  </div>
+                  <Switch checked={wantsVisit} onCheckedChange={setWantsVisit} />
+                </div>
+
+                {wantsVisit ? (
+                  <div className="space-y-5">
+                    {/* Photo Gallery */}
+                    {photos.length > 0 && (
+                      <div>
+                        <Label className="text-sm font-semibold mb-2 block">School Gallery</Label>
+                        <Carousel className="w-full max-w-lg mx-auto">
+                          <CarouselContent>
+                            {photos.map((url: string, i: number) => (
+                              <CarouselItem key={i}>
+                                <div className="aspect-video rounded-lg overflow-hidden">
+                                  <img src={url} alt={`School photo ${i + 1}`} className="w-full h-full object-cover" />
+                                </div>
+                              </CarouselItem>
+                            ))}
+                          </CarouselContent>
+                          {photos.length > 1 && (
+                            <>
+                              <CarouselPrevious className="-left-4" />
+                              <CarouselNext className="-right-4" />
+                            </>
+                          )}
+                        </Carousel>
+                      </div>
+                    )}
+
+                    {/* Map */}
+                    {schoolInfo?.map_embed_url && (
+                      <div>
+                        <Label className="text-sm font-semibold mb-2 flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" /> Location</Label>
+                        <div className="rounded-lg overflow-hidden border aspect-video">
+                          <iframe
+                            src={schoolInfo.map_embed_url}
+                            width="100%" height="100%" style={{ border: 0 }}
+                            allowFullScreen loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade"
+                            title="School Location"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Date Picker */}
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" /> Select Visit Date <span className="text-destructive">*</span></Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !visitDate && "text-muted-foreground", errors.visitDate && "border-destructive")}>
+                            <CalendarDays className="mr-2 h-4 w-4" />
+                            {visitDate ? format(visitDate, 'EEEE, MMMM d, yyyy') : 'Pick a date'}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={visitDate}
+                            onSelect={(d) => { setVisitDate(d); if (errors.visitDate) setErrors(p => ({ ...p, visitDate: '' })); }}
+                            disabled={(date) => date < today || date > addDays(today, 30) || isWeekend(date)}
+                            initialFocus
+                            className={cn("p-3 pointer-events-auto")}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      {fieldError("visitDate")}
+                    </div>
+
+                    {/* Time Slot */}
+                    <div className="space-y-2">
+                      <Label>Select Time Slot <span className="text-destructive">*</span></Label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {(['morning', 'afternoon'] as const).map(slot => {
+                          const count = visitDate ? getSlotCount(visitDate, slot) : 0;
+                          const available = SLOT_CAPACITY - count;
+                          const isFull = available <= 0;
+                          const isSelected = visitSlot === slot;
+                          return (
+                            <button
+                              key={slot}
+                              type="button"
+                              disabled={isFull}
+                              onClick={() => { setVisitSlot(slot); if (errors.visitSlot) setErrors(p => ({ ...p, visitSlot: '' })); }}
+                              className={cn(
+                                "flex flex-col items-center gap-1.5 p-4 rounded-lg border-2 transition-all",
+                                isSelected ? "border-primary bg-primary/5 shadow-sm" : "border-border hover:border-primary/40",
+                                isFull && "opacity-50 cursor-not-allowed",
+                                errors.visitSlot && !isSelected && "border-destructive/30"
+                              )}
+                            >
+                              {slot === 'morning' ? <Sun className="h-6 w-6 text-amber-500" /> : <Sunset className="h-6 w-6 text-orange-500" />}
+                              <span className="font-medium text-sm capitalize">{slot}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {slot === 'morning' ? '8:00 AM – 12:00 PM' : '1:00 PM – 5:00 PM'}
+                              </span>
+                              <span className={cn("text-xs font-medium", isFull ? "text-destructive" : "text-green-600")}>
+                                {isFull ? 'Fully booked' : `${available} slot${available !== 1 ? 's' : ''} available`}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {fieldError("visitSlot")}
+                    </div>
+
+                    {/* Visitor Name */}
+                    <div className="space-y-1.5">
+                      <Label>Visitor Name <span className="text-destructive">*</span></Label>
+                      <Input
+                        placeholder="Name of person visiting"
+                        value={visitorName}
+                        onChange={(e) => { setVisitorName(e.target.value); if (errors.visitorName) setErrors(p => ({ ...p, visitorName: '' })); }}
+                        className={errors.visitorName ? 'border-destructive' : ''}
+                      />
+                      {fieldError("visitorName")}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <Building2 className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">No problem! You can always visit the school later.</p>
                   </div>
                 )}
 
@@ -512,9 +678,9 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
           </motion.div>
         )}
 
-        {/* Step 3: Review & Submit */}
-        {step === 3 && (
-          <motion.div key="step3" custom={1} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25 }}>
+        {/* Step 4: Review & Submit */}
+        {step === 4 && (
+          <motion.div key="step4" custom={1} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25 }}>
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle className="h-6 w-6 text-primary" />
@@ -525,7 +691,6 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Student Details Card */}
                 <Card className="shadow-sm">
                   <CardHeader className="pb-2 pt-4 px-4">
                     <div className="flex items-center justify-between">
@@ -545,7 +710,6 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                   </CardContent>
                 </Card>
 
-                {/* Language Card */}
                 <Card className="shadow-sm">
                   <CardHeader className="pb-2 pt-4 px-4">
                     <div className="flex items-center justify-between">
@@ -559,7 +723,6 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                   </CardContent>
                 </Card>
 
-                {/* Parent/Guardian Card */}
                 <Card className="shadow-sm">
                   <CardHeader className="pb-2 pt-4 px-4">
                     <div className="flex items-center justify-between">
@@ -577,7 +740,6 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                   </CardContent>
                 </Card>
 
-                {/* Address & School Card */}
                 <Card className="shadow-sm">
                   <CardHeader className="pb-2 pt-4 px-4">
                     <div className="flex items-center justify-between">
@@ -591,8 +753,29 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
                   </CardContent>
                 </Card>
 
-                {/* Agreement Card - full width */}
-                <Card className="shadow-sm md:col-span-2">
+                {/* School Visit Card */}
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-2 pt-4 px-4">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold flex items-center gap-1.5"><CalendarDays className="h-4 w-4 text-primary" /> School Visit</CardTitle>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setStep(3)}><Edit2 className="h-3.5 w-3.5" /></Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4 pt-0 space-y-1 text-sm">
+                    {wantsVisit ? (
+                      <>
+                        {reviewRow("Visit Date", visitDate ? format(visitDate, 'MMMM d, yyyy') : undefined)}
+                        {reviewRow("Time Slot", visitSlot === 'morning' ? '🌅 Morning (8AM–12PM)' : '🌇 Afternoon (1PM–5PM)')}
+                        {reviewRow("Visitor Name", visitorName)}
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted-foreground py-1">No visit scheduled</p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Agreement Card */}
+                <Card className="shadow-sm">
                   <CardHeader className="pb-2 pt-4 px-4">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-sm font-semibold flex items-center gap-1.5"><CheckCircle className="h-4 w-4 text-primary" /> Agreement</CardTitle>
