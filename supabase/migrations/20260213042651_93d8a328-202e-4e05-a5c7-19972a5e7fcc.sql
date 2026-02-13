@@ -1,0 +1,1 @@
+ALTER TABLE public.school_visits ADD COLUMN visitor_student_name text;

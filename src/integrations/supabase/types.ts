@@ -3053,6 +3053,7 @@ export type Database = {
           visitor_level: string | null
           visitor_name: string
           visitor_phone: string | null
+          visitor_student_name: string | null
         }
         Insert: {
           created_at?: string | null
@@ -3068,6 +3069,7 @@ export type Database = {
           visitor_level?: string | null
           visitor_name: string
           visitor_phone?: string | null
+          visitor_student_name?: string | null
         }
         Update: {
           created_at?: string | null
@@ -3083,6 +3085,7 @@ export type Database = {
           visitor_level?: string | null
           visitor_name?: string
           visitor_phone?: string | null
+          visitor_student_name?: string | null
         }
         Relationships: [
           {
