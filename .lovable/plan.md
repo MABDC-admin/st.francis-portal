@@ -1,45 +1,104 @@
 
 
-# Separate Student Details into Individual Table Columns
+# Integrate Visit Scheduling into Registration Flow
 
 ## Overview
-Restructure the Visits table to display student details in separate columns instead of stacking them all inside a single "Student" cell. Since all visitors registered through the online registration flow, every record should be linked.
+Move the school visit option directly into the registration wizard as a new Step 4 (after Agreement, before Review & Submit). This ensures every visit is automatically linked to its registration record.
+
+## New Registration Flow (5 steps)
+1. Student Information
+2. Parent & Address
+3. Agreement
+4. **School Visit (NEW)** -- "Would you like to visit the school?" Yes/No toggle. If Yes, show school gallery, map, and date/slot picker inline.
+5. Review & Submit
 
 ## Changes
 
-### File: `src/components/registration/RegistrationManagement.tsx`
+### File: `src/components/registration/OnlineRegistrationForm.tsx`
 
-**1. Update table headers (lines 337-344)**
-Replace the current 6-column header with 10 columns:
-- Visitor
-- Date
-- Slot
-- Student
-- Grade Level
-- Age
-- Address
-- Mobile No.
-- Status
-- Actions
+**1. Update step labels (line 31)**
+Change from 4 steps to 5:
+```
+['Student Information', 'Parent & Address', 'Agreement', 'School Visit', 'Review & Submit']
+```
 
-**2. Update table body cells (lines 348-400)**
-Break the stacked student info out of the single "Student" cell into individual cells:
+**2. Add visit-related state**
+- `wantsVisit` (boolean) -- whether user wants to schedule a visit
+- `visitDate` (Date or undefined)
+- `visitSlot` ('morning' | 'afternoon' | '')
+- `visitorName` (string) -- pre-filled from parent name
 
-| Column | Source |
-|--------|--------|
-| Visitor | `v.visitor_name` |
-| Date | `v.visit_date` |
-| Slot | `v.visit_slot` |
-| Student | `v.online_registrations?.student_name` or "---" |
-| Grade Level | `v.online_registrations?.level` or "---" |
-| Age | Calculated from `v.online_registrations?.birth_date` or "---" |
-| Address | `v.online_registrations?.current_address` or `phil_address` or "---" |
-| Mobile No. | `v.online_registrations?.mobile_number` or "---" |
-| Status | `v.status` badge |
-| Actions | Complete/Cancel buttons (unchanged) |
+**3. Fetch school info and visit capacity data**
+- Query `school_info` for photos, map, registrar info (same as SchoolShowcaseDialog)
+- Query `school_visits` for existing slot counts to show availability
 
-**3. Remove the fallback "No linked registration" block**
-Since all visitors are linked to registrations, simplify the rendering by using optional chaining with a "---" fallback for each field.
+**4. New Step 3 UI: School Visit**
+- Radio/switch: "Would you like to visit the school before enrollment?"
+- If Yes:
+  - Photo gallery (reuse the carousel logic from SchoolShowcaseDialog)
+  - Google Maps embed
+  - Calendar date picker (weekdays only, next 30 days)
+  - Morning/Afternoon slot cards with availability
+  - Visitor name field (pre-filled with mother/father name)
+- If No: just show a message and Next button
 
-The data query (line 97) already fetches all needed fields and requires no changes.
+**5. Update step validation (validateStep function)**
+- Step 3 (visit): If `wantsVisit` is true, require `visitDate`, `visitSlot`, and `visitorName`
+- Shift existing Review step validation to step 4
+
+**6. Update handleSubmit to link visit to registration**
+- Insert registration first, capturing the returned `id`
+- If `wantsVisit`, insert into `school_visits` with that `registration_id`
+- Both inserts happen in sequence before showing success
+
+**7. Update Review step (now step 4)**
+- Add a "School Visit" review card showing visit date, slot, and visitor name (or "No visit scheduled")
+- Shift step index references (review is now step 4)
+
+**8. Remove post-success visit scheduling**
+- Remove the "View School Info & Schedule Visit" button from the success screen since it's now part of the flow
+- Remove the SchoolShowcaseDialog import and usage (no longer needed in this component)
+
+### File: `src/components/registration/VisitScheduler.tsx`
+No changes needed -- the inline visit step will use its own simpler implementation directly in the form.
+
+### File: `src/components/registration/SchoolShowcaseDialog.tsx`
+No changes needed -- it remains available for use elsewhere (e.g., admin side), but is no longer imported by the registration form.
+
+## Technical Details
+
+### Registration + Visit Insert (in handleSubmit)
+```typescript
+// 1. Insert registration and get ID
+const { data: regData, error: regError } = await supabase
+  .from('online_registrations')
+  .insert([{ ...registrationPayload }])
+  .select('id')
+  .single();
+
+// 2. If visit was requested, insert visit linked to registration
+if (wantsVisit && regData?.id) {
+  await supabase.from('school_visits').insert([{
+    school_id: schoolId,
+    registration_id: regData.id,
+    visitor_name: visitorName,
+    visit_date: format(visitDate, 'yyyy-MM-dd'),
+    visit_slot: visitSlot,
+    status: 'scheduled',
+  }]);
+}
+```
+
+### Visit Capacity Check
+```typescript
+// Fetch existing visits for slot availability
+const { data: existingVisits } = await supabase
+  .from('school_visits')
+  .select('visit_date, visit_slot')
+  .eq('school_id', schoolId)
+  .eq('status', 'scheduled')
+  .gte('visit_date', format(today, 'yyyy-MM-dd'));
+```
+
+This ensures every visit in the database is always linked to a registration, which fixes the empty "Student" column issue in the Visits management table.
 
