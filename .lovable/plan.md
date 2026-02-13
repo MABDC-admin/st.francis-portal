@@ -1,95 +1,59 @@
 
 
-# Enhance Student Assessment and Payment Collection
+# Fix: rene@sfxsai.com Not Showing in User Roles
 
-## Overview
-Three enhancements to the finance module: (1) hide already-assessed students from the assessment dialog, (2) disable payment collection for fully paid students, and (3) generate a professional PDF billing invoice with school branding after each payment.
+## Problem
 
----
+The user `rene@sfxsai.com` exists in the authentication system and in the `user_credentials` table (with role `registrar`), but is **missing from two critical tables**:
 
-## 1. Hide Assessed Students from "Assess Student" Dialog
+- **profiles** table -- no row exists
+- **user_roles** table -- no row exists
 
-**File:** `src/components/finance/StudentAssessments.tsx`
+The `handle_new_user` database trigger (which normally creates both records automatically when an account is created) appears to have failed silently for this account.
 
-**Current behavior:** The student search in the Assess Student dialog shows ALL students regardless of whether they already have an active assessment.
+Since the Permission Management UI fetches its user list from the `profiles` table, `rene@sfxsai.com` is invisible in the admin interface.
 
-**Change:** Filter out students who already have an active (non-closed) assessment for the current academic year.
+## Solution
 
-- Collect all `student_id` values from the current `assessments` array into a Set
-- In the student search query, after fetching results, filter out any student whose ID is in that Set
-- Alternatively, use `.not('id', 'in', (...assessedIds))` in the Supabase query if IDs are available
-- Show a subtle message like "Already assessed" if all search results are filtered out
+Run a single database migration to backfill the missing records for this user.
 
----
+### Database Migration
 
-## 2. Disable Payment Collection for Fully Paid Students
+```sql
+-- Backfill missing profile for rene@sfxsai.com
+INSERT INTO public.profiles (id, email, full_name)
+VALUES ('7d022361-e814-4d03-ae8d-3c0f58e2c56c', 'rene@sfxsai.com', 'Rene')
+ON CONFLICT (id) DO NOTHING;
 
-**File:** `src/components/finance/PaymentCollection.tsx`
+-- Backfill missing role for rene@sfxsai.com (registrar per user_credentials)
+INSERT INTO public.user_roles (user_id, role)
+VALUES ('7d022361-e814-4d03-ae8d-3c0f58e2c56c', 'registrar')
+ON CONFLICT (user_id, role) DO NOTHING;
 
-**Current behavior:** When a student is selected and their assessment shows balance = 0 / status = 'paid', the payment form is still shown and active.
+-- Also backfill any other auth users missing from profiles
+INSERT INTO public.profiles (id, email, full_name)
+SELECT u.id, u.email, COALESCE(u.raw_user_meta_data->>'full_name', split_part(u.email, '@', 1))
+FROM auth.users u
+LEFT JOIN public.profiles p ON p.id = u.id
+WHERE p.id IS NULL
+ON CONFLICT (id) DO NOTHING;
 
-**Changes:**
-- After selecting a student and loading their assessment, check if `assessment.balance <= 0` or `assessment.status === 'paid'`
-- If fully paid, show a green "Fully Paid" banner instead of the payment form fields
-- Display a message like "This student's assessment is fully paid. No further payment is needed."
-- Disable the "Record Payment" button
-- Add a green checkmark visual indicator in the assessment summary section
-
----
-
-## 3. Generate PDF Billing Invoice After Payment
-
-**File:** `src/components/finance/PaymentCollection.tsx`
-
-**Current behavior:** After payment, a basic thermal-receipt-style printout opens in a new window. There is no proper PDF invoice.
-
-**Changes:** Create a `generateInvoicePDF` function using the existing `jspdf` dependency to produce a professional billing invoice.
-
-### Invoice Layout:
-- **Header**: School logo (fetched from `school_settings.logo_url`) + school name centered
-- **Title**: "BILLING INVOICE" / "OFFICIAL RECEIPT"
-- **Student Info Section**: Name, LRN, Grade Level
-- **Payment Details Table**: Date, OR Number, Payment Method, Reference Number, Amount
-- **Assessment Summary**: Total Assessed, Total Discounts, Net Amount, Total Paid, Remaining Balance
-- **Amount in words** (reuse existing `numberToWords` function)
-- **Footer**: "Thank you for your payment!" + timestamp
-
-### Integration:
-- Fetch school settings (name + logo_url) using the existing `useSchoolSettings` hook or inline query
-- After `recordPayment.onSuccess`, automatically generate and download the PDF
-- Also add a "Download Invoice" button on recent payments table rows
-- Use `jspdf` (already installed) with `jspdf-autotable` (already installed) for table formatting
-
----
-
-## Technical Details
-
-### File Changes Summary
-
-| File | Change |
-|------|--------|
-| `src/components/finance/StudentAssessments.tsx` | Filter assessed students from dialog list |
-| `src/components/finance/PaymentCollection.tsx` | Add fully-paid check + disable form + PDF invoice generation |
-
-### Dependencies Used (already installed)
-- `jspdf` - PDF generation
-- `jspdf-autotable` - Table formatting in PDF
-
-### Data Flow for Invoice
-1. Payment recorded successfully, OR number returned
-2. Fetch school settings (logo_url, name, address, phone)
-3. Build PDF with jsPDF: header with logo image, student info, payment table, balance summary
-4. Auto-download PDF as `Invoice-{OR_NUMBER}.pdf`
-
-### Fully Paid Detection Logic
-```
-const isFullyPaid = selectedAssessment && 
-  (Number(selectedAssessment.balance) <= 0 || selectedAssessment.status === 'paid');
+-- Also backfill any other auth users missing from user_roles (default to student)
+INSERT INTO public.user_roles (user_id, role)
+SELECT u.id, 'student'::app_role
+FROM auth.users u
+LEFT JOIN public.user_roles ur ON ur.user_id = u.id
+WHERE ur.user_id IS NULL
+  AND u.id != '7d022361-e814-4d03-ae8d-3c0f58e2c56c'  -- already handled above as registrar
+ON CONFLICT (user_id, role) DO NOTHING;
 ```
 
-### Assessed Student Filtering Logic
-```
-const assessedStudentIds = new Set(assessments.map(a => a.student_id));
-const unassessedStudents = students.filter(s => !assessedStudentIds.has(s.id));
-```
+This migration:
+1. Creates the missing profile and role records for `rene@sfxsai.com` specifically (with the correct `registrar` role from `user_credentials`)
+2. Catches any other auth users that might also be missing from profiles/user_roles as a safety net
+3. Uses `ON CONFLICT DO NOTHING` to be safe if re-run
+
+### No Code Changes Needed
+
+The existing UI code in `PermissionManagement.tsx` already queries `profiles` and `user_roles` correctly. Once the data exists, `rene@sfxsai.com` will appear with the `Registrar` role badge.
 
