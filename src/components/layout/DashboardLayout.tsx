@@ -588,6 +588,44 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
         { id: 'my-profile', icon: ProfileIcon3D, label: 'My Profile' },
         { id: 'helpdesk', icon: AdminIcon3D, label: 'Helpdesk' },
       ];
+    case 'it':
+      return [
+        { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
+        {
+          id: 'user-mgmt',
+          icon: AdminIcon3D,
+          label: 'User Management',
+          isCollapsible: true,
+          items: [
+            { id: 'admin', icon: AdminIcon3D, label: 'Permissions' },
+          ]
+        },
+        {
+          id: 'integrations',
+          icon: AdminIcon3D,
+          label: 'System Tools',
+          isCollapsible: true,
+          items: [
+            { id: 'nocodb', icon: ImportIcon3D, label: 'NocoDB' },
+            { id: 'omada', icon: TeacherIcon3D, label: 'Omada' },
+            { id: 'tacticalrmm', icon: AdminIcon3D, label: 'Tactical RMM' },
+            { id: 'documize', icon: LibraryIcon3D, label: 'Documize' },
+            { id: 'excalidraw', icon: CanvaIcon3D, label: 'Excalidraw' },
+          ]
+        },
+        {
+          id: 'resources',
+          icon: LibraryIcon3D,
+          label: 'Resources',
+          isCollapsible: true,
+          items: [
+            { id: 'library', icon: LibraryIcon3D, label: 'Library' },
+            { id: 'ai-chat', icon: NotebookIcon3D, label: 'AI Chat' },
+          ]
+        },
+        { id: 'my-profile', icon: ProfileIcon3D, label: 'My Profile' },
+        { id: 'helpdesk', icon: AdminIcon3D, label: 'Helpdesk' },
+      ];
     default:
       return [
         { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
