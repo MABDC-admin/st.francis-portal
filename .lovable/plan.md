@@ -1,43 +1,36 @@
 
 
-# Map Registration Details to Visits Tab with Fallbacks
+# Fill Grade Level, Age, and Address for All Visits
 
 ## Problem
-All existing visit records have `registration_id = null`, so the Student, Grade Level, Age, Address, and Mobile No. columns all show "---". Only future visits created through the registration flow will be linked.
+The `school_visits` table has no columns for grade level, birth date, or address. These fields only exist on `online_registrations`. All existing visit records are unlinked (`registration_id = null`), so those columns always show "---".
 
 ## Solution
-Update the Visits tab to gracefully handle both linked and unlinked visits by falling back to the visit record's own fields when no registration is linked.
+Add `visitor_level`, `visitor_birth_date`, and `visitor_address` columns directly to `school_visits`. This way:
+- New visits created through the registration flow will populate these fields from the registration data
+- Old unlinked visits will still show "---" (no data available), but future visits will always have data regardless of linking
 
-### File: `src/components/registration/RegistrationManagement.tsx`
+## Changes
 
-**1. Update the query to also fetch visitor_phone and visitor_email (line 97)**
+### 1. Database Migration
+Add three nullable columns to `school_visits`:
+- `visitor_level` (text) -- stores grade level
+- `visitor_birth_date` (date) -- stores birth date for age calculation
+- `visitor_address` (text) -- stores address
 
-Current:
-```
-.select('*, online_registrations(student_name, level, current_address, phil_address, birth_date, mobile_number)')
-```
-Add `visitor_phone, visitor_email` -- these are already columns on `school_visits` but weren't being used.
+### 2. File: `src/components/registration/OnlineRegistrationForm.tsx`
+Update the `school_visits` insert inside `handleSubmit` to also save:
+- `visitor_level` from form data (`level`)
+- `visitor_birth_date` from form data (`birthDate`)
+- `visitor_address` from form data (`currentAddress` or `philAddress`)
 
-**2. Update table cell rendering (lines 352-387)**
+### 3. File: `src/components/registration/RegistrationManagement.tsx`
+Update the three table cells to add fallbacks to the new visit-level columns:
 
-For each column, add a fallback so unlinked visits still show useful data:
+| Column | Priority 1 (linked registration) | Priority 2 (visit record) | Priority 3 |
+|--------|----------------------------------|--------------------------|------------|
+| Grade Level | `online_registrations.level` | `v.visitor_level` | "---" |
+| Age | Calculated from `online_registrations.birth_date` | Calculated from `v.visitor_birth_date` | "---" |
+| Address | `online_registrations.current_address` / `phil_address` | `v.visitor_address` | "---" |
 
-| Column | Linked (has registration) | Unlinked (no registration) |
-|--------|--------------------------|---------------------------|
-| Visitor | `v.visitor_name` | `v.visitor_name` (same) |
-| Date | `v.visit_date` | `v.visit_date` (same) |
-| Slot | `v.visit_slot` | `v.visit_slot` (same) |
-| Student | `online_registrations.student_name` | `v.visitor_name` (fallback) |
-| Grade Level | `online_registrations.level` | "---" |
-| Age | Calculated from `birth_date` | "---" |
-| Address | `online_registrations.current_address` or `phil_address` | "---" |
-| Mobile No. | `online_registrations.mobile_number` | `v.visitor_phone` (fallback) |
-| Status | `v.status` | `v.status` (same) |
-| Actions | Same | Same |
-
-This way:
-- Existing unlinked visits show the visitor's name and phone in the Student and Mobile columns
-- New visits created through the registration flow show full student details
-- No data is lost or hidden
-
-This is a small change to 2 lines in the rendering logic and 1 line in the query.
+This ensures all future visits have complete data in every column, while existing unlinked visits gracefully show "---".
