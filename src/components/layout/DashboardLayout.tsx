@@ -193,6 +193,7 @@ const icon3DMap: Record<string, any> = {
   'finance-learners': StudentIcon3D,
   'helpdesk': AdminIcon3D,
   'admissions': EnrollmentIcon3D,
+  'my-profile': ProfileIcon3D,
 };
 
 // Icon mapping for Apple style icons
@@ -269,6 +270,7 @@ const iconAppleMap: Record<string, any> = {
   'finance-learners': AppleStudentIcon,
   'helpdesk': AppleAdminIcon,
   'admissions': AppleEnrollmentIcon,
+  'my-profile': AppleProfileIcon,
 };
 
 // Hierarchical navigation structure for each role
@@ -549,6 +551,43 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
         { id: 'library', icon: LibraryIcon3D, label: 'Library' },
         { id: 'helpdesk', icon: AdminIcon3D, label: 'Helpdesk' },
       ];
+    case 'principal':
+      return [
+        { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
+        {
+          id: 'student-records',
+          icon: StudentIcon3D,
+          label: 'Learner Records',
+          isCollapsible: true,
+          items: [
+            { id: 'students', icon: StudentIcon3D, label: 'Learners' },
+          ]
+        },
+        {
+          id: 'academics',
+          icon: EnterGradeIcon3D,
+          label: 'Academics',
+          isCollapsible: true,
+          items: [
+            { id: 'grades', icon: EnterGradeIcon3D, label: 'Grades' },
+            { id: 'reports', icon: ReportsIcon3D, label: 'Reports' },
+          ]
+        },
+        {
+          id: 'school-management',
+          icon: TeacherIcon3D,
+          label: 'School Management',
+          isCollapsible: true,
+          items: [
+            { id: 'teachers', icon: TeacherIcon3D, label: 'Teachers' },
+            { id: 'events', icon: EventsIcon3D, label: 'Events' },
+            { id: 'messages', icon: EventsIcon3D, label: 'Messages' },
+          ]
+        },
+        { id: 'library', icon: LibraryIcon3D, label: 'Library' },
+        { id: 'my-profile', icon: ProfileIcon3D, label: 'My Profile' },
+        { id: 'helpdesk', icon: AdminIcon3D, label: 'Helpdesk' },
+      ];
     default:
       return [
         { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
@@ -570,6 +609,7 @@ const roleColors: Record<string, string> = {
   student: 'bg-purple-500',
   parent: 'bg-orange-500',
   finance: 'bg-emerald-600',
+  principal: 'bg-amber-500',
 };
 
 const roleLabels: Record<string, string> = {
@@ -579,6 +619,7 @@ const roleLabels: Record<string, string> = {
   student: 'Learner',
   parent: 'Parent',
   finance: 'Finance',
+  principal: 'Principal',
 };
 
 // Check if any item in a group is active

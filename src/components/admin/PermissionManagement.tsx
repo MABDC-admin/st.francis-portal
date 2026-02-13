@@ -8,6 +8,7 @@ import {
   Building2,
   ChevronRight,
   Trash2,
+  KeyRound,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,6 +34,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 import { RoleAssignmentDialog } from './RoleAssignmentDialog';
 import { DeleteUserDialog } from './DeleteUserDialog';
+import { ResetPasswordDialog } from './ResetPasswordDialog';
 import { SchoolAccessManager } from './SchoolAccessManager';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -50,6 +52,7 @@ const roleColors: Record<string, string> = {
   teacher: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
   student: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
   parent: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+  principal: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
 };
 
 const roleDescriptions: Record<string, string> = {
@@ -58,6 +61,7 @@ const roleDescriptions: Record<string, string> = {
   teacher: 'View assigned classes and manage grades',
   student: 'View own profile and grades',
   parent: 'View linked children\'s information',
+  principal: 'Administrative oversight with read access to all modules',
 };
 
 export const PermissionManagement = () => {
@@ -68,6 +72,8 @@ export const PermissionManagement = () => {
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<UserWithRole | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [userToReset, setUserToReset] = useState<UserWithRole | null>(null);
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users-with-roles'],
@@ -189,6 +195,7 @@ export const PermissionManagement = () => {
                   <SelectItem value="student">Student</SelectItem>
                   <SelectItem value="parent">Parent</SelectItem>
                   <SelectItem value="finance">Finance</SelectItem>
+                  <SelectItem value="principal">Principal</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -246,6 +253,17 @@ export const PermissionManagement = () => {
                             <ChevronRight className="h-4 w-4 ml-1" />
                           </Button>
                           <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setUserToReset(u);
+                              setIsResetDialogOpen(true);
+                            }}
+                            disabled={u.id === user?.id}
+                          >
+                            <KeyRound className="h-4 w-4" />
+                          </Button>
+                          <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => {
@@ -298,6 +316,18 @@ export const PermissionManagement = () => {
           onClose={() => {
             setIsDeleteDialogOpen(false);
             setUserToDelete(null);
+          }}
+        />
+      )}
+
+      {/* Reset Password Dialog */}
+      {userToReset && (
+        <ResetPasswordDialog
+          user={userToReset}
+          isOpen={isResetDialogOpen}
+          onClose={() => {
+            setIsResetDialogOpen(false);
+            setUserToReset(null);
           }}
         />
       )}
