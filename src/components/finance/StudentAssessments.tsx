@@ -58,16 +58,20 @@ export const StudentAssessments = () => {
     enabled: !!schoolData?.id,
   });
 
-  // Students for the assess dialog
+  // Collect already-assessed student IDs to filter them out of the dialog
+  const assessedStudentIds = new Set(assessments.map((a: any) => a.student_id));
+
+  // Students for the assess dialog (excludes already-assessed students)
   const { data: students = [] } = useQuery({
-    queryKey: ['students-for-assess', schoolData?.id, studentSearch],
+    queryKey: ['students-for-assess', schoolData?.id, studentSearch, Array.from(assessedStudentIds)],
     queryFn: async () => {
       let query = supabase.from('students').select('id, student_name, lrn, level').eq('school_id', schoolData!.id);
       if (studentSearch) {
         query = query.or(`student_name.ilike.%${studentSearch}%,lrn.ilike.%${studentSearch}%`);
       }
-      const { data } = await query.limit(20).order('student_name');
-      return data || [];
+      const { data } = await query.limit(30).order('student_name');
+      // Filter out students who already have an active assessment
+      return (data || []).filter((s: any) => !assessedStudentIds.has(s.id));
     },
     enabled: !!schoolData?.id && assessOpen,
   });
