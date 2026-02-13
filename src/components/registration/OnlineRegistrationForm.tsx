@@ -148,8 +148,12 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
     try {
       const religion = formData.religion === 'Other' ? formData.religion_other.trim() : formData.religion;
 
-      // 1. Insert registration and get ID
-      const { data: regData, error: regError } = await (supabase.from('online_registrations') as any).insert([{
+      // Generate ID client-side so we can link the visit without needing SELECT permission
+      const registrationId = crypto.randomUUID();
+
+      // 1. Insert registration with pre-generated ID
+      const { error: regError } = await (supabase.from('online_registrations') as any).insert([{
+        id: registrationId,
         student_name: formData.student_name.trim(),
         lrn: hasLrn && formData.lrn.trim() ? formData.lrn.trim() : null,
         level: formData.level,
@@ -177,14 +181,14 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
         school_id: schoolId,
         academic_year_id: academicYearId,
         status: 'pending',
-      }]).select('id').single();
+      }]);
       if (regError) throw regError;
 
       // 2. If visit was requested, insert visit linked to registration
-      if (wantsVisit && regData?.id && visitDate && visitSlot) {
+      if (wantsVisit && visitDate && visitSlot) {
         const { error: visitError } = await supabase.from('school_visits').insert([{
           school_id: schoolId,
-          registration_id: regData.id,
+          registration_id: registrationId,
           visitor_name: visitorName.trim(),
           visit_date: format(visitDate, 'yyyy-MM-dd'),
           visit_slot: visitSlot,
