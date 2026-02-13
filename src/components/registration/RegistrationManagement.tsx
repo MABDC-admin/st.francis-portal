@@ -94,7 +94,7 @@ export const RegistrationManagement = () => {
     queryFn: async () => {
       if (!schoolId) return [];
       const { data, error } = await (supabase.from('school_visits') as any)
-        .select('*, online_registrations(student_name, level, current_address, phil_address, birth_date, mobile_number)')
+        .select('*, online_registrations(student_name, level, current_address, phil_address, birth_date, mobile_number), visitor_phone, visitor_email')
         .eq('school_id', schoolId)
         .order('visit_date', { ascending: true });
       if (error) throw error;
@@ -353,7 +353,7 @@ export const RegistrationManagement = () => {
                       <TableCell className="font-medium">{v.visitor_name}</TableCell>
                       <TableCell>{new Date(v.visit_date).toLocaleDateString()}</TableCell>
                       <TableCell><Badge variant="outline">{v.visit_slot === 'morning' ? '🌅 Morning' : '🌇 Afternoon'}</Badge></TableCell>
-                      <TableCell className="font-medium">{v.online_registrations?.student_name || '---'}</TableCell>
+                      <TableCell className="font-medium">{v.online_registrations?.student_name || v.visitor_name || '---'}</TableCell>
                       <TableCell>{v.online_registrations?.level || '---'}</TableCell>
                       <TableCell>{v.online_registrations?.birth_date ? (() => {
                         const today = new Date();
@@ -364,7 +364,7 @@ export const RegistrationManagement = () => {
                         return age;
                       })() : '---'}</TableCell>
                       <TableCell className="max-w-[200px] truncate">{v.online_registrations?.current_address || v.online_registrations?.phil_address || '---'}</TableCell>
-                      <TableCell>{v.online_registrations?.mobile_number || '---'}</TableCell>
+                      <TableCell>{v.online_registrations?.mobile_number || v.visitor_phone || '---'}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className={
                           v.status === 'completed' ? 'bg-green-50 text-green-700 border-green-300' :
