@@ -1,56 +1,25 @@
 
 
-# Create Finance User and Wire Finance Portal
+# Fix Finance User Login - Password Reset
 
-## Overview
-The finance role infrastructure (enum, tables, navigation, UI components) already exists. Two things are missing:
-1. The finance user account (ivyann@sfxsai.com) needs to be created with proper role and school access
-2. The Finance Portal component needs to be rendered when a finance user logs in (currently returns `null`)
+## Problem
+The user `ivyann@sfxsai.com` was created on Feb 11 (before the edge function ran on Feb 13). The edge function successfully assigned the `finance` role but could NOT update the password because the user already existed. The login fails because the stored password doesn't match `dargantes`.
 
-## Changes
+## Solution
+Update the existing `create-finance-user` edge function to also handle updating the password for an existing user using `supabase.auth.admin.updateUserById()`. Then re-invoke it.
 
-### 1. Create Finance User via Edge Function
-Create a backend function to provision the user since we need the admin/service-role API to create auth users with a specific password.
-
-**New file:** `supabase/functions/create-finance-user/index.ts`
-- Uses service role key to create the auth user (ivyann@sfxsai.com / dargantes)
-- The existing `handle_new_user` trigger will auto-create the profile and assign a default "student" role
-- The function then updates `user_roles` to "finance" and inserts `user_school_access` for SFXSAI
-
-### 2. Fix Finance Portal Rendering
-**File:** `src/pages/Index.tsx`
-- Change `case 'finance': return null;` to `case 'finance': return <FinancePortal onNavigate={handleTabChange} />;`
-- Add import for `FinancePortal`
-
-### 3. Add FinanceBilling Component
-**New file:** `src/components/finance/FinanceBilling.tsx`
-- Tabs component hosting Account Statements (StudentAssessments), Fee Setup, and Fee Templates
-- Referenced in the uploaded structure doc but missing from the codebase
-
-### 4. Wire Billing Tab in Index
-**File:** `src/pages/Index.tsx`
-- Add rendering for `activeTab === 'billing'` to show the new `FinanceBilling` component
-
-## Technical Details
-
-### Edge Function: create-finance-user
-```
-POST /create-finance-user
-- Creates user via supabase.auth.admin.createUser()
-- Updates user_roles to finance
-- Grants SFXSAI school access
-- Auto-confirms email (no verification needed for admin-provisioned accounts)
+### File: `supabase/functions/create-finance-user/index.ts`
+Add logic after the "user already exists" path:
+```typescript
+// If user already exists, update their password
+const { error: updateError } = await supabase.auth.admin.updateUserById(existingUserId, {
+  password: 'dargantes',
+});
 ```
 
-### Index.tsx Portal Fix
-```tsx
-case 'finance':
-  return <FinancePortal onNavigate={handleTabChange} />;
-```
+### Execution Steps
+1. Update the edge function to include password reset logic
+2. Deploy the updated function
+3. Call the function to reset the password
+4. Verify login works with ivyann@sfxsai.com / dargantes
 
-### Execution Order
-1. Deploy edge function
-2. Call edge function to create the user
-3. Update Index.tsx to render FinancePortal
-4. Create FinanceBilling component
-5. Test login with ivyann@sfxsai.com / dargantes
