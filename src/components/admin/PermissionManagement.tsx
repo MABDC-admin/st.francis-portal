@@ -7,7 +7,7 @@ import {
   Users, 
   Building2,
   ChevronRight,
-  
+  Trash2,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,6 +32,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import { RoleAssignmentDialog } from './RoleAssignmentDialog';
+import { DeleteUserDialog } from './DeleteUserDialog';
 import { SchoolAccessManager } from './SchoolAccessManager';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -65,6 +66,8 @@ export const PermissionManagement = () => {
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserWithRole | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users-with-roles'],
@@ -232,15 +235,29 @@ export const PermissionManagement = () => {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleRoleChange(u)}
-                          disabled={u.id === user?.id}
-                        >
-                          Change Role
-                          <ChevronRight className="h-4 w-4 ml-1" />
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRoleChange(u)}
+                            disabled={u.id === user?.id}
+                          >
+                            Change Role
+                            <ChevronRight className="h-4 w-4 ml-1" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setUserToDelete(u);
+                              setIsDeleteDialogOpen(true);
+                            }}
+                            disabled={u.id === user?.id}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -269,6 +286,18 @@ export const PermissionManagement = () => {
           onClose={() => {
             setIsRoleDialogOpen(false);
             setSelectedUser(null);
+          }}
+        />
+      )}
+
+      {/* Delete User Dialog */}
+      {userToDelete && (
+        <DeleteUserDialog
+          user={userToDelete}
+          isOpen={isDeleteDialogOpen}
+          onClose={() => {
+            setIsDeleteDialogOpen(false);
+            setUserToDelete(null);
           }}
         />
       )}
