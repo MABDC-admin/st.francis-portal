@@ -1,47 +1,88 @@
 
 
-# Ensure rogelio@sfxsai.com in User Roles and Enforce Account Creation
+# Add IT Role with User Account and Dedicated Portal
 
-## Part 1: Add rogelio@sfxsai.com to User Roles
-
-The principal account for `rogelio@sfxsai.com` does not yet exist in the `profiles` or `user_roles` tables. We will create this account using the existing `create-users` edge function with the `create_admin` action pattern, but adapted for the `principal` role.
-
-**Approach**: Add a new action `create_principal` to the `create-users` edge function (or reuse existing role-creation logic), then run a database migration to backfill the profile and role entries.
-
-**Database Migration:**
-- Insert profile record for `rogelio@sfxsai.com` using the service role
-- Insert `principal` role into `user_roles`
-- Insert into `user_credentials` for admin management visibility
-- Create the auth user via the edge function call (since migrations cannot create auth users directly, we will call the edge function after deployment)
-
-Since the edge function already supports `create_registrar`, `create_teacher`, `create_finance`, we will add `create_principal` support.
+## Overview
+Create a new "it" role in the system, set up the user account for `ivann@sfxsai.com` (password: `danieles`), build a dedicated IT portal with system management tools, and configure RLS policies to grant IT users full profile visibility.
 
 ---
 
-## Part 2: Auto-Create Accounts on Admission Approval
+## 1. Database Changes
 
-Currently, when an admission is approved in `AdmissionsPage.tsx`, a student record is created but NO user account is generated. The enrollment form already handles this, but admission approval does not.
+**Extend the `app_role` enum:**
+```text
+ALTER TYPE public.app_role ADD VALUE 'it';
+```
 
-**File: `src/components/admissions/AdmissionsPage.tsx`**
-- After the student record is successfully inserted (line ~121), add the same account creation logic used in the enrollment flow
-- Call `create-users` edge function with `create_single_student` action
-- Show the generated credentials in the approval success message
-- Log the account creation in the audit trail
+**RLS policy for IT role on profiles:**
+- Add a new SELECT policy on `profiles` allowing users with the `it` role to view all profiles (using the existing `has_role()` security definer function)
 
----
-
-## Part 3: Add Finance Role to Permission Management UI
-
-**File: `src/components/admin/PermissionManagement.tsx`**
-- Add `finance` to `roleColors` and `roleDescriptions` maps (currently missing)
+**RLS policy for IT role on user_roles:**
+- Add SELECT policy so IT users can view all user roles (needed for the management UI)
 
 ---
 
-## Part 4: Update create-users Edge Function
+## 2. Create IT User Account
 
-**File: `supabase/functions/create-users/index.ts`**
-- Add `create_principal` to the action type union and role map
-- This allows creating principal accounts through the same edge function used for other staff roles
+Using the `create-users` edge function:
+- Add `create_it` action to the edge function's action union and role map
+- Call it to create `ivann@sfxsai.com` with password `danieles`
+- This auto-creates profile, user_roles (as 'it'), and user_credentials entries
+
+---
+
+## 3. Update Role References Across the App
+
+**`src/contexts/AuthContext.tsx`** - Add `'it'` to the `AppRole` type union
+
+**`src/components/admin/PermissionManagement.tsx`** - Add `it` to `roleColors` and `roleDescriptions`
+
+**`src/components/admin/RoleAssignmentDialog.tsx`** - Add `'it'` to the roles array and roleColors map
+
+---
+
+## 4. IT Portal
+
+**New file: `src/components/portals/ITPortal.tsx`**
+- Dashboard with IT-focused cards:
+  - Total Users count
+  - Active Sessions overview
+  - System Health status
+  - Storage usage
+- Quick action cards: User Management, Audit Logs, System Monitoring, Profile Management
+- Links to relevant tabs (user permissions, helpdesk, integrations)
+
+**`src/components/portals/index.ts`** - Export the new ITPortal
+
+---
+
+## 5. Navigation for IT Role
+
+**`src/components/layout/DashboardLayout.tsx`**
+- Add `case 'it'` to `getNavGroupsForRole()` with sidebar items:
+  - Portal Home
+  - User Management (Permissions, Credentials, Audit Logs)
+  - System Tools (Integrations: NocoDB, Omada, Tactical RMM, Documize, Excalidraw)
+  - Resources (Library, AI Chat)
+  - My Profile
+  - Helpdesk
+
+---
+
+## 6. Portal Rendering
+
+**`src/pages/Index.tsx`**
+- Import ITPortal
+- Add `case 'it'` to `renderPortal()` returning `<ITPortal />`
+- Grant IT role access to: admin panel, permissions, helpdesk, integrations, library, profile, and all user management tabs
+
+---
+
+## 7. Edge Function Update
+
+**`supabase/functions/create-users/index.ts`**
+- Add `"create_it"` to the action type union
+- Add `create_it: "it"` to the roleMap
 
 ---
 
@@ -49,34 +90,13 @@ Currently, when an admission is approved in `AdmissionsPage.tsx`, a student reco
 
 | Change | File | Description |
 |--------|------|-------------|
-| Database migration | SQL migration | Backfill rogelio@sfxsai.com into profiles, user_roles, user_credentials |
-| Edge function update | `supabase/functions/create-users/index.ts` | Add `create_principal` action support |
-| Admission auto-account | `src/components/admissions/AdmissionsPage.tsx` | Create student user account on approval |
-| UI fix | `src/components/admin/PermissionManagement.tsx` | Add finance role color and description |
-
-### Admission Approval Flow (Updated)
-
-```text
-Approve clicked
-  -> Update admission status to "approved"
-  -> Insert student record into students table
-  -> Call create-users edge function (create_single_student)
-  -> Store credentials and show to admin
-  -> Send email notification
-  -> Log to admission_audit_logs
-```
-
-### Database Migration Details
-
-```text
--- Create auth user for rogelio@sfxsai.com (done via edge function call)
--- Then backfill:
-INSERT INTO profiles (id, email, full_name) VALUES (<auth_user_id>, 'rogelio@sfxsai.com', 'Rogelio Torrente');
-INSERT INTO user_roles (user_id, role) VALUES (<auth_user_id>, 'principal');
-INSERT INTO user_credentials (user_id, email, temp_password, role) VALUES (<auth_user_id>, 'rogelio@sfxsai.com', 'torrente', 'principal');
-```
-
-Since we cannot create auth users in SQL migrations, the implementation will:
-1. Call the `create-users` edge function with `create_principal` action to create the auth user
-2. The edge function handles profile, role, and credentials insertion automatically via the existing `handle_new_user` trigger
+| DB migration | SQL | Add 'it' to app_role enum, RLS policies for profile/role visibility |
+| Edge function | `supabase/functions/create-users/index.ts` | Add `create_it` action |
+| Auth context | `src/contexts/AuthContext.tsx` | Add 'it' to AppRole type |
+| IT Portal | `src/components/portals/ITPortal.tsx` (new) | IT dashboard with system management cards |
+| Portal export | `src/components/portals/index.ts` | Export ITPortal |
+| Navigation | `src/components/layout/DashboardLayout.tsx` | Add IT role nav groups |
+| Rendering | `src/pages/Index.tsx` | Add IT portal rendering and tab access |
+| Permission UI | `src/components/admin/PermissionManagement.tsx` | Add IT role color/description |
+| Role dialog | `src/components/admin/RoleAssignmentDialog.tsx` | Add 'it' to assignable roles |
 
