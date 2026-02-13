@@ -1,175 +1,82 @@
 
-# User Profile Management System with Principal Role
 
-## Overview
-Add a new "principal" role to the system with a dedicated portal, build profile pages for Registrar/Finance/Principal roles, implement admin-assisted password reset with password history tracking, and create the principal account for `rogelio@sfxsai.com`.
+# Ensure rogelio@sfxsai.com in User Roles and Enforce Account Creation
 
----
+## Part 1: Add rogelio@sfxsai.com to User Roles
 
-## 1. Add "principal" to the app_role Enum
+The principal account for `rogelio@sfxsai.com` does not yet exist in the `profiles` or `user_roles` tables. We will create this account using the existing `create-users` edge function with the `create_admin` action pattern, but adapted for the `principal` role.
+
+**Approach**: Add a new action `create_principal` to the `create-users` edge function (or reuse existing role-creation logic), then run a database migration to backfill the profile and role entries.
 
 **Database Migration:**
-- Extend the `app_role` enum: `ALTER TYPE public.app_role ADD VALUE 'principal';`
-- Add profile fields to the `profiles` table:
-  - `phone` (text, nullable)
-  - `employee_id` (text, nullable)
-  - `department` (text, nullable)
-  - `position` (text, nullable)
-  - `years_of_service` (integer, nullable)
+- Insert profile record for `rogelio@sfxsai.com` using the service role
+- Insert `principal` role into `user_roles`
+- Insert into `user_credentials` for admin management visibility
+- Create the auth user via the edge function call (since migrations cannot create auth users directly, we will call the edge function after deployment)
 
-**Create password history table:**
-```text
-password_history (
-  id uuid PK,
-  user_id uuid FK -> auth.users ON DELETE CASCADE,
-  password_hash text NOT NULL,
-  created_at timestamptz DEFAULT now()
-)
-```
-- RLS: no public access (accessed only via security definer functions)
+Since the edge function already supports `create_registrar`, `create_teacher`, `create_finance`, we will add `create_principal` support.
 
 ---
 
-## 2. Create the Principal Account
+## Part 2: Auto-Create Accounts on Admission Approval
 
-**Database inserts** (via edge function or migration data):
-- Create auth user for `rogelio@sfxsai.com` with password `torrente` using the existing `create-users` edge function
-- Insert into `profiles` and `user_roles` with role `principal`
-- Insert into `user_credentials` for admin management
+Currently, when an admission is approved in `AdmissionsPage.tsx`, a student record is created but NO user account is generated. The enrollment form already handles this, but admission approval does not.
+
+**File: `src/components/admissions/AdmissionsPage.tsx`**
+- After the student record is successfully inserted (line ~121), add the same account creation logic used in the enrollment flow
+- Call `create-users` edge function with `create_single_student` action
+- Show the generated credentials in the approval success message
+- Log the account creation in the audit trail
 
 ---
 
-## 3. Update AuthContext and Role References
-
-**File: `src/contexts/AuthContext.tsx`**
-- Add `'principal'` to the `AppRole` type union
+## Part 3: Add Finance Role to Permission Management UI
 
 **File: `src/components/admin/PermissionManagement.tsx`**
-- Add `principal` to `roleColors` and `roleDescriptions`
-- Add `principal` option to the role filter dropdown
-
-**File: `src/components/admin/RoleAssignmentDialog.tsx`**
-- Add `principal` to the available roles list
+- Add `finance` to `roleColors` and `roleDescriptions` maps (currently missing)
 
 ---
 
-## 4. Principal Portal and Navigation
+## Part 4: Update create-users Edge Function
 
-**New File: `src/components/portals/PrincipalPortal.tsx`**
-- Dashboard with administrative oversight: student count, teacher count, finance summary
-- Quick action cards for Reports, Grades overview, Events, Messages
-- Similar layout to AdminPortal but focused on oversight (read-heavy, not management)
-
-**File: `src/components/layout/DashboardLayout.tsx`**
-- Add `case 'principal'` to `getNavGroupsForRole()` with sidebar items:
-  - Portal Home, Learner Records (read-only view), Academics (Grades, Reports), School Management (Teachers, Events), Resources (Library), Profile, Helpdesk
-- Add principal icon mappings to `icon3DMap` and `iconAppleMap`
-
-**File: `src/pages/Index.tsx`**
-- Add `case 'principal'` to `renderPortal()` returning `<PrincipalPortal />`
-- Grant principal access to relevant tabs (students, grades, reports, teachers, events, library, helpdesk) in read-only or oversight mode
+**File: `supabase/functions/create-users/index.ts`**
+- Add `create_principal` to the action type union and role map
+- This allows creating principal accounts through the same edge function used for other staff roles
 
 ---
 
-## 5. Profile Page for All Roles
+## Technical Summary
 
-**New File: `src/components/profile/UserProfilePage.tsx`**
-- Comprehensive profile page usable by all roles (principal, registrar, finance, etc.)
-- Sections:
-  - **Personal Info**: Name, email, phone, employee ID (editable)
-  - **Professional Info**: Department, position, years of service (editable)
-  - **Profile Photo**: Upload with preview, JPG/PNG only, max 5MB, auto-resize to 300x300 using canvas API, stored in a new `profile-photos` storage bucket
-  - **Default avatar** using initials if no photo uploaded
-- Saves to `profiles` table via Supabase update
+| Change | File | Description |
+|--------|------|-------------|
+| Database migration | SQL migration | Backfill rogelio@sfxsai.com into profiles, user_roles, user_credentials |
+| Edge function update | `supabase/functions/create-users/index.ts` | Add `create_principal` action support |
+| Admission auto-account | `src/components/admissions/AdmissionsPage.tsx` | Create student user account on approval |
+| UI fix | `src/components/admin/PermissionManagement.tsx` | Add finance role color and description |
 
-**File: `src/pages/Index.tsx`**
-- Add `activeTab === 'my-profile'` rendering `<UserProfilePage />`
-- Accessible from the top-right user dropdown menu
+### Admission Approval Flow (Updated)
 
-**File: `src/components/layout/DashboardLayout.tsx`**
-- Add "My Profile" link to the user avatar dropdown menu (for all roles)
-
----
-
-## 6. Admin-Assisted Password Reset with History
-
-**New File: `src/components/admin/ResetPasswordDialog.tsx`**
-- Dialog for admins to reset any user's password
-- Password validation: min 8 chars, uppercase, lowercase, number, special character
-- Shows validation rules with checkmarks as user types
-- Calls the `reset-password` edge function
-
-**New Edge Function: `supabase/functions/reset-password/index.ts`**
-- Accepts `{ userId, newPassword }` from authenticated admin
-- Verifies requester is admin via `has_role()` check
-- Hashes the new password with bcrypt (via Deno std library)
-- Checks `password_history` table for last 5 hashes -- rejects if match found
-- If valid, updates password via `supabase.auth.admin.updateUserById()`
-- Stores new hash in `password_history`
-- Returns success
-
-**Integration in PermissionManagement.tsx:**
-- Add a "Reset Password" button per user row
-- Opens `ResetPasswordDialog` for the selected user
-
----
-
-## 7. Session Timeout (30 min inactivity)
-
-**File: `src/contexts/AuthContext.tsx`**
-- Add an activity tracker (mousemove, keydown, click listeners)
-- After 30 minutes of no activity, automatically call `signOut()`
-- Show a warning toast 2 minutes before timeout
-- Only active for the `principal` role (or optionally all roles)
-
----
-
-## 8. Storage Bucket for Profile Photos
-
-**Database Migration:**
 ```text
-INSERT INTO storage.buckets (id, name, public) VALUES ('profile-photos', 'profile-photos', true);
-
--- RLS: authenticated users can upload their own photo
-CREATE POLICY "Users can upload own photo" ON storage.objects
-  FOR INSERT TO authenticated
-  WITH CHECK (bucket_id = 'profile-photos' AND (storage.foldername(name))[1] = auth.uid()::text);
-
-CREATE POLICY "Anyone can view profile photos" ON storage.objects
-  FOR SELECT USING (bucket_id = 'profile-photos');
-
-CREATE POLICY "Users can update own photo" ON storage.objects
-  FOR UPDATE TO authenticated
-  USING (bucket_id = 'profile-photos' AND (storage.foldername(name))[1] = auth.uid()::text);
+Approve clicked
+  -> Update admission status to "approved"
+  -> Insert student record into students table
+  -> Call create-users edge function (create_single_student)
+  -> Store credentials and show to admin
+  -> Send email notification
+  -> Log to admission_audit_logs
 ```
 
----
+### Database Migration Details
 
-## Technical Details
+```text
+-- Create auth user for rogelio@sfxsai.com (done via edge function call)
+-- Then backfill:
+INSERT INTO profiles (id, email, full_name) VALUES (<auth_user_id>, 'rogelio@sfxsai.com', 'Rogelio Torrente');
+INSERT INTO user_roles (user_id, role) VALUES (<auth_user_id>, 'principal');
+INSERT INTO user_credentials (user_id, email, temp_password, role) VALUES (<auth_user_id>, 'rogelio@sfxsai.com', 'torrente', 'principal');
+```
 
-### Files to Create
-| File | Purpose |
-|------|---------|
-| `src/components/portals/PrincipalPortal.tsx` | Principal's dashboard portal |
-| `src/components/profile/UserProfilePage.tsx` | Universal profile page with photo upload |
-| `src/components/admin/ResetPasswordDialog.tsx` | Admin password reset dialog |
-| `supabase/functions/reset-password/index.ts` | Password reset with history check |
+Since we cannot create auth users in SQL migrations, the implementation will:
+1. Call the `create-users` edge function with `create_principal` action to create the auth user
+2. The edge function handles profile, role, and credentials insertion automatically via the existing `handle_new_user` trigger
 
-### Files to Modify
-| File | Change |
-|------|--------|
-| `src/contexts/AuthContext.tsx` | Add 'principal' to AppRole, add session timeout |
-| `src/components/layout/DashboardLayout.tsx` | Add principal nav, profile link in dropdown |
-| `src/pages/Index.tsx` | Add principal portal rendering, profile tab |
-| `src/components/admin/PermissionManagement.tsx` | Add principal role color/description, reset password button |
-| `src/pages/Auth.tsx` | No changes needed (principal logs in normally) |
-
-### Database Migrations
-1. Extend `app_role` enum with `'principal'`
-2. Add profile fields (phone, employee_id, department, position, years_of_service)
-3. Create `password_history` table with RLS
-4. Create `profile-photos` storage bucket with policies
-5. Create principal user account for `rogelio@sfxsai.com`
-
-### Dependencies
-All dependencies are already installed (jspdf, framer-motion, lucide-react, etc.). No new packages needed. Bcrypt for edge function uses Deno's standard library (`https://deno.land/x/bcrypt`).
