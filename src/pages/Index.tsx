@@ -89,6 +89,7 @@ import { FinanceSettings } from '@/components/finance/FinanceSettings';
 import { FinanceAuditLogs } from '@/components/finance/FinanceAuditLogs';
 import { YearEndClose } from '@/components/finance/YearEndClose';
 import { FinanceLearnerPage } from '@/components/finance/FinanceLearnerPage';
+import { FinanceBilling } from '@/components/finance/FinanceBilling';
 
 // Helpdesk
 import HelpdeskIndex from "@/pages/Helpdesk";
@@ -282,7 +283,7 @@ const Index = () => {
       case 'parent':
         return <ParentPortal />;
       case 'finance':
-        return null;
+        return <FinancePortal onNavigate={handleTabChange} />;
       default:
         return null;
     }
@@ -561,6 +562,7 @@ const Index = () => {
       {activeTab === 'year-end-close' && (role === 'finance' || role === 'admin') && <YearEndClose />}
       {activeTab === 'finance-audit' && (role === 'finance' || role === 'admin') && <FinanceAuditLogs />}
       {activeTab === 'finance-learners' && (role === 'finance' || role === 'admin') && <FinanceLearnerPage />}
+      {activeTab === 'billing' && (role === 'finance' || role === 'admin') && <FinanceBilling />}
 
       {/* Helpdesk - All users */}
       {activeTab === 'helpdesk' && <HelpdeskIndex />}
