@@ -1,31 +1,45 @@
 
 
-# Fix: Show Visitor Details When No Registration is Linked
+# Separate Student Details into Individual Table Columns
 
-## Problem
-The code change to show student details is working correctly, but all existing visit records have `registration_id = null` (they were not created through the registration flow). This means the `online_registrations` join returns `null`, and the Student column shows "---".
+## Overview
+Restructure the Visits table to display student details in separate columns instead of stacking them all inside a single "Student" cell. Since all visitors registered through the online registration flow, every record should be linked.
 
-## Solution
-Update the Student column to fall back to showing the visitor's own details (`visitor_name`, `visitor_phone`) when there is no linked registration. This way, every visit row will show useful information regardless of whether it was linked to a registration or not.
+## Changes
 
 ### File: `src/components/registration/RegistrationManagement.tsx`
 
-**Update the Student cell rendering (around line 352):**
-- When `online_registrations` exists: show student name, grade, address, age, and contact (current behavior)
-- When `online_registrations` is null: show the visitor's name and phone number from the visit record itself (`visitor_name`, `visitor_phone`)
+**1. Update table headers (lines 337-344)**
+Replace the current 6-column header with 10 columns:
+- Visitor
+- Date
+- Slot
+- Student
+- Grade Level
+- Age
+- Address
+- Mobile No.
+- Status
+- Actions
 
-```
-Student Column Logic:
-  IF registration is linked:
-    -> Student Name (bold)
-    -> Grade Level
-    -> Address
-    -> Age
-    -> Contact Number
-  ELSE:
-    -> Visitor Name (bold)
-    -> Visitor Phone (if available)
-    -> Small label: "No linked registration"
-```
+**2. Update table body cells (lines 348-400)**
+Break the stacked student info out of the single "Student" cell into individual cells:
 
-This is a single-line change to the fallback case in the table cell.
+| Column | Source |
+|--------|--------|
+| Visitor | `v.visitor_name` |
+| Date | `v.visit_date` |
+| Slot | `v.visit_slot` |
+| Student | `v.online_registrations?.student_name` or "---" |
+| Grade Level | `v.online_registrations?.level` or "---" |
+| Age | Calculated from `v.online_registrations?.birth_date` or "---" |
+| Address | `v.online_registrations?.current_address` or `phil_address` or "---" |
+| Mobile No. | `v.online_registrations?.mobile_number` or "---" |
+| Status | `v.status` badge |
+| Actions | Complete/Cancel buttons (unchanged) |
+
+**3. Remove the fallback "No linked registration" block**
+Since all visitors are linked to registrations, simplify the rendering by using optional chaining with a "---" fallback for each field.
+
+The data query (line 97) already fetches all needed fields and requires no changes.
+
