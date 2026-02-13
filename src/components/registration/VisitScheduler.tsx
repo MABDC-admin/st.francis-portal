@@ -20,6 +20,20 @@ interface VisitSchedulerProps {
 
 export const VisitScheduler = ({ schoolId, registrationId, onBack, onClose }: VisitSchedulerProps) => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+
+  // Fetch student registration details
+  const { data: registration } = useQuery({
+    queryKey: ['registration-details', registrationId],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from('online_registrations') as any)
+        .select('student_name, current_address, phil_address')
+        .eq('id', registrationId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!registrationId,
+  });
   const [selectedSlot, setSelectedSlot] = useState<string>('');
   const [visitorName, setVisitorName] = useState('');
   const [visitorEmail, setVisitorEmail] = useState('');
@@ -97,19 +111,42 @@ export const VisitScheduler = ({ schoolId, registrationId, onBack, onClose }: Vi
   }, [isBooked, onClose]);
 
   if (isBooked) {
+    const address = registration?.current_address || registration?.phil_address;
     return (
       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center py-8 space-y-4">
-        <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto" />
+        <CheckCircle2 className="h-16 w-16 text-primary mx-auto" />
         <h3 className="text-xl font-bold text-foreground">Visit Scheduled!</h3>
-        <p className="text-muted-foreground text-sm">
-          Your visit is confirmed for <strong>{selectedDate && format(selectedDate, 'MMMM d, yyyy')}</strong> ({selectedSlot === 'morning' ? '9:00 AM - 12:00 PM' : '1:00 PM - 4:00 PM'}).
-        </p>
+        <div className="text-left bg-muted rounded-lg p-4 space-y-2 text-sm">
+          {registration?.student_name && (
+            <p><span className="font-medium text-muted-foreground">Student:</span> <span className="text-foreground">{registration.student_name}</span></p>
+          )}
+          {address && (
+            <p><span className="font-medium text-muted-foreground">Address:</span> <span className="text-foreground">{address}</span></p>
+          )}
+          <p><span className="font-medium text-muted-foreground">Visitor:</span> <span className="text-foreground">{visitorName}</span></p>
+          {visitorEmail && <p><span className="font-medium text-muted-foreground">Email:</span> <span className="text-foreground">{visitorEmail}</span></p>}
+          {visitorPhone && <p><span className="font-medium text-muted-foreground">Phone:</span> <span className="text-foreground">{visitorPhone}</span></p>}
+          <p><span className="font-medium text-muted-foreground">Date:</span> <span className="text-foreground">{selectedDate && format(selectedDate, 'MMMM d, yyyy')}</span></p>
+          <p><span className="font-medium text-muted-foreground">Time:</span> <span className="text-foreground">{selectedSlot === 'morning' ? '9:00 AM - 12:00 PM' : '1:00 PM - 4:00 PM'}</span></p>
+        </div>
       </motion.div>
     );
   }
 
   return (
     <div className="space-y-4">
+      {/* Student Info */}
+      {registration?.student_name && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="p-3 text-sm space-y-0.5">
+            <p className="font-medium text-foreground">{registration.student_name}</p>
+            {(registration.current_address || registration.phil_address) && (
+              <p className="text-muted-foreground text-xs">{registration.current_address || registration.phil_address}</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Calendar */}
       <div className="flex justify-center">
         <Calendar
