@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getSchoolId } from '@/utils/schoolIdMap';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
-import { ClipboardList, Search, CheckCircle2, XCircle, Clock, Loader2, Download, CalendarDays, Building2 } from 'lucide-react';
+import { ClipboardList, Search, CheckCircle2, XCircle, Clock, Loader2, Download, CalendarDays, Building2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -175,6 +175,31 @@ export const RegistrationManagement = () => {
     onError: (e: Error) => toast.error('Update failed: ' + e.message),
   });
 
+  const deleteVisit = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase.from('school_visits') as any).delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['school_visits'] });
+      toast.success('Visit record deleted');
+    },
+    onError: (e: Error) => toast.error('Delete failed: ' + e.message),
+  });
+
+  const deleteRegistration = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase.from('online_registrations') as any).delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['online_registrations'] });
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      toast.success('Registration deleted');
+    },
+    onError: (e: Error) => toast.error('Delete failed: ' + e.message),
+  });
+
   // CSV Export
   const exportToCsv = (data: RegistrationRecord[], filename: string) => {
     const exportData = data.map(r => ({
@@ -234,7 +259,7 @@ export const RegistrationManagement = () => {
               <TableHead>Parent Email</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Date</TableHead>
-              {showActions && <TableHead className="text-right">Actions</TableHead>}
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -246,18 +271,23 @@ export const RegistrationManagement = () => {
                 <TableCell className="text-muted-foreground">{reg.parent_email || '—'}</TableCell>
                 <TableCell>{statusBadge(reg.status)}</TableCell>
                 <TableCell className="text-muted-foreground text-sm">{new Date(reg.created_at).toLocaleDateString()}</TableCell>
-                {showActions && (
-                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex gap-2 justify-end">
-                      <Button size="sm" variant="outline" className="text-green-600 border-green-300 hover:bg-green-50" onClick={() => setShowApproveDialog(reg)}>
-                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Approve
-                      </Button>
-                      <Button size="sm" variant="outline" className="text-red-600 border-red-300 hover:bg-red-50" onClick={() => setShowRejectDialog(reg)}>
-                        <XCircle className="h-3.5 w-3.5 mr-1" /> Reject
+                      {showActions && (
+                        <>
+                          <Button size="sm" variant="outline" className="text-green-600 border-green-300 hover:bg-green-50" onClick={() => setShowApproveDialog(reg)}>
+                            <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Approve
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-red-600 border-red-300 hover:bg-red-50" onClick={() => setShowRejectDialog(reg)}>
+                            <XCircle className="h-3.5 w-3.5 mr-1" /> Reject
+                          </Button>
+                        </>
+                      )}
+                      <Button size="sm" variant="destructive" onClick={() => { if (confirm('Delete this registration record?')) deleteRegistration.mutate(reg.id); }}>
+                        <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
                       </Button>
                     </div>
                   </TableCell>
-                )}
               </TableRow>
             ))}
           </TableBody>
@@ -375,16 +405,21 @@ export const RegistrationManagement = () => {
                         }>{v.status}</Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        {v.status === 'scheduled' && (
-                          <div className="flex gap-2 justify-end">
-                            <Button size="sm" variant="outline" className="text-green-600" onClick={() => updateVisitStatus.mutate({ id: v.id, status: 'completed' })}>
-                              <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Complete
-                            </Button>
-                            <Button size="sm" variant="outline" className="text-red-600" onClick={() => updateVisitStatus.mutate({ id: v.id, status: 'cancelled' })}>
-                              <XCircle className="h-3.5 w-3.5 mr-1" /> Cancel
-                            </Button>
-                          </div>
-                        )}
+                        <div className="flex gap-2 justify-end">
+                          {v.status === 'scheduled' && (
+                            <>
+                              <Button size="sm" variant="outline" className="text-green-600" onClick={() => updateVisitStatus.mutate({ id: v.id, status: 'completed' })}>
+                                <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Complete
+                              </Button>
+                              <Button size="sm" variant="outline" className="text-red-600" onClick={() => updateVisitStatus.mutate({ id: v.id, status: 'cancelled' })}>
+                                <XCircle className="h-3.5 w-3.5 mr-1" /> Cancel
+                              </Button>
+                            </>
+                          )}
+                          <Button size="sm" variant="destructive" onClick={() => { if (confirm('Delete this visit record?')) deleteVisit.mutate(v.id); }}>
+                            <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
