@@ -29,6 +29,7 @@ import { RegistrarPortal } from '@/components/portals/RegistrarPortal';
 import { TeacherPortal } from '@/components/portals/TeacherPortal';
 import { StudentPortal } from '@/components/portals/StudentPortal';
 import { ParentPortal } from '@/components/portals/ParentPortal';
+import { PrincipalPortal } from '@/components/portals/PrincipalPortal';
 import { TeacherManagement } from '@/components/teachers/TeacherManagement';
 import { TeacherCSVImport } from '@/components/teachers/TeacherCSVImport';
 
@@ -95,6 +96,7 @@ import { FinanceBilling } from '@/components/finance/FinanceBilling';
 import HelpdeskIndex from "@/pages/Helpdesk";
 import { AdmissionsPage } from '@/components/admissions/AdmissionsPage';
 import { RegistrationManagement } from '@/components/registration/RegistrationManagement';
+import { UserProfilePage } from '@/components/profile/UserProfilePage';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -284,6 +286,8 @@ const Index = () => {
         return <ParentPortal />;
       case 'finance':
         return <FinancePortal onNavigate={handleTabChange} />;
+      case 'principal':
+        return <PrincipalPortal onNavigate={handleTabChange} />;
       default:
         return null;
     }
@@ -291,6 +295,7 @@ const Index = () => {
 
   // Check if user has access to admin/registrar features
   const hasAdminAccess = role === 'admin' || role === 'registrar';
+  const hasPrincipalAccess = role === 'principal';
 
   return (
     <DashboardLayout activeTab={activeTab} onTabChange={handleTabChange}>
@@ -367,7 +372,7 @@ const Index = () => {
       )}
 
       {/* Students - Admin/Registrar/Teacher */}
-      {activeTab === 'students' && (hasAdminAccess || role === 'teacher') && (
+      {activeTab === 'students' && (hasAdminAccess || role === 'teacher' || role === 'principal') && (
         <TeacherStudentsView
           students={students}
           isLoading={isLoading}
@@ -401,7 +406,7 @@ const Index = () => {
       )}
 
       {/* Teachers - Admin/Registrar only */}
-      {activeTab === 'teachers' && hasAdminAccess && (
+      {activeTab === 'teachers' && (hasAdminAccess || role === 'principal') && (
         <TeacherManagement />
       )}
 
@@ -437,7 +442,7 @@ const Index = () => {
       )}
 
       {/* Grades Management - Admin/Registrar/Teacher */}
-      {activeTab === 'grades' && (role === 'admin' || role === 'registrar' || role === 'teacher') && (
+      {activeTab === 'grades' && (role === 'admin' || role === 'registrar' || role === 'teacher' || role === 'principal') && (
         <GradesManagement />
       )}
 
@@ -447,7 +452,7 @@ const Index = () => {
       )}
 
       {/* Events Management - Admin/Registrar only */}
-      {activeTab === 'events' && hasAdminAccess && (
+      {activeTab === 'events' && (hasAdminAccess || role === 'principal') && (
         <EventsManagement />
       )}
 
@@ -467,7 +472,7 @@ const Index = () => {
       )}
 
       {/* Messages - Admin, Teacher, and Registrar */}
-      {activeTab === 'messages' && (role === 'admin' || role === 'teacher' || role === 'registrar') && (
+      {activeTab === 'messages' && (role === 'admin' || role === 'teacher' || role === 'registrar' || role === 'principal') && (
         <MessagingPage />
       )}
 
@@ -566,6 +571,9 @@ const Index = () => {
 
       {/* Helpdesk - All users */}
       {activeTab === 'helpdesk' && <HelpdeskIndex />}
+
+      {/* My Profile - All roles */}
+      {activeTab === 'my-profile' && <UserProfilePage />}
 
       {/* Admissions - Admin/Registrar only */}
       {activeTab === 'admissions' && hasAdminAccess && <AdmissionsPage />}

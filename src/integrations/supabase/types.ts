@@ -2307,6 +2307,27 @@ export type Database = {
         }
         Relationships: []
       }
+      password_history: {
+        Row: {
+          created_at: string
+          id: string
+          password_hash: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          password_hash: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          password_hash?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       payment_plan_installments: {
         Row: {
           amount: number
@@ -2549,26 +2570,41 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          department: string | null
           email: string | null
+          employee_id: string | null
           full_name: string | null
           id: string
+          phone: string | null
+          position: string | null
           updated_at: string
+          years_of_service: number | null
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          department?: string | null
           email?: string | null
+          employee_id?: string | null
           full_name?: string | null
           id: string
+          phone?: string | null
+          position?: string | null
           updated_at?: string
+          years_of_service?: number | null
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
+          department?: string | null
           email?: string | null
+          employee_id?: string | null
           full_name?: string | null
           id?: string
+          phone?: string | null
+          position?: string | null
           updated_at?: string
+          years_of_service?: number | null
         }
         Relationships: []
       }
@@ -4170,6 +4206,7 @@ export type Database = {
         | "student"
         | "parent"
         | "finance"
+        | "principal"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4304,6 +4341,7 @@ export const Constants = {
         "student",
         "parent",
         "finance",
+        "principal",
       ],
     },
   },

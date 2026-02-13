@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { logAuditAction } from '@/hooks/useAuditLog';
 import { useSchool } from '@/contexts/SchoolContext';
+import { toast } from 'sonner';
 
-type AppRole = 'admin' | 'registrar' | 'teacher' | 'student' | 'parent' | 'finance';
+type AppRole = 'admin' | 'registrar' | 'teacher' | 'student' | 'parent' | 'finance' | 'principal';
 
 interface AuthContextType {
   user: User | null;
@@ -192,6 +193,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const currentRole = impersonatedUser?.role || role;
   const isImpersonating = !!impersonatedUser;
+
+  // Session timeout (30 min inactivity)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warningRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const resetTimer = useCallback(() => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (warningRef.current) clearTimeout(warningRef.current);
+    if (!user) return;
+
+    // Warning at 28 min
+    warningRef.current = setTimeout(() => {
+      toast.warning('Session expiring in 2 minutes due to inactivity');
+    }, 28 * 60 * 1000);
+
+    // Logout at 30 min
+    timeoutRef.current = setTimeout(() => {
+      signOut();
+      toast.info('Session expired due to inactivity');
+    }, 30 * 60 * 1000);
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+    const handler = () => resetTimer();
+
+    events.forEach(e => window.addEventListener(e, handler, { passive: true }));
+    resetTimer();
+
+    return () => {
+      events.forEach(e => window.removeEventListener(e, handler));
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (warningRef.current) clearTimeout(warningRef.current);
+    };
+  }, [user, resetTimer]);
 
   const hasRole = (checkRole: AppRole) => currentRole === checkRole;
 

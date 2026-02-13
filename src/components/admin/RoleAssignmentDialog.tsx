@@ -37,7 +37,7 @@ interface RoleAssignmentDialogProps {
   onClose: () => void;
 }
 
-const roles = ['admin', 'registrar', 'teacher', 'student', 'parent', 'finance'] as const;
+const roles = ['admin', 'registrar', 'teacher', 'student', 'parent', 'finance', 'principal'] as const;
 type AppRole = typeof roles[number];
 
 const roleColors: Record<string, string> = {
@@ -47,6 +47,7 @@ const roleColors: Record<string, string> = {
   student: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
   parent: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
   finance: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200',
+  principal: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
 };
 
 export const RoleAssignmentDialog = ({ user, isOpen, onClose }: RoleAssignmentDialogProps) => {
