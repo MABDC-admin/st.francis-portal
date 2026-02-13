@@ -128,15 +128,19 @@ const handler = async (req: Request): Promise<Response> => {
 
       console.log(`User ready: ${authUserId}`);
 
-      // Update role in user_roles table
+      // Upsert role in user_roles table (handles case where trigger created a 'student' row or no row exists)
       const { error: roleError } = await supabaseAdmin
         .from("user_roles")
-        .update({ role })
-        .eq("user_id", authUserId);
+        .upsert({ user_id: authUserId, role }, { onConflict: 'user_id' });
 
       if (roleError) {
-        console.error("Error updating role:", roleError);
+        console.error("Error upserting role:", roleError);
       }
+
+      // Ensure profile exists (trigger may not have fired if user already existed)
+      await supabaseAdmin
+        .from("profiles")
+        .upsert({ id: authUserId, email, full_name: fullName || email.split("@")[0] }, { onConflict: 'id' });
 
       // Store credentials (upsert to handle re-creation)
       await supabaseAdmin.from("user_credentials").upsert({
