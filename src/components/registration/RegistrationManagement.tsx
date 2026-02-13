@@ -339,6 +339,10 @@ export const RegistrationManagement = () => {
                     <TableHead>Date</TableHead>
                     <TableHead>Slot</TableHead>
                     <TableHead>Student</TableHead>
+                    <TableHead>Grade Level</TableHead>
+                    <TableHead>Age</TableHead>
+                    <TableHead>Address</TableHead>
+                    <TableHead>Mobile No.</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -349,36 +353,18 @@ export const RegistrationManagement = () => {
                       <TableCell className="font-medium">{v.visitor_name}</TableCell>
                       <TableCell>{new Date(v.visit_date).toLocaleDateString()}</TableCell>
                       <TableCell><Badge variant="outline">{v.visit_slot === 'morning' ? '🌅 Morning' : '🌇 Afternoon'}</Badge></TableCell>
-                      <TableCell>
-                        {v.online_registrations ? (
-                          <div className="space-y-0.5">
-                            <div className="font-medium">{v.online_registrations.student_name}</div>
-                            <div className="text-xs text-muted-foreground">{v.online_registrations.level}</div>
-                            <div className="text-xs text-muted-foreground">{v.online_registrations.current_address || v.online_registrations.phil_address || '—'}</div>
-                            {v.online_registrations.birth_date && (
-                              <div className="text-xs text-muted-foreground">Age: {(() => {
-                                const today = new Date();
-                                const birth = new Date(v.online_registrations.birth_date);
-                                let age = today.getFullYear() - birth.getFullYear();
-                                const m = today.getMonth() - birth.getMonth();
-                                if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-                                return age;
-                              })()}</div>
-                            )}
-                            {v.online_registrations.mobile_number && (
-                              <div className="text-xs text-muted-foreground">📞 {v.online_registrations.mobile_number}</div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="space-y-0.5">
-                            <div className="font-medium">{v.visitor_name}</div>
-                            {v.visitor_phone && (
-                              <div className="text-xs text-muted-foreground">📞 {v.visitor_phone}</div>
-                            )}
-                            <div className="text-[10px] text-orange-500 italic">No linked registration</div>
-                          </div>
-                        )}
-                      </TableCell>
+                      <TableCell className="font-medium">{v.online_registrations?.student_name || '---'}</TableCell>
+                      <TableCell>{v.online_registrations?.level || '---'}</TableCell>
+                      <TableCell>{v.online_registrations?.birth_date ? (() => {
+                        const today = new Date();
+                        const birth = new Date(v.online_registrations.birth_date);
+                        let age = today.getFullYear() - birth.getFullYear();
+                        const m = today.getMonth() - birth.getMonth();
+                        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+                        return age;
+                      })() : '---'}</TableCell>
+                      <TableCell className="max-w-[200px] truncate">{v.online_registrations?.current_address || v.online_registrations?.phil_address || '---'}</TableCell>
+                      <TableCell>{v.online_registrations?.mobile_number || '---'}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className={
                           v.status === 'completed' ? 'bg-green-50 text-green-700 border-green-300' :
