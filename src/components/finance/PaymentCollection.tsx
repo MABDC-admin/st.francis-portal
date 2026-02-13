@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Search, CreditCard, Plus, User, Receipt, Banknote, Wallet, DollarSign, Printer, Pencil, CalendarIcon, Trash2, AlertCircle, AlertTriangle } from 'lucide-react';
+import { Search, CreditCard, Plus, User, Receipt, Banknote, Wallet, DollarSign, Printer, Pencil, CalendarIcon, Trash2, AlertCircle, AlertTriangle, CheckCircle2, FileDown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
@@ -22,6 +22,8 @@ import { YearLockedBanner } from '@/components/ui/YearLockedBanner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { useSchoolSettings } from '@/hooks/useSchoolSettings';
+import { generateInvoicePDF } from '@/utils/generateInvoicePDF';
 
 const PAYMENT_METHODS = ['cash', 'bank_deposit', 'online_transfer', 'e_wallet', 'card'];
 
@@ -138,6 +140,9 @@ export const PaymentCollection = () => {
   const { isReadOnly } = useYearGuard();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+
+  // School settings for PDF invoice
+  const { data: schoolSettings } = useSchoolSettings();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
@@ -292,7 +297,37 @@ export const PaymentCollection = () => {
 
       return orNumber;
     },
-    onSuccess: (orNumber) => {
+    onSuccess: async (orNumber) => {
+      // Generate PDF invoice before resetting dialog state
+      const amount = parseFloat(paymentForm.amount);
+      const newTotalPaid = Number(selectedAssessment.total_paid) + amount;
+      const newBalance = Math.max(0, Number(selectedAssessment.net_amount) - newTotalPaid);
+      
+      try {
+        await generateInvoicePDF({
+          schoolName: schoolSettings?.name || schoolData?.name || selectedSchool || 'School',
+          schoolLogoUrl: schoolSettings?.logo_url || undefined,
+          schoolAddress: schoolSettings?.address || undefined,
+          schoolPhone: schoolSettings?.phone || undefined,
+          studentName: selectedStudent?.student_name || 'N/A',
+          studentLrn: selectedStudent?.lrn || 'N/A',
+          studentLevel: selectedStudent?.level || 'N/A',
+          orNumber,
+          paymentDate: paymentForm.payment_date.toISOString(),
+          paymentMethod: paymentForm.payment_method,
+          referenceNumber: paymentForm.reference_number || undefined,
+          amount,
+          totalAssessed: Number(selectedAssessment.total_amount),
+          totalDiscount: Number(selectedAssessment.discount_amount),
+          netAmount: Number(selectedAssessment.net_amount),
+          totalPaid: newTotalPaid,
+          remainingBalance: newBalance,
+          notes: paymentForm.notes || undefined,
+        });
+      } catch (e) {
+        console.error('Invoice generation failed:', e);
+      }
+
       queryClient.invalidateQueries({ queryKey: ['recent-payments'] });
       queryClient.invalidateQueries({ queryKey: ['student-assessment-payment'] });
       toast.success(`Payment recorded — ${orNumber}`);
@@ -577,6 +612,37 @@ export const PaymentCollection = () => {
                       <Button variant="ghost" size="icon" className="h-7 w-7" title="Print Receipt" onClick={() => printReceipt(p, schoolData?.name || selectedSchool || 'School', schoolData?.id || '', selectedYearId || '')}>
                         <Printer className="h-3.5 w-3.5" />
                       </Button>
+                      {p.status === 'verified' && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Download Invoice" onClick={async () => {
+                          try {
+                            // Fetch assessment for this payment
+                            const { data: assess } = await supabase.from('student_assessments')
+                              .select('total_amount, discount_amount, net_amount, total_paid, balance')
+                              .eq('id', p.assessment_id).maybeSingle();
+                            await generateInvoicePDF({
+                              schoolName: schoolSettings?.name || schoolData?.name || selectedSchool || 'School',
+                              schoolLogoUrl: schoolSettings?.logo_url || undefined,
+                              schoolAddress: schoolSettings?.address || undefined,
+                              schoolPhone: schoolSettings?.phone || undefined,
+                              studentName: p.students?.student_name || 'N/A',
+                              studentLrn: p.students?.lrn || 'N/A',
+                              studentLevel: p.students?.level || 'N/A',
+                              orNumber: p.or_number || 'N/A',
+                              paymentDate: p.payment_date,
+                              paymentMethod: p.payment_method || 'cash',
+                              referenceNumber: p.reference_number || undefined,
+                              amount: Number(p.amount),
+                              totalAssessed: Number(assess?.total_amount || 0),
+                              totalDiscount: Number(assess?.discount_amount || 0),
+                              netAmount: Number(assess?.net_amount || 0),
+                              totalPaid: Number(assess?.total_paid || 0),
+                              remainingBalance: Number(assess?.balance || 0),
+                            });
+                          } catch (e) { console.error('Invoice download failed:', e); }
+                        }}>
+                          <FileDown className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -651,7 +717,17 @@ export const PaymentCollection = () => {
                 <p className="text-sm text-muted-foreground text-center py-2">No active assessment found for this student.</p>
               )}
 
-              {selectedAssessment && (
+              {selectedAssessment && (Number(selectedAssessment.balance) <= 0 || selectedAssessment.status === 'paid') ? (
+                <div className="space-y-3">
+                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 flex items-center gap-3">
+                    <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400 shrink-0" />
+                    <div>
+                      <p className="font-semibold text-green-800 dark:text-green-300">Fully Paid</p>
+                      <p className="text-sm text-green-700 dark:text-green-400">This student's assessment is fully paid. No further payment is needed.</p>
+                    </div>
+                  </div>
+                </div>
+              ) : selectedAssessment ? (
                 <>
                   <div className="space-y-2">
                     <Label>Amount (₱)</Label>
@@ -698,11 +774,11 @@ export const PaymentCollection = () => {
                     <Textarea value={paymentForm.notes} onChange={(e) => setPaymentForm(f => ({ ...f, notes: e.target.value }))} placeholder="Additional remarks..." rows={2} />
                   </div>
                 </>
-              )}
+              ) : null}
             </div>
           )}
 
-          {selectedStudent && selectedAssessment && (
+          {selectedStudent && selectedAssessment && !(Number(selectedAssessment.balance) <= 0 || selectedAssessment.status === 'paid') && (
             <DialogFooter>
               <Button variant="outline" onClick={resetDialog}>Cancel</Button>
               <Button onClick={() => recordPayment.mutate()} disabled={recordPayment.isPending || !paymentForm.amount || parseFloat(paymentForm.amount) <= 0}>
