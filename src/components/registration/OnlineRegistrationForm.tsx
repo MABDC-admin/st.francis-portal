@@ -193,7 +193,10 @@ export const OnlineRegistrationForm = ({ schoolId, academicYearId, academicYearN
           visit_date: format(visitDate, 'yyyy-MM-dd'),
           visit_slot: visitSlot,
           status: 'scheduled',
-        }]);
+          visitor_level: formData.level || null,
+          visitor_birth_date: formData.birth_date || null,
+          visitor_address: formData.current_address?.trim() || null,
+        }] as any);
         if (visitError) {
           console.warn('Visit scheduling failed (non-critical):', visitError);
           toast.warning('Registration saved but visit scheduling failed. Please contact the school.');

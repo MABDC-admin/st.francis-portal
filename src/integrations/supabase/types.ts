@@ -3047,7 +3047,10 @@ export type Database = {
           status: string | null
           visit_date: string
           visit_slot: string
+          visitor_address: string | null
+          visitor_birth_date: string | null
           visitor_email: string | null
+          visitor_level: string | null
           visitor_name: string
           visitor_phone: string | null
         }
@@ -3059,7 +3062,10 @@ export type Database = {
           status?: string | null
           visit_date: string
           visit_slot: string
+          visitor_address?: string | null
+          visitor_birth_date?: string | null
           visitor_email?: string | null
+          visitor_level?: string | null
           visitor_name: string
           visitor_phone?: string | null
         }
@@ -3071,7 +3077,10 @@ export type Database = {
           status?: string | null
           visit_date?: string
           visit_slot?: string
+          visitor_address?: string | null
+          visitor_birth_date?: string | null
           visitor_email?: string | null
+          visitor_level?: string | null
           visitor_name?: string
           visitor_phone?: string | null
         }

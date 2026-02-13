@@ -94,7 +94,7 @@ export const RegistrationManagement = () => {
     queryFn: async () => {
       if (!schoolId) return [];
       const { data, error } = await (supabase.from('school_visits') as any)
-        .select('*, online_registrations(student_name, level, current_address, phil_address, birth_date, mobile_number), visitor_phone, visitor_email')
+        .select('*, online_registrations(student_name, level, current_address, phil_address, birth_date, mobile_number), visitor_phone, visitor_email, visitor_level, visitor_birth_date, visitor_address')
         .eq('school_id', schoolId)
         .order('visit_date', { ascending: true });
       if (error) throw error;
@@ -354,16 +354,18 @@ export const RegistrationManagement = () => {
                       <TableCell>{new Date(v.visit_date).toLocaleDateString()}</TableCell>
                       <TableCell><Badge variant="outline">{v.visit_slot === 'morning' ? '🌅 Morning' : '🌇 Afternoon'}</Badge></TableCell>
                       <TableCell className="font-medium">{v.online_registrations?.student_name || v.visitor_name || '---'}</TableCell>
-                      <TableCell>{v.online_registrations?.level || '---'}</TableCell>
-                      <TableCell>{v.online_registrations?.birth_date ? (() => {
+                      <TableCell>{v.online_registrations?.level || v.visitor_level || '---'}</TableCell>
+                      <TableCell>{(() => {
+                        const bd = v.online_registrations?.birth_date || v.visitor_birth_date;
+                        if (!bd) return '---';
                         const today = new Date();
-                        const birth = new Date(v.online_registrations.birth_date);
+                        const birth = new Date(bd);
                         let age = today.getFullYear() - birth.getFullYear();
                         const m = today.getMonth() - birth.getMonth();
                         if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
                         return age;
-                      })() : '---'}</TableCell>
-                      <TableCell className="max-w-[200px] truncate">{v.online_registrations?.current_address || v.online_registrations?.phil_address || '---'}</TableCell>
+                      })()}</TableCell>
+                      <TableCell className="max-w-[200px] truncate">{v.online_registrations?.current_address || v.online_registrations?.phil_address || v.visitor_address || '---'}</TableCell>
                       <TableCell>{v.online_registrations?.mobile_number || v.visitor_phone || '---'}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className={
