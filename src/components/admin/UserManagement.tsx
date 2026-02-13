@@ -597,6 +597,7 @@ export const UserManagement = () => {
                     <SelectItem value="registrar">Registrar</SelectItem>
                     <SelectItem value="teacher">Teacher</SelectItem>
                     <SelectItem value="student">Student</SelectItem>
+                    <SelectItem value="finance">Finance</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={levelFilter} onValueChange={setLevelFilter}>
