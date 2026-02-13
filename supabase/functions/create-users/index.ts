@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 interface CreateUserRequest {
-  action: "create_admin" | "create_registrar" | "create_teacher" | "create_finance" | "bulk_create_students" | "reset_student_accounts" | "create_single_student" | "reset_student_password";
+  action: "create_admin" | "create_registrar" | "create_teacher" | "create_finance" | "create_principal" | "bulk_create_students" | "reset_student_accounts" | "create_single_student" | "reset_student_password";
   email?: string;
   password?: string;
   fullName?: string;
@@ -74,7 +74,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { action, email, password, fullName, studentId, studentLrn, studentName, studentSchool, credentialId, userId, school, gradeLevel }: CreateUserRequest = await req.json();
     console.log(`Processing action: ${action}`);
 
-    if (action === "create_admin" || action === "create_registrar" || action === "create_teacher" || action === "create_finance") {
+    if (action === "create_admin" || action === "create_registrar" || action === "create_teacher" || action === "create_finance" || action === "create_principal") {
       const generatedPassword = password || generateSecurePassword();
       
       if (!email) {
@@ -89,6 +89,7 @@ const handler = async (req: Request): Promise<Response> => {
         create_registrar: "registrar",
         create_teacher: "teacher",
         create_finance: "finance",
+        create_principal: "principal",
       };
       const role = roleMap[action];
       
