@@ -102,7 +102,7 @@ export const AdmissionsPage = () => {
         .eq('id', admission.id);
       if (updateError) throw updateError;
 
-      const { error: studentError } = await (supabase.from('students') as any).insert([{
+      const { data: studentData, error: studentError } = await (supabase.from('students') as any).insert([{
         student_name: admission.student_name,
         lrn: admission.lrn || `TEMP-${Date.now()}`,
         level: admission.level,
@@ -118,15 +118,45 @@ export const AdmissionsPage = () => {
         phil_address: admission.phil_address,
         uae_address: admission.uae_address,
         previous_school: admission.previous_school,
-      }]);
+      }]).select('id, lrn').single();
       if (studentError) throw studentError;
+
+      // Auto-create user account for the admitted student
+      let accountCredentials: { username: string; password: string } | null = null;
+      if (studentData?.lrn && !studentData.lrn.startsWith('TEMP-')) {
+        try {
+          const { data: credData, error: credError } = await supabase.functions.invoke('create-users', {
+            body: {
+              action: 'create_single_student',
+              studentId: studentData.id,
+              studentLrn: studentData.lrn,
+              studentName: admission.student_name,
+              studentSchool: admission.school,
+            },
+          });
+          if (!credError && credData?.success) {
+            accountCredentials = { username: credData.username, password: credData.password };
+            console.log(`Account created for admitted student: ${admission.student_name}`);
+          } else {
+            console.error('Account creation failed:', credError || credData?.error);
+          }
+        } catch (e) {
+          console.error('Account creation error:', e);
+        }
+      }
 
       await (supabase.from('admission_audit_logs') as any).insert([{
         admission_id: admission.id,
         action: 'approved',
         performed_by: user?.id,
-        details: { student_name: admission.student_name },
+        details: { 
+          student_name: admission.student_name, 
+          student_id: studentData?.id,
+          account_created: !!accountCredentials,
+        },
       }]);
+
+      return accountCredentials;
 
       try {
         if (admission.parent_email) {
@@ -142,10 +172,14 @@ export const AdmissionsPage = () => {
         }
       } catch (e) { console.error('Email send failed:', e); }
     },
-    onSuccess: () => {
+    onSuccess: (credentials) => {
       queryClient.invalidateQueries({ queryKey: ['admissions'] });
       queryClient.invalidateQueries({ queryKey: ['students'] });
-      toast.success('Admission approved and student record created');
+      if (credentials) {
+        toast.success(`Admission approved! Account created — Username: ${credentials.username}, Password: ${credentials.password}`, { duration: 15000 });
+      } else {
+        toast.success('Admission approved and student record created');
+      }
       setShowApproveDialog(null);
     },
     onError: (e: Error) => toast.error('Approval failed: ' + e.message),
