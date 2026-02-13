@@ -37,9 +37,15 @@ Deno.serve(async (req) => {
         const existingUser = users?.find(u => u.email === email)
         if (!existingUser) throw new Error('User exists but could not be found')
         
+        // Update password for existing user
+        const { error: pwError } = await supabase.auth.admin.updateUserById(existingUser.id, {
+          password: 'dargantes',
+        })
+        if (pwError) throw pwError
+
         // Still update role and access
         await updateRoleAndAccess(supabase, existingUser.id)
-        return new Response(JSON.stringify({ success: true, message: 'User already existed, role and access updated', userId: existingUser.id }), {
+        return new Response(JSON.stringify({ success: true, message: 'User password reset and role updated', userId: existingUser.id }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
       }
