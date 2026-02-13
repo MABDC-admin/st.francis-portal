@@ -2566,6 +2566,33 @@ export type Database = {
           },
         ]
       }
+      profile_audit_logs: {
+        Row: {
+          action: string
+          changed_by: string
+          changed_fields: Json | null
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          action?: string
+          changed_by: string
+          changed_fields?: Json | null
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          changed_by?: string
+          changed_fields?: Json | null
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
