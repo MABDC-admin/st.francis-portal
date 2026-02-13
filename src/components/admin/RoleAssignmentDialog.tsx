@@ -60,24 +60,15 @@ export const RoleAssignmentDialog = ({ user, isOpen, onClose }: RoleAssignmentDi
 
   const updateRoleMutation = useMutation({
     mutationFn: async () => {
-      // Update the user's role
-      const { error: updateError } = await supabase
+      // Upsert the user's role (handles both insert and update)
+      const { error: upsertError } = await supabase
         .from('user_roles')
-        .update({ role: newRole })
-        .eq('user_id', user.id);
+        .upsert(
+          { user_id: user.id, role: newRole },
+          { onConflict: 'user_id' }
+        );
 
-      if (updateError) {
-        // If no row exists, insert instead
-        if (updateError.code === 'PGRST116') {
-          const { error: insertError } = await supabase
-            .from('user_roles')
-            .insert({ user_id: user.id, role: newRole });
-          
-          if (insertError) throw insertError;
-        } else {
-          throw updateError;
-        }
-      }
+      if (upsertError) throw upsertError;
 
       // Log the role change
       const { error: logError } = await supabase
