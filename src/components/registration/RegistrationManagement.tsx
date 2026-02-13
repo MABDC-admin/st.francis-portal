@@ -369,7 +369,15 @@ export const RegistrationManagement = () => {
                               <div className="text-xs text-muted-foreground">📞 {v.online_registrations.mobile_number}</div>
                             )}
                           </div>
-                        ) : '—'}
+                        ) : (
+                          <div className="space-y-0.5">
+                            <div className="font-medium">{v.visitor_name}</div>
+                            {v.visitor_phone && (
+                              <div className="text-xs text-muted-foreground">📞 {v.visitor_phone}</div>
+                            )}
+                            <div className="text-[10px] text-orange-500 italic">No linked registration</div>
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className={
