@@ -1,80 +1,48 @@
 
 
-# Auto-Play Photo Gallery + Auto-Close After Visit Booking
+# Show Student Details in Visit Confirmation
+
+## Overview
+
+After a visit is successfully booked, the confirmation screen will display the student's name and address from the linked online registration record.
 
 ## Changes
 
-### 1. Auto-rotating photo gallery in SchoolShowcaseDialog
-Add a `useEffect` interval that automatically cycles through gallery photos every 4 seconds. The auto-play pauses when the user manually interacts (clicks arrows or dots) and resumes after a short delay.
+### File: `src/components/registration/VisitScheduler.tsx`
 
-**File:** `src/components/registration/SchoolShowcaseDialog.tsx`
-- Add a `useEffect` with `setInterval` to call `nextPhoto()` every 4 seconds
-- Add a pause mechanism: when user clicks prev/next/dot, pause auto-play for 8 seconds before resuming
-- Clean up interval on unmount
+1. **Fetch registration details** -- When `registrationId` is provided, query the `online_registrations` table to get `student_name` and `current_address` (with `phil_address` as fallback).
 
-### 2. Auto-close dialog after visit is scheduled
-After the visit is successfully booked, automatically close the entire dialog after a 3-second delay so the user sees the confirmation briefly before it closes.
+2. **Display in confirmation screen** -- After the "Visit Scheduled!" heading, show:
+   - Student Name
+   - Address (current_address or phil_address)
+   - Visitor Name, Email, Phone (already captured in state)
+   - Visit date and time slot (already shown)
 
-**File:** `src/components/registration/VisitScheduler.tsx`
-- Add an `onClose` prop to the `VisitSchedulerProps` interface
-- After `setIsBooked(true)`, start a `setTimeout` of 3 seconds that calls `onClose()`
-- Clean up timeout on unmount
+3. **Display in the form area** -- Optionally show a small info card above the calendar reminding the visitor which student the visit is for.
 
-**File:** `src/components/registration/SchoolShowcaseDialog.tsx`
-- Pass `onClose={() => onOpenChange(false)}` to the `VisitScheduler` component
+### Technical Details
 
-## Technical Details
-
-### Auto-play gallery (SchoolShowcaseDialog)
+**Query to add:**
 ```typescript
-// Add useEffect for auto-rotation
-const [autoPaused, setAutoPaused] = useState(false);
-
-useEffect(() => {
-  if (!hasPhotos || photos.length <= 1 || autoPaused) return;
-  const interval = setInterval(nextPhoto, 4000);
-  return () => clearInterval(interval);
-}, [hasPhotos, photos.length, nextPhoto, autoPaused]);
-
-// On manual interaction, pause briefly
-const pauseAutoPlay = () => {
-  setAutoPaused(true);
-  setTimeout(() => setAutoPaused(false), 8000);
-};
+const { data: registration } = useQuery({
+  queryKey: ['registration-details', registrationId],
+  queryFn: async () => {
+    const { data, error } = await supabase
+      .from('online_registrations')
+      .select('student_name, current_address, phil_address')
+      .eq('id', registrationId)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+  enabled: !!registrationId,
+});
 ```
 
-### Auto-close visit scheduler (VisitScheduler)
-```typescript
-// Add onClose prop
-interface VisitSchedulerProps {
-  schoolId: string;
-  registrationId?: string;
-  onBack: () => void;
-  onClose?: () => void;  // new
-}
+**Confirmation screen additions:**
+- "Student: {registration.student_name}" 
+- "Address: {registration.current_address || registration.phil_address}"
+- Visitor name, email, and phone from form state
 
-// After booking success, auto-close after 3s
-useEffect(() => {
-  if (!isBooked || !onClose) return;
-  const timer = setTimeout(onClose, 3000);
-  return () => clearTimeout(timer);
-}, [isBooked, onClose]);
-```
-
-### Pass onClose from SchoolShowcaseDialog
-```tsx
-<VisitScheduler
-  schoolId={schoolId}
-  registrationId={registrationId}
-  onBack={() => setShowVisitScheduler(false)}
-  onClose={() => onOpenChange(false)}
-/>
-```
-
-## Files to Modify
-
-| File | Change |
-|------|--------|
-| `src/components/registration/SchoolShowcaseDialog.tsx` | Add auto-play interval for gallery, pass `onClose` to VisitScheduler |
-| `src/components/registration/VisitScheduler.tsx` | Add `onClose` prop, auto-close dialog 3s after successful booking |
+The confirmation will display all details in a clean summary card format before the dialog auto-closes after 3 seconds.
 
