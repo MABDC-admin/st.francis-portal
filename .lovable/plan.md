@@ -1,48 +1,50 @@
 
 
-# Show Student Details in Visit Confirmation
+# Show Student Details in Visits Table
 
 ## Overview
-
-After a visit is successfully booked, the confirmation screen will display the student's name and address from the linked online registration record.
+Enhance the Visits table in the Online Registrations management screen to display full student details (name, grade level, address, age, and contact number) instead of just the student name.
 
 ## Changes
 
-### File: `src/components/registration/VisitScheduler.tsx`
+### File: `src/components/registration/RegistrationManagement.tsx`
 
-1. **Fetch registration details** -- When `registrationId` is provided, query the `online_registrations` table to get `student_name` and `current_address` (with `phil_address` as fallback).
+**1. Expand the data query (line 97)**
+Update the `select` statement for school visits to fetch additional fields from the linked `online_registrations` record:
+- `student_name`
+- `level` (grade level)
+- `current_address` / `phil_address`
+- `birth_date` (to calculate age)
+- `mobile_number`
 
-2. **Display in confirmation screen** -- After the "Visit Scheduled!" heading, show:
-   - Student Name
-   - Address (current_address or phil_address)
-   - Visitor Name, Email, Phone (already captured in state)
-   - Visit date and time slot (already shown)
+**2. Update the Student column in the table (lines 341, 352)**
+Replace the single-line student name cell with a richer display showing:
+- Student name (bold)
+- Grade level
+- Address
+- Age (calculated from birth_date)
+- Contact number
 
-3. **Display in the form area** -- Optionally show a small info card above the calendar reminding the visitor which student the visit is for.
+The Student column will show this information stacked vertically in a compact format when a linked registration exists, or a dash when there is none.
 
-### Technical Details
+## Technical Details
 
-**Query to add:**
+### Query change
 ```typescript
-const { data: registration } = useQuery({
-  queryKey: ['registration-details', registrationId],
-  queryFn: async () => {
-    const { data, error } = await supabase
-      .from('online_registrations')
-      .select('student_name, current_address, phil_address')
-      .eq('id', registrationId)
-      .maybeSingle();
-    if (error) throw error;
-    return data;
-  },
-  enabled: !!registrationId,
-});
+.select('*, online_registrations(student_name, level, current_address, phil_address, birth_date, mobile_number)')
 ```
 
-**Confirmation screen additions:**
-- "Student: {registration.student_name}" 
-- "Address: {registration.current_address || registration.phil_address}"
-- Visitor name, email, and phone from form state
+### Age calculation helper
+```typescript
+const calculateAge = (birthDate: string) => {
+  const today = new Date();
+  const birth = new Date(birthDate);
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return age;
+};
+```
 
-The confirmation will display all details in a clean summary card format before the dialog auto-closes after 3 seconds.
-
+### Student cell rendering
+Replace the simple text cell with a stacked layout showing all details in a compact, readable format using smaller text for secondary information.
