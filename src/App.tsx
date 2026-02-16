@@ -16,6 +16,7 @@ import Attendance from "./pages/Attendance";
 import NotFound from "./pages/NotFound";
 import Install from "./pages/Install";
 import PublicRegistrationPage from "./pages/PublicRegistrationPage";
+import PublicTeacherApplicationPage from "./pages/PublicTeacherApplicationPage";
 import HelpdeskIndex from "./pages/Helpdesk";
 import TicketDetail from "./pages/Helpdesk/TicketDetail";
 import { ZoomRunner } from "./components/zoom/ZoomRunner";
@@ -69,6 +70,7 @@ const App = () => {
                       <Route path="/admin/zoom-runner" element={<ZoomRunner />} />
                       <Route path="/install" element={<Install />} />
                       <Route path="/register" element={<PublicRegistrationPage />} />
+                      <Route path="/apply" element={<PublicTeacherApplicationPage />} />
                       <Route path="/helpdesk" element={<HelpdeskIndex />} />
                       <Route path="/helpdesk/tickets/:ticketId" element={<TicketDetail />} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
