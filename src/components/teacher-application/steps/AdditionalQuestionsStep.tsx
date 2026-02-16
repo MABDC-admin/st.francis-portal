@@ -22,7 +22,7 @@ export const AdditionalQuestionsStep = ({ formData, updateField }: Props) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Expected Salary</Label>
-          <Input value={formData.expected_salary} onChange={e => updateField('expected_salary', e.target.value)} placeholder="e.g. ₱25,000 - ₱30,000" />
+          <Input value={formData.expected_salary} onChange={e => updateField('expected_salary', e.target.value)} placeholder="Enter expected salary" />
         </div>
         <div className="space-y-2">
           <Label>Available Start Date</Label>
