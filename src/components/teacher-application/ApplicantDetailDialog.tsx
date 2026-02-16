@@ -10,7 +10,7 @@ import { format } from 'date-fns';
 import { useState } from 'react';
 import {
   Mail, Phone, MapPin, Calendar, Award, Briefcase, GraduationCap,
-  FileText, CheckCircle, XCircle, Clock, User, printer as Printer,
+  FileText, CheckCircle, XCircle, Clock, User, Printer,
   Download, ExternalLink, Send
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
