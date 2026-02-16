@@ -16,6 +16,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { PrintableApplicantCV } from './PrintableApplicantCV';
 
 const STATUS_FLOW = ['submitted', 'under_review', 'shortlisted', 'interview_scheduled', 'demo_teaching', 'approved', 'hired'];
 const STATUS_LABELS: Record<string, string> = {
@@ -157,6 +158,9 @@ export const ApplicantDetailDialog = ({ application: app, open, onClose, onStatu
             </div>
           </div>
           <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setTimeout(() => window.print(), 100)}>
+              <Printer className="w-4 h-4 mr-2" /> Print / Save PDF
+            </Button>
             {/* Quick Actions based on status */}
             {['submitted', 'under_review'].includes(app.status) && (
               <>
@@ -450,6 +454,7 @@ export const ApplicantDetailDialog = ({ application: app, open, onClose, onStatu
           </div>
         )}
       </DialogContent>
+      <PrintableApplicantCV application={app} />
     </Dialog>
   );
 };

@@ -557,18 +557,27 @@
 
 /* Print styles */
 @media print {
-  .no-print {
-    display: none !important;
+  body * {
+    visibility: hidden;
+  }
+  
+  .printable-cv-container, 
+  .printable-cv-container * {
+    visibility: visible;
   }
 
-  body {
-    background: white !important;
-    color: black !important;
+  .printable-cv-container {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
   }
 
-  .shadow-card,
-  .shadow-lg,
-  .shadow-md {
-    box-shadow: none !important;
+  @page {
+    size: auto;
+    margin: 5mm;
   }
 }
