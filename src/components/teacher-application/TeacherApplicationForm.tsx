@@ -162,6 +162,18 @@ export const TeacherApplicationForm = ({ schoolId }: Props) => {
       // We'll show a generic confirmation and the registrar will see the ref.
       setReferenceNumber('TCH-' + new Date().getFullYear() + '-XXXXXX');
       toast.success('Application submitted successfully!');
+
+      // Fire-and-forget: send confirmation email
+      const fullName = `${formData.first_name} ${formData.middle_name ? formData.middle_name + ' ' : ''}${formData.last_name}${formData.suffix ? ' ' + formData.suffix : ''}`.trim();
+      supabase.functions.invoke('send-teacher-application-email', {
+        body: {
+          applicantName: fullName,
+          applicantEmail: formData.email,
+          positionApplied: formData.position_applied,
+          schoolId,
+        },
+      }).catch((emailErr) => console.error('Email send error:', emailErr));
+
       setStep(9); // Confirmation step
     } catch (err: any) {
       console.error('Submission error:', err);
