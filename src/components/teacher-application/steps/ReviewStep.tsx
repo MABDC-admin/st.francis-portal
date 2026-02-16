@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Pencil } from 'lucide-react';
-import { TeacherFormData } from '../TeacherApplicationForm';
+import { TeacherApplicationFormValues as TeacherFormData } from '../schema';
 
 interface Props {
   formData: TeacherFormData;

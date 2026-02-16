@@ -1,7 +1,7 @@
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Upload, X, FileText } from 'lucide-react';
-import { TeacherFormData } from '../TeacherApplicationForm';
+import { TeacherApplicationFormValues as TeacherFormData } from '../schema';
 import { supabase } from '@/integrations/supabase/client';
 import { useState } from 'react';
 

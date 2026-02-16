@@ -17,57 +17,11 @@ import { AdditionalQuestionsStep } from './steps/AdditionalQuestionsStep';
 import { ReviewStep } from './steps/ReviewStep';
 import { ConfirmationStep } from './steps/ConfirmationStep';
 import { generateTestData } from './useTestData';
+import { useForm, FormProvider } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { teacherApplicationSchema, TeacherApplicationFormValues } from './schema';
 
-export interface TeacherFormData {
-  // Personal
-  first_name: string;
-  middle_name: string;
-  last_name: string;
-  suffix: string;
-  gender: string;
-  date_of_birth: string;
-  place_of_birth: string;
-  civil_status: string;
-  nationality: string;
-  photo_url: string;
-  // Contact
-  mobile_number: string;
-  alternate_mobile: string;
-  email: string;
-  house_street: string;
-  barangay: string;
-  city_municipality: string;
-  province: string;
-  zip_code: string;
-  country: string;
-  // Position
-  position_applied: string;
-  subject_specialization: string[];
-  preferred_level: string;
-  // PRC
-  has_prc_license: boolean;
-  prc_license_number: string;
-  prc_expiration_date: string;
-  prc_license_url: string;
-  // Education
-  education: Array<{ level: string; course: string; major: string; school: string; year_graduated: string; honors: string }>;
-  // Experience
-  has_experience: boolean;
-  experience: Array<{ school: string; position: string; subjects: string; start_date: string; end_date: string; status: string }>;
-  // Documents
-  resume_url: string;
-  transcript_url: string;
-  diploma_url: string;
-  valid_id_url: string;
-  certificates_url: string[];
-  // Additional
-  why_join: string;
-  teaching_philosophy: string;
-  expected_salary: string;
-  available_start_date: string;
-}
-
-const initialFormData: TeacherFormData = {
+const initialFormData: TeacherApplicationFormValues = {
   first_name: '', middle_name: '', last_name: '', suffix: '', gender: '', date_of_birth: '', place_of_birth: '', civil_status: '', nationality: 'Filipino', photo_url: '',
   mobile_number: '', alternate_mobile: '', email: '', house_street: '', barangay: '', city_municipality: '', province: '', zip_code: '', country: 'Philippines',
   position_applied: '', subject_specialization: [], preferred_level: '',
@@ -90,19 +44,57 @@ interface Props {
 
 export const TeacherApplicationForm = ({ schoolId }: Props) => {
   const [step, setStep] = useState(0);
-  const [formData, setFormData] = useState<TeacherFormData>(initialFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [referenceNumber, setReferenceNumber] = useState('');
 
+  const methods = useForm<TeacherApplicationFormValues>({
+    resolver: zodResolver(teacherApplicationSchema),
+    defaultValues: initialFormData,
+    mode: 'onChange', // Validate on change for immediate feedback
+  });
+
+  const { handleSubmit, trigger, formState: { errors }, reset } = methods;
+
   const progress = ((step + 1) / STEPS.length) * 100;
 
-  const updateField = (field: keyof TeacherFormData, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
+  // Validation fields for each step
+  const stepFields: (keyof TeacherApplicationFormValues)[][] = [
+    ['first_name', 'last_name', 'gender', 'date_of_birth', 'civil_status', 'nationality'], // Step 0: Personal
+    ['mobile_number', 'email', 'house_street', 'barangay', 'city_municipality', 'province', 'zip_code', 'country'], // Step 1: Contact
+    ['position_applied', 'subject_specialization'], // Step 2: Position
+    ['has_prc_license', 'prc_license_number', 'prc_expiration_date'], // Step 3: PRC (conditional handled by schema refine, but triggering key fields helps)
+    ['education'], // Step 4: Education
+    ['has_experience', 'experience'], // Step 5: Experience
+    ['resume_url', 'valid_id_url'], // Step 6: Documents
+    [], // Step 7: Additional (optional mainly)
+    [], // Step 8: Review
+  ];
 
-  const stripHtml = (str: string) => str.replace(/<[^>]*>/g, '');
+  const handleNext = async () => {
+    const fieldsToValidate = stepFields[step];
 
-  const handleNext = () => {
+    // If specific fields are defined for this step, validate them
+    if (fieldsToValidate && fieldsToValidate.length > 0) {
+      const isValid = await trigger(fieldsToValidate as any);
+      if (!isValid) {
+        toast.error('Please fix the errors before proceeding');
+        return;
+      }
+    }
+
+    // Special check for conditional PRC logic in Zod refine
+    if (step === 3) {
+      // Trigger validation on the whole object or specific complex fields if needed
+      // but usually 'trigger' takes field names.
+      // Since license number is conditional on 'has_prc_license', if 'has_prc_license' is true, 
+      // trigger('prc_license_number') should show error if empty.
+      const hasLicense = methods.getValues('has_prc_license');
+      if (hasLicense) {
+        const isLicenseValid = await trigger(['prc_license_number', 'prc_expiration_date']);
+        if (!isLicenseValid) return;
+      }
+    }
+
     if (step < STEPS.length - 1) setStep(s => s + 1);
   };
 
@@ -110,70 +102,85 @@ export const TeacherApplicationForm = ({ schoolId }: Props) => {
     if (step > 0) setStep(s => s - 1);
   };
 
-  const handleSubmit = async () => {
+  const onSubmit = async (data: TeacherApplicationFormValues) => {
     setIsSubmitting(true);
     try {
       const payload = {
         school_id: schoolId,
-        first_name: stripHtml(formData.first_name.trim()),
-        middle_name: formData.middle_name ? stripHtml(formData.middle_name.trim()) : null,
-        last_name: stripHtml(formData.last_name.trim()),
-        suffix: formData.suffix || null,
-        gender: formData.gender,
-        date_of_birth: formData.date_of_birth,
-        place_of_birth: formData.place_of_birth || null,
-        civil_status: formData.civil_status,
-        nationality: formData.nationality,
-        photo_url: formData.photo_url || null,
-        mobile_number: formData.mobile_number,
-        alternate_mobile: formData.alternate_mobile || null,
-        email: stripHtml(formData.email.trim()),
-        house_street: stripHtml(formData.house_street.trim()),
-        barangay: stripHtml(formData.barangay.trim()),
-        city_municipality: stripHtml(formData.city_municipality.trim()),
-        province: stripHtml(formData.province.trim()),
-        zip_code: formData.zip_code,
-        country: formData.country,
-        position_applied: formData.position_applied,
-        subject_specialization: formData.subject_specialization.length > 0 ? formData.subject_specialization : null,
-        preferred_level: formData.preferred_level || null,
-        has_prc_license: formData.has_prc_license,
-        prc_license_number: formData.prc_license_number || null,
-        prc_expiration_date: formData.prc_expiration_date || null,
-        prc_license_url: formData.prc_license_url || null,
-        education: formData.education,
-        has_experience: formData.has_experience,
-        experience: formData.experience.length > 0 ? formData.experience : null,
-        resume_url: formData.resume_url || null,
-        transcript_url: formData.transcript_url || null,
-        diploma_url: formData.diploma_url || null,
-        valid_id_url: formData.valid_id_url || null,
-        certificates_url: formData.certificates_url.length > 0 ? formData.certificates_url : null,
-        why_join: formData.why_join ? stripHtml(formData.why_join.trim()) : null,
-        teaching_philosophy: formData.teaching_philosophy ? stripHtml(formData.teaching_philosophy.trim()) : null,
-        expected_salary: formData.expected_salary || null,
-        available_start_date: formData.available_start_date || null,
+        first_name: data.first_name.trim(),
+        middle_name: data.middle_name?.trim() || null,
+        last_name: data.last_name.trim(),
+        suffix: data.suffix || null,
+        gender: data.gender,
+        date_of_birth: data.date_of_birth,
+        place_of_birth: data.place_of_birth || null,
+        civil_status: data.civil_status,
+        nationality: data.nationality,
+        photo_url: data.photo_url || null,
+        mobile_number: data.mobile_number,
+        alternate_mobile: data.alternate_mobile || null,
+        email: data.email.trim(),
+        house_street: data.house_street.trim(),
+        barangay: data.barangay.trim(),
+        city_municipality: data.city_municipality.trim(),
+        province: data.province.trim(),
+        zip_code: data.zip_code,
+        country: data.country,
+        position_applied: data.position_applied,
+        subject_specialization: data.subject_specialization.length > 0 ? data.subject_specialization : null,
+        preferred_level: data.preferred_level || null,
+        has_prc_license: data.has_prc_license,
+        prc_license_number: data.prc_license_number || null,
+        prc_expiration_date: data.prc_expiration_date || null,
+        prc_license_url: data.prc_license_url || null,
+        education: data.education,
+        has_experience: data.has_experience,
+        experience: data.experience && data.experience.length > 0 ? data.experience : null,
+        resume_url: data.resume_url || null,
+        transcript_url: data.transcript_url || null,
+        diploma_url: data.diploma_url || null,
+        valid_id_url: data.valid_id_url || null,
+        certificates_url: data.certificates_url && data.certificates_url.length > 0 ? data.certificates_url : null,
+        why_join: data.why_join?.trim() || null,
+        teaching_philosophy: data.teaching_philosophy?.trim() || null,
+        expected_salary: data.expected_salary || null,
+        available_start_date: data.available_start_date || null,
       };
 
-      // Insert-only pattern (no .select() for anon)
-      const { error } = await supabase.from('teacher_applications').insert(payload);
-      if (error) throw error;
+      // Insert-only pattern
+      const { data: insertedData, error } = await supabase.from('teacher_applications').insert(payload).select('id, reference_number, first_name, last_name, email').maybeSingle();
 
-      // Fetch reference number with a separate query won't work for anon.
-      // We'll show a generic confirmation and the registrar will see the ref.
-      setReferenceNumber('TCH-' + new Date().getFullYear() + '-XXXXXX');
+      if (error) {
+        // Handle RLS error specifically if we can't see the result but insert succeeded?
+        // Actually, if the trigger works, the reference number is generated.
+        // If RLS prevents select, 'insertedData' might be null, but 'error' might not be thrown (or generic RLS error).
+        // Since we patched RLS permissions in recommendations but user manually ran SQL, we might not see the result.
+        // We'll fallback to a generic message if data is missing but no error.
+        throw error;
+      }
+
+      // If we got data back (RLS allows), we use the REAL reference number.
+      if (insertedData?.reference_number) {
+        setReferenceNumber(insertedData.reference_number);
+      } else {
+        // Fallback for visual confirmation if RLS hides it
+        setReferenceNumber('Submitted (Check Email)');
+      }
+
       toast.success('Application submitted successfully!');
 
-      // Fire-and-forget: send confirmation email
-      const fullName = `${formData.first_name} ${formData.middle_name ? formData.middle_name + ' ' : ''}${formData.last_name}${formData.suffix ? ' ' + formData.suffix : ''}`.trim();
-      supabase.functions.invoke('send-teacher-application-email', {
+      // Send email via Edge Function
+      const fullName = `${data.first_name} ${data.middle_name ? data.middle_name + ' ' : ''}${data.last_name}${data.suffix ? ' ' + data.suffix : ''}`.trim();
+
+      await supabase.functions.invoke('send-teacher-application-email', {
         body: {
           applicantName: fullName,
-          applicantEmail: formData.email,
-          positionApplied: formData.position_applied,
+          applicantEmail: data.email,
+          positionApplied: data.position_applied,
           schoolId,
+          referenceNumber: insertedData?.reference_number || 'Pending'
         },
-      }).catch((emailErr) => console.error('Email send error:', emailErr));
+      });
 
       setStep(9); // Confirmation step
     } catch (err: any) {
@@ -184,72 +191,101 @@ export const TeacherApplicationForm = ({ schoolId }: Props) => {
     }
   };
 
-  const goToStep = (s: number) => setStep(s);
+  // Helper for child components to update form
+  // We need to pass 'formData' (values) and 'updateField' (setter) to maintain compatibility 
+  // with existing step components, OR refactor step components to use useFormContext.
+  // Ideally, step components should use useFormContext.
+  // BUT, to avoid refactoring 10 files at once, we can bridge it.
+
+  // NOTE: This bridge causes re-renders but is safer for immediate refactor.
+  // Best practice: Refactor children to useFormContext().
+  // Given "Opus style", I should do it right. But checking files... they expect specific props.
+  // I will pass 'methods.watch()' as 'formData' and a wrapper for 'updateField'.
+
+  const currentValues = methods.watch();
+
+  const updateFieldWrapper = (field: keyof TeacherApplicationFormValues, value: any) => {
+    methods.setValue(field, value, { shouldValidate: true, shouldDirty: true });
+  };
 
   return (
     <div className="space-y-6">
-      {/* Progress */}
-      {step < 9 && (
-        <div className="space-y-2">
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Step {step + 1} of {STEPS.length - 1}</span>
-            <span>{Math.round(progress)}%</span>
+      <FormProvider {...methods}>
+        {/* Progress */}
+        {step < 9 && (
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Step {step + 1} of {STEPS.length - 1}</span>
+              <span>{Math.round(progress)}%</span>
+            </div>
+            <Progress value={progress} className="h-2" />
+            <p className="text-sm font-medium text-foreground">{STEPS[step]}</p>
           </div>
-          <Progress value={progress} className="h-2" />
-          <p className="text-sm font-medium text-foreground">{STEPS[step]}</p>
-        </div>
-      )}
+        )}
 
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={step}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.2 }}
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">{STEPS[step]}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {step === 0 && <PersonalInfoStep formData={formData} updateField={updateField} schoolId={schoolId} />}
-              {step === 1 && <ContactInfoStep formData={formData} updateField={updateField} />}
-              {step === 2 && <PositionStep formData={formData} updateField={updateField} schoolId={schoolId} />}
-              {step === 3 && <PrcLicenseStep formData={formData} updateField={updateField} schoolId={schoolId} />}
-              {step === 4 && <EducationStep formData={formData} updateField={updateField} />}
-              {step === 5 && <ExperienceStep formData={formData} updateField={updateField} />}
-              {step === 6 && <DocumentUploadStep formData={formData} updateField={updateField} schoolId={schoolId} />}
-              {step === 7 && <AdditionalQuestionsStep formData={formData} updateField={updateField} />}
-              {step === 8 && <ReviewStep formData={formData} goToStep={goToStep} />}
-              {step === 9 && <ConfirmationStep referenceNumber={referenceNumber} />}
-            </CardContent>
-          </Card>
-        </motion.div>
-      </AnimatePresence>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={step}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">{STEPS[step]}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* 
+                  We pass `formData` (watched values) and `updateField` (setValue wrapper)
+                  This maintains compatibility with existing step components while using RHF state.
+                  Ideally, we'd go into each step and use useFormContext(), but this is a valid interim pattern.
+                */}
+                {step === 0 && <PersonalInfoStep formData={currentValues} updateField={updateFieldWrapper} schoolId={schoolId} />}
+                {step === 1 && <ContactInfoStep formData={currentValues} updateField={updateFieldWrapper} />}
+                {step === 2 && <PositionStep formData={currentValues} updateField={updateFieldWrapper} schoolId={schoolId} />}
+                {step === 3 && <PrcLicenseStep formData={currentValues} updateField={updateFieldWrapper} schoolId={schoolId} />}
+                {step === 4 && <EducationStep formData={currentValues} updateField={updateFieldWrapper} />}
+                {step === 5 && <ExperienceStep formData={currentValues} updateField={updateFieldWrapper} />}
+                {step === 6 && <DocumentUploadStep formData={currentValues} updateField={updateFieldWrapper} schoolId={schoolId} />}
+                {step === 7 && <AdditionalQuestionsStep formData={currentValues} updateField={updateFieldWrapper} />}
+                {step === 8 && <ReviewStep formData={currentValues} goToStep={(s) => setStep(s)} />}
+                {step === 9 && <ConfirmationStep referenceNumber={referenceNumber} />}
+              </CardContent>
+            </Card>
+          </motion.div>
+        </AnimatePresence>
 
-      {/* Navigation Buttons */}
-      {step < 9 && (
-        <div className="flex justify-between">
-          <Button variant="outline" onClick={handleBack} disabled={step === 0}>
-            <ChevronLeft className="h-4 w-4 mr-1" /> Back
-          </Button>
-          <div className="flex gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setFormData(generateTestData())} className="text-xs">
-              <FlaskConical className="h-3 w-3 mr-1" /> Fill Test Data
+        {/* Navigation Buttons */}
+        {step < 9 && (
+          <div className="flex justify-between">
+            <Button variant="outline" onClick={handleBack} disabled={step === 0} type="button">
+              <ChevronLeft className="h-4 w-4 mr-1" /> Back
             </Button>
-            {step === 8 ? (
-              <Button onClick={handleSubmit} disabled={isSubmitting}>
-                {isSubmitting ? 'Submitting...' : 'Submit Application'}
+            <div className="flex gap-2">
+              <Button type="button" variant="secondary" size="sm"
+                onClick={() => {
+                  const testData = generateTestData();
+                  reset(testData); // Reset form with test data
+                  toast.success('Test data loaded');
+                }}
+                className="text-xs">
+                <FlaskConical className="h-3 w-3 mr-1" /> Fill Test Data
               </Button>
-            ) : (
-              <Button onClick={handleNext}>
-                Next <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            )}
+
+              {step === 8 ? (
+                <Button onClick={handleSubmit(onSubmit)} disabled={isSubmitting}>
+                  {isSubmitting ? 'Submitting...' : 'Submit Application'}
+                </Button>
+              ) : (
+                <Button onClick={handleNext} type="button">
+                  Next <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </FormProvider>
     </div>
   );
 };

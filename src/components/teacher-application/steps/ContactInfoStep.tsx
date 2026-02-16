@@ -1,6 +1,6 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { TeacherFormData } from '../TeacherApplicationForm';
+import { TeacherApplicationFormValues as TeacherFormData } from '../schema';
 
 interface Props {
   formData: TeacherFormData;

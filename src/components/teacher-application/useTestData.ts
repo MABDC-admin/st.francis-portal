@@ -1,4 +1,4 @@
-import { TeacherFormData } from './TeacherApplicationForm';
+import { TeacherApplicationFormValues } from './schema';
 
 const firstNames = ['Maria', 'Juan', 'Ana', 'Jose', 'Patricia', 'Mark', 'Grace', 'Carlo', 'Jasmine', 'Rafael'];
 const lastNames = ['Santos', 'Reyes', 'Cruz', 'Garcia', 'Mendoza', 'Torres', 'Flores', 'Rivera', 'Gonzales', 'Bautista'];
@@ -22,7 +22,7 @@ const randDate = (startYear: number, endYear: number) => {
   return `${y}-${m}-${d}`;
 };
 
-export const generateTestData = (): TeacherFormData => {
+export const generateTestData = (): TeacherApplicationFormValues => {
   const hasPrc = Math.random() > 0.3;
   const hasExp = Math.random() > 0.3;
   const specCount = Math.floor(Math.random() * 3) + 1;
@@ -68,15 +68,15 @@ export const generateTestData = (): TeacherFormData => {
     has_experience: hasExp,
     experience: hasExp
       ? [
-          {
-            school: pick(schools) + ' Academy',
-            position: pick(positions),
-            subjects: pick(subjects),
-            start_date: randDate(2015, 2020),
-            end_date: randDate(2021, 2024),
-            status: 'Completed',
-          },
-        ]
+        {
+          school: pick(schools) + ' Academy',
+          position: pick(positions),
+          subjects: pick(subjects),
+          start_date: randDate(2015, 2020),
+          end_date: randDate(2021, 2024),
+          status: 'Completed',
+        },
+      ]
       : [],
     resume_url: '',
     transcript_url: '',
