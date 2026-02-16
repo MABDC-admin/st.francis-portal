@@ -12,60 +12,60 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { studentName, parentEmail, level, schoolId } = await req.json();
+    const { applicantName, applicantEmail, positionApplied, schoolId } = await req.json();
 
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     if (!RESEND_API_KEY) {
       throw new Error("RESEND_API_KEY not configured");
     }
 
-    // Get school info for branding
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const { data: school } = await supabase
       .from("schools")
-      .select("name, code")
+      .select("name")
       .eq("id", schoolId)
       .single();
 
     const schoolName = school?.name || "St. Francis Xavier Smart Academy";
-
     const emailsSent: string[] = [];
 
-    // Send confirmation to parent
-    if (parentEmail) {
-      const parentHtml = `
+    // 1. Send confirmation to applicant
+    if (applicantEmail) {
+      const applicantHtml = `
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
 <body style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f8fafc;">
   <div style="background: linear-gradient(135deg, #1e40af, #3b82f6); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
-    <h1 style="color: white; margin: 0; font-size: 24px;">📋 Registration Received</h1>
-    <p style="color: #dbeafe; margin: 8px 0 0;">Thank you for registering with ${schoolName}</p>
+    <h1 style="color: white; margin: 0; font-size: 24px;">📋 Application Received</h1>
+    <p style="color: #dbeafe; margin: 8px 0 0;">Thank you for applying to ${schoolName}</p>
   </div>
   <div style="background: white; padding: 30px; border-radius: 0 0 12px 12px; border: 1px solid #e2e8f0; border-top: none;">
-    <p style="color: #334155;">Dear Parent/Guardian,</p>
-    <p style="color: #334155;">We have received the online registration for:</p>
+    <p style="color: #334155;">Dear ${applicantName},</p>
+    <p style="color: #334155;">We have received your teaching application. Here are the details:</p>
     <div style="background: #f1f5f9; padding: 16px; border-radius: 8px; margin: 16px 0;">
-      <p style="margin: 4px 0; color: #1e293b;"><strong>Student:</strong> ${studentName}</p>
-      <p style="margin: 4px 0; color: #1e293b;"><strong>Grade Level:</strong> ${level}</p>
+      <p style="margin: 4px 0; color: #1e293b;"><strong>Applicant:</strong> ${applicantName}</p>
+      <p style="margin: 4px 0; color: #1e293b;"><strong>Position Applied:</strong> ${positionApplied}</p>
     </div>
-    <p style="color: #334155;">Your registration is currently <strong style="color: #d97706;">pending review</strong>. Our registrar will review and process your application.</p>
+    <p style="color: #334155;">Your application is currently <strong style="color: #d97706;">under review</strong>. Our registrar will evaluate your qualifications and documents.</p>
     <h3 style="color: #1e293b; margin-top: 24px;">Next Steps:</h3>
     <ol style="color: #475569; line-height: 1.8;">
-      <li>Wait for registration review (1-3 business days)</li>
-      <li>Prepare required documents for submission</li>
-      <li>Visit the school for document verification</li>
+      <li>Application review by the registrar (3-5 business days)</li>
+      <li>If shortlisted, you will be contacted for an interview</li>
+      <li>Demo teaching may be scheduled for qualified applicants</li>
+      <li>Final decision and job offer</li>
     </ol>
+    <p style="color: #334155; margin-top: 16px;">If you have any questions, please contact us at <a href="mailto:registrar@sfxsai.com" style="color: #2563eb;">registrar@sfxsai.com</a>.</p>
     <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
     <p style="color: #94a3b8; font-size: 12px; text-align: center;">This is an automated message from ${schoolName}. Please do not reply directly.</p>
   </div>
 </body>
 </html>`;
 
-      const parentRes = await fetch("https://api.resend.com/emails", {
+      const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -73,21 +73,21 @@ Deno.serve(async (req) => {
         },
         body: JSON.stringify({
           from: `SFXSAI Registrar <registrar@sfxsai.com>`,
-          to: [parentEmail],
-          subject: `Registration Received - ${studentName}`,
-          html: parentHtml,
+          to: [applicantEmail],
+          subject: `Application Received - ${positionApplied} | ${schoolName}`,
+          html: applicantHtml,
         }),
       });
 
-      if (parentRes.ok) {
-        emailsSent.push(parentEmail);
+      if (res.ok) {
+        emailsSent.push(applicantEmail);
       } else {
-        const err = await parentRes.text();
-        console.error("Parent email failed:", err);
+        const err = await res.text();
+        console.error("Applicant email failed:", err);
       }
     }
 
-    // Send notification to school admin
+    // 2. Send notification to registrar
     const { data: schoolInfo } = await supabase
       .from("school_info")
       .select("registrar_email")
@@ -101,13 +101,13 @@ Deno.serve(async (req) => {
 <head><meta charset="utf-8"></head>
 <body style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
   <div style="background: #059669; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
-    <h2 style="color: white; margin: 0;">🆕 New Online Registration</h2>
+    <h2 style="color: white; margin: 0;">🆕 New Teacher Application</h2>
   </div>
   <div style="background: white; padding: 24px; border: 1px solid #d1d5db; border-top: none; border-radius: 0 0 8px 8px;">
-    <p><strong>Student:</strong> ${studentName}</p>
-    <p><strong>Grade Level:</strong> ${level}</p>
-    ${parentEmail ? `<p><strong>Parent Email:</strong> ${parentEmail}</p>` : ""}
-    <p style="margin-top: 16px;">Please review this registration in the admin dashboard.</p>
+    <p><strong>Applicant:</strong> ${applicantName}</p>
+    <p><strong>Position:</strong> ${positionApplied}</p>
+    <p><strong>Email:</strong> ${applicantEmail}</p>
+    <p style="margin-top: 16px;">Please review this application in the Teacher Applicants dashboard.</p>
   </div>
 </body>
 </html>`;
@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           from: `SFXSAI Registrar <registrar@sfxsai.com>`,
           to: [schoolInfo.registrar_email],
-          subject: `New Registration: ${studentName} - ${level}`,
+          subject: `New Teacher Application: ${applicantName} - ${positionApplied}`,
           html: adminHtml,
         }),
       });
