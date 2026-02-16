@@ -1,4 +1,5 @@
 import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TeacherApplicationFormValues as TeacherFormData } from '../schema';
@@ -15,19 +16,27 @@ interface Props {
 
 export const PersonalInfoStep = ({ formData, updateField, schoolId }: Props) => {
   const [uploading, setUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { alert('File must be under 5MB'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error('File must be under 5MB'); return; }
+
+    // Create local preview immediately
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
     setUploading(true);
+
     try {
       const path = `${crypto.randomUUID()}/${file.name}`;
       const { error } = await supabase.storage.from('teacher-applications').upload(path, file);
       if (error) throw error;
       updateField('photo_url', path);
+      toast.success('Photo uploaded successfully');
     } catch (err: any) {
-      alert(err.message || 'Upload failed');
+      toast.error(err.message || 'Upload failed');
+      // Revoke preview on error? Maybe keep it to let them retry?
     } finally {
       setUploading(false);
     }
@@ -98,9 +107,19 @@ export const PersonalInfoStep = ({ formData, updateField, schoolId }: Props) => 
       <div className="space-y-2 md:col-span-2">
         <Label>Profile Photo</Label>
         {formData.photo_url ? (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground truncate">{formData.photo_url.split('/').pop()}</span>
-            <Button variant="ghost" size="icon" onClick={() => updateField('photo_url', '')}><X className="h-4 w-4" /></Button>
+          <div className="flex items-center gap-4">
+            {previewUrl && (
+              <div className="relative h-20 w-20 rounded-full overflow-hidden border">
+                <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
+              </div>
+            )}
+            <div className="flex items-center gap-2 flex-1">
+              <span className="text-sm text-muted-foreground truncate">{formData.photo_url.split('/').pop()}</span>
+              <Button variant="ghost" size="icon" onClick={() => {
+                updateField('photo_url', '');
+                setPreviewUrl(null);
+              }}><X className="h-4 w-4" /></Button>
+            </div>
           </div>
         ) : (
           <div>

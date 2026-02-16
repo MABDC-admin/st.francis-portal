@@ -1,4 +1,5 @@
 import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Upload, X, FileText } from 'lucide-react';
 import { TeacherApplicationFormValues as TeacherFormData } from '../schema';
@@ -19,15 +20,16 @@ export const DocumentUploadStep = ({ formData, updateField }: Props) => {
   const handleUpload = async (field: keyof TeacherFormData, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { alert('File must be under 5MB'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error('File must be under 5MB'); return; }
     setUploading(field);
     try {
       const path = `${crypto.randomUUID()}/${file.name}`;
       const { error } = await supabase.storage.from('teacher-applications').upload(path, file);
       if (error) throw error;
       updateField(field, path);
+      toast.success('Document uploaded');
     } catch (err: any) {
-      alert(err.message || 'Upload failed');
+      toast.error(err.message || 'Upload failed');
     } finally {
       setUploading(null);
     }
@@ -36,15 +38,16 @@ export const DocumentUploadStep = ({ formData, updateField }: Props) => {
   const handleCertUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { alert('File must be under 5MB'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error('File must be under 5MB'); return; }
     setUploading('certificates');
     try {
       const path = `${crypto.randomUUID()}/${file.name}`;
       const { error } = await supabase.storage.from('teacher-applications').upload(path, file);
       if (error) throw error;
       updateField('certificates_url', [...formData.certificates_url, path]);
+      toast.success('Certificate uploaded');
     } catch (err: any) {
-      alert(err.message || 'Upload failed');
+      toast.error(err.message || 'Upload failed');
     } finally {
       setUploading(null);
     }
