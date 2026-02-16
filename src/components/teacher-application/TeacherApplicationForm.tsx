@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FlaskConical } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PersonalInfoStep } from './steps/PersonalInfoStep';
@@ -16,6 +16,7 @@ import { DocumentUploadStep } from './steps/DocumentUploadStep';
 import { AdditionalQuestionsStep } from './steps/AdditionalQuestionsStep';
 import { ReviewStep } from './steps/ReviewStep';
 import { ConfirmationStep } from './steps/ConfirmationStep';
+import { generateTestData } from './useTestData';
 
 export interface TeacherFormData {
   // Personal
@@ -233,15 +234,20 @@ export const TeacherApplicationForm = ({ schoolId }: Props) => {
           <Button variant="outline" onClick={handleBack} disabled={step === 0}>
             <ChevronLeft className="h-4 w-4 mr-1" /> Back
           </Button>
-          {step === 8 ? (
-            <Button onClick={handleSubmit} disabled={isSubmitting}>
-              {isSubmitting ? 'Submitting...' : 'Submit Application'}
+          <div className="flex gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setFormData(generateTestData())} className="text-xs">
+              <FlaskConical className="h-3 w-3 mr-1" /> Fill Test Data
             </Button>
-          ) : (
-            <Button onClick={handleNext}>
-              Next <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-          )}
+            {step === 8 ? (
+              <Button onClick={handleSubmit} disabled={isSubmitting}>
+                {isSubmitting ? 'Submitting...' : 'Submit Application'}
+              </Button>
+            ) : (
+              <Button onClick={handleNext}>
+                Next <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            )}
+          </div>
         </div>
       )}
     </div>
