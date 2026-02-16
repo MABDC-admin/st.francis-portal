@@ -564,6 +564,8 @@
   .printable-cv-container, 
   .printable-cv-container * {
     visibility: visible;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   .printable-cv-container {
