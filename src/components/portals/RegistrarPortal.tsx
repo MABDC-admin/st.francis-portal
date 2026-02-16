@@ -44,6 +44,18 @@ export const RegistrarPortal = ({ onNavigate, stats }: RegistrarPortalProps) => 
     },
   });
 
+  // Fetch pending teacher applications count
+  const { data: pendingApplicants = 0 } = useQuery({
+    queryKey: ['teacher-applications-pending'],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('teacher_applications')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'submitted');
+      return count || 0;
+    },
+  });
+
   // Calculate stats
   const totalStudents = students.length;
   const totalTeachers = teachersData || 0;

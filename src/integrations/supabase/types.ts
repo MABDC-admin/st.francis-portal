@@ -3941,6 +3941,202 @@ export type Database = {
         }
         Relationships: []
       }
+      teacher_application_positions: {
+        Row: {
+          created_at: string
+          department: string | null
+          id: string
+          is_active: boolean | null
+          school_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          department?: string | null
+          id?: string
+          is_active?: boolean | null
+          school_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          department?: string | null
+          id?: string
+          is_active?: boolean | null
+          school_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_application_positions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teacher_applications: {
+        Row: {
+          alternate_mobile: string | null
+          available_start_date: string | null
+          barangay: string
+          certificates_url: string[] | null
+          city_municipality: string
+          civil_status: string
+          country: string
+          created_at: string
+          date_of_birth: string
+          diploma_url: string | null
+          education: Json | null
+          email: string
+          expected_salary: string | null
+          experience: Json | null
+          first_name: string
+          gender: string
+          has_experience: boolean | null
+          has_prc_license: boolean | null
+          house_street: string
+          id: string
+          last_name: string
+          middle_name: string | null
+          mobile_number: string
+          nationality: string
+          notes: string | null
+          photo_url: string | null
+          place_of_birth: string | null
+          position_applied: string
+          prc_expiration_date: string | null
+          prc_license_number: string | null
+          prc_license_url: string | null
+          preferred_level: string | null
+          province: string
+          reference_number: string | null
+          rejection_reason: string | null
+          resume_url: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          school_id: string | null
+          status: string
+          subject_specialization: string[] | null
+          suffix: string | null
+          teaching_philosophy: string | null
+          transcript_url: string | null
+          updated_at: string
+          valid_id_url: string | null
+          why_join: string | null
+          zip_code: string
+        }
+        Insert: {
+          alternate_mobile?: string | null
+          available_start_date?: string | null
+          barangay: string
+          certificates_url?: string[] | null
+          city_municipality: string
+          civil_status: string
+          country?: string
+          created_at?: string
+          date_of_birth: string
+          diploma_url?: string | null
+          education?: Json | null
+          email: string
+          expected_salary?: string | null
+          experience?: Json | null
+          first_name: string
+          gender: string
+          has_experience?: boolean | null
+          has_prc_license?: boolean | null
+          house_street: string
+          id?: string
+          last_name: string
+          middle_name?: string | null
+          mobile_number: string
+          nationality: string
+          notes?: string | null
+          photo_url?: string | null
+          place_of_birth?: string | null
+          position_applied: string
+          prc_expiration_date?: string | null
+          prc_license_number?: string | null
+          prc_license_url?: string | null
+          preferred_level?: string | null
+          province: string
+          reference_number?: string | null
+          rejection_reason?: string | null
+          resume_url?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          school_id?: string | null
+          status?: string
+          subject_specialization?: string[] | null
+          suffix?: string | null
+          teaching_philosophy?: string | null
+          transcript_url?: string | null
+          updated_at?: string
+          valid_id_url?: string | null
+          why_join?: string | null
+          zip_code: string
+        }
+        Update: {
+          alternate_mobile?: string | null
+          available_start_date?: string | null
+          barangay?: string
+          certificates_url?: string[] | null
+          city_municipality?: string
+          civil_status?: string
+          country?: string
+          created_at?: string
+          date_of_birth?: string
+          diploma_url?: string | null
+          education?: Json | null
+          email?: string
+          expected_salary?: string | null
+          experience?: Json | null
+          first_name?: string
+          gender?: string
+          has_experience?: boolean | null
+          has_prc_license?: boolean | null
+          house_street?: string
+          id?: string
+          last_name?: string
+          middle_name?: string | null
+          mobile_number?: string
+          nationality?: string
+          notes?: string | null
+          photo_url?: string | null
+          place_of_birth?: string | null
+          position_applied?: string
+          prc_expiration_date?: string | null
+          prc_license_number?: string | null
+          prc_license_url?: string | null
+          preferred_level?: string | null
+          province?: string
+          reference_number?: string | null
+          rejection_reason?: string | null
+          resume_url?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          school_id?: string | null
+          status?: string
+          subject_specialization?: string[] | null
+          suffix?: string | null
+          teaching_philosophy?: string | null
+          transcript_url?: string | null
+          updated_at?: string
+          valid_id_url?: string | null
+          why_join?: string | null
+          zip_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_applications_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teachers: {
         Row: {
           created_at: string | null

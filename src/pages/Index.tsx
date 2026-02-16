@@ -98,6 +98,7 @@ import HelpdeskIndex from "@/pages/Helpdesk";
 import { AdmissionsPage } from '@/components/admissions/AdmissionsPage';
 import { RegistrationManagement } from '@/components/registration/RegistrationManagement';
 import { UserProfilePage } from '@/components/profile/UserProfilePage';
+import { TeacherApplicantDashboard } from '@/components/teacher-application/TeacherApplicantDashboard';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -583,6 +584,9 @@ const Index = () => {
 
       {/* Registrations - Admin/Registrar only */}
       {activeTab === 'registrations' && hasAdminAccess && <RegistrationManagement />}
+
+      {/* Teacher Applicants - Admin/Registrar only */}
+      {activeTab === 'applicants' && hasAdminAccess && <TeacherApplicantDashboard />}
 
       {/* Online Registration Form - Admin/Registrar only */}
       {activeTab === 'online-registration' && hasAdminAccess && (
