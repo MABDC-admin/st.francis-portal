@@ -1,0 +1,1 @@
+ALTER TABLE public.student_grades ALTER COLUMN school_id DROP NOT NULL;
