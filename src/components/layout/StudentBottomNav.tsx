@@ -20,7 +20,7 @@ export const StudentBottomNav = ({ activeTab, onTabChange }: StudentBottomNavPro
     <nav
       className={cn(
         "student-bottom-nav fixed bottom-0 left-0 right-0 z-50 lg:hidden",
-        "bg-white/80 backdrop-blur-2xl border-t border-white/40",
+        "bg-white border-t border-slate-100",
         "shadow-[0_-8px_32px_rgba(0,0,0,0.06)]"
       )}
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
@@ -35,34 +35,34 @@ export const StudentBottomNav = ({ activeTab, onTabChange }: StudentBottomNavPro
               whileTap={{ scale: 0.8 }}
               onClick={() => onTabChange(item.id)}
               className={cn(
-                "relative flex flex-col items-center justify-center gap-0.5 w-16 h-16 transition-all duration-300",
+                "relative flex flex-col items-center justify-center gap-1 w-16 h-16 transition-all duration-300",
                 isActive ? "text-primary" : "text-slate-400"
               )}
             >
               <div
                 className={cn(
-                  "relative flex items-center justify-center h-12 w-12 transition-all duration-500",
-                  isActive ? "scale-125 -translate-y-2" : "grayscale opacity-70"
+                  "relative flex items-center justify-center h-11 w-11 transition-all duration-500",
+                  isActive ? "scale-110 -translate-y-1" : ""
                 )}
               >
                 <img
                   src={item.icon}
                   alt={item.label}
                   className={cn(
-                    "w-full h-full object-contain drop-shadow-md transition-all duration-500",
-                    isActive ? "drop-shadow-[0_4px_8px_rgba(0,0,0,0.2)]" : ""
+                    "w-full h-full object-contain drop-shadow-sm transition-all duration-500",
+                    isActive ? "drop-shadow-[0_4px_8px_rgba(0,0,0,0.15)]" : ""
                   )}
                 />
 
                 {/* Active Glow Effect */}
                 {isActive && (
-                  <div className="absolute -inset-2 bg-primary/20 blur-xl rounded-full -z-10 animate-pulse" />
+                  <div className="absolute -inset-2 bg-primary/10 blur-xl rounded-full -z-10 animate-pulse" />
                 )}
               </div>
 
               <span className={cn(
-                "text-[9px] font-black uppercase tracking-widest transition-all duration-300",
-                isActive ? "text-primary opacity-100" : "text-slate-400 opacity-0"
+                "text-[8px] font-black uppercase tracking-tighter transition-all duration-300",
+                isActive ? "text-primary opacity-100" : "text-slate-500 opacity-100"
               )}>
                 {item.label}
               </span>
