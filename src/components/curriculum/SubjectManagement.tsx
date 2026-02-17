@@ -10,10 +10,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useSchool } from '@/contexts/SchoolContext';
-import { cn } from '@/lib/utils';
 
 interface Subject {
   id: string;
@@ -247,57 +247,33 @@ export const SubjectManagement = () => {
         </Button>
       </motion.div>
 
-      {/* Refactored Search & Filter - premium layout with horizontal chips */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-2 px-2">
-          <button
-            onClick={() => setGradeFilter('all')}
-            className={cn(
-              "px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 border",
-              gradeFilter === 'all'
-                ? "bg-primary border-primary text-primary-foreground shadow-sm"
-                : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
-            )}
-          >
-            All Levels
-          </button>
-          {GRADE_LEVELS.map((level) => (
-            <button
-              key={level}
-              onClick={() => setGradeFilter(level)}
-              className={cn(
-                "px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-2",
-                gradeFilter === level
-                  ? "bg-primary border-primary text-primary-foreground shadow-sm"
-                  : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
-              )}
-            >
-              {level}
-              {levelsWithStudents.includes(level) && (
-                <div className={cn(
-                  "w-1.5 h-1.5 rounded-full",
-                  gradeFilter === level ? "bg-white" : "bg-sky-400"
-                )} />
-              )}
-            </button>
-          ))}
+      {/* Refactored Search & Filter - cleaner layout */}
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-4 rounded-xl border shadow-sm">
+        <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
+          <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-lg">
+            <span className="text-xs font-semibold px-2 text-muted-foreground">Filter by:</span>
+            <Select value={gradeFilter} onValueChange={setGradeFilter}>
+              <SelectTrigger className="w-[180px] h-8 bg-white border-none shadow-sm text-xs font-medium">
+                <SelectValue placeholder="Select Grade Level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Levels</SelectItem>
+                {GRADE_LEVELS.map(level => (
+                  <SelectItem key={level} value={level}>{level}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white/50 backdrop-blur-sm p-4 rounded-2xl border shadow-sm">
-          <div className="flex items-center gap-4 text-sm text-muted-foreground font-medium">
-            <Filter className="h-4 w-4" />
-            <span>Showing subjects for: <span className="text-foreground font-bold">{gradeFilter === 'all' ? 'All Grade Levels' : gradeFilter}</span></span>
-          </div>
-
-          <div className="relative w-full md:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search subjects by name or code..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-11 bg-white border-slate-200 rounded-xl focus-visible:ring-primary/20 transition-all shadow-sm"
-            />
-          </div>
+        <div className="relative w-full md:w-72">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search subjects..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 h-9 bg-muted/30 border-none focus-visible:ring-1 focus-visible:ring-primary/20 transition-all"
+          />
         </div>
       </div>
 

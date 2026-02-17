@@ -2,10 +2,9 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Plus, Edit2, Trash2, Loader2, FileText, Eye, Calendar, X, Filter, Search } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2, FileText, Eye, Calendar, X } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -259,82 +258,43 @@ export const AssignmentManagement = () => {
         </Button>
       </motion.div>
 
-      {/* Refactored Search & Filter - premium layout with horizontal chips */}
-      <div className="space-y-4">
-        <div className="flex flex-col gap-4">
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Grade Level</Label>
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-2 px-2">
-              <button
-                onClick={() => setSelectedLevel('all')}
-                className={cn(
-                  "px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 border",
-                  selectedLevel === 'all'
-                    ? "bg-primary border-primary text-primary-foreground shadow-sm"
-                    : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
-                )}
-              >
-                All Levels
-              </button>
-              {GRADE_LEVELS.map((level) => (
-                <button
-                  key={level}
-                  onClick={() => setSelectedLevel(level)}
-                  className={cn(
-                    "px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 border",
-                    selectedLevel === level
-                      ? "bg-primary border-primary text-primary-foreground shadow-sm"
-                      : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
-                  )}
-                >
-                  {level}
-                </button>
-              ))}
+      {/* Filters */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-wrap gap-4">
+            <div className="flex-1 min-w-[200px]">
+              <Label>Grade Level</Label>
+              <Select value={selectedLevel} onValueChange={setSelectedLevel}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Levels" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Levels</SelectItem>
+                  {GRADE_LEVELS.map((level) => (
+                    <SelectItem key={level} value={level}>{level}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1 min-w-[200px]">
+              <Label>Type</Label>
+              <Select value={selectedType} onValueChange={setSelectedType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  {ASSIGNMENT_TYPES.map((type) => (
+                    <SelectItem key={type} value={type} className="capitalize">
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
-
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide w-full md:w-auto">
-              <button
-                onClick={() => setSelectedType('all')}
-                className={cn(
-                  "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all shrink-0 border",
-                  selectedType === 'all'
-                    ? "bg-slate-800 border-slate-800 text-white"
-                    : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
-                )}
-              >
-                All Types
-              </button>
-              {ASSIGNMENT_TYPES.map((type) => (
-                <button
-                  key={type}
-                  onClick={() => setSelectedType(type)}
-                  className={cn(
-                    "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all shrink-0 border",
-                    selectedType === type
-                      ? "bg-slate-800 border-slate-800 text-white"
-                      : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
-                  )}
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex items-center gap-4 bg-white/50 backdrop-blur-sm p-2 px-4 rounded-xl border shadow-sm w-full md:w-auto">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mr-4 shrink-0">
-                <Filter className="h-3.5 w-3.5" />
-                <span>Filters Active</span>
-              </div>
-              <div className="h-4 w-[1px] bg-slate-200 mr-2 hidden md:block" />
-              <p className="text-xs font-bold">
-                {assignments.length} Results
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Data Table */}
       <Card>
