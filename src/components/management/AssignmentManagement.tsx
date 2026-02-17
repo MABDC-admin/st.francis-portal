@@ -125,8 +125,10 @@ export const AssignmentManagement = () => {
     mutationFn: async (data: typeof formData) => {
       if (!schoolId || !selectedYearId) throw new Error('Missing school or academic year');
 
+      const { has_max_score, ...dbFields } = data;
       const payload = {
-        ...data,
+        ...dbFields,
+        max_score: has_max_score ? dbFields.max_score : 0,
         school_id: schoolId,
         academic_year_id: selectedYearId,
       };
