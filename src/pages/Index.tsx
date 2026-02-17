@@ -75,7 +75,7 @@ import { DocumizeDashboard } from '@/components/documize/DocumizeDashboard';
 import { ImpersonatePage } from '@/components/admin/ImpersonatePage';
 
 // Management CRUD Components
-import { AttendanceManagement, ScheduleManagement, AssignmentManagement, ExamScheduleManagement, AnnouncementManagement } from '@/components/management';
+import { AttendanceManagement, ScheduleManagement, AssignmentManagement, ExamScheduleManagement, AnnouncementManagement, BannerManagement } from '@/components/management';
 
 // Finance Components
 import { FinancePortal } from '@/components/finance/FinancePortal';
@@ -578,6 +578,11 @@ const Index = () => {
 
       {/* Helpdesk - All users */}
       {activeTab === 'helpdesk' && <HelpdeskIndex />}
+
+      {/* Banner Management - Admin/Registrar only */}
+      {activeTab === 'banner-management' && (role === 'admin' || role === 'registrar') && (
+        <BannerManagement />
+      )}
 
       {/* My Profile - All roles */}
       {activeTab === 'my-profile' && <UserProfilePage />}
