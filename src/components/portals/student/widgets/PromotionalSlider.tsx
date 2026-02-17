@@ -131,16 +131,6 @@ export const PromotionalSlider = ({ schoolId }: { schoolId: string }) => {
                         />
                     )}
 
-                    {/* Banner Content Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-8 pb-10 z-10">
-                        <motion.h3
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="text-white font-black text-xl sm:text-2xl drop-shadow-lg italic tracking-tight"
-                        >
-                            {currentBanner.title}
-                        </motion.h3>
-                    </div>
                 </motion.div>
             </AnimatePresence>
 

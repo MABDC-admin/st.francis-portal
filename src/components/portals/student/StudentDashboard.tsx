@@ -18,6 +18,7 @@ import { AnimatedStudentAvatar } from '@/components/students/AnimatedStudentAvat
 import { SubjectGradeCard } from './SubjectGradeCard';
 import { StudentAcademicInsights } from './widgets/StudentAcademicInsights';
 import { useStudentDashboardStats } from '@/hooks/useStudentPortalData';
+import { PromotionalSlider } from './widgets/PromotionalSlider';
 
 interface StudentDashboardProps {
   studentId: string;
@@ -150,95 +151,100 @@ export const StudentDashboard = ({
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Activity Feed: What's New - Moved Top */}
-        <div className="px-5 space-y-2 -mt-2 relative z-10">
-          <div className="space-y-2">
-            {/* Today Group */}
-            <div className="rounded-[2rem] bg-white/40 border border-white/50 overflow-hidden backdrop-blur-md shadow-lg">
-              <div className="bg-sky-500/90 px-6 py-2 flex items-center justify-between backdrop-blur-sm">
-                <span className="text-white font-black text-sm tracking-tight">{format(new Date(), 'MMMM d')}</span>
-                <div className="text-[10px] text-white/80 font-black uppercase tracking-widest flex items-center gap-1">
-                  What's New <StudentPortalIcon icon="fluent:sparkle-24-filled" size={12} />
+      {/* PROMOTIONAL SLIDER RESTORED */}
+      <div className="px-5 mb-4 relative z-10">
+        <PromotionalSlider schoolId={schoolId} />
+      </div>
+
+      {/* Activity Feed: What's New - Moved Top */}
+      <div className="px-5 space-y-2 -mt-2 relative z-10">
+        <div className="space-y-2">
+          {/* Today Group */}
+          <div className="rounded-[2rem] bg-white/40 border border-white/50 overflow-hidden backdrop-blur-md shadow-lg">
+            <div className="bg-sky-500/90 px-6 py-2 flex items-center justify-between backdrop-blur-sm">
+              <span className="text-white font-black text-sm tracking-tight">{format(new Date(), 'MMMM d')}</span>
+              <div className="text-[10px] text-white/80 font-black uppercase tracking-widest flex items-center gap-1">
+                What's New <StudentPortalIcon icon="fluent:sparkle-24-filled" size={12} />
+              </div>
+            </div>
+
+            <div className="p-1.5 space-y-1.5">
+              {/* Pinned Announcements (Registrar/Admin) */}
+              {announcements.pinned.map((a) => (
+                <div
+                  key={a.id}
+                  onClick={() => onCardClick?.('announcements')}
+                  className="bg-amber-50/90 border border-amber-100 p-3 rounded-xl flex items-center justify-between cursor-pointer hover:bg-amber-100 transition-all active:scale-[0.98] shadow-sm relative overflow-hidden group"
+                >
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-amber-400/20 to-transparent rounded-bl-full pointer-events-none" />
+
+                  <div className="flex items-center gap-4 relative z-10">
+                    <div className="w-10 h-10 bg-amber-100/80 rounded-xl flex items-center justify-center border border-amber-200 shadow-inner">
+                      <StudentPortalIcon icon="fluent:megaphone-loud-24-filled" className="text-amber-600 animate-pulse" size={24} />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <span className="text-sm font-black text-amber-900 leading-tight line-clamp-1">{a.title}</span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <Badge className="bg-amber-500 text-white border-none px-1.5 py-0 text-[9px] font-black tracking-wider uppercase rounded-md shadow-sm">
+                          IMPORTANT
+                        </Badge>
+                        <span className="text-[10px] font-bold text-amber-700/60">Registrar's Office</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ))}
 
-              <div className="p-1.5 space-y-1.5">
-                {/* Pinned Announcements (Registrar/Admin) */}
-                {announcements.pinned.map((a) => (
-                  <div
-                    key={a.id}
-                    onClick={() => onCardClick?.('announcements')}
-                    className="bg-amber-50/90 border border-amber-100 p-3 rounded-xl flex items-center justify-between cursor-pointer hover:bg-amber-100 transition-all active:scale-[0.98] shadow-sm relative overflow-hidden group"
-                  >
-                    <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-amber-400/20 to-transparent rounded-bl-full pointer-events-none" />
-
-                    <div className="flex items-center gap-4 relative z-10">
-                      <div className="w-10 h-10 bg-amber-100/80 rounded-xl flex items-center justify-center border border-amber-200 shadow-inner">
-                        <StudentPortalIcon icon="fluent:megaphone-loud-24-filled" className="text-amber-600 animate-pulse" size={24} />
-                      </div>
-                      <div className="flex flex-col text-left">
-                        <span className="text-sm font-black text-amber-900 leading-tight line-clamp-1">{a.title}</span>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <Badge className="bg-amber-500 text-white border-none px-1.5 py-0 text-[9px] font-black tracking-wider uppercase rounded-md shadow-sm">
-                            IMPORTANT
-                          </Badge>
-                          <span className="text-[10px] font-bold text-amber-700/60">Registrar's Office</span>
-                        </div>
-                      </div>
+              {assignments.pending.slice(0, 3).map((a) => (
+                <div
+                  key={a.id}
+                  onClick={() => onCardClick?.('assignments')}
+                  className="bg-white/60 p-3 rounded-xl flex items-center justify-between cursor-pointer hover:bg-white transition-all active:scale-[0.98]"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
+                      <StudentPortalIcon icon={STUDENT_ICONS.homework} className="text-sky-600" size={24} />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-black text-sky-950 leading-tight">{a.title}</span>
+                      <span className="text-[10px] font-bold text-sky-600/70">{a.subjects?.name}</span>
                     </div>
                   </div>
-                ))}
+                  <div className="flex flex-col items-end gap-1">
+                    <Badge className="bg-emerald-50 text-emerald-600 border-none px-2 py-0.5 text-[10px] font-black rounded-full shadow-sm">
+                      NEW
+                    </Badge>
+                    <span className="text-[10px] font-bold text-gray-400">Assignment</span>
+                  </div>
+                </div>
+              ))}
 
-                {assignments.pending.slice(0, 3).map((a) => (
-                  <div
-                    key={a.id}
-                    onClick={() => onCardClick?.('assignments')}
-                    className="bg-white/60 p-3 rounded-xl flex items-center justify-between cursor-pointer hover:bg-white transition-all active:scale-[0.98]"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
-                        <StudentPortalIcon icon={STUDENT_ICONS.homework} className="text-sky-600" size={24} />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-black text-sky-950 leading-tight">{a.title}</span>
-                        <span className="text-[10px] font-bold text-sky-600/70">{a.subjects?.name}</span>
-                      </div>
+              {announcements.regular.slice(0, 1).map((a) => (
+                <div
+                  key={a.id}
+                  onClick={() => onCardClick?.('announcements')}
+                  className="bg-white/60 p-3 rounded-xl flex items-center justify-between cursor-pointer hover:bg-white transition-all active:scale-[0.98]"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                      <StudentPortalIcon icon={STUDENT_ICONS.events} className="text-indigo-600" size={24} />
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <Badge className="bg-emerald-50 text-emerald-600 border-none px-2 py-0.5 text-[10px] font-black rounded-full shadow-sm">
-                        NEW
-                      </Badge>
-                      <span className="text-[10px] font-bold text-gray-400">Assignment</span>
+                    <div className="flex flex-col text-left">
+                      <span className="text-sm font-black text-sky-950 leading-tight">{a.title}</span>
+                      <span className="text-[10px] font-bold text-gray-400">Announcement</span>
                     </div>
                   </div>
-                ))}
+                  <span className="text-[10px] font-bold text-gray-400">Just now</span>
+                </div>
+              ))}
 
-                {announcements.regular.slice(0, 1).map((a) => (
-                  <div
-                    key={a.id}
-                    onClick={() => onCardClick?.('announcements')}
-                    className="bg-white/60 p-3 rounded-xl flex items-center justify-between cursor-pointer hover:bg-white transition-all active:scale-[0.98]"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
-                        <StudentPortalIcon icon={STUDENT_ICONS.events} className="text-indigo-600" size={24} />
-                      </div>
-                      <div className="flex flex-col text-left">
-                        <span className="text-sm font-black text-sky-950 leading-tight">{a.title}</span>
-                        <span className="text-[10px] font-bold text-gray-400">Announcement</span>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold text-gray-400">Just now</span>
-                  </div>
-                ))}
-
-                {assignments.pending.length === 0 && announcements.regular.length === 0 && announcements.pinned.length === 0 && (
-                  <div className="py-4 text-center">
-                    <p className="text-sm font-bold text-sky-900/30">No new updates for today</p>
-                  </div>
-                )}
-              </div>
+              {assignments.pending.length === 0 && announcements.regular.length === 0 && announcements.pinned.length === 0 && (
+                <div className="py-4 text-center">
+                  <p className="text-sm font-bold text-sky-900/30">No new updates for today</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -386,6 +392,6 @@ export const StudentDashboard = ({
       </div>
 
 
-    </div>
+    </div >
   );
 };

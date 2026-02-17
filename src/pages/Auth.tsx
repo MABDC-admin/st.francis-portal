@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { GraduationCap, Lock, User, RefreshCcw, ShieldCheck } from 'lucide-react';
+import { GraduationCap, Lock, User, RefreshCcw, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { z } from 'zod';
 import { useSchoolSettings } from '@/hooks/useSchoolSettings';
 import { cn } from '@/lib/utils';
@@ -29,6 +29,7 @@ const Auth = () => {
 
   const [loginData, setLoginData] = useState({ email: '', password: '' });
   const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Load saved credentials on mount
   useEffect(() => {
@@ -104,7 +105,7 @@ const Auth = () => {
     } else {
       setFailedAttempts(0);
       setLockoutUntil(null);
-      
+
       // Handle Remember Me
       if (rememberMe) {
         localStorage.setItem('rememberedEmail', loginData.email);
@@ -113,7 +114,7 @@ const Auth = () => {
         localStorage.removeItem('rememberedEmail');
         localStorage.removeItem('rememberedPassword');
       }
-      
+
       await logAudit('login_success', 'success');
       toast.success('Logged in successfully');
       navigate('/');
@@ -203,13 +204,24 @@ const Auth = () => {
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-white/20 group-focus-within:text-blue-400 transition-colors" />
                   <Input
                     id="login-password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
-                    className="h-12 bg-white/5 border-white/10 text-white placeholder:text-white/20 pl-11 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all rounded-xl"
+                    className="h-12 bg-white/5 border-white/10 text-white placeholder:text-white/20 pl-11 pr-10 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all rounded-xl"
                     value={loginData.password}
                     onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
                     required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-white/50 transition-colors focus:outline-none"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
                 </div>
               </div>
 
