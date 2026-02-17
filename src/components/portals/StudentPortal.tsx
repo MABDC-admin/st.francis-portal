@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion';
 import { useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Bell, Loader2, BookOpen, Award, User, Calendar, LogOut, LayoutDashboard, ClipboardList, GraduationCap, CheckCircle, BookMarked } from 'lucide-react';
+import { Bell, Loader2, BookOpen, Award, User, Calendar, LogOut, LayoutDashboard, ClipboardList, GraduationCap, CheckCircle, BookMarked, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -153,11 +154,20 @@ interface StudentPortalProps {
 export const StudentPortal = ({ activeSection = 'dashboard', onNavigate }: StudentPortalProps) => {
   const { user, signOut } = useAuth();
   const [isIDOpen, setIsIDOpen] = useState(false);
+  const [subjectSearchQuery, setSubjectSearchQuery] = useState('');
 
   // Use custom hooks for data fetching
   const { data: student, isLoading: isLoadingStudent } = useStudentData(user?.id);
   const { data: grades = [], isLoading: isLoadingGrades } = useStudentGrades(student?.id);
   const { data: subjects = [], isLoading: isLoadingSubjects } = useStudentSubjects(student?.id);
+
+  const filteredSubjects = useMemo(() => {
+    if (!subjectSearchQuery) return subjects;
+    return subjects.filter((s: any) =>
+      s.subjects?.name?.toLowerCase().includes(subjectSearchQuery.toLowerCase()) ||
+      s.subjects?.code?.toLowerCase().includes(subjectSearchQuery.toLowerCase())
+    );
+  }, [subjects, subjectSearchQuery]);
 
   // Memoize student name for display
   const displayName = useMemo(() => {
@@ -303,13 +313,24 @@ export const StudentPortal = ({ activeSection = 'dashboard', onNavigate }: Stude
                 </CardTitle>
               </CardHeader>
               <CardContent>
+                <div className="relative mb-6">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  <Input
+                    type="text"
+                    placeholder="Search subjects..."
+                    value={subjectSearchQuery}
+                    onChange={(e) => setSubjectSearchQuery(e.target.value)}
+                    className="pl-12 h-14 bg-slate-50 border-none shadow-sm rounded-2xl font-bold text-slate-700 placeholder:text-slate-400 focus-visible:ring-sky-500"
+                  />
+                </div>
+
                 {isLoadingSubjects ? (
                   <div className="flex justify-center py-8">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
-                ) : subjects.length > 0 ? (
+                ) : filteredSubjects.length > 0 ? (
                   <div className="grid gap-3 md:grid-cols-2">
-                    {subjects.map((enrollment: any) => (
+                    {filteredSubjects.map((enrollment: any) => (
                       <Card key={enrollment.id} className="bg-muted/30">
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
@@ -326,8 +347,8 @@ export const StudentPortal = ({ activeSection = 'dashboard', onNavigate }: Stude
                     ))}
                   </div>
                 ) : (
-                  <p className="text-center text-muted-foreground py-8">
-                    No subjects enrolled yet.
+                  <p className="text-center text-muted-foreground py-8 font-bold">
+                    {subjectSearchQuery ? `No subjects matching "${subjectSearchQuery}"` : 'No subjects enrolled yet.'}
                   </p>
                 )}
               </CardContent>

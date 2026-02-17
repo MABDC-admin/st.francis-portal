@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Plus, Edit2, Trash2, Loader2, FileText, Eye, Calendar } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2, FileText, Eye, Calendar, X, Filter, Search } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -257,43 +259,82 @@ export const AssignmentManagement = () => {
         </Button>
       </motion.div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-[200px]">
-              <Label>Grade Level</Label>
-              <Select value={selectedLevel} onValueChange={setSelectedLevel}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Levels" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Levels</SelectItem>
-                  {GRADE_LEVELS.map((level) => (
-                    <SelectItem key={level} value={level}>{level}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex-1 min-w-[200px]">
-              <Label>Type</Label>
-              <Select value={selectedType} onValueChange={setSelectedType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  {ASSIGNMENT_TYPES.map((type) => (
-                    <SelectItem key={type} value={type} className="capitalize">
-                      {type}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+      {/* Refactored Search & Filter - premium layout with horizontal chips */}
+      <div className="space-y-4">
+        <div className="flex flex-col gap-4">
+          <div className="space-y-2">
+            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Grade Level</Label>
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-2 px-2">
+              <button
+                onClick={() => setSelectedLevel('all')}
+                className={cn(
+                  "px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 border",
+                  selectedLevel === 'all'
+                    ? "bg-primary border-primary text-primary-foreground shadow-sm"
+                    : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
+                )}
+              >
+                All Levels
+              </button>
+              {GRADE_LEVELS.map((level) => (
+                <button
+                  key={level}
+                  onClick={() => setSelectedLevel(level)}
+                  className={cn(
+                    "px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 border",
+                    selectedLevel === level
+                      ? "bg-primary border-primary text-primary-foreground shadow-sm"
+                      : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
+                  )}
+                >
+                  {level}
+                </button>
+              ))}
             </div>
           </div>
-        </CardContent>
-      </Card>
+
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide w-full md:w-auto">
+              <button
+                onClick={() => setSelectedType('all')}
+                className={cn(
+                  "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all shrink-0 border",
+                  selectedType === 'all'
+                    ? "bg-slate-800 border-slate-800 text-white"
+                    : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
+                )}
+              >
+                All Types
+              </button>
+              {ASSIGNMENT_TYPES.map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setSelectedType(type)}
+                  className={cn(
+                    "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all shrink-0 border",
+                    selectedType === type
+                      ? "bg-slate-800 border-slate-800 text-white"
+                      : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
+                  )}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-4 bg-white/50 backdrop-blur-sm p-2 px-4 rounded-xl border shadow-sm w-full md:w-auto">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mr-4 shrink-0">
+                <Filter className="h-3.5 w-3.5" />
+                <span>Filters Active</span>
+              </div>
+              <div className="h-4 w-[1px] bg-slate-200 mr-2 hidden md:block" />
+              <p className="text-xs font-bold">
+                {assignments.length} Results
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Data Table */}
       <Card>
@@ -391,236 +432,240 @@ export const AssignmentManagement = () => {
 
       {/* View Modal */}
       <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
+        <DialogContent className="max-w-lg p-0 overflow-hidden">
+          <DialogHeader className="p-6 pb-2">
             <DialogTitle>{viewingRecord?.title}</DialogTitle>
           </DialogHeader>
-          {viewingRecord && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap gap-2">
-                <Badge className={typeColors[viewingRecord.assignment_type]}>
-                  {viewingRecord.assignment_type}
-                </Badge>
-                <Badge variant="outline">{viewingRecord.grade_level}</Badge>
-                <Badge variant="outline">{viewingRecord.subjects?.name}</Badge>
-              </div>
-
-              <div>
-                <Label className="text-muted-foreground">Due Date</Label>
-                <p className="font-medium">
-                  {format(new Date(viewingRecord.due_date), 'MMMM d, yyyy h:mm a')}
-                </p>
-              </div>
-
-              {viewingRecord.description && (
-                <div>
-                  <Label className="text-muted-foreground">Description</Label>
-                  <p className="whitespace-pre-wrap">{viewingRecord.description}</p>
+          <ScrollArea className="max-h-[80vh]">
+            {viewingRecord && (
+              <div className="px-6 pb-6 space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  <Badge className={typeColors[viewingRecord.assignment_type]}>
+                    {viewingRecord.assignment_type}
+                  </Badge>
+                  <Badge variant="outline">{viewingRecord.grade_level}</Badge>
+                  <Badge variant="outline">{viewingRecord.subjects?.name}</Badge>
                 </div>
-              )}
 
-              {viewingRecord.instructions && (
                 <div>
-                  <Label className="text-muted-foreground">Instructions</Label>
-                  <p className="whitespace-pre-wrap">{viewingRecord.instructions}</p>
+                  <Label className="text-muted-foreground">Due Date</Label>
+                  <p className="font-medium">
+                    {format(new Date(viewingRecord.due_date), 'MMMM d, yyyy h:mm a')}
+                  </p>
                 </div>
-              )}
 
-              {viewingRecord.attachments && viewingRecord.attachments.length > 0 && (
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Attachments</Label>
-                  <div className="grid grid-cols-1 gap-2">
-                    {viewingRecord.attachments.map((file, i) => (
-                      <a
-                        key={i}
-                        href={file.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 p-2 border rounded bg-muted/50 hover:bg-muted transition-colors"
-                      >
-                        <FileText className="h-4 w-4 text-primary" />
-                        <span className="text-sm truncate flex-1">{file.name}</span>
-                      </a>
-                    ))}
+                {viewingRecord.description && (
+                  <div>
+                    <Label className="text-muted-foreground">Description</Label>
+                    <p className="whitespace-pre-wrap">{viewingRecord.description}</p>
                   </div>
-                </div>
-              )}
+                )}
 
-              <div>
-                <Label className="text-muted-foreground">Max Score</Label>
-                <p className="font-medium">{viewingRecord.max_score || 'Not specified'}</p>
+                {viewingRecord.instructions && (
+                  <div>
+                    <Label className="text-muted-foreground">Instructions</Label>
+                    <p className="whitespace-pre-wrap">{viewingRecord.instructions}</p>
+                  </div>
+                )}
+
+                {viewingRecord.attachments && viewingRecord.attachments.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Attachments</Label>
+                    <div className="grid grid-cols-1 gap-2">
+                      {viewingRecord.attachments.map((file, i) => (
+                        <a
+                          key={i}
+                          href={file.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 p-2 border rounded bg-muted/50 hover:bg-muted transition-colors"
+                        >
+                          <FileText className="h-4 w-4 text-primary" />
+                          <span className="text-sm truncate flex-1">{file.name}</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <Label className="text-muted-foreground">Max Score</Label>
+                  <p className="font-medium">{viewingRecord.max_score || 'Not specified'}</p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 
       {/* Create/Edit Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-lg p-0 overflow-hidden">
+          <DialogHeader className="p-6 pb-2">
             <DialogTitle>
               {editingRecord ? 'Edit Assignment' : 'Create Assignment'}
             </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Title *</Label>
-              <Input
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="Assignment title"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+          <ScrollArea className="max-h-[85vh]">
+            <form onSubmit={handleSubmit} className="p-6 pt-2 space-y-4">
               <div className="space-y-2">
-                <Label>Subject *</Label>
-                <Select
-                  value={formData.subject_id}
-                  onValueChange={(value) => setFormData({ ...formData, subject_id: value })}
-                  disabled={!formData.grade_level}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={formData.grade_level ? "Select subject" : "Select Grade Level first"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredSubjects.map((subject: any) => (
-                      <SelectItem key={subject.id} value={subject.id}>
-                        {subject.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Grade Level *</Label>
-                <Select
-                  value={formData.grade_level}
-                  onValueChange={(value) => setFormData({ ...formData, grade_level: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select level" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {GRADE_LEVELS.map((level) => (
-                      <SelectItem key={level} value={level}>{level}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Type</Label>
-                <Select
-                  value={formData.assignment_type}
-                  onValueChange={(value) => setFormData({ ...formData, assignment_type: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ASSIGNMENT_TYPES.map((type) => (
-                      <SelectItem key={type} value={type} className="capitalize">
-                        {type}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>Max Score</Label>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="has_max_score"
-                      checked={formData.has_max_score}
-                      onChange={(e) => setFormData({ ...formData, has_max_score: e.target.checked })}
-                      className="h-3 w-3 rounded border-gray-300 text-primary"
-                    />
-                    <Label htmlFor="has_max_score" className="text-xs text-muted-foreground font-normal cursor-pointer">
-                      Graded
-                    </Label>
-                  </div>
-                </div>
+                <Label>Title *</Label>
                 <Input
-                  type="number"
-                  value={formData.max_score}
-                  onChange={(e) => setFormData({ ...formData, max_score: parseInt(e.target.value) || 0 })}
-                  disabled={!formData.has_max_score}
-                  className={!formData.has_max_score ? "opacity-50" : ""}
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  placeholder="Assignment title"
                 />
               </div>
-            </div>
 
-            <div className="flex items-center space-x-2 border p-3 rounded-lg bg-muted/20">
-              <input
-                type="checkbox"
-                id="submission_required"
-                checked={formData.submission_required}
-                onChange={(e) => setFormData({ ...formData, submission_required: e.target.checked })}
-                className="h-4 w-4 rounded border-primary text-primary focus:ring-primary"
-              />
-              <div className="space-y-0.5">
-                <Label htmlFor="submission_required" className="text-sm font-medium leading-none cursor-pointer">
-                  Submission Required
-                </Label>
-                <p className="text-[10px] text-muted-foreground">
-                  If unchecked, students will only need to mark this task as "Done".
-                </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Subject *</Label>
+                  <Select
+                    value={formData.subject_id}
+                    onValueChange={(value) => setFormData({ ...formData, subject_id: value })}
+                    disabled={!formData.grade_level}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={formData.grade_level ? "Select subject" : "Select Grade Level first"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredSubjects.map((subject: any) => (
+                        <SelectItem key={subject.id} value={subject.id}>
+                          {subject.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Grade Level *</Label>
+                  <Select
+                    value={formData.grade_level}
+                    onValueChange={(value) => setFormData({ ...formData, grade_level: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {GRADE_LEVELS.map((level) => (
+                        <SelectItem key={level} value={level}>{level}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label>Due Date *</Label>
-              <Input
-                type="datetime-local"
-                value={formData.due_date}
-                onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-              />
-            </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Type</Label>
+                  <Select
+                    value={formData.assignment_type}
+                    onValueChange={(value) => setFormData({ ...formData, assignment_type: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ASSIGNMENT_TYPES.map((type) => (
+                        <SelectItem key={type} value={type} className="capitalize">
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Max Score</Label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="has_max_score"
+                        checked={formData.has_max_score}
+                        onChange={(e) => setFormData({ ...formData, has_max_score: e.target.checked })}
+                        className="h-3 w-3 rounded border-gray-300 text-primary"
+                      />
+                      <Label htmlFor="has_max_score" className="text-xs text-muted-foreground font-normal cursor-pointer">
+                        Graded
+                      </Label>
+                    </div>
+                  </div>
+                  <Input
+                    type="number"
+                    value={formData.max_score}
+                    onChange={(e) => setFormData({ ...formData, max_score: parseInt(e.target.value) || 0 })}
+                    disabled={!formData.has_max_score}
+                    className={!formData.has_max_score ? "opacity-50" : ""}
+                  />
+                </div>
+              </div>
 
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Brief description of the assignment"
-                rows={3}
-              />
-            </div>
+              <div className="flex items-center space-x-2 border p-3 rounded-lg bg-muted/20">
+                <input
+                  type="checkbox"
+                  id="submission_required"
+                  checked={formData.submission_required}
+                  onChange={(e) => setFormData({ ...formData, submission_required: e.target.checked })}
+                  className="h-4 w-4 rounded border-primary text-primary focus:ring-primary"
+                />
+                <div className="space-y-0.5">
+                  <Label htmlFor="submission_required" className="text-sm font-medium leading-none cursor-pointer">
+                    Submission Required
+                  </Label>
+                  <p className="text-[10px] text-muted-foreground">
+                    If unchecked, students will only need to mark this task as "Done".
+                  </p>
+                </div>
+              </div>
 
-            <div className="space-y-2">
-              <Label>Instructions</Label>
-              <Textarea
-                value={formData.instructions}
-                onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
-                placeholder="Detailed instructions for learners"
-                rows={4}
-              />
-            </div>
+              <div className="space-y-2">
+                <Label>Due Date *</Label>
+                <Input
+                  type="datetime-local"
+                  value={formData.due_date}
+                  onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label>Documents & Media</Label>
-              <MultiFileUploader
-                attachments={formData.attachments}
-                onChange={(attachments) => setFormData({ ...formData, attachments })}
-              />
-            </div>
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Brief description of the assignment"
+                  rows={3}
+                />
+              </div>
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={handleCloseModal}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={saveMutation.isPending}>
-                {saveMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                {editingRecord ? 'Update' : 'Create'}
-              </Button>
-            </DialogFooter>
-          </form>
+              <div className="space-y-2">
+                <Label>Instructions</Label>
+                <Textarea
+                  value={formData.instructions}
+                  onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
+                  placeholder="Detailed instructions for learners"
+                  rows={4}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Documents & Media</Label>
+                <MultiFileUploader
+                  attachments={formData.attachments}
+                  onChange={(attachments) => setFormData({ ...formData, attachments })}
+                />
+              </div>
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={handleCloseModal}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={saveMutation.isPending}>
+                  {saveMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {editingRecord ? 'Update' : 'Create'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 

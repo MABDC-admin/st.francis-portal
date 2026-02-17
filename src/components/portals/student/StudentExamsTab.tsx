@@ -5,6 +5,9 @@ import { EXAM_TYPE_COLORS, type ExamSchedule } from '@/types/studentPortal';
 import { GraduationCap, Calendar, Clock, MapPin, AlertCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, differenceInDays, differenceInHours, isPast } from 'date-fns';
+import { useMemo, useState } from 'react';
+import { cn } from '@/lib/utils';
+import { Search, Filter } from 'lucide-react';
 
 interface StudentExamsTabProps {
   gradeLevel: string;
@@ -78,7 +81,7 @@ const ExamCard = ({ exam, showCountdown = true }: { exam: ExamSchedule; showCoun
               )}
             </div>
             <h3 className="font-medium">{exam.subjects?.name || 'Exam'}</h3>
-            
+
             <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
@@ -131,6 +134,30 @@ export const StudentExamsTab = ({
     academicYearId
   );
 
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string>('all');
+
+  // Extract unique subjects from both upcoming and past exams
+  const subjects = useMemo(() => {
+    const allExams = [...upcoming, ...past];
+    const uniqueSubjects = new Map();
+    allExams.forEach(exam => {
+      if (exam.subjects) {
+        uniqueSubjects.set(exam.subject_id, exam.subjects);
+      }
+    });
+    return Array.from(uniqueSubjects.values());
+  }, [upcoming, past]);
+
+  const filteredUpcoming = useMemo(() => {
+    if (selectedSubjectId === 'all') return upcoming;
+    return upcoming.filter(exam => exam.subject_id === selectedSubjectId);
+  }, [upcoming, selectedSubjectId]);
+
+  const filteredPast = useMemo(() => {
+    if (selectedSubjectId === 'all') return past;
+    return past.filter(exam => exam.subject_id === selectedSubjectId);
+  }, [past, selectedSubjectId]);
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -156,23 +183,56 @@ export const StudentExamsTab = ({
 
   return (
     <div className="space-y-6">
+      {/* Subject Filter Chips */}
+      {subjects.length > 0 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-2 px-2">
+          <button
+            onClick={() => setSelectedSubjectId('all')}
+            className={cn(
+              "px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 border",
+              selectedSubjectId === 'all'
+                ? "bg-primary border-primary text-primary-foreground shadow-sm"
+                : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
+            )}
+          >
+            All Subjects
+          </button>
+          {subjects.map((subject) => (
+            <button
+              key={subject.id}
+              onClick={() => setSelectedSubjectId(subject.id)}
+              className={cn(
+                "px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 border",
+                selectedSubjectId === subject.id
+                  ? "bg-primary border-primary text-primary-foreground shadow-sm"
+                  : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
+              )}
+            >
+              {subject.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Upcoming Exams */}
       <div>
         <div className="flex items-center gap-2 mb-4">
           <GraduationCap className="h-5 w-5 text-primary" />
           <h2 className="text-lg font-semibold">Upcoming Exams</h2>
-          <Badge variant="default">{upcoming.length}</Badge>
+          <Badge variant="default">{filteredUpcoming.length}</Badge>
         </div>
 
-        {upcoming.length === 0 ? (
+        {filteredUpcoming.length === 0 ? (
           <Card>
             <CardContent className="p-6 text-center">
-              <p className="text-muted-foreground">No upcoming exams 🎉</p>
+              <p className="text-muted-foreground">
+                {selectedSubjectId === 'all' ? 'No upcoming exams 🎉' : 'No upcoming exams for this subject'}
+              </p>
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-3">
-            {upcoming.map((exam) => (
+            {filteredUpcoming.map((exam) => (
               <ExamCard key={exam.id} exam={exam} />
             ))}
           </div>
@@ -180,21 +240,21 @@ export const StudentExamsTab = ({
       </div>
 
       {/* Past Exams */}
-      {past.length > 0 && (
+      {filteredPast.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-4">
             <Calendar className="h-5 w-5 text-muted-foreground" />
             <h2 className="text-lg font-semibold text-muted-foreground">Past Exams</h2>
-            <Badge variant="secondary">{past.length}</Badge>
+            <Badge variant="secondary">{filteredPast.length}</Badge>
           </div>
 
           <div className="space-y-3 opacity-75">
-            {past.slice(0, 5).map((exam) => (
+            {filteredPast.slice(0, 5).map((exam) => (
               <ExamCard key={exam.id} exam={exam} showCountdown={false} />
             ))}
-            {past.length > 5 && (
+            {filteredPast.length > 5 && (
               <p className="text-center text-sm text-muted-foreground py-2">
-                + {past.length - 5} more past exams
+                + {filteredPast.length - 5} more past exams
               </p>
             )}
           </div>
