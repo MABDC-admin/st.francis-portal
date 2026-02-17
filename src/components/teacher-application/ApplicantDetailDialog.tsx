@@ -7,11 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Mail, Phone, MapPin, Calendar, Award, Briefcase, GraduationCap,
   FileText, CheckCircle, XCircle, Clock, User, Printer,
-  Download, ExternalLink, Send
+  Download, ExternalLink, Send, Loader2
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
@@ -53,6 +53,46 @@ export const ApplicantDetailDialog = ({ application: app, open, onClose, onStatu
   const [location, setLocation] = useState('');
   const [notes, setNotes] = useState('');
   const [sengingEmail, setSendingEmail] = useState(false);
+
+  // Signed URLs state
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  const [loadingUrls, setLoadingUrls] = useState(true);
+
+  useEffect(() => {
+    if (!open) return;
+    const resolveUrls = async () => {
+      setLoadingUrls(true);
+      const paths: Record<string, string | undefined> = {
+        photo_url: app.photo_url,
+        resume_url: app.resume_url,
+        transcript_url: app.transcript_url,
+        diploma_url: app.diploma_url,
+        valid_id_url: app.valid_id_url,
+        prc_license_url: app.prc_license_url,
+      };
+      // Add certificate URLs
+      const certUrls = (app.certificates_url as string[]) || [];
+      certUrls.forEach((url: string, i: number) => {
+        paths[`cert_${i}`] = url;
+      });
+
+      const resolved: Record<string, string> = {};
+      await Promise.all(
+        Object.entries(paths).map(async ([key, path]) => {
+          if (!path) return;
+          // Skip if already a full URL
+          if (path.startsWith('http')) { resolved[key] = path; return; }
+          const { data } = await supabase.storage
+            .from('teacher-applications')
+            .createSignedUrl(path, 3600);
+          if (data?.signedUrl) resolved[key] = data.signedUrl;
+        })
+      );
+      setSignedUrls(resolved);
+      setLoadingUrls(false);
+    };
+    resolveUrls();
+  }, [open, app]);
 
   const handleQuickStatus = (status: string) => {
     if (status === 'rejected') {
@@ -111,11 +151,12 @@ export const ApplicantDetailDialog = ({ application: app, open, onClose, onStatu
     );
   };
 
-  const DocumentLink = ({ label, url }: { label: string, url?: string }) => {
+  const DocumentLink = ({ label, url }: { label: string, url?: string, signedKey?: string }) => {
     if (!url) return null;
+    const resolvedUrl = signedUrls[label] || url;
     return (
       <a
-        href={url}
+        href={resolvedUrl}
         target="_blank"
         rel="noopener noreferrer"
         className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 transition-colors group"
@@ -134,8 +175,10 @@ export const ApplicantDetailDialog = ({ application: app, open, onClose, onStatu
         <div className="p-6 border-b flex items-start justify-between bg-muted/10">
           <div className="flex items-start gap-4">
             <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center border-2 border-primary/20">
-              {app.photo_url ? (
-                <img src={app.photo_url} alt="Profile" className="h-full w-full rounded-full object-cover" />
+              {signedUrls.photo_url ? (
+                <img src={signedUrls.photo_url} alt="Profile" className="h-full w-full rounded-full object-cover" />
+              ) : app.photo_url && loadingUrls ? (
+                <Loader2 className="h-5 w-5 animate-spin text-primary/50" />
               ) : (
                 <User className="h-8 w-8 text-primary/50" />
               )}
@@ -238,13 +281,22 @@ export const ApplicantDetailDialog = ({ application: app, open, onClose, onStatu
                   <FileText className="w-4 h-4" /> Documents
                 </h3>
                 <div className="space-y-1">
-                  <DocumentLink label="Resume / CV" url={app.resume_url} />
-                  <DocumentLink label="Transcript of Records" url={app.transcript_url} />
-                  <DocumentLink label="Diploma" url={app.diploma_url} />
-                  <DocumentLink label="Valid ID" url={app.valid_id_url} />
-                  {app.certificates_url?.map((url: string, i: number) => (
-                    <DocumentLink key={i} label={`Certificate ${i + 1}`} url={url} />
-                  ))}
+                  {loadingUrls ? (
+                    <div className="flex items-center gap-2 p-2 text-sm text-muted-foreground">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Loading documents...
+                    </div>
+                  ) : (
+                    <>
+                      <DocumentLink label="Resume / CV" url={signedUrls.resume_url} />
+                      <DocumentLink label="Transcript of Records" url={signedUrls.transcript_url} />
+                      <DocumentLink label="Diploma" url={signedUrls.diploma_url} />
+                      <DocumentLink label="Valid ID" url={signedUrls.valid_id_url} />
+                      {signedUrls.prc_license_url && <DocumentLink label="PRC License" url={signedUrls.prc_license_url} />}
+                      {(app.certificates_url as string[])?.map((_: string, i: number) => (
+                        <DocumentLink key={i} label={`Certificate ${i + 1}`} url={signedUrls[`cert_${i}`]} />
+                      ))}
+                    </>
+                  )}
                 </div>
               </div>
             </div>
