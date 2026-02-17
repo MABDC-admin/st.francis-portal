@@ -215,6 +215,48 @@ export const useStudentAssignments = (
   };
 };
 
+export const useStudentAssignment = (
+  assignmentId: string | undefined,
+  studentId: string | null
+) => {
+  const query = useQuery({
+    queryKey: ['student-assignment', assignmentId, studentId],
+    queryFn: async () => {
+      if (!assignmentId || !studentId) throw new Error("Missing ID");
+
+      // Fetch assignment details
+      const { data: assignment, error: assignmentError } = await supabase
+        .from('student_assignments')
+        .select(`
+          *,
+          subjects:subject_id(id, name, code)
+        `)
+        .eq('id', assignmentId)
+        .single();
+
+      if (assignmentError) throw assignmentError;
+
+      // Fetch submission if exists
+      const { data: submission, error: submissionError } = await supabase
+        .from('assignment_submissions')
+        .select('*')
+        .eq('assignment_id', assignmentId)
+        .eq('student_id', studentId)
+        .maybeSingle();
+
+      if (submissionError) throw submissionError;
+
+      return {
+        ...assignment,
+        submission,
+      } as Assignment;
+    },
+    enabled: !!assignmentId && !!studentId,
+  });
+
+  return query;
+};
+
 // ============================================
 // EXAM SCHEDULE HOOKS
 // ============================================
@@ -273,7 +315,7 @@ export const useAnnouncements = (
     queryKey: ['announcements', schoolId, gradeLevel],
     queryFn: async () => {
       const now = new Date().toISOString();
-      
+
       let queryBuilder = supabase
         .from('announcements')
         .select('*')

@@ -20,6 +20,7 @@ import PublicTeacherApplicationPage from "./pages/PublicTeacherApplicationPage";
 import HelpdeskIndex from "./pages/Helpdesk";
 import TicketDetail from "./pages/Helpdesk/TicketDetail";
 import { ZoomRunner } from "./components/zoom/ZoomRunner";
+import StudentAssignmentView from "./pages/student/StudentAssignmentView";
 
 const queryClient = new QueryClient();
 
@@ -67,6 +68,7 @@ const App = () => {
                       <Route path="/" element={<Index />} />
                       <Route path="/library/book/:bookId" element={<Index />} />
                       <Route path="/student/:id" element={<StudentProfile />} />
+                      <Route path="/student/:studentId/assignment/:assignmentId" element={<StudentAssignmentView />} />
                       <Route path="/admin/zoom-runner" element={<ZoomRunner />} />
                       <Route path="/install" element={<Install />} />
                       <Route path="/register" element={<PublicRegistrationPage />} />
