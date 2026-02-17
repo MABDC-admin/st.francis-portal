@@ -99,16 +99,9 @@ export const StudentDashboard = ({
     <div className="flex flex-col min-h-screen bg-white -m-4 sm:-m-0 rounded-t-[3rem] overflow-hidden space-y-6 pb-20">
 
       {/* Top Greeting Section */}
-      <div className="relative w-full aspect-[21/9] sm:aspect-[32/9] overflow-hidden shrink-0">
-        <img
-          src="/assets/timetable-header.png"
-          alt="Sky Header"
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent" />
-
+      <div className="relative w-full overflow-hidden shrink-0 pt-8 pb-4">
         {/* Profile Overlay */}
-        <div className="absolute inset-0 flex items-center justify-between px-6 pt-2">
+        <div className="flex items-center justify-between px-6">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-full border-4 border-white shadow-lg overflow-hidden bg-rose-100">
               <AnimatedStudentAvatar name={studentName || "Student"} photoUrl={studentPhotoUrl || null} />
@@ -120,11 +113,6 @@ export const StudentDashboard = ({
               </h1>
             </div>
           </div>
-
-          <button className="bg-white/80 backdrop-blur-md px-4 py-2 rounded-full border border-white shadow-sm flex items-center gap-2 group hover:bg-white transition-all">
-            <div className="w-6 h-6 bg-sky-100 rounded-full flex items-center justify-center text-sky-600 font-black text-[10px]">Aa</div>
-            <span className="text-xs font-bold text-sky-900 group-hover:text-sky-600">Translate</span>
-          </button>
         </div>
       </div>
 

@@ -6,17 +6,12 @@ import { ASSIGNMENT_TYPE_COLORS, type Assignment } from '@/types/studentPortal';
 import { ClipboardList, Clock, CheckCircle, AlertTriangle, FileText } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, formatDistanceToNow, isPast } from 'date-fns';
-
-interface StudentAssignmentsTabProps {
-  studentId: string;
-  gradeLevel: string;
-  schoolId: string;
-  academicYearId: string;
-}
-
-import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { StudentPortalIcon, STUDENT_ICONS } from '@/components/icons/StudentPortalIcons';
+import { Button } from '@/components/ui/button';
 
 interface StudentAssignmentsTabProps {
   studentId: string;
@@ -25,7 +20,15 @@ interface StudentAssignmentsTabProps {
   academicYearId: string;
 }
 
-const AssignmentCard = ({ assignment, index }: { assignment: Assignment; index: number }) => {
+const AssignmentCard = ({
+  assignment,
+  index,
+  onClick
+}: {
+  assignment: Assignment;
+  index: number;
+  onClick: (assignment: Assignment) => void;
+}) => {
   const dueDate = new Date(assignment.due_date);
   const isOverdue = isPast(dueDate) && (!assignment.submission || assignment.submission.status === 'pending');
   // Use subject icon mapping if available, else default
@@ -41,10 +44,13 @@ const AssignmentCard = ({ assignment, index }: { assignment: Assignment; index: 
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.05 }}
     >
-      <Card className={cn(
-        "group overflow-hidden rounded-[2rem] border-none shadow-sm transition-all hover:shadow-md hover:scale-[1.01]",
-        isOverdue ? 'bg-rose-50/50 border-rose-100 ring-1 ring-rose-200' : 'bg-white/80 backdrop-blur-sm'
-      )}>
+      <Card
+        onClick={() => onClick(assignment)}
+        className={cn(
+          "group overflow-hidden rounded-[2rem] border-none shadow-sm transition-all hover:shadow-md hover:scale-[1.01] cursor-pointer active:scale-95",
+          isOverdue ? 'bg-rose-50/50 border-rose-100 ring-1 ring-rose-200' : 'bg-white/80 backdrop-blur-sm'
+        )}
+      >
         <CardContent className="p-4 flex items-center gap-4">
           {/* Subject Icon Box */}
           <div className={cn(
@@ -122,6 +128,14 @@ export const StudentAssignmentsTab = ({
     academicYearId
   );
 
+  const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  const handleOpenDetail = (assignment: Assignment) => {
+    setSelectedAssignment(assignment);
+    setIsDetailOpen(true);
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4 p-4">
@@ -194,7 +208,7 @@ export const StudentAssignmentsTab = ({
                 No pending work!
               </div>
             ) : (
-              pending.map((a, i) => <AssignmentCard key={a.id} assignment={a} index={i} />)
+              pending.map((a, i) => <AssignmentCard key={a.id} assignment={a} index={i} onClick={handleOpenDetail} />)
             )}
           </TabsContent>
 
@@ -204,7 +218,7 @@ export const StudentAssignmentsTab = ({
                 All caught up! 🎉
               </div>
             ) : (
-              overdue.map((a, i) => <AssignmentCard key={a.id} assignment={a} index={i} />)
+              overdue.map((a, i) => <AssignmentCard key={a.id} assignment={a} index={i} onClick={handleOpenDetail} />)
             )}
           </TabsContent>
 
@@ -214,10 +228,99 @@ export const StudentAssignmentsTab = ({
                 No submissions yet.
               </div>
             ) : (
-              submitted.concat(graded).map((a, i) => <AssignmentCard key={a.id} assignment={a} index={i} />)
+              submitted.concat(graded).map((a, i) => <AssignmentCard key={a.id} assignment={a} index={i} onClick={handleOpenDetail} />)
             )}
           </TabsContent>
         </Tabs>
+
+        {/* Assignment Detail Dialog */}
+        <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+          <DialogContent className="max-w-[95vw] sm:max-w-xl rounded-[2.5rem] border-none shadow-2xl overflow-hidden p-0 bg-[#FDFCF8]">
+            {selectedAssignment && (
+              <div className="flex flex-col">
+                <div className="relative h-32 bg-sky-50 overflow-hidden flex items-center justify-center">
+                  <div className="absolute inset-0 bg-gradient-to-br from-sky-400/20 to-transparent" />
+                  <StudentPortalIcon
+                    icon={selectedAssignment.subjects?.name?.toLowerCase().includes('math') ? STUDENT_ICONS.math : STUDENT_ICONS.assignments}
+                    size={64}
+                    className="text-sky-500/30"
+                  />
+                </div>
+
+                <div className="px-6 py-4 -mt-8 relative z-10 bg-[#FDFCF8] rounded-t-[2.5rem] flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge className={cn("rounded-full px-3", ASSIGNMENT_TYPE_COLORS[selectedAssignment.assignment_type]?.bg || "bg-sky-100")}>
+                      <span className={cn("text-[10px] font-black uppercase tracking-widest", ASSIGNMENT_TYPE_COLORS[selectedAssignment.assignment_type]?.text || "text-sky-700")}>
+                        {selectedAssignment.assignment_type}
+                      </span>
+                    </Badge>
+                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">
+                      {selectedAssignment.subjects?.name}
+                    </span>
+                  </div>
+
+                  <h2 className="text-2xl font-black text-slate-800 leading-tight mb-4">
+                    {selectedAssignment.title}
+                  </h2>
+
+                  <div className="flex items-center gap-6 mb-6">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Due Date</span>
+                      <div className="flex items-center gap-1 text-slate-700 font-black">
+                        <Clock className="h-4 w-4" />
+                        {format(new Date(selectedAssignment.due_date), 'MMMM d, h:mm a')}
+                      </div>
+                    </div>
+                    {selectedAssignment.max_score && (
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Max Score</span>
+                        <div className="flex items-center gap-1 text-slate-700 font-black">
+                          <ClipboardList className="h-4 w-4" />
+                          {selectedAssignment.max_score} pts
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-6">
+                    {selectedAssignment.description && (
+                      <div>
+                        <h4 className="text-[10px] font-black text-sky-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                          <FileText className="h-3 w-3" />
+                          Description
+                        </h4>
+                        <p className="text-sm font-bold text-slate-600 leading-relaxed bg-white/50 p-4 rounded-3xl border border-slate-100">
+                          {selectedAssignment.description}
+                        </p>
+                      </div>
+                    )}
+
+                    {selectedAssignment.instructions && (
+                      <div>
+                        <h4 className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                          <AlertTriangle className="h-3 w-3" />
+                          Instructions
+                        </h4>
+                        <div className="text-sm font-bold text-slate-600 leading-relaxed bg-rose-50/30 p-4 rounded-3xl border border-rose-100/50">
+                          {selectedAssignment.instructions}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end">
+                    <Button
+                      onClick={() => setIsDetailOpen(false)}
+                      className="bg-sky-500 hover:bg-sky-600 text-white font-black rounded-2xl px-8 shadow-lg shadow-sky-200 transition-all active:scale-95"
+                    >
+                      Got it!
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         <div className="pb-32" />
       </div>

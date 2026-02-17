@@ -42,7 +42,7 @@ export const StudentBottomNav = ({ activeTab, onTabChange }: StudentBottomNavPro
               <div
                 className={cn(
                   "relative flex items-center justify-center h-11 w-11 transition-all duration-500",
-                  isActive ? "scale-110 -translate-y-1" : ""
+                  isActive ? "" : ""
                 )}
               >
                 <img
