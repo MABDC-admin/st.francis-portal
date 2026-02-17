@@ -25,7 +25,7 @@ interface LISStudentDetailProps {
 export const LISStudentDetail = ({ student }: LISStudentDetailProps) => {
   const [activeTab, setActiveTab] = useState('overview');
   const { role } = useAuth();
-  const canViewCredentials = role === 'admin' || role === 'registrar';
+  const canViewCredentials = role === 'admin' || role === 'registrar' || role === 'it';
 
   const handlePrint = () => window.print();
 

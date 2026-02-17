@@ -1,12 +1,24 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Lock, Eye, EyeOff, Mail, KeyRound, ShieldCheck, ShieldAlert, Calendar } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Lock, Eye, EyeOff, Mail, KeyRound, ShieldCheck, ShieldAlert, Calendar, RotateCcw, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { toast } from '@/hooks/use-toast';
 
 interface StudentCredentialsTabProps {
   studentId: string;
@@ -14,6 +26,8 @@ interface StudentCredentialsTabProps {
 
 export const StudentCredentialsTab = ({ studentId }: StudentCredentialsTabProps) => {
   const [showPassword, setShowPassword] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: credentials, isLoading } = useQuery({
     queryKey: ['student-credentials', studentId],
@@ -27,6 +41,37 @@ export const StudentCredentialsTab = ({ studentId }: StudentCredentialsTabProps)
       return data;
     },
   });
+
+  const handleResetPassword = async () => {
+    if (!credentials?.id || !credentials?.user_id) return;
+    setIsResetting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-users', {
+        body: {
+          action: 'reset_student_password',
+          credentialId: credentials.id,
+          userId: credentials.user_id,
+        },
+      });
+      if (error) throw error;
+      const newPassword = data?.tempPassword || data?.temp_password;
+      toast({
+        title: 'Password Reset Successful',
+        description: newPassword
+          ? `New temporary password: ${newPassword}`
+          : 'The password has been reset.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['student-credentials', studentId] });
+    } catch (err: any) {
+      toast({
+        title: 'Reset Failed',
+        description: err.message || 'Could not reset the password.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -50,9 +95,40 @@ export const StudentCredentialsTab = ({ studentId }: StudentCredentialsTabProps)
   return (
     <Card className="border shadow-sm">
       <CardContent className="p-5 space-y-5">
-        <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          <Lock className="h-4 w-4" />
-          Login Credentials
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            <Lock className="h-4 w-4" />
+            Login Credentials
+          </div>
+
+          {credentials.user_id && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" disabled={isResetting}>
+                  {isResetting ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                  )}
+                  Reset Password
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Reset Student Password?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will generate a new temporary password for the student. The old password will no longer work. Are you sure?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleResetPassword}>
+                    Yes, Reset Password
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -113,7 +189,7 @@ export const StudentCredentialsTab = ({ studentId }: StudentCredentialsTabProps)
         </div>
 
         <p className="text-[11px] text-muted-foreground/60 italic">
-          This information is sensitive. Only admin and registrar roles can view this tab.
+          This information is sensitive. Only admin, registrar, and IT roles can view this tab.
         </p>
       </CardContent>
     </Card>
