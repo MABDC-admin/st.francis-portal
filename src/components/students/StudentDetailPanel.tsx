@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { Student } from '@/types/student';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,7 +10,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { Calendar, User, Heart, MapPin, Phone, BookOpen, TrendingUp, ClipboardCheck, GraduationCap, FolderOpen, Calculator, AlertTriangle, Loader2, Pencil, School } from 'lucide-react';
+import { Calendar, User, Heart, MapPin, Phone, BookOpen, TrendingUp, ClipboardCheck, GraduationCap, FolderOpen, Calculator, AlertTriangle, Loader2, Pencil, School, KeyRound } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { useStudentQRCode } from '@/hooks/useStudentQRCode';
 import { StudentSubjectsManager } from './StudentSubjectsManager';
@@ -17,15 +18,16 @@ import { DocumentsManager } from './DocumentsManager';
 import { TransmutationManager } from './TransmutationManager';
 import { AnecdotalBehaviorTab } from './AnecdotalBehaviorTab';
 import { AcademicHistoryTab } from './AcademicHistoryTab';
+import { StudentCredentialsTab } from './StudentCredentialsTab';
 import { supabase } from '@/integrations/supabase/client';
 
 interface StudentDetailPanelProps {
   student: Student;
 }
 
-type DetailTab = 'overview' | 'academic' | 'subjects' | 'documents' | 'anecdotal' | 'grades';
+type DetailTab = 'overview' | 'academic' | 'subjects' | 'documents' | 'anecdotal' | 'grades' | 'credentials';
 
-const tabs: { id: DetailTab; label: string; icon: React.ElementType }[] = [
+const baseTabs: { id: DetailTab; label: string; icon: React.ElementType }[] = [
   { id: 'overview', label: 'Overview', icon: TrendingUp },
   { id: 'academic', label: 'Academic', icon: BookOpen },
   { id: 'subjects', label: 'Subjects', icon: GraduationCap },
@@ -36,9 +38,19 @@ const tabs: { id: DetailTab; label: string; icon: React.ElementType }[] = [
 
 export const StudentDetailPanel = ({ student }: StudentDetailPanelProps) => {
   const navigate = useNavigate();
+  const { role } = useAuth();
   const [activeTab, setActiveTab] = useState<DetailTab>('overview');
   const { qrCodeUrl, isLoading: qrLoading } = useStudentQRCode(student.id);
   const [currentAcademicYearId, setCurrentAcademicYearId] = useState<string>('');
+  const canViewCredentials = role === 'admin' || role === 'registrar';
+
+  const tabs = useMemo(() => {
+    const t = [...baseTabs];
+    if (canViewCredentials) {
+      t.push({ id: 'credentials', label: 'Credentials', icon: KeyRound });
+    }
+    return t;
+  }, [canViewCredentials]);
 
   useEffect(() => {
     const fetchCurrentYear = async () => {
@@ -257,6 +269,10 @@ export const StudentDetailPanel = ({ student }: StudentDetailPanelProps) => {
                   <p className="text-sm">No active academic year found for this school.</p>
                 </div>
               )
+            )}
+
+            {activeTab === 'credentials' && canViewCredentials && (
+              <StudentCredentialsTab studentId={student.id} />
             )}
           </div>
         </div>

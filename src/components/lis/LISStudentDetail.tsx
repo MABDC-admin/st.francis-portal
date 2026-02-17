@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Printer, FileDown, ChevronDown } from 'lucide-react';
+import { Printer, FileDown, ChevronDown, KeyRound } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,8 +13,10 @@ import { LISStudentOverview } from './LISStudentOverview';
 import { LISAcademicHistory } from './LISAcademicHistory';
 import { DocumentsManager } from '@/components/students/DocumentsManager';
 import { LISIncidents } from './LISIncidents';
+import { StudentCredentialsTab } from '@/components/students/StudentCredentialsTab';
 import { AnimatedStudentAvatar } from '@/components/students/AnimatedStudentAvatar';
 import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface LISStudentDetailProps {
   student: Student;
@@ -22,6 +24,8 @@ interface LISStudentDetailProps {
 
 export const LISStudentDetail = ({ student }: LISStudentDetailProps) => {
   const [activeTab, setActiveTab] = useState('overview');
+  const { role } = useAuth();
+  const canViewCredentials = role === 'admin' || role === 'registrar';
 
   const handlePrint = () => window.print();
 
@@ -81,6 +85,12 @@ export const LISStudentDetail = ({ student }: LISStudentDetailProps) => {
           <TabsTrigger value="academic" className="rounded-lg text-sm">Academic History</TabsTrigger>
           <TabsTrigger value="documents" className="rounded-lg text-sm">Documents</TabsTrigger>
           <TabsTrigger value="incidents" className="rounded-lg text-sm">Incidents</TabsTrigger>
+          {canViewCredentials && (
+            <TabsTrigger value="credentials" className="rounded-lg text-sm">
+              <KeyRound className="h-3.5 w-3.5 mr-1" />
+              Credentials
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="overview">
@@ -95,6 +105,11 @@ export const LISStudentDetail = ({ student }: LISStudentDetailProps) => {
         <TabsContent value="incidents">
           <LISIncidents studentId={student.id} />
         </TabsContent>
+        {canViewCredentials && (
+          <TabsContent value="credentials">
+            <StudentCredentialsTab studentId={student.id} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
