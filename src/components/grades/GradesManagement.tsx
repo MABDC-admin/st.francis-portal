@@ -420,9 +420,8 @@ export const GradesManagement = () => {
       const gradeData = {
         student_id: formData.student_id,
         subject_id: formData.subject_id,
-        school_id: selectedSchool,
-        academic_year_id: formData.academic_year_id || null,
         school_id: getSchoolId(selectedSchool) || null,
+        academic_year_id: formData.academic_year_id || null,
         q1_grade: formData.q1_grade ? parseFloat(formData.q1_grade) : null,
         q2_grade: formData.q2_grade ? parseFloat(formData.q2_grade) : null,
         q3_grade: formData.q3_grade ? parseFloat(formData.q3_grade) : null,
