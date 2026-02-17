@@ -563,8 +563,6 @@ export const UserManagement = () => {
         </Card>
       </div>
 
-      {/* Credentials Table - HIDDEN */}
-      {/*
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -753,7 +751,6 @@ export const UserManagement = () => {
           )}
         </CardContent>
       </Card>
-      */}
 
       {/* Reset Student Accounts Dialog */}
       <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>

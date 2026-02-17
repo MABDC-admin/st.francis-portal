@@ -521,6 +521,9 @@ const Index = () => {
       {activeTab === 'student-announcements' && role === 'student' && (
         <StudentPortal activeSection="announcements" />
       )}
+      {activeTab === 'student-library' && role === 'student' && (
+        <StudentPortal activeSection="library" />
+      )}
 
       {/* Attendance Management - Admin/Registrar/Teacher */}
       {activeTab === 'attendance-mgmt' && (role === 'admin' || role === 'registrar' || role === 'teacher') && (

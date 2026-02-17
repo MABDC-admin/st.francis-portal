@@ -328,6 +328,7 @@ export const GradesManagement = () => {
       .map(([subjectId, grades]) => ({
         student_id: formData.student_id,
         subject_id: subjectId,
+        school_id: selectedSchool,
         academic_year_id: formData.academic_year_id || null,
         q1_grade: grades.q1 ? parseFloat(grades.q1) : null,
         q2_grade: grades.q2 ? parseFloat(grades.q2) : null,
@@ -418,6 +419,7 @@ export const GradesManagement = () => {
       const gradeData = {
         student_id: formData.student_id,
         subject_id: formData.subject_id,
+        school_id: selectedSchool,
         academic_year_id: formData.academic_year_id || null,
         q1_grade: formData.q1_grade ? parseFloat(formData.q1_grade) : null,
         q2_grade: formData.q2_grade ? parseFloat(formData.q2_grade) : null,
@@ -558,6 +560,7 @@ export const GradesManagement = () => {
       const gradesToInsert = validRows.map(row => ({
         student_id: row.student_id!,
         subject_id: row.subject_id!,
+        school_id: selectedSchool,
         academic_year_id: importAcademicYear,
         q1_grade: row.q1 ? parseFloat(row.q1) : null,
         q2_grade: row.q2 ? parseFloat(row.q2) : null,

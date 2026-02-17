@@ -1,30 +1,22 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { STUDENT_ICONS, StudentPortalIcon } from '@/components/icons/StudentPortalIcons';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useStudentDashboardStats } from '@/hooks/useStudentPortalData';
-import {
-  Award,
-  Calendar,
-  ClipboardList,
-  GraduationCap,
-  Clock,
-  AlertTriangle,
-  Megaphone,
-  CheckCircle
-} from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format, differenceInDays, isPast } from 'date-fns';
-import { useMemo } from 'react';
+import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import { useMemo, useState, useEffect } from 'react';
 import {
-  computeQuarterlyGeneralAverage,
-  computeAnnualGeneralAverage,
   isPassing,
   getGradeDescriptor,
-  GradeRecordWithMetadata,
+  computeQuarterlyGeneralAverage,
+  computeAnnualGeneralAverage,
 } from '@/utils/gradeComputation';
-import { DAY_NAMES, EXAM_TYPE_COLORS, PRIORITY_COLORS } from '@/types/studentPortal';
+import { format } from 'date-fns';
 import { AnimatedStudentAvatar } from '@/components/students/AnimatedStudentAvatar';
+import { SubjectGradeCard } from './SubjectGradeCard';
 import { StudentAcademicInsights } from './widgets/StudentAcademicInsights';
+import { useStudentDashboardStats } from '@/hooks/useStudentPortalData';
+import { PromotionalSlider } from '@/components/portals/student/widgets/PromotionalSlider';
 
 interface StudentDashboardProps {
   studentId: string;
@@ -36,7 +28,6 @@ interface StudentDashboardProps {
   studentName?: string;
   studentPhotoUrl?: string | null;
 }
-
 import { useZoomSession } from '@/hooks/useZoomSession';
 import { Video, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -71,292 +62,194 @@ export const StudentDashboard = ({
     };
   }, [grades]);
 
+  const [selectedQuarter, setSelectedQuarter] = useState<'Q1' | 'Q2' | 'Q3' | 'Q4' | 'Annual'>('Annual');
+
+  // Auto-select Q1 if grades are available
+  useEffect(() => {
+    if (generalAverages?.q1 && generalAverages.q1 > 0) {
+      setSelectedQuarter('Q1');
+    }
+  }, [generalAverages]);
+
+  const displayedAverage = useMemo(() => {
+    switch (selectedQuarter) {
+      case 'Q1': return generalAverages?.q1 || 0;
+      case 'Q2': return generalAverages?.q2 || 0;
+      case 'Q3': return generalAverages?.q3 || 0;
+      case 'Q4': return generalAverages?.q4 || 0;
+      default: return generalAverages?.annual || 0;
+    }
+  }, [selectedQuarter, generalAverages]);
+
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Skeleton className="h-40 w-full rounded-[2.5rem]" />
+        <div className="grid grid-cols-2 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-24" />
+            <Skeleton key={i} className="h-32 rounded-3xl" />
           ))}
         </div>
-        <div className="grid md:grid-cols-2 gap-4">
-          <Skeleton className="h-64" />
-          <Skeleton className="h-64" />
-        </div>
+        <Skeleton className="h-48 w-full rounded-3xl" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Virtual Classroom Banner */}
-      {settings && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="relative overflow-hidden group"
-        >
-          <Card className={`border-none shadow-md ${inSession ? 'bg-gradient-to-r from-emerald-600 to-teal-600 border-none' : 'bg-muted/50'}`}>
-            <CardContent className="p-0">
-              <div className="flex flex-col sm:flex-row items-center justify-between p-4 sm:p-6 gap-4">
-                <div className="flex items-center gap-4 text-center sm:text-left">
-                  <div className={`p-3 rounded-full ${inSession ? 'bg-white/20' : 'bg-muted'}`}>
-                    <Video className={`h-6 w-6 ${inSession ? 'text-white' : 'text-muted-foreground'}`} />
-                  </div>
-                  <div>
-                    <h3 className={`text-lg font-bold ${inSession ? 'text-white' : 'text-foreground'}`}>
-                      {inSession ? 'Your Classroom is Live!' : 'Virtual Classroom'}
-                    </h3>
-                    <p className={`text-sm ${inSession ? 'text-white/80' : 'text-muted-foreground'}`}>
-                      {inSession ? 'Tap join to enter the session' : countdown || 'Scheduled for school hours'}
-                    </p>
-                  </div>
+    <div className="flex flex-col min-h-screen bg-white -m-4 sm:-m-0 rounded-t-[3rem] overflow-hidden space-y-6 pb-20">
+
+      {/* Top Greeting Section */}
+      <div className="relative w-full aspect-[21/9] sm:aspect-[32/9] overflow-hidden shrink-0">
+        <img
+          src="/assets/timetable-header.png"
+          alt="Sky Header"
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent" />
+
+        {/* Profile Overlay */}
+        <div className="absolute inset-0 flex items-center justify-between px-6 pt-2">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full border-4 border-white shadow-lg overflow-hidden bg-rose-100">
+              <AnimatedStudentAvatar name={studentName || "Student"} photoUrl={studentPhotoUrl || null} />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sky-800 font-bold text-sm leading-tight">Good Morning!</span>
+              <h1 className="text-2xl font-black text-sky-950 leading-tight">
+                {studentName?.split(' ')[0] || "Student"} {studentName?.split(' ').slice(1).join(' ') || ""}
+              </h1>
+            </div>
+          </div>
+
+          <button className="bg-white/80 backdrop-blur-md px-4 py-2 rounded-full border border-white shadow-sm flex items-center gap-2 group hover:bg-white transition-all">
+            <div className="w-6 h-6 bg-sky-100 rounded-full flex items-center justify-center text-sky-600 font-black text-[10px]">Aa</div>
+            <span className="text-xs font-bold text-sky-900 group-hover:text-sky-600">Translate</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Stats Grid (2x2) */}
+      <div className="px-5 grid grid-cols-2 gap-4 -mt-8 relative z-10">
+        <motion.div whileTap={{ scale: 0.95 }} className="cursor-pointer">
+          <Card className="border-none shadow-xl bg-gradient-to-br from-[#FF6B6B] to-[#FF8E8E] text-white rounded-[2rem] overflow-hidden group">
+            <CardContent className="p-5 flex flex-col justify-between h-36">
+              <span className="text-sm font-black opacity-90">Grades</span>
+              <div className="flex items-end justify-between">
+                <div className="text-5xl font-black tracking-tighter">{displayedAverage?.toFixed(0) || 0}</div>
+                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
+                  <img src="/assets/grades.png" className="w-8 h-8 object-contain" />
                 </div>
-
-                <Button
-                  size="lg"
-                  variant={inSession ? 'secondary' : 'outline'}
-                  disabled={!inSession || !settings.meeting_url}
-                  onClick={() => settings.meeting_url && window.open(settings.meeting_url, '_blank')}
-                  className={`${inSession ? 'bg-white text-emerald-700 hover:bg-white/90 shadow-lg' : ''} px-8`}
-                >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  {inSession ? 'Join Class Now' : 'Class Offline'}
-                </Button>
-              </div>
-
-              {/* Decorative side badge */}
-              <div className={`absolute top-0 right-0 p-1 px-3 text-[10px] font-bold uppercase tracking-wider ${inSession ? 'bg-emerald-500 text-white' : 'bg-muted-foreground text-white'}`}>
-                {inSession ? 'Live' : 'Scheduled'}
               </div>
             </CardContent>
           </Card>
         </motion.div>
-      )}
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {/* General Average */}
-        <Card className={`bg-gradient-to-br ${generalAverages?.annual && isPassing(generalAverages.annual)
-          ? 'from-purple-500/10 to-purple-600/5 border-purple-200/50'
-          : generalAverages?.annual
-            ? 'from-red-500/10 to-red-600/5 border-red-200/50'
-            : 'from-muted to-muted/50'
-          }`}>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-full ${generalAverages?.annual && isPassing(generalAverages.annual)
-                ? 'bg-purple-500/20'
-                : 'bg-red-500/20'
-                }`}>
-                <Award className="h-5 w-5 text-purple-600" />
+        <motion.div whileTap={{ scale: 0.95 }} className="cursor-pointer">
+          <Card className="border-none shadow-xl bg-gradient-to-br from-[#6BCB77] to-[#4FB35C] text-white rounded-[2rem] overflow-hidden group">
+            <CardContent className="p-5 flex flex-col justify-between h-36">
+              <span className="text-sm font-black opacity-90">Attendance</span>
+              <div className="flex items-end justify-between">
+                <div className="text-5xl font-black tracking-tighter">{attendance?.summary?.percentage.toFixed(0) || 0}%</div>
+                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
+                  <StudentPortalIcon icon="fluent-emoji-flat:check-mark-button" size={32} />
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Gen. Average</p>
-                <p className={`text-xl font-bold ${generalAverages?.annual && isPassing(generalAverages.annual)
-                  ? 'text-purple-600'
-                  : generalAverages?.annual
-                    ? 'text-red-600'
-                    : ''
-                  }`}>
-                  {generalAverages?.annual?.toFixed(2) || 'N/A'}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        {/* Attendance */}
-        <Card className="bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-200/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-green-500/20">
-                <CheckCircle className="h-5 w-5 text-green-600" />
+        <motion.div whileTap={{ scale: 0.95 }} className="cursor-pointer">
+          <Card className="border-none shadow-xl bg-gradient-to-br from-[#FFA931] to-[#FF8C32] text-white rounded-[2rem] overflow-hidden group">
+            <CardContent className="p-5 flex flex-col justify-between h-36">
+              <div className="flex flex-col">
+                <span className="text-sm font-black opacity-90 leading-tight">Assignments</span>
+                <div className="text-2xl font-black tracking-tighter mt-1">{assignments?.pending.length} <span className="text-[10px] opacity-80 uppercase tracking-widest pl-1 font-black">due soon</span></div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Attendance</p>
-                <p className="text-xl font-bold text-green-600">
-                  {attendance.summary?.percentage.toFixed(1) || 0}%
-                </p>
+              <div className="flex items-center justify-between">
+                <div className="w-8 h-8 flex items-center justify-center opacity-0" /> {/* Spacer */}
+                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
+                  <img src="/assets/timetable.png" className="w-8 h-8 object-contain grayscale brightness-200" />
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        {/* Pending Assignments */}
-        <Card className={`bg-gradient-to-br ${assignments.overdue.length > 0
-          ? 'from-red-500/10 to-red-600/5 border-red-200/50'
-          : 'from-blue-500/10 to-blue-600/5 border-blue-200/50'
-          }`}>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-full ${assignments.overdue.length > 0 ? 'bg-red-500/20' : 'bg-blue-500/20'
-                }`}>
-                <ClipboardList className={`h-5 w-5 ${assignments.overdue.length > 0 ? 'text-red-600' : 'text-blue-600'
-                  }`} />
+        <motion.div whileTap={{ scale: 0.95 }} className="cursor-pointer">
+          <Card className="border-none shadow-xl bg-gradient-to-br from-[#4D96FF] to-[#006E7F] text-white rounded-[2rem] overflow-hidden group">
+            <CardContent className="p-5 flex flex-col justify-between h-36">
+              <span className="text-sm font-black opacity-90">Schedule</span>
+              <div className="flex items-center justify-end">
+                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
+                  <StudentPortalIcon icon="fluent-emoji-flat:calendar" size={32} />
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Tasks</p>
-                <p className={`text-xl font-bold ${assignments.overdue.length > 0 ? 'text-red-600' : 'text-blue-600'
-                  }`}>
-                  {assignments.pending.length + assignments.overdue.length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Upcoming Exams */}
-        <Card className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border-amber-200/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-amber-500/20">
-                <GraduationCap className="h-5 w-5 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Exams</p>
-                <p className="text-xl font-bold text-amber-600">
-                  {exams.upcoming.length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
-      {/* Academic Insights & Visualizations */}
-      {generalAverages && (
-        <StudentAcademicInsights
-          grades={grades}
-          quarterlyAverages={generalAverages}
-        />
-      )}
-
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Upcoming Deadlines */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Upcoming Deadlines
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {assignments.pending.length === 0 && assignments.overdue.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">
-                No pending assignments 🎉
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {/* Overdue first */}
-                {assignments.overdue.slice(0, 2).map((a) => (
-                  <div key={a.id} className="flex items-center gap-3 p-2 rounded-lg bg-red-50 border border-red-200">
-                    <AlertTriangle className="h-4 w-4 text-red-500" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{a.title}</p>
-                      <p className="text-xs text-red-600">Overdue</p>
-                    </div>
-                  </div>
-                ))}
-                {/* Pending */}
-                {assignments.pending.slice(0, 3).map((a) => {
-                  const dueDate = new Date(a.due_date);
-                  const daysLeft = differenceInDays(dueDate, new Date());
-                  return (
-                    <div key={a.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
-                      <ClipboardList className="h-4 w-4 text-blue-500" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{a.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {daysLeft === 0 ? 'Due today' : daysLeft === 1 ? 'Due tomorrow' : `${daysLeft} days left`}
-                        </p>
-                      </div>
-                      <Badge variant="outline" className="text-xs">
-                        {a.subjects?.code}
-                      </Badge>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Upcoming Exams */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <GraduationCap className="h-5 w-5" />
-              Upcoming Exams
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {exams.upcoming.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">
-                No upcoming exams 🎉
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {exams.upcoming.slice(0, 4).map((exam) => {
-                  const examDate = new Date(exam.exam_date);
-                  const daysLeft = differenceInDays(examDate, new Date());
-                  const typeColors = EXAM_TYPE_COLORS[exam.exam_type];
-                  return (
-                    <div key={exam.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <Badge className={`${typeColors.bg} ${typeColors.text} text-xs`}>
-                            {exam.exam_type}
-                          </Badge>
-                          <span className="text-sm font-medium truncate">
-                            {exam.subjects?.name}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {format(examDate, 'MMM d')} • {daysLeft === 0 ? 'Today!' : `${daysLeft} days`}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      {/* Promotional Banner Placeholder / Event Banner */}
+      <div className="px-5">
+        <PromotionalSlider schoolId={schoolId} />
       </div>
 
-      {/* Recent Announcements */}
-      {announcements.data && announcements.data.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Megaphone className="h-5 w-5" />
-              Recent Announcements
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {announcements.data.slice(0, 3).map((a) => {
-                const priorityColors = PRIORITY_COLORS[a.priority];
-                return (
-                  <div key={a.id} className={`p-3 rounded-lg border ${priorityColors.border} ${priorityColors.bg}`}>
-                    <div className="flex items-center gap-2 mb-1">
-                      {a.is_pinned && <Badge variant="secondary" className="text-xs">Pinned</Badge>}
-                      {a.priority !== 'normal' && (
-                        <Badge className={`${priorityColors.bg} ${priorityColors.text} text-xs`}>
-                          {a.priority}
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="font-medium">{a.title}</p>
-                    <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{a.content}</p>
-                  </div>
-                );
-              })}
+      {/* Activity Feed: What's New */}
+      <div className="px-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-black text-sky-950 text-lg">What's New</h3>
+        </div>
+
+        <div className="space-y-4">
+          {/* Today Group */}
+          <div className="rounded-[2rem] bg-sky-50/50 border border-sky-100/50 overflow-hidden backdrop-blur-sm">
+            <div className="bg-sky-500 px-6 py-2 flex items-center justify-between">
+              <span className="text-white font-black text-sm tracking-tight">{format(new Date(), 'MMMM d')}</span>
+              <button className="text-[10px] text-white/80 font-black uppercase tracking-widest flex items-center gap-1">
+                View all <StudentPortalIcon icon="fluent:chevron-right-24-filled" size={12} />
+              </button>
             </div>
-          </CardContent>
-        </Card>
-      )}
+
+            <div className="p-2 space-y-1">
+              {assignments.pending.slice(0, 3).map((a) => (
+                <div key={a.id} className="bg-white/60 p-4 rounded-2xl flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
+                      <StudentPortalIcon icon={STUDENT_ICONS.homework} className="text-sky-600" size={24} />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-black text-sky-950 leading-tight">{a.title}</span>
+                      <span className="text-[10px] font-bold text-sky-600/70">{a.subjects?.name}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <Badge className="bg-emerald-50 text-emerald-600 border-none px-2 py-0.5 text-[10px] font-black rounded-full shadow-sm">
+                      NEW
+                    </Badge>
+                    <span className="text-[10px] font-bold text-gray-400">9:00 AM</span>
+                  </div>
+                </div>
+              ))}
+
+              {announcements.regular.slice(0, 1).map((a) => (
+                <div key={a.id} className="bg-white/60 p-4 rounded-2xl flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
+                      <StudentPortalIcon icon={STUDENT_ICONS.events} className="text-amber-600" size={24} />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <span className="text-sm font-black text-sky-950 leading-tight">{a.title}</span>
+                      <span className="text-[10px] font-bold text-gray-400">General Announcement</span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-gray-400">Just now</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { useMemo, useState } from 'react';
+import { cn } from '@/lib/utils';
 import { Bell, Loader2, BookOpen, Award, User, Calendar, LogOut, LayoutDashboard, ClipboardList, GraduationCap, CheckCircle, BookMarked } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,11 +23,13 @@ import {
 
 // Import new tab components
 import { StudentDashboard } from './student/StudentDashboard';
+import { StudentGradesTab } from './student/StudentGradesTab';
 import { StudentScheduleTab } from './student/StudentScheduleTab';
 import { StudentAttendanceTab } from './student/StudentAttendanceTab';
 import { StudentAssignmentsTab } from './student/StudentAssignmentsTab';
 import { StudentExamsTab } from './student/StudentExamsTab';
 import { StudentAnnouncementsTab } from './student/StudentAnnouncementsTab';
+import { StudentLibraryTab } from './student/StudentLibraryTab';
 import {
   Dialog,
   DialogContent,
@@ -142,7 +145,7 @@ const useStudentSubjects = (studentId: string | undefined) => {
 };
 
 interface StudentPortalProps {
-  activeSection?: 'dashboard' | 'profile' | 'grades' | 'subjects' | 'schedule' | 'attendance' | 'assignments' | 'exams' | 'announcements';
+  activeSection?: 'dashboard' | 'profile' | 'grades' | 'subjects' | 'schedule' | 'attendance' | 'assignments' | 'exams' | 'announcements' | 'library';
 }
 
 export const StudentPortal = ({ activeSection = 'dashboard' }: StudentPortalProps) => {
@@ -242,167 +245,24 @@ export const StudentPortal = ({ activeSection = 'dashboard' }: StudentPortalProp
         );
 
       case 'grades':
-        return (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
-          >
-            {/* Quarterly General Averages */}
-            {generalAverages && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Award className="h-5 w-5" />
-                    Quarterly General Averages
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                    {(['q1', 'q2', 'q3', 'q4'] as const).map((quarter) => {
-                      const avg = generalAverages[quarter];
-                      const passing = isPassing(avg);
-                      return (
-                        <div
-                          key={quarter}
-                          className={`p-4 rounded-lg text-center transition-colors ${avg === null
-                            ? 'bg-muted/50'
-                            : passing
-                              ? 'bg-green-50 border border-green-200 dark:bg-green-950/30 dark:border-green-800'
-                              : 'bg-red-50 border border-red-200 dark:bg-red-950/30 dark:border-red-800'
-                            }`}
-                        >
-                          <p className="text-xs text-muted-foreground uppercase font-medium">
-                            {quarter.toUpperCase()}
-                          </p>
-                          <p className={`text-xl font-bold ${avg === null
-                            ? 'text-muted-foreground'
-                            : passing
-                              ? 'text-green-600 dark:text-green-400'
-                              : 'text-red-600 dark:text-red-400'
-                            }`}>
-                            {avg?.toFixed(2) || '-'}
-                          </p>
-                          {avg !== null && (
-                            <Badge
-                              variant={passing ? 'default' : 'destructive'}
-                              className="mt-1 text-xs"
-                            >
-                              {passing ? 'Passed' : 'Failed'}
-                            </Badge>
-                          )}
-                        </div>
-                      );
-                    })}
-                    {/* Annual/Final Average */}
-                    <div
-                      className={`p-4 rounded-lg text-center transition-colors ${generalAverages.annual === null
-                        ? 'bg-muted/50'
-                        : isPassing(generalAverages.annual)
-                          ? 'bg-purple-50 border-2 border-purple-300 dark:bg-purple-950/30 dark:border-purple-700'
-                          : 'bg-red-50 border-2 border-red-300 dark:bg-red-950/30 dark:border-red-700'
-                        }`}
-                    >
-                      <p className="text-xs text-muted-foreground uppercase font-medium">
-                        Final
-                      </p>
-                      <p className={`text-xl font-bold ${generalAverages.annual === null
-                        ? 'text-muted-foreground'
-                        : isPassing(generalAverages.annual)
-                          ? 'text-purple-600 dark:text-purple-400'
-                          : 'text-red-600 dark:text-red-400'
-                        }`}>
-                        {generalAverages.annual?.toFixed(2) || '-'}
-                      </p>
-                      {generalAverages.annual !== null && (
-                        <Badge
-                          variant={isPassing(generalAverages.annual) ? 'default' : 'destructive'}
-                          className="mt-1 text-xs"
-                        >
-                          {getGradeDescriptor(generalAverages.annual)}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Subject Grades Table */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Award className="h-5 w-5" />
-                  Subject Grades
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoadingGrades ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : grades.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-teal-600 text-white">
-                        <tr className="border-b">
-                          <th className="text-left py-3 px-2 font-semibold text-white">Subject</th>
-                          <th className="text-center py-3 px-2 font-semibold text-white">Q1</th>
-                          <th className="text-center py-3 px-2 font-semibold text-white">Q2</th>
-                          <th className="text-center py-3 px-2 font-semibold text-white">Q3</th>
-                          <th className="text-center py-3 px-2 font-semibold text-white">Q4</th>
-                          <th className="text-center py-3 px-2 font-semibold text-white">Final</th>
-                          <th className="text-center py-3 px-2 font-semibold text-white">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="[&>tr:nth-child(even)]:bg-gray-50 dark:[&>tr:nth-child(even)]:bg-gray-800/30">
-                        {grades.map((grade: any) => {
-                          const finalGrade = grade.final_grade;
-                          const passing = isPassing(finalGrade);
-                          return (
-                            <tr key={grade.id} className="border-b hover:bg-muted/50">
-                              <td className="py-3 px-2">
-                                <div>
-                                  <p className="font-medium">{grade.subjects?.name || 'Unknown'}</p>
-                                  <p className="text-xs text-muted-foreground">{grade.subjects?.code}</p>
-                                </div>
-                              </td>
-                              <td className={`text-center py-3 px-2 ${getGradeColorClass(grade.q1_grade)}`}>
-                                {grade.q1_grade ?? '-'}
-                              </td>
-                              <td className={`text-center py-3 px-2 ${getGradeColorClass(grade.q2_grade)}`}>
-                                {grade.q2_grade ?? '-'}
-                              </td>
-                              <td className={`text-center py-3 px-2 ${getGradeColorClass(grade.q3_grade)}`}>
-                                {grade.q3_grade ?? '-'}
-                              </td>
-                              <td className={`text-center py-3 px-2 ${getGradeColorClass(grade.q4_grade)}`}>
-                                {grade.q4_grade ?? '-'}
-                              </td>
-                              <td className={`text-center py-3 px-2 font-semibold ${getGradeColorClass(finalGrade)}`}>
-                                {finalGrade ?? '-'}
-                              </td>
-                              <td className="text-center py-3 px-2">
-                                {finalGrade !== null && (
-                                  <Badge variant={passing ? 'default' : 'destructive'}>
-                                    {passing ? 'PASSED' : 'FAILED'}
-                                  </Badge>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="text-center text-muted-foreground py-8">
-                    No grades available yet.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
+        return student ? (
+          <StudentGradesTab
+            studentId={student.id}
+            gradeLevel={student.level}
+            schoolId={student.school_id}
+            academicYearId={student.academic_year_id}
+            grades={grades}
+            studentName={student.student_name}
+            studentPhotoUrl={student.photo_url}
+          />
+        ) : (
+          <Card>
+            <CardContent className="py-10 text-center">
+              <p className="text-muted-foreground">
+                Student profile not found. Please contact your administrator.
+              </p>
+            </CardContent>
+          </Card>
         );
 
       case 'subjects':
@@ -536,68 +396,20 @@ export const StudentPortal = ({ activeSection = 'dashboard' }: StudentPortalProp
           </Card>
         );
 
+      case 'library':
+        return <StudentLibraryTab />;
+
       default:
         return null;
     }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header with Avatar and Logout */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
-      >
-        <div className="flex items-center gap-4">
-          <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
-              {sectionTitles[activeSection] || 'Student Portal'}
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Welcome, {displayName}!
-              {student && (
-                <span className="ml-2 text-sm">
-                  • {student.level} • {student.school}
-                </span>
-              )}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Dialog open={isIDOpen} onOpenChange={setIsIDOpen}>
-            <DialogTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="bg-primary/5 border-primary/20 text-primary hover:bg-primary/10 transition-all shadow-sm"
-              >
-                <IdCard className="h-4 w-4 mr-2" />
-                Virtual ID
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-[400px] p-0 bg-transparent border-none shadow-none ring-0 focus:ring-0">
-              <DialogHeader className="sr-only">
-                <DialogTitle>Student ID Card</DialogTitle>
-              </DialogHeader>
-              {student && <StudentIDCard student={student} />}
-            </DialogContent>
-          </Dialog>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={signOut}
-            className="hidden lg:flex text-destructive hover:text-destructive hover:bg-destructive/10"
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Log out
-          </Button>
-        </div>
-      </motion.div>
-
+    <div className="w-full">
       {/* Content */}
-      {renderContent()}
+      <div className={cn(activeSection === 'dashboard' ? "" : "-mt-6")}>
+        {renderContent()}
+      </div>
     </div>
   );
 };

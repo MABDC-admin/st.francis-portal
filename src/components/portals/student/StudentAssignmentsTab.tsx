@@ -14,64 +14,98 @@ interface StudentAssignmentsTabProps {
   academicYearId: string;
 }
 
-const AssignmentCard = ({ assignment }: { assignment: Assignment }) => {
+import { motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
+import { StudentPortalIcon, STUDENT_ICONS } from '@/components/icons/StudentPortalIcons';
+
+interface StudentAssignmentsTabProps {
+  studentId: string;
+  gradeLevel: string;
+  schoolId: string;
+  academicYearId: string;
+}
+
+const AssignmentCard = ({ assignment, index }: { assignment: Assignment; index: number }) => {
   const dueDate = new Date(assignment.due_date);
   const isOverdue = isPast(dueDate) && (!assignment.submission || assignment.submission.status === 'pending');
-  const typeColors = ASSIGNMENT_TYPE_COLORS[assignment.assignment_type];
+  // Use subject icon mapping if available, else default
+  const subjectName = assignment.subjects?.name || '';
+  const icon = subjectName.toLowerCase().includes('math') ? STUDENT_ICONS.math :
+    subjectName.toLowerCase().includes('science') ? STUDENT_ICONS.science :
+      subjectName.toLowerCase().includes('english') ? STUDENT_ICONS.english :
+        STUDENT_ICONS.assignments;
 
   return (
-    <Card className={`hover:shadow-md transition-shadow ${isOverdue ? 'border-red-300' : ''}`}>
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <Badge className={`${typeColors.bg} ${typeColors.text} text-xs`}>
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: index * 0.05 }}
+    >
+      <Card className={cn(
+        "group overflow-hidden rounded-[2rem] border-none shadow-sm transition-all hover:shadow-md hover:scale-[1.01]",
+        isOverdue ? 'bg-rose-50/50 border-rose-100 ring-1 ring-rose-200' : 'bg-white/80 backdrop-blur-sm'
+      )}>
+        <CardContent className="p-4 flex items-center gap-4">
+          {/* Subject Icon Box */}
+          <div className={cn(
+            "w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-inner group-hover:scale-110 transition-transform",
+            isOverdue ? "bg-rose-100" : "bg-sky-50"
+          )}>
+            <StudentPortalIcon
+              icon={icon}
+              size={32}
+              className={cn(isOverdue ? "text-rose-500" : "text-sky-500")}
+            />
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                {assignment.subjects?.code || 'GEN'}
+              </span>
+              <Badge variant="outline" className="text-[9px] font-bold py-0 leading-none h-4 border-slate-200 text-slate-500">
                 {assignment.assignment_type}
               </Badge>
-              {assignment.subjects && (
-                <Badge variant="outline" className="text-xs">
-                  {assignment.subjects.code}
-                </Badge>
-              )}
             </div>
-            <h3 className="font-medium">{assignment.title}</h3>
-            {assignment.description && (
-              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                {assignment.description}
-              </p>
-            )}
-            <div className="flex items-center gap-4 mt-3 text-sm">
-              <div className={`flex items-center gap-1 ${isOverdue ? 'text-red-600' : 'text-muted-foreground'}`}>
-                <Clock className="h-4 w-4" />
-                <span>
-                  {isOverdue ? 'Overdue: ' : 'Due: '}
-                  {format(dueDate, 'MMM d, yyyy h:mm a')}
-                </span>
+            <h3 className="font-black text-slate-800 text-base leading-tight truncate">
+              {assignment.title}
+            </h3>
+            <div className="flex items-center gap-3 mt-1.5 font-bold text-[10px]">
+              <div className={cn(
+                "flex items-center gap-1",
+                isOverdue ? "text-rose-600" : "text-slate-400"
+              )}>
+                <Clock className="h-3 w-3" />
+                {isOverdue ? 'OVERDUE' : 'DUE'}: {format(dueDate, 'MMM d')}
               </div>
               {assignment.max_score && (
-                <div className="text-muted-foreground">
-                  Max: {assignment.max_score} pts
-                </div>
+                <span className="text-slate-400">• {assignment.max_score} pts</span>
               )}
             </div>
           </div>
-          {assignment.submission && (
-            <div className="text-right">
-              <Badge
-                variant={assignment.submission.status === 'graded' ? 'default' : 'secondary'}
-              >
+
+          {assignment.submission ? (
+            <div className="text-right shrink-0">
+              <div className={cn(
+                "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter",
+                assignment.submission.status === 'graded' ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+              )}>
                 {assignment.submission.status}
-              </Badge>
+              </div>
               {assignment.submission.score !== null && (
-                <p className="text-lg font-bold mt-1">
-                  {assignment.submission.score}/{assignment.max_score}
+                <p className="text-base font-black text-slate-800 mt-1">
+                  {assignment.submission.score}<span className="text-xs text-slate-400">/{assignment.max_score}</span>
                 </p>
               )}
             </div>
+          ) : (
+            <div className="p-2 opacity-20 group-hover:opacity-100 transition-opacity">
+              <StudentPortalIcon icon="fluent:chevron-right-24-filled" size={20} className="text-slate-400" />
+            </div>
           )}
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 };
 
@@ -90,126 +124,103 @@ export const StudentAssignmentsTab = ({
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 p-4">
+        <Skeleton className="h-64 w-full rounded-[3rem]" />
         {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-32 w-full" />
+          <Skeleton key={i} className="h-24 w-full rounded-[2rem]" />
         ))}
       </div>
     );
   }
 
-  const hasNoAssignments = pending.length === 0 && submitted.length === 0 && graded.length === 0 && overdue.length === 0;
-
-  if (hasNoAssignments) {
-    return (
-      <Card>
-        <CardContent className="p-8 text-center">
-          <ClipboardList className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">No assignments available yet.</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
-    <div className="space-y-4">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <Clock className="h-4 w-4 text-blue-500" />
-              <span className="text-2xl font-bold text-blue-600">{pending.length}</span>
-            </div>
-            <p className="text-xs text-muted-foreground">Pending</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <AlertTriangle className="h-4 w-4 text-red-500" />
-              <span className="text-2xl font-bold text-red-600">{overdue.length}</span>
-            </div>
-            <p className="text-xs text-muted-foreground">Overdue</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <FileText className="h-4 w-4 text-amber-500" />
-              <span className="text-2xl font-bold text-amber-600">{submitted.length}</span>
-            </div>
-            <p className="text-xs text-muted-foreground">Submitted</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <CheckCircle className="h-4 w-4 text-green-500" />
-              <span className="text-2xl font-bold text-green-600">{graded.length}</span>
-            </div>
-            <p className="text-xs text-muted-foreground">Graded</p>
-          </CardContent>
-        </Card>
+    <div className="flex flex-col min-h-screen bg-[#FDFCF8] -m-4 sm:-m-0 rounded-t-[3rem] overflow-hidden">
+      {/* Illustrative Header Img - Fully Flexible, No Cutting */}
+      <div className="relative w-full overflow-hidden shrink-0">
+        <img
+          src="/assets/assignment-header.png"
+          alt="Assignments"
+          className="w-full h-auto block"
+        />
+        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#FDFCF8] to-transparent" />
       </div>
 
-      {/* Tabs for different categories */}
-      <Tabs defaultValue="pending" className="w-full">
-        <TabsList className="grid grid-cols-4 w-full">
-          <TabsTrigger value="pending" className="text-xs">
-            Pending ({pending.length})
-          </TabsTrigger>
-          <TabsTrigger value="overdue" className="text-xs">
-            Overdue ({overdue.length})
-          </TabsTrigger>
-          <TabsTrigger value="submitted" className="text-xs">
-            Submitted ({submitted.length})
-          </TabsTrigger>
-          <TabsTrigger value="graded" className="text-xs">
-            Graded ({graded.length})
-          </TabsTrigger>
-        </TabsList>
+      <div className="px-4 -mt-10 relative z-10 space-y-8">
+        {/* Summary Bubbles */}
+        <div className="grid grid-cols-4 gap-2 sm:gap-4 p-1 rounded-[2.5rem] bg-white/50 backdrop-blur-md shadow-lg border border-white/40">
+          <div className="flex flex-col items-center py-4 bg-white/80 rounded-[2rem] shadow-sm">
+            <span className="text-2xl font-black text-sky-500 leading-none">{pending.length}</span>
+            <span className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">Tasks</span>
+          </div>
+          <div className="flex flex-col items-center py-4 bg-rose-50 rounded-[2rem] shadow-sm border border-rose-100">
+            <span className="text-2xl font-black text-rose-500 leading-none">{overdue.length}</span>
+            <span className="text-[10px] font-bold text-rose-400 mt-1 uppercase tracking-tighter">Late</span>
+          </div>
+          <div className="flex flex-col items-center py-4">
+            <span className="text-2xl font-black text-slate-300 leading-none">{submitted.length}</span>
+            <span className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">Done</span>
+          </div>
+          <div className="flex flex-col items-center py-4">
+            <span className="text-2xl font-black text-emerald-400 leading-none">{graded.length}</span>
+            <span className="text-[10px] font-bold text-emerald-500 mt-1 uppercase tracking-tighter">Score</span>
+          </div>
+        </div>
 
-        <TabsContent value="pending" className="space-y-3 mt-4">
-          {pending.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No pending assignments</p>
-          ) : (
-            pending.map((assignment) => (
-              <AssignmentCard key={assignment.id} assignment={assignment} />
-            ))
-          )}
-        </TabsContent>
+        {/* Categories Tabs */}
+        <Tabs defaultValue="pending" className="w-full">
+          <TabsList className="flex bg-transparent p-0 h-auto gap-4 mb-6 border-b border-slate-100 overflow-x-auto pb-2 scrollbar-hide">
+            {[
+              { val: 'pending', label: 'Waitlist', count: pending.length, color: 'sky' },
+              { val: 'overdue', label: 'Overdue', count: overdue.length, color: 'rose' },
+              { val: 'submitted', label: 'Finalized', count: submitted.length, color: 'slate' },
+            ].map(t => (
+              <TabsTrigger
+                key={t.val}
+                value={t.val}
+                className={cn(
+                  "p-0 bg-transparent shadow-none border-b-4 border-transparent rounded-none h-12 transition-all font-black text-sm px-1 shrink-0",
+                  "data-[state=active]:border-sky-500 data-[state=active]:text-sky-600 text-slate-400"
+                )}
+              >
+                {t.label} ({t.count})
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
-        <TabsContent value="overdue" className="space-y-3 mt-4">
-          {overdue.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No overdue assignments 🎉</p>
-          ) : (
-            overdue.map((assignment) => (
-              <AssignmentCard key={assignment.id} assignment={assignment} />
-            ))
-          )}
-        </TabsContent>
+          <TabsContent value="pending" className="space-y-4 m-0">
+            {pending.length === 0 ? (
+              <div className="py-20 text-center text-slate-400 font-bold opacity-30">
+                <StudentPortalIcon icon={STUDENT_ICONS.completed} size={48} className="mx-auto mb-2" />
+                No pending work!
+              </div>
+            ) : (
+              pending.map((a, i) => <AssignmentCard key={a.id} assignment={a} index={i} />)
+            )}
+          </TabsContent>
 
-        <TabsContent value="submitted" className="space-y-3 mt-4">
-          {submitted.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No submitted assignments</p>
-          ) : (
-            submitted.map((assignment) => (
-              <AssignmentCard key={assignment.id} assignment={assignment} />
-            ))
-          )}
-        </TabsContent>
+          <TabsContent value="overdue" className="space-y-4 m-0">
+            {overdue.length === 0 ? (
+              <div className="py-20 text-center text-slate-400 font-bold opacity-30">
+                All caught up! 🎉
+              </div>
+            ) : (
+              overdue.map((a, i) => <AssignmentCard key={a.id} assignment={a} index={i} />)
+            )}
+          </TabsContent>
 
-        <TabsContent value="graded" className="space-y-3 mt-4">
-          {graded.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No graded assignments yet</p>
-          ) : (
-            graded.map((assignment) => (
-              <AssignmentCard key={assignment.id} assignment={assignment} />
-            ))
-          )}
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="submitted" className="space-y-4 m-0">
+            {submitted.concat(graded).length === 0 ? (
+              <div className="py-20 text-center text-slate-400 font-bold opacity-30">
+                No submissions yet.
+              </div>
+            ) : (
+              submitted.concat(graded).map((a, i) => <AssignmentCard key={a.id} assignment={a} index={i} />)
+            )}
+          </TabsContent>
+        </Tabs>
+
+        <div className="pb-32" />
+      </div>
     </div>
   );
 };

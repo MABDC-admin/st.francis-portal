@@ -495,7 +495,7 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
             { id: 'student-exams', icon: ReportsIcon3D, label: 'Exams' },
           ]
         },
-        { id: 'library', icon: LibraryIcon3D, label: 'Library' },
+        { id: 'student-library', icon: LibraryIcon3D, label: 'Library' },
         { id: 'student-announcements', icon: EventsIcon3D, label: 'Announcements' },
         { id: 'helpdesk', icon: AdminIcon3D, label: 'Helpdesk' },
       ];
@@ -893,34 +893,40 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
         ? "bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-green-100 via-stone-50 to-orange-50 dark:from-green-900/20 dark:via-stone-900 dark:to-orange-900/20"
         : effectiveTheme.pageBg
     )}>
-      {/* Mobile Header */}
       <header className={cn(
-        "lg:hidden fixed top-0 left-0 right-0 z-50 border-b border-border px-4 py-3 flex items-center justify-between theme-transition",
-        `bg-gradient-to-r ${effectiveTheme.sidebarBg} ${effectiveTheme.sidebarText}`
+        "lg:hidden fixed top-0 left-0 right-0 z-50 px-4 py-3 flex items-center justify-between theme-transition",
+        role === 'student'
+          ? "bg-transparent border-none"
+          : cn("border-b border-border `bg-gradient-to-r` ", effectiveTheme.sidebarBg, effectiveTheme.sidebarText)
       )}>
         <Button
           variant="ghost"
           size="icon"
           onClick={() => setSidebarOpen(!sidebarOpen)}
           aria-label="Toggle menu"
-          className="text-inherit hover:bg-white/10"
+          className={cn(
+            "text-inherit hover:bg-white/10",
+            role === 'student' && "bg-white/20 backdrop-blur-md shadow-md rounded-full text-white"
+          )}
         >
           <Menu className="h-5 w-5" />
         </Button>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg overflow-hidden bg-white flex items-center justify-center">
-            {schoolSettings?.logo_url ? (
-              <img src={schoolSettings.logo_url} alt="Logo" className="w-full h-full object-contain" />
-            ) : (
-              <div className={cn("w-full h-full flex items-center justify-center bg-gradient-to-br", effectiveTheme.sidebarBg)}>
-                <GraduationCap className="h-5 w-5 text-white" />
-              </div>
-            )}
+        {role !== 'student' && (
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg overflow-hidden bg-white flex items-center justify-center">
+              {schoolSettings?.logo_url ? (
+                <img src={schoolSettings.logo_url} alt="Logo" className="w-full h-full object-contain" />
+              ) : (
+                <div className={cn("w-full h-full flex items-center justify-center bg-gradient-to-br", effectiveTheme.sidebarBg)}>
+                  <GraduationCap className="h-5 w-5 text-white" />
+                </div>
+              )}
+            </div>
+            <span className="font-bold text-inherit">
+              {schoolSettings?.acronym || selectedSchool}
+            </span>
           </div>
-          <span className="font-bold text-inherit">
-            {schoolSettings?.acronym || selectedSchool}
-          </span>
-        </div>
+        )}
       </header>
 
       {/* Sidebar Overlay */}
@@ -976,7 +982,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
 
 
         {/* Academic Year Switcher */}
-        {!isCollapsed && (
+        {!isCollapsed && role !== 'student' && (
           <div className="px-3 mt-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -1044,7 +1050,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
             )}
           </div>
         )}
-        {isCollapsed && (
+        {isCollapsed && role !== 'student' && (
           <div className="px-2 mt-2 flex justify-center" title={selectedYear?.name || 'Academic Year'}>
             <CalendarDays className="h-5 w-5 opacity-70" />
           </div>
@@ -1170,9 +1176,9 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className={cn(
-        "transition-all duration-300 pt-16 lg:pt-0 min-h-screen",
+        "transition-all duration-300 min-h-screen",
+        role === 'student' ? "pt-0" : "pt-16 lg:pt-0",
         isCollapsed ? "lg:pl-[70px]" : "lg:pl-64",
         role === 'student' && "pb-20 lg:pb-0"
       )}>
