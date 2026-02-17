@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit2, Trash2, Loader2, Image as ImageIcon, Video, CheckCircle2, XCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2, Image as ImageIcon, Video, CheckCircle2, XCircle, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -26,6 +26,9 @@ interface BannerRecord {
     created_at: string;
 }
 
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_VIDEO_SIZE = 20 * 1024 * 1024; // 20MB
+
 export const BannerManagement = () => {
     const queryClient = useQueryClient();
     const { data: schoolId } = useSchoolId();
@@ -34,6 +37,11 @@ export const BannerManagement = () => {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [editingRecord, setEditingRecord] = useState<BannerRecord | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [uploading, setUploading] = useState(false);
+    const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
+
+    const mediaInputRef = useRef<HTMLInputElement>(null);
+    const thumbInputRef = useRef<HTMLInputElement>(null);
 
     const [formData, setFormData] = useState({
         title: '',
@@ -48,40 +56,55 @@ export const BannerManagement = () => {
         queryKey: ['banner-management', schoolId],
         queryFn: async () => {
             if (!schoolId) return [];
-
             const { data, error } = await supabase
                 .from('promotional_banners' as any)
                 .select('*')
                 .eq('school_id', schoolId)
                 .order('created_at', { ascending: false });
-
             if (error) throw error;
             return (data as unknown) as BannerRecord[] || [];
         },
         enabled: !!schoolId,
     });
 
+    // Upload helper
+    const handleFileUpload = async (
+        file: File,
+        field: 'url' | 'thumbnail_url',
+        setLoadingState: (v: boolean) => void,
+    ) => {
+        const isVideo = file.type.startsWith('video/');
+        const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
+        if (file.size > maxSize) {
+            toast.error(`File too large. Max ${isVideo ? '20MB' : '5MB'}.`);
+            return;
+        }
+        setLoadingState(true);
+        try {
+            const ext = file.name.split('.').pop();
+            const path = `banners/${crypto.randomUUID()}/${file.name}`;
+            const { error } = await supabase.storage.from('school-gallery').upload(path, file, { contentType: file.type });
+            if (error) throw error;
+            const { data: urlData } = supabase.storage.from('school-gallery').getPublicUrl(path);
+            setFormData(prev => ({ ...prev, [field]: urlData.publicUrl }));
+            toast.success('File uploaded');
+        } catch (err: any) {
+            toast.error(err.message || 'Upload failed');
+        } finally {
+            setLoadingState(false);
+        }
+    };
+
     // Create/Update mutation
     const saveMutation = useMutation({
         mutationFn: async (data: typeof formData) => {
             if (!schoolId) throw new Error('Missing school ID');
-
-            const payload = {
-                ...data,
-                school_id: schoolId,
-                updated_at: new Date().toISOString(),
-            };
-
+            const payload = { ...data, school_id: schoolId, updated_at: new Date().toISOString() };
             if (editingRecord) {
-                const { error } = await supabase
-                    .from('promotional_banners' as any)
-                    .update(payload)
-                    .eq('id', editingRecord.id);
+                const { error } = await supabase.from('promotional_banners' as any).update(payload).eq('id', editingRecord.id);
                 if (error) throw error;
             } else {
-                const { error } = await supabase
-                    .from('promotional_banners' as any)
-                    .insert([payload]);
+                const { error } = await supabase.from('promotional_banners' as any).insert([payload]);
                 if (error) throw error;
             }
         },
@@ -98,10 +121,7 @@ export const BannerManagement = () => {
     // Delete mutation
     const deleteMutation = useMutation({
         mutationFn: async (id: string) => {
-            const { error } = await supabase
-                .from('promotional_banners' as any)
-                .delete()
-                .eq('id', id);
+            const { error } = await supabase.from('promotional_banners' as any).delete().eq('id', id);
             if (error) throw error;
         },
         onSuccess: () => {
@@ -118,13 +138,7 @@ export const BannerManagement = () => {
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setEditingRecord(null);
-        setFormData({
-            title: '',
-            type: 'image',
-            url: '',
-            thumbnail_url: '',
-            is_active: true,
-        });
+        setFormData({ title: '', type: 'image', url: '', thumbnail_url: '', is_active: true });
     };
 
     const handleEdit = (record: BannerRecord) => {
@@ -147,11 +161,13 @@ export const BannerManagement = () => {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.title || !formData.url) {
-            toast.error('Please fill in title and URL');
+            toast.error('Please fill in title and upload media');
             return;
         }
         saveMutation.mutate(formData);
     };
+
+    const mediaAccept = formData.type === 'video' ? 'video/mp4,video/webm' : 'image/png,image/jpeg,image/webp,image/gif';
 
     return (
         <div className="space-y-6">
@@ -228,19 +244,10 @@ export const BannerManagement = () => {
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-2">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => handleEdit(banner)}
-                                                    >
+                                                    <Button variant="ghost" size="icon" onClick={() => handleEdit(banner)}>
                                                         <Edit2 className="h-4 w-4" />
                                                     </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => handleDelete(banner.id)}
-                                                        className="text-destructive hover:text-destructive"
-                                                    >
+                                                    <Button variant="ghost" size="icon" onClick={() => handleDelete(banner.id)} className="text-destructive hover:text-destructive">
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
                                                 </div>
@@ -258,9 +265,7 @@ export const BannerManagement = () => {
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                 <DialogContent className="max-w-md">
                     <DialogHeader>
-                        <DialogTitle>
-                            {editingRecord ? 'Edit Banner' : 'Add New Banner'}
-                        </DialogTitle>
+                        <DialogTitle>{editingRecord ? 'Edit Banner' : 'Add New Banner'}</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="space-y-2">
@@ -279,11 +284,9 @@ export const BannerManagement = () => {
                                 <Label htmlFor="type">Media Type</Label>
                                 <Select
                                     value={formData.type}
-                                    onValueChange={(value: 'image' | 'video') => setFormData({ ...formData, type: value })}
+                                    onValueChange={(value: 'image' | 'video') => setFormData({ ...formData, type: value, url: '', thumbnail_url: '' })}
                                 >
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="image">Image</SelectItem>
                                         <SelectItem value="video">Video</SelectItem>
@@ -300,32 +303,117 @@ export const BannerManagement = () => {
                             </div>
                         </div>
 
+                        {/* Media Upload */}
                         <div className="space-y-2">
-                            <Label htmlFor="url">Media URL *</Label>
-                            <Input
-                                id="url"
-                                value={formData.url}
-                                onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                                placeholder="https://example.com/image.jpg"
-                                required
+                            <Label>Upload Media *</Label>
+                            <input
+                                ref={mediaInputRef}
+                                type="file"
+                                accept={mediaAccept}
+                                className="hidden"
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleFileUpload(file, 'url', setUploading);
+                                    e.target.value = '';
+                                }}
                             />
+                            {formData.url ? (
+                                <div className="relative rounded-md border border-border overflow-hidden">
+                                    {formData.type === 'video' ? (
+                                        <div className="flex items-center gap-3 p-3 bg-muted/50">
+                                            <Video className="h-8 w-8 text-muted-foreground shrink-0" />
+                                            <span className="text-sm text-foreground truncate">Video uploaded</span>
+                                        </div>
+                                    ) : (
+                                        <img src={formData.url} alt="Preview" className="w-full h-32 object-cover" />
+                                    )}
+                                    <Button
+                                        type="button"
+                                        variant="destructive"
+                                        size="icon"
+                                        className="absolute top-1 right-1 h-6 w-6"
+                                        onClick={() => setFormData(prev => ({ ...prev, url: '' }))}
+                                    >
+                                        <X className="h-3 w-3" />
+                                    </Button>
+                                </div>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => mediaInputRef.current?.click()}
+                                    disabled={uploading}
+                                    className="w-full flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-border p-6 text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors disabled:opacity-50"
+                                >
+                                    {uploading ? (
+                                        <>
+                                            <Loader2 className="h-8 w-8 animate-spin" />
+                                            <span className="text-sm">Uploading...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Upload className="h-8 w-8" />
+                                            <span className="text-sm">Click to upload {formData.type}</span>
+                                            <span className="text-xs">Max {formData.type === 'video' ? '20MB' : '5MB'}</span>
+                                        </>
+                                    )}
+                                </button>
+                            )}
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="thumbnail_url">Thumbnail URL (Optional for videos)</Label>
-                            <Input
-                                id="thumbnail_url"
-                                value={formData.thumbnail_url}
-                                onChange={(e) => setFormData({ ...formData, thumbnail_url: e.target.value })}
-                                placeholder="https://example.com/thumb.jpg"
-                            />
-                        </div>
+                        {/* Thumbnail Upload (video only) */}
+                        {formData.type === 'video' && (
+                            <div className="space-y-2">
+                                <Label>Thumbnail (optional)</Label>
+                                <input
+                                    ref={thumbInputRef}
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/webp,image/gif"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) handleFileUpload(file, 'thumbnail_url', setUploadingThumbnail);
+                                        e.target.value = '';
+                                    }}
+                                />
+                                {formData.thumbnail_url ? (
+                                    <div className="relative rounded-md border border-border overflow-hidden">
+                                        <img src={formData.thumbnail_url} alt="Thumbnail" className="w-full h-24 object-cover" />
+                                        <Button
+                                            type="button"
+                                            variant="destructive"
+                                            size="icon"
+                                            className="absolute top-1 right-1 h-6 w-6"
+                                            onClick={() => setFormData(prev => ({ ...prev, thumbnail_url: '' }))}
+                                        >
+                                            <X className="h-3 w-3" />
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => thumbInputRef.current?.click()}
+                                        disabled={uploadingThumbnail}
+                                        className="w-full flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-border p-4 text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors disabled:opacity-50"
+                                    >
+                                        {uploadingThumbnail ? (
+                                            <>
+                                                <Loader2 className="h-6 w-6 animate-spin" />
+                                                <span className="text-sm">Uploading...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Upload className="h-6 w-6" />
+                                                <span className="text-sm">Upload thumbnail image</span>
+                                            </>
+                                        )}
+                                    </button>
+                                )}
+                            </div>
+                        )}
 
                         <DialogFooter>
-                            <Button type="button" variant="outline" onClick={handleCloseModal}>
-                                Cancel
-                            </Button>
-                            <Button type="submit" disabled={saveMutation.isPending}>
+                            <Button type="button" variant="outline" onClick={handleCloseModal}>Cancel</Button>
+                            <Button type="submit" disabled={saveMutation.isPending || uploading || uploadingThumbnail}>
                                 {saveMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                                 {editingRecord ? 'Update Banner' : 'Create Banner'}
                             </Button>
@@ -339,9 +427,7 @@ export const BannerManagement = () => {
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete Banner?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This banner will be permanently removed. This action cannot be undone.
-                        </AlertDialogDescription>
+                        <AlertDialogDescription>This banner will be permanently removed. This action cannot be undone.</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
