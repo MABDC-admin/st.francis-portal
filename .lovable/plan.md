@@ -1,61 +1,65 @@
 
 
-## Fix Storage RLS and Document/Photo Viewing for Teacher Applications
+## Add Student Credentials View for Admin and Registrar
 
-### Problem
-
-The `teacher-applications` storage bucket is **private**, but the admin detail view (`ApplicantDetailDialog`) tries to render document links and the profile photo using raw storage paths (e.g., `abc-uuid/resume.pdf`) directly as URLs. These paths are not valid URLs -- they need signed URLs to be viewable.
-
-Additionally, the storage RLS policies have gaps:
-- Duplicate anonymous INSERT policies
-- Missing UPDATE policy for authenticated users
-- Missing DELETE policy cleanup (one exists but was created outside the numbered migration)
+### Overview
+Add a "Credentials" tab to the student detail views that displays the student's login credentials (email, temporary password, password changed status). This tab will only be visible to users with the **admin** or **registrar** role.
 
 ### Changes
 
-#### 1. Database Migration -- Clean Up Storage RLS Policies
+#### 1. Database Migration -- Update RLS Policy
+The current `user_credentials` SELECT policy only allows **admin** users. The registrar role needs to be added.
 
-- Drop duplicate anonymous INSERT policy (`Allow anon uploads` -- redundant with `Allow anonymous upload to teacher-applications`)
-- Add an UPDATE policy for authenticated users on the `teacher-applications` bucket
-- Ensure DELETE policy exists for authenticated users (verify or recreate `Allow authenticated maintenance`)
+- Drop the existing "Only admins can view credentials" policy
+- Create a new policy: "Admins and registrars can view credentials" allowing SELECT when `has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'registrar')`
 
-#### 2. Update `ApplicantDetailDialog.tsx` -- Use Signed URLs for Documents and Photo
+#### 2. New Component: `StudentCredentialsTab`
+Create `src/components/students/StudentCredentialsTab.tsx`:
 
-- Create a helper function that generates signed URLs using `supabase.storage.from('teacher-applications').createSignedUrl(path, 3600)` (1-hour expiry)
-- On component mount, generate signed URLs for all document fields (`resume_url`, `transcript_url`, `diploma_url`, `valid_id_url`, `prc_license_url`, `certificates_url[]`) and `photo_url`
-- Store the signed URLs in local state
-- Update the `DocumentLink` component to use the resolved signed URLs
-- Update the photo `<img>` tag to use the signed photo URL
-- Show a loading state while URLs are being generated
+- Accepts `studentId` as a prop
+- Queries `user_credentials` table filtered by `student_id`
+- Displays:
+  - Email / Username (LRN)
+  - Temporary password (with show/hide toggle)
+  - Whether the password has been changed
+  - Account creation date
+- Shows a "No account found" message if the student has no credentials
+- Uses a lock icon and security-themed styling to indicate sensitivity
 
-#### 3. Update `PersonalInfoStep.tsx` -- Preview Using Signed URL
+#### 3. Update `StudentDetailPanel.tsx`
+- Import `useAuth` from AuthContext
+- Import the new `StudentCredentialsTab`
+- Conditionally add a "Credentials" tab (with a Key icon) to the tab list only when the current user's role is `admin` or `registrar`
+- Add the corresponding tab content panel
 
-- When `formData.photo_url` is set (editing or after upload), generate a signed URL for preview if `previewUrl` is not already set from a fresh upload
-- This ensures the photo displays correctly when revisiting the step
+#### 4. Update `LISStudentDetail.tsx`
+- Same changes as above: import `useAuth`, conditionally render the "Credentials" tab for admin/registrar roles
 
 ### Technical Details
 
-**Signed URL pattern:**
-```typescript
-const { data } = await supabase.storage
-  .from('teacher-applications')
-  .createSignedUrl(storagePath, 3600); // 1 hour
-// data.signedUrl is the viewable URL
+**RLS policy SQL:**
+```sql
+DROP POLICY IF EXISTS "Only admins can view credentials" ON public.user_credentials;
+CREATE POLICY "Admins and registrars can view credentials"
+  ON public.user_credentials FOR SELECT
+  TO authenticated
+  USING (
+    has_role(auth.uid(), 'admin'::app_role)
+    OR has_role(auth.uid(), 'registrar'::app_role)
+    OR user_id = auth.uid()
+  );
 ```
 
-**Storage policies after migration:**
-
-| Policy | Operation | Role | Condition |
-|--------|-----------|------|-----------|
-| Allow anonymous upload | INSERT | anon | bucket = teacher-applications |
-| Allow authenticated upload | INSERT | authenticated | bucket = teacher-applications |
-| Admin registrar can read | SELECT | authenticated | bucket = teacher-applications |
-| Allow authenticated update | UPDATE | authenticated | bucket = teacher-applications |
-| Allow authenticated maintenance | DELETE | authenticated | bucket = teacher-applications |
+**Files to create:**
+- `src/components/students/StudentCredentialsTab.tsx`
 
 **Files to modify:**
-- New SQL migration (storage RLS cleanup)
-- `src/components/teacher-application/ApplicantDetailDialog.tsx` (signed URLs for docs + photo)
-- `src/components/teacher-application/steps/PersonalInfoStep.tsx` (signed URL for photo preview)
+- `src/components/students/StudentDetailPanel.tsx` (add credentials tab for admin/registrar)
+- `src/components/lis/LISStudentDetail.tsx` (add credentials tab for admin/registrar)
+- New SQL migration (update RLS policy)
 
-**No changes to the public upload flow** -- anon INSERT is already working for applicants submitting forms.
+**Role check pattern (client-side, for tab visibility only -- RLS enforces server-side):**
+```typescript
+const { role } = useAuth();
+const canViewCredentials = role === 'admin' || role === 'registrar';
+```
