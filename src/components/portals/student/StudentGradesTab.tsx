@@ -83,9 +83,9 @@ export const StudentGradesTab = ({
     }
 
     return (
-        <div className="space-y-6 pb-20 lg:pb-8">
+        <div className="space-y-4 pb-16 lg:pb-8">
             {/* Subject list section */}
-            <div className="space-y-3 mt-4">
+            <div className="space-y-2 mt-0">
                 {grades.length > 0 ? (
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     grades.map((grade: any, idx: number) => (

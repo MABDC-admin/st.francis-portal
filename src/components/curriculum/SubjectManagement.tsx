@@ -28,7 +28,7 @@ interface Subject {
 }
 
 const GRADE_LEVELS = [
-  'Kinder 1', 'Kinder 2',
+  'Kindergarten', 'Kinder 2',
   'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5', 'Level 6',
   'Level 7', 'Level 8', 'Level 9', 'Level 10', 'Level 11', 'Level 12'
 ];
@@ -41,6 +41,9 @@ const initialFormState = {
   department: '',
   units: 1,
   is_active: true,
+  // New field for K12 curriculum compliance
+  track: '', // Academic, TVL, Sports, Arts
+  strand: '', // STEM, HUMSS, GAS, ABM, etc.
 };
 
 export const SubjectManagement = () => {
@@ -49,12 +52,15 @@ export const SubjectManagement = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [gradeFilter, setGradeFilter] = useState<string>('all');
+  // Set default filter to Kindergarten as requested
+  const [gradeFilter, setGradeFilter] = useState<string>('Kindergarten');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [formData, setFormData] = useState(initialFormState);
   const [levelsWithStudents, setLevelsWithStudents] = useState<string[]>([]);
   const [isLoadingLevels, setIsLoadingLevels] = useState(false);
+
+  // ... (keeping fetch functions as is for now)
 
   const fetchSubjects = async () => {
     setIsLoading(true);
@@ -62,7 +68,7 @@ export const SubjectManagement = () => {
       .from('subjects')
       .select('*')
       .order('code');
-    
+
     if (!error && data) {
       setSubjects(data as Subject[]);
     }
@@ -80,13 +86,15 @@ export const SubjectManagement = () => {
       .from('students')
       .select('level')
       .eq('school', selectedSchool);
-    
+
     if (data) {
       const levels = [...new Set(data.map((s: { level: string }) => s.level))];
       setLevelsWithStudents(levels);
     }
     setIsLoadingLevels(false);
   };
+
+  // ... (keeping handlers as is)
 
   const handleAutoSelectLevelsWithStudents = () => {
     setFormData(prev => ({
@@ -120,10 +128,12 @@ export const SubjectManagement = () => {
         department: subject.department || '',
         units: subject.units,
         is_active: subject.is_active,
+        track: '',
+        strand: '',
       });
     } else {
       setEditingSubject(null);
-      // Pre-select the filtered grade level if one is selected
+      // Pre-select the filtered grade level if one is selected and not 'all'
       setFormData({
         ...initialFormState,
         grade_levels: gradeFilter !== 'all' ? [gradeFilter] : [],
@@ -142,6 +152,7 @@ export const SubjectManagement = () => {
   };
 
   const handleSave = async () => {
+    // ... existing save logic
     if (!formData.code || !formData.name || formData.grade_levels.length === 0) {
       toast.error('Please fill in code, name, and select at least one grade level');
       return;
@@ -212,7 +223,10 @@ export const SubjectManagement = () => {
   const filteredSubjects = subjects.filter(s => {
     const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.code.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesGrade = gradeFilter === 'all' || s.grade_levels.includes(gradeFilter);
+
+    // Safety check for grade_levels array
+    const gradeLevels = Array.isArray(s.grade_levels) ? s.grade_levels : [];
+    const matchesGrade = gradeFilter === 'all' || gradeLevels.includes(gradeFilter);
     return matchesSearch && matchesGrade;
   });
 
@@ -233,36 +247,36 @@ export const SubjectManagement = () => {
         </Button>
       </motion.div>
 
-      {/* Search & Filter */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name or code..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <Select value={gradeFilter} onValueChange={setGradeFilter}>
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Grade Level" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Levels</SelectItem>
-                  {GRADE_LEVELS.map(level => (
-                    <SelectItem key={level} value={level}>{level}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+      {/* Refactored Search & Filter - cleaner layout */}
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-4 rounded-xl border shadow-sm">
+        <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
+          {/* Quick Grade Filter Tabs/Pills could go here if we wanted, but sticking to dropdown for space */}
+          <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-lg">
+            <span className="text-xs font-semibold px-2 text-muted-foreground">Filter by:</span>
+            <Select value={gradeFilter} onValueChange={setGradeFilter}>
+              <SelectTrigger className="w-[180px] h-8 bg-white border-none shadow-sm text-xs font-medium">
+                <SelectValue placeholder="Select Grade Level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Levels</SelectItem>
+                {GRADE_LEVELS.map(level => (
+                  <SelectItem key={level} value={level}>{level}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        <div className="relative w-full md:w-72">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search subjects..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 h-9 bg-muted/30 border-none focus-visible:ring-1 focus-visible:ring-primary/20 transition-all"
+          />
+        </div>
+      </div>
 
       {/* Subjects Table */}
       <Card>
@@ -271,7 +285,9 @@ export const SubjectManagement = () => {
             <BookOpen className="h-5 w-5" />
             Subject List
           </CardTitle>
-          <CardDescription>{subjects.length} subjects in catalog</CardDescription>
+          <CardDescription>
+            {filteredSubjects.length} of {subjects.length} subjects
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (

@@ -283,7 +283,7 @@ const Index = () => {
       case 'teacher':
         return <TeacherPortal onNavigate={handleTabChange} />;
       case 'student':
-        return <StudentPortal activeSection="dashboard" />;
+        return <StudentPortal activeSection="dashboard" onNavigate={handleTabChange} />;
       case 'parent':
         return <ParentPortal />;
       case 'finance':
@@ -308,7 +308,7 @@ const Index = () => {
 
       {/* Dashboard - Admin/Registrar only */}
       {activeTab === 'dashboard' && hasAdminAccess && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -321,7 +321,7 @@ const Index = () => {
             <GlobalStudentSearch />
           </motion.div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
             <StatsCard
               title="Total Learners"
               value={totalStudents}
@@ -519,7 +519,10 @@ const Index = () => {
         <StudentPortal activeSection="exams" />
       )}
       {activeTab === 'student-announcements' && role === 'student' && (
-        <StudentPortal activeSection="announcements" />
+        <StudentPortal activeSection="announcements" onNavigate={handleTabChange} />
+      )}
+      {activeTab === 'student-calendar' && role === 'student' && (
+        <StudentPortal activeSection="calendar" onNavigate={handleTabChange} />
       )}
       {activeTab === 'student-library' && role === 'student' && (
         <StudentPortal activeSection="library" />

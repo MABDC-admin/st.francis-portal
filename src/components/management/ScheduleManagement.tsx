@@ -40,14 +40,14 @@ export const ScheduleManagement = () => {
   const { data: schoolId } = useSchoolId();
   const { selectedYearId } = useAcademicYear();
   const { isReadOnly, guardMutation } = useYearGuard();
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<ScheduleRecord | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<string>('all');
   const [selectedDay, setSelectedDay] = useState<string>('all');
-  
+
   const [formData, setFormData] = useState({
     subject_id: '',
     grade_level: '',
@@ -64,7 +64,7 @@ export const ScheduleManagement = () => {
     queryKey: ['schedule-management', schoolId, selectedYearId, selectedLevel, selectedDay],
     queryFn: async () => {
       if (!schoolId || !selectedYearId) return [];
-      
+
       let query = supabase
         .from('class_schedules')
         .select(`
@@ -76,14 +76,14 @@ export const ScheduleManagement = () => {
         .eq('academic_year_id', selectedYearId)
         .order('day_of_week')
         .order('start_time');
-      
+
       if (selectedLevel !== 'all') {
         query = query.eq('grade_level', selectedLevel);
       }
       if (selectedDay !== 'all') {
         query = query.eq('day_of_week', parseInt(selectedDay));
       }
-      
+
       const { data, error } = await query;
       if (error) throw error;
       return data || [];
@@ -97,12 +97,18 @@ export const ScheduleManagement = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('subjects')
-        .select('id, code, name')
+        .select('id, code, name, grade_levels')
         .eq('is_active', true)
         .order('name');
       if (error) throw error;
       return data || [];
     },
+  });
+
+  // Filter subjects based on selected grade level in form
+  const filteredSubjects = subjects.filter((subject: any) => {
+    if (!formData.grade_level) return true;
+    return subject.grade_levels?.includes(formData.grade_level);
   });
 
   // Fetch teachers
@@ -125,14 +131,14 @@ export const ScheduleManagement = () => {
   const saveMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       if (!schoolId || !selectedYearId) throw new Error('Missing school or academic year');
-      
+
       const payload = {
         ...data,
         school_id: schoolId,
         academic_year_id: selectedYearId,
         teacher_id: data.teacher_id && data.teacher_id !== 'none' ? data.teacher_id : null,
       };
-      
+
       if (editingRecord) {
         const { error } = await supabase
           .from('class_schedules')
@@ -385,12 +391,13 @@ export const ScheduleManagement = () => {
               <Select
                 value={formData.subject_id}
                 onValueChange={(value) => setFormData({ ...formData, subject_id: value })}
+                disabled={!formData.grade_level}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select subject" />
+                  <SelectValue placeholder={formData.grade_level ? "Select subject" : "Select Grade Level first"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {subjects.map((subject: any) => (
+                  {filteredSubjects.map((subject: any) => (
                     <SelectItem key={subject.id} value={subject.id}>
                       {subject.name} ({subject.code})
                     </SelectItem>

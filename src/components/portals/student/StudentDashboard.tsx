@@ -2,8 +2,9 @@ import { STUDENT_ICONS, StudentPortalIcon } from '@/components/icons/StudentPort
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { motion } from 'framer-motion';
+import { BlurredPlaygroundBackground } from './BlurredPlaygroundBackground';
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
 import {
@@ -28,6 +29,7 @@ interface StudentDashboardProps {
   schedule?: any[];
   studentName?: string;
   studentPhotoUrl?: string | null;
+  onCardClick?: (section: string) => void;
 }
 import { useZoomSession } from '@/hooks/useZoomSession';
 import { Video, ExternalLink } from 'lucide-react';
@@ -41,6 +43,7 @@ export const StudentDashboard = ({
   grades,
   studentName,
   studentPhotoUrl,
+  onCardClick,
 }: StudentDashboardProps) => {
   const { attendance, assignments, exams, announcements, isLoading } = useStudentDashboardStats(
     studentId,
@@ -119,36 +122,139 @@ export const StudentDashboard = ({
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-white -m-4 sm:-m-0 rounded-t-[3rem] overflow-hidden space-y-6 pb-20">
+    <div className="flex flex-col min-h-screen bg-white -m-4 sm:-m-0 rounded-t-[3rem] overflow-hidden space-y-4 pb-20">
 
-      {/* Top Greeting Section */}
-      <div className="relative w-full overflow-hidden shrink-0 pt-8 pb-4">
-        {/* Profile Overlay */}
-        <div className="flex items-center justify-between px-6">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full border-4 border-white shadow-lg overflow-hidden bg-rose-100">
-              <AnimatedStudentAvatar name={studentName || "Student"} photoUrl={studentPhotoUrl || null} />
+      {/* Header Container with Background */}
+      <div className="relative overflow-hidden rounded-b-[3rem] pb-6">
+        <BlurredPlaygroundBackground />
+
+        {/* Top Greeting Section */}
+        <div className="relative w-full shrink-0 pt-6 pb-2 z-10">
+          {/* Profile Overlay */}
+          <div className="flex items-center justify-between px-6">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-full border-4 border-white shadow-lg overflow-hidden bg-rose-100 flex items-center justify-center">
+                {studentPhotoUrl ? (
+                  <img src={studentPhotoUrl} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-sky-100 flex items-center justify-center text-sky-500 font-bold text-xl">
+                    {(studentName || "S")[0]}
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sky-800 font-bold text-sm leading-tight">Good Morning!</span>
+                <h1 className="text-2xl font-black text-sky-950 leading-tight">
+                  {studentName?.split(' ')[0] || "Student"} {studentName?.split(' ').slice(1).join(' ') || ""}
+                </h1>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <span className="text-sky-800 font-bold text-sm leading-tight">Good Morning!</span>
-              <h1 className="text-2xl font-black text-sky-950 leading-tight">
-                {studentName?.split(' ')[0] || "Student"} {studentName?.split(' ').slice(1).join(' ') || ""}
-              </h1>
+          </div>
+        </div>
+
+        {/* Activity Feed: What's New - Moved Top */}
+        <div className="px-5 space-y-2 -mt-2 relative z-10">
+          <div className="space-y-2">
+            {/* Today Group */}
+            <div className="rounded-[2rem] bg-white/40 border border-white/50 overflow-hidden backdrop-blur-md shadow-lg">
+              <div className="bg-sky-500/90 px-6 py-2 flex items-center justify-between backdrop-blur-sm">
+                <span className="text-white font-black text-sm tracking-tight">{format(new Date(), 'MMMM d')}</span>
+                <div className="text-[10px] text-white/80 font-black uppercase tracking-widest flex items-center gap-1">
+                  What's New <StudentPortalIcon icon="fluent:sparkle-24-filled" size={12} />
+                </div>
+              </div>
+
+              <div className="p-1.5 space-y-1.5">
+                {/* Pinned Announcements (Registrar/Admin) */}
+                {announcements.pinned.map((a) => (
+                  <div
+                    key={a.id}
+                    onClick={() => onCardClick?.('announcements')}
+                    className="bg-amber-50/90 border border-amber-100 p-3 rounded-xl flex items-center justify-between cursor-pointer hover:bg-amber-100 transition-all active:scale-[0.98] shadow-sm relative overflow-hidden group"
+                  >
+                    <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-amber-400/20 to-transparent rounded-bl-full pointer-events-none" />
+
+                    <div className="flex items-center gap-4 relative z-10">
+                      <div className="w-10 h-10 bg-amber-100/80 rounded-xl flex items-center justify-center border border-amber-200 shadow-inner">
+                        <StudentPortalIcon icon="fluent:megaphone-loud-24-filled" className="text-amber-600 animate-pulse" size={24} />
+                      </div>
+                      <div className="flex flex-col text-left">
+                        <span className="text-sm font-black text-amber-900 leading-tight line-clamp-1">{a.title}</span>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <Badge className="bg-amber-500 text-white border-none px-1.5 py-0 text-[9px] font-black tracking-wider uppercase rounded-md shadow-sm">
+                            IMPORTANT
+                          </Badge>
+                          <span className="text-[10px] font-bold text-amber-700/60">Registrar's Office</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {assignments.pending.slice(0, 3).map((a) => (
+                  <div
+                    key={a.id}
+                    onClick={() => onCardClick?.('assignments')}
+                    className="bg-white/60 p-3 rounded-xl flex items-center justify-between cursor-pointer hover:bg-white transition-all active:scale-[0.98]"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
+                        <StudentPortalIcon icon={STUDENT_ICONS.homework} className="text-sky-600" size={24} />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-black text-sky-950 leading-tight">{a.title}</span>
+                        <span className="text-[10px] font-bold text-sky-600/70">{a.subjects?.name}</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <Badge className="bg-emerald-50 text-emerald-600 border-none px-2 py-0.5 text-[10px] font-black rounded-full shadow-sm">
+                        NEW
+                      </Badge>
+                      <span className="text-[10px] font-bold text-gray-400">Assignment</span>
+                    </div>
+                  </div>
+                ))}
+
+                {announcements.regular.slice(0, 1).map((a) => (
+                  <div
+                    key={a.id}
+                    onClick={() => onCardClick?.('announcements')}
+                    className="bg-white/60 p-3 rounded-xl flex items-center justify-between cursor-pointer hover:bg-white transition-all active:scale-[0.98]"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                        <StudentPortalIcon icon={STUDENT_ICONS.events} className="text-indigo-600" size={24} />
+                      </div>
+                      <div className="flex flex-col text-left">
+                        <span className="text-sm font-black text-sky-950 leading-tight">{a.title}</span>
+                        <span className="text-[10px] font-bold text-gray-400">Announcement</span>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold text-gray-400">Just now</span>
+                  </div>
+                ))}
+
+                {assignments.pending.length === 0 && announcements.regular.length === 0 && announcements.pinned.length === 0 && (
+                  <div className="py-4 text-center">
+                    <p className="text-sm font-bold text-sky-900/30">No new updates for today</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Swipeable Module Grid Container */}
-      <div className="px-5 -mt-8 relative z-10">
+      <div className="px-5 relative z-10">
         <div className="overflow-hidden" ref={emblaRef}>
           <div className="flex touch-pan-y">
 
             {/* Slide 1: Primary Stats */}
-            <div className="flex-[0_0_100%] min-w-0 grid grid-cols-2 gap-4">
-              <motion.div whileTap={{ scale: 0.95 }} className="cursor-pointer">
+            <div className="flex-[0_0_100%] min-w-0 grid grid-cols-2 gap-3">
+              <motion.div whileTap={{ scale: 0.95 }} onClick={() => onCardClick?.('grades')} className="cursor-pointer">
                 <Card className="border-none shadow-xl bg-gradient-to-br from-[#FF6B6B] to-[#FF8E8E] text-white rounded-[2rem] overflow-hidden group">
-                  <CardContent className="p-5 flex flex-col justify-between h-36">
+                  <CardContent className="p-4 flex flex-col justify-between h-32">
                     <span className="text-sm font-black opacity-90">Grades</span>
                     <div className="flex items-end justify-between">
                       <div className="text-5xl font-black tracking-tighter">{displayedAverage?.toFixed(0) || 0}</div>
@@ -160,9 +266,9 @@ export const StudentDashboard = ({
                 </Card>
               </motion.div>
 
-              <motion.div whileTap={{ scale: 0.95 }} className="cursor-pointer">
+              <motion.div whileTap={{ scale: 0.95 }} onClick={() => onCardClick?.('attendance')} className="cursor-pointer">
                 <Card className="border-none shadow-xl bg-gradient-to-br from-[#6BCB77] to-[#4FB35C] text-white rounded-[2rem] overflow-hidden group">
-                  <CardContent className="p-5 flex flex-col justify-between h-36">
+                  <CardContent className="p-4 flex flex-col justify-between h-32">
                     <span className="text-sm font-black opacity-90">Attendance</span>
                     <div className="flex items-end justify-between">
                       <div className="text-5xl font-black tracking-tighter">{attendance?.summary?.percentage.toFixed(0) || 0}%</div>
@@ -174,9 +280,9 @@ export const StudentDashboard = ({
                 </Card>
               </motion.div>
 
-              <motion.div whileTap={{ scale: 0.95 }} className="cursor-pointer">
+              <motion.div whileTap={{ scale: 0.95 }} onClick={() => onCardClick?.('assignments')} className="cursor-pointer">
                 <Card className="border-none shadow-xl bg-gradient-to-br from-[#FFA931] to-[#FF8C32] text-white rounded-[2rem] overflow-hidden group">
-                  <CardContent className="p-5 flex flex-col justify-between h-36">
+                  <CardContent className="p-4 flex flex-col justify-between h-32">
                     <div className="flex flex-col">
                       <span className="text-sm font-black opacity-90 leading-tight">Assignments</span>
                       <div className="text-2xl font-black tracking-tighter mt-1">{assignments?.pending.length} <span className="text-[10px] opacity-80 uppercase tracking-widest pl-1 font-black">due soon</span></div>
@@ -191,11 +297,12 @@ export const StudentDashboard = ({
                 </Card>
               </motion.div>
 
-              <motion.div whileTap={{ scale: 0.95 }} className="cursor-pointer">
+              <motion.div whileTap={{ scale: 0.95 }} onClick={() => onCardClick?.('calendar')} className="cursor-pointer">
                 <Card className="border-none shadow-xl bg-gradient-to-br from-[#4D96FF] to-[#006E7F] text-white rounded-[2rem] overflow-hidden group">
-                  <CardContent className="p-5 flex flex-col justify-between h-36">
-                    <span className="text-sm font-black opacity-90">Schedule</span>
-                    <div className="flex items-center justify-end">
+                  <CardContent className="p-4 flex flex-col justify-between h-32">
+                    <span className="text-sm font-black opacity-90">School Calendar</span>
+                    <div className="flex items-end justify-between">
+                      <div className="text-2xl font-black tracking-tighter mt-1">12 <span className="text-[10px] opacity-80 uppercase tracking-widest pl-1 font-black">Events</span></div>
                       <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
                         <StudentPortalIcon icon="fluent-emoji-flat:calendar" size={32} />
                       </div>
@@ -206,10 +313,10 @@ export const StudentDashboard = ({
             </div>
 
             {/* Slide 2: Additional Modules */}
-            <div className="flex-[0_0_100%] min-w-0 grid grid-cols-2 gap-4">
-              <motion.div whileTap={{ scale: 0.95 }} className="cursor-pointer">
+            <div className="flex-[0_0_100%] min-w-0 grid grid-cols-2 gap-3">
+              <motion.div whileTap={{ scale: 0.95 }} onClick={() => onCardClick?.('exams')} className="cursor-pointer">
                 <Card className="border-none shadow-xl bg-gradient-to-br from-[#A78BFA] to-[#8B5CF6] text-white rounded-[2rem] overflow-hidden group">
-                  <CardContent className="p-5 flex flex-col justify-between h-36">
+                  <CardContent className="p-4 flex flex-col justify-between h-32">
                     <span className="text-sm font-black opacity-90">Exams</span>
                     <div className="flex items-end justify-between">
                       <div className="text-3xl font-black tracking-tighter">{exams?.upcoming?.length || 0} <span className="text-[10px] opacity-80 uppercase tracking-widest pl-1 font-black">Upcoming</span></div>
@@ -221,9 +328,9 @@ export const StudentDashboard = ({
                 </Card>
               </motion.div>
 
-              <motion.div whileTap={{ scale: 0.95 }} className="cursor-pointer">
+              <motion.div whileTap={{ scale: 0.95 }} onClick={() => onCardClick?.('announcements')} className="cursor-pointer">
                 <Card className="border-none shadow-xl bg-gradient-to-br from-[#F472B6] to-[#EC4899] text-white rounded-[2rem] overflow-hidden group">
-                  <CardContent className="p-5 flex flex-col justify-between h-36">
+                  <CardContent className="p-4 flex flex-col justify-between h-32">
                     <span className="text-sm font-black opacity-90">Announcements</span>
                     <div className="flex items-end justify-between">
                       <div className="text-3xl font-black tracking-tighter">{announcements?.count || 0} <span className="text-[10px] opacity-80 uppercase tracking-widest pl-1 font-black">Active</span></div>
@@ -235,9 +342,9 @@ export const StudentDashboard = ({
                 </Card>
               </motion.div>
 
-              <motion.div whileTap={{ scale: 0.95 }} className="cursor-pointer">
+              <motion.div whileTap={{ scale: 0.95 }} onClick={() => onCardClick?.('schedule')} className="cursor-pointer">
                 <Card className="border-none shadow-xl bg-gradient-to-br from-[#38BDF8] to-[#0EA5E9] text-white rounded-[2rem] overflow-hidden group">
-                  <CardContent className="p-5 flex flex-col justify-between h-36">
+                  <CardContent className="p-4 flex flex-col justify-between h-32">
                     <span className="text-sm font-black opacity-90">Teachers</span>
                     <div className="flex items-center justify-end">
                       <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
@@ -248,10 +355,10 @@ export const StudentDashboard = ({
                 </Card>
               </motion.div>
 
-              <motion.div whileTap={{ scale: 0.95 }} className="cursor-pointer">
+              <motion.div whileTap={{ scale: 0.95 }} onClick={() => onCardClick?.('calendar')} className="cursor-pointer">
                 <Card className="border-none shadow-xl bg-gradient-to-br from-[#FB923C] to-[#F97316] text-white rounded-[2rem] overflow-hidden group">
-                  <CardContent className="p-5 flex flex-col justify-between h-36">
-                    <span className="text-sm font-black opacity-90">Calendar</span>
+                  <CardContent className="p-4 flex flex-col justify-between h-32">
+                    <span className="text-sm font-black opacity-90">Events</span>
                     <div className="flex items-center justify-end">
                       <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
                         <StudentPortalIcon icon="fluent-emoji-flat:calendar" size={32} />
@@ -282,62 +389,6 @@ export const StudentDashboard = ({
       {/* Promotional Banner Placeholder / Event Banner */}
       <div className="px-5">
         <PromotionalSlider schoolId={schoolId} />
-      </div>
-
-      {/* Activity Feed: What's New */}
-      <div className="px-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="font-black text-sky-950 text-lg">What's New</h3>
-        </div>
-
-        <div className="space-y-4">
-          {/* Today Group */}
-          <div className="rounded-[2rem] bg-sky-50/50 border border-sky-100/50 overflow-hidden backdrop-blur-sm">
-            <div className="bg-sky-500 px-6 py-2 flex items-center justify-between">
-              <span className="text-white font-black text-sm tracking-tight">{format(new Date(), 'MMMM d')}</span>
-              <button className="text-[10px] text-white/80 font-black uppercase tracking-widest flex items-center gap-1">
-                View all <StudentPortalIcon icon="fluent:chevron-right-24-filled" size={12} />
-              </button>
-            </div>
-
-            <div className="p-2 space-y-1">
-              {assignments.pending.slice(0, 3).map((a) => (
-                <div key={a.id} className="bg-white/60 p-4 rounded-2xl flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
-                      <StudentPortalIcon icon={STUDENT_ICONS.homework} className="text-sky-600" size={24} />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-sm font-black text-sky-950 leading-tight">{a.title}</span>
-                      <span className="text-[10px] font-bold text-sky-600/70">{a.subjects?.name}</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <Badge className="bg-emerald-50 text-emerald-600 border-none px-2 py-0.5 text-[10px] font-black rounded-full shadow-sm">
-                      NEW
-                    </Badge>
-                    <span className="text-[10px] font-bold text-gray-400">9:00 AM</span>
-                  </div>
-                </div>
-              ))}
-
-              {announcements.regular.slice(0, 1).map((a) => (
-                <div key={a.id} className="bg-white/60 p-4 rounded-2xl flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
-                      <StudentPortalIcon icon={STUDENT_ICONS.events} className="text-amber-600" size={24} />
-                    </div>
-                    <div className="flex flex-col text-left">
-                      <span className="text-sm font-black text-sky-950 leading-tight">{a.title}</span>
-                      <span className="text-[10px] font-bold text-gray-400">General Announcement</span>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold text-gray-400">Just now</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
       </div>
 
     </div>

@@ -63,6 +63,7 @@ export interface Assignment {
   due_date: string;
   max_score?: number;
   assignment_type: 'homework' | 'project' | 'quiz' | 'essay' | 'other';
+  submission_required?: boolean;
   attachments?: Record<string, unknown>;
   created_by?: string;
   created_at: string;

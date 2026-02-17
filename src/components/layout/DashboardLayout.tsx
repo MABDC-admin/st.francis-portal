@@ -156,6 +156,7 @@ const icon3DMap: Record<string, any> = {
   'student-assignments': ReportsIcon3D,
   'student-exams': ReportsIcon3D,
   'student-announcements': EventsIcon3D,
+  'student-calendar': EventsIcon3D,
   'student-grades': EnterGradeIcon3D,
   'student-subjects': SubjectsIcon3D,
   'student-profile': ProfileIcon3D,
@@ -235,6 +236,7 @@ const iconAppleMap: Record<string, any> = {
   'student-assignments': AppleReportsIcon,
   'student-exams': AppleReportsIcon,
   'student-announcements': AppleEventsIcon,
+  'student-calendar': AppleEventsIcon,
   'student-grades': AppleGradesIcon,
   'student-subjects': AppleSubjectsIcon,
   'student-profile': AppleProfileIcon,
@@ -500,6 +502,7 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
           ]
         },
         { id: 'student-library', icon: LibraryIcon3D, label: 'Library' },
+        { id: 'student-calendar', icon: EventsIcon3D, label: 'Calendar' },
         { id: 'student-announcements', icon: EventsIcon3D, label: 'Announcements' },
         { id: 'helpdesk', icon: AdminIcon3D, label: 'Helpdesk' },
       ];

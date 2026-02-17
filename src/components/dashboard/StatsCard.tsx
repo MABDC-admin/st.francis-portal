@@ -39,33 +39,33 @@ const variantStyles = {
   },
 };
 
-export const StatsCard = ({ 
-  title, 
-  value, 
-  subtitle, 
-  icon: Icon, 
-  trend, 
+export const StatsCard = ({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  trend,
   variant = 'purple',
-  delay = 0 
+  delay = 0
 }: StatsCardProps) => {
   const styles = variantStyles[variant];
-  
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.3 }}
       className={cn(
-        "relative overflow-hidden rounded-2xl p-6 shadow-card",
+        "relative overflow-hidden rounded-xl p-4 shadow-card",
         styles.card
       )}
     >
-      <div className="flex flex-col items-center text-center gap-4">
+      <div className="flex flex-col items-center text-center gap-2">
         <div className={cn(
-          "rounded-2xl p-4",
+          "rounded-xl p-2.5",
           styles.icon
         )}>
-          <Icon className="h-7 w-7" />
+          <Icon className="h-5 w-5" />
         </div>
         <div>
           <p className={cn(

@@ -30,6 +30,7 @@ import { StudentAssignmentsTab } from './student/StudentAssignmentsTab';
 import { StudentExamsTab } from './student/StudentExamsTab';
 import { StudentAnnouncementsTab } from './student/StudentAnnouncementsTab';
 import { StudentLibraryTab } from './student/StudentLibraryTab';
+import { StudentCalendarTab } from './student/StudentCalendarTab';
 import {
   Dialog,
   DialogContent,
@@ -145,10 +146,11 @@ const useStudentSubjects = (studentId: string | undefined) => {
 };
 
 interface StudentPortalProps {
-  activeSection?: 'dashboard' | 'profile' | 'grades' | 'subjects' | 'schedule' | 'attendance' | 'assignments' | 'exams' | 'announcements' | 'library';
+  activeSection?: 'dashboard' | 'profile' | 'grades' | 'subjects' | 'schedule' | 'attendance' | 'assignments' | 'exams' | 'announcements' | 'library' | 'calendar';
+  onNavigate?: (section: string) => void;
 }
 
-export const StudentPortal = ({ activeSection = 'dashboard' }: StudentPortalProps) => {
+export const StudentPortal = ({ activeSection = 'dashboard', onNavigate }: StudentPortalProps) => {
   const { user, signOut } = useAuth();
   const [isIDOpen, setIsIDOpen] = useState(false);
 
@@ -205,6 +207,27 @@ export const StudentPortal = ({ activeSection = 'dashboard' }: StudentPortalProp
     assignments: 'Assignments',
     exams: 'Exam Schedule',
     announcements: 'Announcements',
+    calendar: 'School Calendar',
+  };
+
+  // Handle navigation with mapping to Index.tsx tab names
+  const handleNavigation = (section: string) => {
+    if (!onNavigate) return;
+
+    const tabMapping: Record<string, string> = {
+      'grades': 'student-grades',
+      'attendance': 'student-attendance',
+      'assignments': 'student-assignments',
+      'calendar': 'student-calendar',
+      'announcements': 'student-announcements',
+      'exams': 'student-exams',
+      'profile': 'student-profile',
+      'subjects': 'student-subjects',
+      'schedule': 'student-schedule',
+      'library': 'student-library',
+    };
+
+    onNavigate(tabMapping[section] || section);
   };
 
   // Render the content based on activeSection
@@ -220,6 +243,7 @@ export const StudentPortal = ({ activeSection = 'dashboard' }: StudentPortalProp
             grades={grades}
             studentName={student.student_name}
             studentPhotoUrl={student.photo_url}
+            onCardClick={handleNavigation}
           />
         ) : (
           <Card>
@@ -398,6 +422,14 @@ export const StudentPortal = ({ activeSection = 'dashboard' }: StudentPortalProp
 
       case 'library':
         return <StudentLibraryTab />;
+
+      case 'calendar':
+        return student ? (
+          <StudentCalendarTab
+            schoolId={student.school_id}
+            academicYearId={student.academic_year_id}
+          />
+        ) : null;
 
       default:
         return null;

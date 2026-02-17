@@ -28,6 +28,7 @@ interface AssignmentRecord {
   due_date: string;
   max_score?: number | null;
   assignment_type: string;
+  submission_required: boolean;
   subjects?: { code: string; name: string } | null;
 }
 
@@ -46,7 +47,7 @@ export const AssignmentManagement = () => {
   const queryClient = useQueryClient();
   const { data: schoolId } = useSchoolId();
   const { selectedYearId } = useAcademicYear();
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -55,7 +56,7 @@ export const AssignmentManagement = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
-  
+
   const [formData, setFormData] = useState({
     subject_id: '',
     grade_level: '',
@@ -65,6 +66,8 @@ export const AssignmentManagement = () => {
     due_date: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
     max_score: 100,
     assignment_type: 'homework',
+    submission_required: true,
+    has_max_score: true,
   });
 
   // Fetch assignments
@@ -72,7 +75,7 @@ export const AssignmentManagement = () => {
     queryKey: ['assignment-management', schoolId, selectedYearId, selectedLevel, selectedType],
     queryFn: async () => {
       if (!schoolId || !selectedYearId) return [];
-      
+
       let query = supabase
         .from('student_assignments')
         .select(`
@@ -82,14 +85,14 @@ export const AssignmentManagement = () => {
         .eq('school_id', schoolId)
         .eq('academic_year_id', selectedYearId)
         .order('due_date', { ascending: false });
-      
+
       if (selectedLevel !== 'all') {
         query = query.eq('grade_level', selectedLevel);
       }
       if (selectedType !== 'all') {
         query = query.eq('assignment_type', selectedType);
       }
-      
+
       const { data, error } = await query;
       if (error) throw error;
       return data || [];
@@ -103,7 +106,7 @@ export const AssignmentManagement = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('subjects')
-        .select('id, code, name')
+        .select('id, code, name, grade_levels')
         .eq('is_active', true)
         .order('name');
       if (error) throw error;
@@ -111,17 +114,23 @@ export const AssignmentManagement = () => {
     },
   });
 
+  // Filter subjects based on selected grade level in form
+  const filteredSubjects = subjects.filter((subject: any) => {
+    if (!formData.grade_level) return true;
+    return subject.grade_levels?.includes(formData.grade_level);
+  });
+
   // Create/Update mutation
   const saveMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       if (!schoolId || !selectedYearId) throw new Error('Missing school or academic year');
-      
+
       const payload = {
         ...data,
         school_id: schoolId,
         academic_year_id: selectedYearId,
       };
-      
+
       if (editingRecord) {
         const { error } = await supabase
           .from('student_assignments')
@@ -177,6 +186,8 @@ export const AssignmentManagement = () => {
       due_date: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
       max_score: 100,
       assignment_type: 'homework',
+      submission_required: true,
+      has_max_score: true,
     });
   };
 
@@ -191,6 +202,7 @@ export const AssignmentManagement = () => {
       due_date: record.due_date.slice(0, 16), // Format for datetime-local input
       max_score: record.max_score || 100,
       assignment_type: record.assignment_type,
+      submission_required: record.submission_required,
     });
     setIsModalOpen(true);
   };
@@ -383,28 +395,28 @@ export const AssignmentManagement = () => {
                 <Badge variant="outline">{viewingRecord.grade_level}</Badge>
                 <Badge variant="outline">{viewingRecord.subjects?.name}</Badge>
               </div>
-              
+
               <div>
                 <Label className="text-muted-foreground">Due Date</Label>
                 <p className="font-medium">
                   {format(new Date(viewingRecord.due_date), 'MMMM d, yyyy h:mm a')}
                 </p>
               </div>
-              
+
               {viewingRecord.description && (
                 <div>
                   <Label className="text-muted-foreground">Description</Label>
                   <p className="whitespace-pre-wrap">{viewingRecord.description}</p>
                 </div>
               )}
-              
+
               {viewingRecord.instructions && (
                 <div>
                   <Label className="text-muted-foreground">Instructions</Label>
                   <p className="whitespace-pre-wrap">{viewingRecord.instructions}</p>
                 </div>
               )}
-              
+
               <div>
                 <Label className="text-muted-foreground">Max Score</Label>
                 <p className="font-medium">{viewingRecord.max_score || 'Not specified'}</p>
@@ -438,12 +450,13 @@ export const AssignmentManagement = () => {
                 <Select
                   value={formData.subject_id}
                   onValueChange={(value) => setFormData({ ...formData, subject_id: value })}
+                  disabled={!formData.grade_level}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select subject" />
+                    <SelectValue placeholder={formData.grade_level ? "Select subject" : "Select Grade Level first"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {subjects.map((subject: any) => (
+                    {filteredSubjects.map((subject: any) => (
                       <SelectItem key={subject.id} value={subject.id}>
                         {subject.name}
                       </SelectItem>
@@ -489,12 +502,46 @@ export const AssignmentManagement = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Max Score</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Max Score</Label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="has_max_score"
+                      checked={formData.has_max_score}
+                      onChange={(e) => setFormData({ ...formData, has_max_score: e.target.checked })}
+                      className="h-3 w-3 rounded border-gray-300 text-primary"
+                    />
+                    <Label htmlFor="has_max_score" className="text-xs text-muted-foreground font-normal cursor-pointer">
+                      Graded
+                    </Label>
+                  </div>
+                </div>
                 <Input
                   type="number"
                   value={formData.max_score}
-                  onChange={(e) => setFormData({ ...formData, max_score: parseInt(e.target.value) || 100 })}
+                  onChange={(e) => setFormData({ ...formData, max_score: parseInt(e.target.value) || 0 })}
+                  disabled={!formData.has_max_score}
+                  className={!formData.has_max_score ? "opacity-50" : ""}
                 />
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2 border p-3 rounded-lg bg-muted/20">
+              <input
+                type="checkbox"
+                id="submission_required"
+                checked={formData.submission_required}
+                onChange={(e) => setFormData({ ...formData, submission_required: e.target.checked })}
+                className="h-4 w-4 rounded border-primary text-primary focus:ring-primary"
+              />
+              <div className="space-y-0.5">
+                <Label htmlFor="submission_required" className="text-sm font-medium leading-none cursor-pointer">
+                  Submission Required
+                </Label>
+                <p className="text-[10px] text-muted-foreground">
+                  If unchecked, students will only need to mark this task as "Done".
+                </p>
               </div>
             </div>
 

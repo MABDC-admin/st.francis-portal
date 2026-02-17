@@ -21,7 +21,6 @@ export const StudentScheduleTab = ({
   academicYearId,
 }: StudentScheduleTabProps) => {
   const [selectedDay, setSelectedDay] = useState(new Date().getDay() === 0 || new Date().getDay() === 6 ? 1 : new Date().getDay());
-  const [searchQuery, setSearchQuery] = useState('');
 
   const { data: schedules, byDay, isLoading } = useStudentSchedule(
     gradeLevel,
@@ -29,10 +28,7 @@ export const StudentScheduleTab = ({
     academicYearId
   );
 
-  const filteredSchedules = (byDay.get(selectedDay) || []).filter(s =>
-    s.subjects?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.teachers?.full_name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const daySchedules = byDay.get(selectedDay) || [];
 
   if (isLoading) {
     return (
@@ -62,13 +58,19 @@ export const StudentScheduleTab = ({
     if (n.includes('math')) return 'from-amber-400 to-amber-500';
     if (n.includes('science')) return 'from-emerald-400 to-emerald-500';
     if (n.includes('social') || n.includes('araling')) return 'from-sky-400 to-sky-500';
+    if (n.includes('filipino')) return 'from-red-400 to-red-500';
+    if (n.includes('pe') || n.includes('mapeh')) return 'from-lime-400 to-lime-500';
+    if (n.includes('esp') || n.includes('values')) return 'from-pink-400 to-pink-500';
+    if (n.includes('tle') || n.includes('ict')) return 'from-cyan-400 to-cyan-500';
+    if (n.includes('research')) return 'from-violet-400 to-violet-500';
+    if (n.includes('mother') || n.includes('tongue')) return 'from-indigo-400 to-indigo-500';
     if (n.includes('break')) return 'from-blue-300 to-blue-400';
 
     const colors = [
       'from-purple-400 to-purple-500',
       'from-orange-400 to-orange-500',
       'from-teal-400 to-teal-500',
-      'from-indigo-400 to-indigo-500'
+      'from-fuchsia-400 to-fuchsia-500'
     ];
     return colors[index % colors.length];
   };
@@ -81,9 +83,13 @@ export const StudentScheduleTab = ({
     if (n.includes('social') || n.includes('araling')) return STUDENT_ICONS.socialStudies;
     if (n.includes('filipino')) return STUDENT_ICONS.filipino;
     if (n.includes('pe')) return STUDENT_ICONS.pe;
-    if (n.includes('break')) return 'fluent-emoji-flat:sun-with-face';
-    if (n.includes('tle')) return (STUDENT_ICONS as any).tle;
+    if (n.includes('mapeh')) return STUDENT_ICONS.mapeh;
+    if (n.includes('esp') || n.includes('values')) return STUDENT_ICONS.esp;
+    if (n.includes('tle')) return STUDENT_ICONS.tle;
     if (n.includes('ict')) return STUDENT_ICONS.ict;
+    if (n.includes('research')) return STUDENT_ICONS.research;
+    if (n.includes('mother') || n.includes('tongue')) return STUDENT_ICONS.motherTongue;
+    if (n.includes('break')) return 'fluent-emoji-flat:sun-with-face';
     return STUDENT_ICONS.english;
   };
 
@@ -101,21 +107,6 @@ export const StudentScheduleTab = ({
 
       {/* Control Section */}
       <div className="px-4 -mt-10 relative z-10 flex flex-col gap-6">
-        {/* Search Bar */}
-        <div className="relative group">
-          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-            <svg className="w-5 h-5 text-slate-400 group-focus-within:text-sky-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-          <input
-            type="text"
-            placeholder="Search timetable..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-14 pl-12 pr-4 bg-white/95 backdrop-blur-md border-none shadow-lg rounded-2xl text-slate-700 font-bold placeholder:text-slate-400 focus:ring-4 focus:ring-sky-500/20 transition-all outline-none"
-          />
-        </div>
 
         {/* Day Selector */}
         <div className="flex items-center justify-between bg-white/50 backdrop-blur-sm p-1.5 rounded-[2rem] shadow-inner border border-white/50">
@@ -145,12 +136,12 @@ export const StudentScheduleTab = ({
         </div>
 
         <div className="space-y-4">
-          {filteredSchedules.length === 0 ? (
+          {daySchedules.length === 0 ? (
             <div className="py-12 text-center text-slate-400 font-bold opacity-50">
-              No classes for this search
+              No classes for this day
             </div>
           ) : (
-            filteredSchedules.map((schedule, idx) => {
+            daySchedules.map((schedule, idx) => {
               const subjectName = schedule.subjects?.name || 'Unknown';
               const colorClass = getSubjectColor(subjectName, idx);
               const icon = getSubjectIcon(subjectName);

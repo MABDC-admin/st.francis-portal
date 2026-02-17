@@ -209,6 +209,36 @@ export const StudentAssignmentsTab = ({
     }
   });
 
+  const markAsDoneMutation = useMutation({
+    mutationFn: async (assignmentId: string) => {
+      setIsSubmitting(true);
+
+      const { error } = await supabase
+        .from('assignment_submissions')
+        .upsert({
+          assignment_id: assignmentId,
+          student_id: studentId,
+          status: 'submitted',
+          submitted_at: new Date().toISOString(),
+          attachments: {} // Empty attachments for non-submission tasks
+        }, { onConflict: 'assignment_id,student_id' });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Task marked as done! 🎉");
+      setIsDetailOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['assignment-submissions', studentId] });
+      queryClient.invalidateQueries({ queryKey: ['assignments', gradeLevel, schoolId, academicYearId] });
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to mark as done: ${error.message}`);
+    },
+    onSettled: () => {
+      setIsSubmitting(false);
+    }
+  });
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setSubmissionFile(e.target.files[0]);
@@ -350,7 +380,7 @@ export const StudentAssignmentsTab = ({
                         {format(new Date(selectedAssignment.due_date), 'MMMM d, h:mm a')}
                       </div>
                     </div>
-                    {selectedAssignment.max_score && (
+                    {selectedAssignment.max_score !== null && (
                       <div className="flex flex-col">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Max Score</span>
                         <div className="flex items-center gap-1 text-slate-700 font-black">
@@ -397,67 +427,98 @@ export const StudentAssignmentsTab = ({
                         </h4>
                       </div>
 
-                      {submissionFile ? (
-                        <div className="bg-emerald-50/50 border border-emerald-100 rounded-3xl p-4 flex items-center justify-between">
-                          <div className="flex items-center gap-3 overflow-hidden">
-                            <div className="w-10 h-10 bg-emerald-100 rounded-2xl flex items-center justify-center shrink-0">
-                              <FileText className="h-5 w-5 text-emerald-600" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-bold text-slate-700 truncate">{submissionFile.name}</p>
-                              <p className="text-[10px] text-slate-400 font-bold">{(submissionFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                            </div>
+
+
+                      {/* Non-Submission Task Interface */}
+                      {selectedAssignment.submission_required === false && (
+                        <div className="bg-sky-50/50 border border-sky-100 rounded-3xl p-6 text-center">
+                          <div className="w-12 h-12 bg-sky-100 rounded-full flex items-center justify-center mx-auto mb-3 text-sky-600">
+                            <CheckCircle className="h-6 w-6" />
                           </div>
+                          <h4 className="font-bold text-slate-800 mb-1">No File Upload Required</h4>
+                          <p className="text-xs text-slate-500 mb-4">
+                            This task does not require a file submission. Simply mark it as done when you have completed it.
+                          </p>
                           <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-slate-400 hover:text-rose-500 rounded-full"
-                            onClick={() => setSubmissionFile(null)}
+                            onClick={() => markAsDoneMutation.mutate(selectedAssignment.id)}
                             disabled={isSubmitting}
+                            className="bg-sky-500 hover:bg-sky-600 text-white font-black rounded-xl w-full py-6 shadow-lg shadow-sky-200 transition-all active:scale-95"
                           >
-                            <X className="h-5 w-5" />
+                            {isSubmitting ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Marking as Done...
+                              </>
+                            ) : (
+                              'Mark as Done'
+                            )}
                           </Button>
                         </div>
-                      ) : (
-                        <div className="grid grid-cols-2 gap-3">
-                          <Label className="cursor-pointer">
-                            <Input
-                              type="file"
-                              className="hidden"
-                              onChange={handleFileChange}
-                              disabled={isSubmitting}
-                            />
-                            <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 rounded-[2rem] hover:border-sky-400 hover:bg-sky-50/30 transition-all gap-2 group">
-                              <div className="w-12 h-12 bg-sky-50 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                                <Upload className="h-6 w-6 text-sky-500" />
-                              </div>
-                              <span className="text-xs font-black text-slate-500">Upload File</span>
-                            </div>
-                          </Label>
-
-                          <Label className="cursor-pointer">
-                            <Input
-                              type="file"
-                              accept="image/*"
-                              capture="environment"
-                              className="hidden"
-                              onChange={handleFileChange}
-                              disabled={isSubmitting}
-                            />
-                            <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 rounded-[2rem] hover:border-emerald-400 hover:bg-emerald-50/30 transition-all gap-2 group">
-                              <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                                <Camera className="h-6 w-6 text-emerald-500" />
-                              </div>
-                              <span className="text-xs font-black text-slate-500">Use Camera</span>
-                            </div>
-                          </Label>
-                        </div>
                       )}
+
+                      {/* File Upload Interface (Only if submission required) */}
+                      {selectedAssignment.submission_required !== false && (
+                        submissionFile ? (
+                          <div className="bg-emerald-50/50 border border-emerald-100 rounded-3xl p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3 overflow-hidden">
+                              <div className="w-10 h-10 bg-emerald-100 rounded-2xl flex items-center justify-center shrink-0">
+                                <FileText className="h-5 w-5 text-emerald-600" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-bold text-slate-700 truncate">{submissionFile.name}</p>
+                                <p className="text-[10px] text-slate-400 font-bold">{(submissionFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-slate-400 hover:text-rose-500 rounded-full"
+                              onClick={() => setSubmissionFile(null)}
+                              disabled={isSubmitting}
+                            >
+                              <X className="h-5 w-5" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-3">
+                            <Label className="cursor-pointer">
+                              <Input
+                                type="file"
+                                className="hidden"
+                                onChange={handleFileChange}
+                                disabled={isSubmitting}
+                              />
+                              <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 rounded-[2rem] hover:border-sky-400 hover:bg-sky-50/30 transition-all gap-2 group">
+                                <div className="w-12 h-12 bg-sky-50 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                                  <Upload className="h-6 w-6 text-sky-500" />
+                                </div>
+                                <span className="text-xs font-black text-slate-500">Upload File</span>
+                              </div>
+                            </Label>
+
+                            <Label className="cursor-pointer">
+                              <Input
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                className="hidden"
+                                onChange={handleFileChange}
+                                disabled={isSubmitting}
+                              />
+                              <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 rounded-[2rem] hover:border-emerald-400 hover:bg-emerald-50/30 transition-all gap-2 group">
+                                <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                                  <Camera className="h-6 w-6 text-emerald-500" />
+                                </div>
+                                <span className="text-xs font-black text-slate-500">Use Camera</span>
+                              </div>
+                            </Label>
+                          </div>
+                        ))}
 
                       {isSubmitting && (
                         <div className="space-y-2">
                           <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase">
-                            <span>Uploading...</span>
+                            <span>{selectedAssignment.submission_required === false ? 'Processing...' : 'Uploading...'}</span>
                             <span>{uploadProgress}%</span>
                           </div>
                           <Progress value={uploadProgress} className="h-1.5 bg-slate-100" />
@@ -473,20 +534,22 @@ export const StudentAssignmentsTab = ({
                         >
                           Later
                         </Button>
-                        <Button
-                          onClick={() => submitMutation.mutate(selectedAssignment.id)}
-                          disabled={!submissionFile || isSubmitting}
-                          className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-2xl shadow-lg shadow-emerald-200 transition-all active:scale-95 disabled:opacity-50"
-                        >
-                          {isSubmitting ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Submitting...
-                            </>
-                          ) : (
-                            'Turn In Assignment'
-                          )}
-                        </Button>
+                        {selectedAssignment.submission_required !== false && (
+                          <Button
+                            onClick={() => submitMutation.mutate(selectedAssignment.id)}
+                            disabled={!submissionFile || isSubmitting}
+                            className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-2xl shadow-lg shadow-emerald-200 transition-all active:scale-95 disabled:opacity-50"
+                          >
+                            {isSubmitting ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Submitting...
+                              </>
+                            ) : (
+                              'Turn In Assignment'
+                            )}
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ) : (
