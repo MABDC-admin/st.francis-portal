@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { UserPlus, Loader2, Search, Edit, Trash2, Mail, Phone, BookOpen, GraduationCap } from 'lucide-react';
+import { UserPlus, Loader2, Search, Edit, Trash2, Mail, Phone, BookOpen, GraduationCap, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useSchool, SchoolType } from '@/contexts/SchoolContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { TeacherCredentialsTab } from './TeacherCredentialsTab';
+import { SeedTeachersButton } from './SeedTeachersButton';
 
 const GRADE_LEVELS = [
   'Kinder 1', 'Kinder 2',
@@ -47,6 +50,7 @@ const initialFormState = {
 
 export const TeacherManagement = () => {
   const { selectedSchool } = useSchool();
+  const { role } = useAuth();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -57,6 +61,8 @@ export const TeacherManagement = () => {
   const [createAccount, setCreateAccount] = useState(true);
   const [quickAssignTeacher, setQuickAssignTeacher] = useState<Teacher | null>(null);
   const [quickAssignLevel, setQuickAssignLevel] = useState('');
+  const [credentialsTeacher, setCredentialsTeacher] = useState<Teacher | null>(null);
+  const isAdmin = role === 'admin';
 
   const fetchTeachers = async () => {
     setIsLoading(true);
@@ -214,10 +220,13 @@ export const TeacherManagement = () => {
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Teachers</h1>
           <p className="text-muted-foreground mt-1">Manage teacher records and accounts</p>
         </div>
-        <Button onClick={() => handleOpenModal()}>
-          <UserPlus className="h-4 w-4 mr-2" />
-          Add Teacher
-        </Button>
+        <div className="flex items-center gap-2">
+          {isAdmin && <SeedTeachersButton onComplete={fetchTeachers} />}
+          <Button onClick={() => handleOpenModal()}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            Add Teacher
+          </Button>
+        </div>
       </motion.div>
 
       {/* Search */}
@@ -280,6 +289,16 @@ export const TeacherManagement = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="View Credentials"
+                              onClick={() => setCredentialsTeacher(teacher)}
+                            >
+                              <KeyRound className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
@@ -461,6 +480,20 @@ export const TeacherManagement = () => {
               Save
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Teacher Credentials Dialog */}
+      <Dialog open={!!credentialsTeacher} onOpenChange={(open) => { if (!open) setCredentialsTeacher(null); }}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Teacher Credentials</DialogTitle>
+            <DialogDescription>
+              {credentialsTeacher?.full_name}
+            </DialogDescription>
+          </DialogHeader>
+          {credentialsTeacher && (
+            <TeacherCredentialsTab teacherId={credentialsTeacher.id} />
+          )}
         </DialogContent>
       </Dialog>
     </div>
