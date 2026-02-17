@@ -1,65 +1,57 @@
 
 
-## Add Student Credentials View for Admin and Registrar
-
-### Overview
-Add a "Credentials" tab to the student detail views that displays the student's login credentials (email, temporary password, password changed status). This tab will only be visible to users with the **admin** or **registrar** role.
+## Add Password Reset to Credentials Tab and Allow IT Role Access
 
 ### Changes
 
-#### 1. Database Migration -- Update RLS Policy
-The current `user_credentials` SELECT policy only allows **admin** users. The registrar role needs to be added.
+#### 1. Update Role Check -- Add IT Role Access
 
-- Drop the existing "Only admins can view credentials" policy
-- Create a new policy: "Admins and registrars can view credentials" allowing SELECT when `has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'registrar')`
+**Files: `StudentDetailPanel.tsx`, `LISStudentDetail.tsx`, `StudentCredentialsTab.tsx`**
 
-#### 2. New Component: `StudentCredentialsTab`
-Create `src/components/students/StudentCredentialsTab.tsx`:
+- Change `canViewCredentials` from `role === 'admin' || role === 'registrar'` to also include `role === 'it'`
+- Update the disclaimer text in `StudentCredentialsTab` to mention IT role
 
-- Accepts `studentId` as a prop
-- Queries `user_credentials` table filtered by `student_id`
-- Displays:
-  - Email / Username (LRN)
-  - Temporary password (with show/hide toggle)
-  - Whether the password has been changed
-  - Account creation date
-- Shows a "No account found" message if the student has no credentials
-- Uses a lock icon and security-themed styling to indicate sensitivity
+#### 2. Update RLS Policy -- Allow IT Role
 
-#### 3. Update `StudentDetailPanel.tsx`
-- Import `useAuth` from AuthContext
-- Import the new `StudentCredentialsTab`
-- Conditionally add a "Credentials" tab (with a Key icon) to the tab list only when the current user's role is `admin` or `registrar`
-- Add the corresponding tab content panel
+**New SQL migration:**
 
-#### 4. Update `LISStudentDetail.tsx`
-- Same changes as above: import `useAuth`, conditionally render the "Credentials" tab for admin/registrar roles
-
-### Technical Details
-
-**RLS policy SQL:**
 ```sql
-DROP POLICY IF EXISTS "Only admins can view credentials" ON public.user_credentials;
-CREATE POLICY "Admins and registrars can view credentials"
+DROP POLICY IF EXISTS "Admins and registrars can view credentials" ON public.user_credentials;
+CREATE POLICY "Admins registrars and IT can view credentials"
   ON public.user_credentials FOR SELECT
   TO authenticated
   USING (
-    has_role(auth.uid(), 'admin'::app_role)
-    OR has_role(auth.uid(), 'registrar'::app_role)
+    public.has_role(auth.uid(), 'admin'::app_role)
+    OR public.has_role(auth.uid(), 'registrar'::app_role)
+    OR public.has_role(auth.uid(), 'it'::app_role)
     OR user_id = auth.uid()
   );
 ```
 
-**Files to create:**
-- `src/components/students/StudentCredentialsTab.tsx`
+#### 3. Add Reset Password Button to `StudentCredentialsTab`
+
+- Add a "Reset Password" button with a confirmation dialog (AlertDialog)
+- Reuse the existing `create-users` edge function with `action: 'reset_student_password'`
+- On success, show a toast with the new temporary password and refetch credentials
+- Show loading spinner during the reset operation
+- The button requires the credential to have a linked `user_id`
+
+### Technical Details
+
+**Reset flow** (already exists in the `create-users` edge function):
+```typescript
+await supabase.functions.invoke('create-users', {
+  body: {
+    action: 'reset_student_password',
+    credentialId: credentials.id,
+    userId: credentials.user_id,
+  },
+});
+```
 
 **Files to modify:**
-- `src/components/students/StudentDetailPanel.tsx` (add credentials tab for admin/registrar)
-- `src/components/lis/LISStudentDetail.tsx` (add credentials tab for admin/registrar)
-- New SQL migration (update RLS policy)
+- `src/components/students/StudentCredentialsTab.tsx` -- add reset button with confirmation dialog, update disclaimer
+- `src/components/students/StudentDetailPanel.tsx` -- add `'it'` to role check
+- `src/components/lis/LISStudentDetail.tsx` -- add `'it'` to role check
+- New SQL migration for RLS policy update
 
-**Role check pattern (client-side, for tab visibility only -- RLS enforces server-side):**
-```typescript
-const { role } = useAuth();
-const canViewCredentials = role === 'admin' || role === 'registrar';
-```
