@@ -20,6 +20,8 @@ import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { useYearGuard } from '@/hooks/useYearGuard';
 import { YearLockedBanner } from '@/components/ui/YearLockedBanner';
 import { GRADE_LEVELS } from '@/components/enrollment/constants';
+import { MultiFileUploader, Attachment } from '@/components/ui/MultiFileUploader';
+import { FileText, Eye } from 'lucide-react';
 
 interface ExamRecord {
   id: string;
@@ -32,6 +34,7 @@ interface ExamRecord {
   room?: string | null;
   quarter?: number | null;
   notes?: string | null;
+  attachments?: Attachment[] | null;
   subjects?: { code: string; name: string } | null;
 }
 
@@ -55,7 +58,9 @@ export const ExamScheduleManagement = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<ExamRecord | null>(null);
+  const [viewingRecord, setViewingRecord] = useState<ExamRecord | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
@@ -71,6 +76,7 @@ export const ExamScheduleManagement = () => {
     room: '',
     quarter: 1,
     notes: '',
+    attachments: [] as Attachment[],
   });
 
   // Fetch exams
@@ -133,6 +139,7 @@ export const ExamScheduleManagement = () => {
 
       const payload = {
         ...data,
+        attachments: data.attachments as any,
         school_id: schoolId,
         academic_year_id: selectedYearId,
       };
@@ -140,13 +147,13 @@ export const ExamScheduleManagement = () => {
       if (editingRecord) {
         const { error } = await supabase
           .from('exam_schedules')
-          .update(payload)
+          .update(payload as any)
           .eq('id', editingRecord.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('exam_schedules')
-          .insert(payload);
+          .insert(payload as any);
         if (error) throw error;
       }
     },
@@ -193,6 +200,7 @@ export const ExamScheduleManagement = () => {
       room: '',
       quarter: 1,
       notes: '',
+      attachments: [],
     });
   };
 
@@ -208,8 +216,14 @@ export const ExamScheduleManagement = () => {
       room: record.room || '',
       quarter: record.quarter || 1,
       notes: record.notes || '',
+      attachments: (record.attachments as unknown as Attachment[]) || [],
     });
     setIsModalOpen(true);
+  };
+
+  const handleView = (record: ExamRecord) => {
+    setViewingRecord(record);
+    setIsViewModalOpen(true);
   };
 
   const handleDelete = (id: string) => {
@@ -373,6 +387,13 @@ export const ExamScheduleManagement = () => {
                           <Button
                             variant="ghost"
                             size="icon"
+                            onClick={() => handleView(record)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => handleEdit(record)}
                           >
                             <Edit2 className="h-4 w-4" />
@@ -395,6 +416,68 @@ export const ExamScheduleManagement = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* View Modal */}
+      <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{viewingRecord?.subjects?.name} ({viewingRecord?.exam_type})</DialogTitle>
+          </DialogHeader>
+          {viewingRecord && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                <Badge className={typeColors[viewingRecord.exam_type] || typeColors.special}>
+                  {viewingRecord.exam_type}
+                </Badge>
+                <Badge variant="outline">{viewingRecord.grade_level}</Badge>
+                <Badge variant="outline">Q{viewingRecord.quarter}</Badge>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground">Date</Label>
+                  <p className="font-medium">{format(new Date(viewingRecord.exam_date), 'MMMM d, yyyy')}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Time</Label>
+                  <p className="font-medium">{viewingRecord.start_time} - {viewingRecord.end_time}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Room</Label>
+                  <p className="font-medium">{viewingRecord.room || 'N/A'}</p>
+                </div>
+              </div>
+
+              {viewingRecord.notes && (
+                <div>
+                  <Label className="text-muted-foreground">Notes</Label>
+                  <p className="whitespace-pre-wrap">{viewingRecord.notes}</p>
+                </div>
+              )}
+
+              {viewingRecord.attachments && viewingRecord.attachments.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Attachments</Label>
+                  <div className="grid grid-cols-1 gap-2">
+                    {viewingRecord.attachments.map((file, i) => (
+                      <a
+                        key={i}
+                        href={file.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 p-2 border rounded bg-muted/50 hover:bg-muted transition-colors"
+                      >
+                        <FileText className="h-4 w-4 text-primary" />
+                        <span className="text-sm truncate flex-1">{file.name}</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Create/Edit Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
@@ -524,6 +607,14 @@ export const ExamScheduleManagement = () => {
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 placeholder="Additional notes..."
                 rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Reference Materials & Documents</Label>
+              <MultiFileUploader
+                attachments={formData.attachments}
+                onChange={(attachments) => setFormData({ ...formData, attachments })}
               />
             </div>
 

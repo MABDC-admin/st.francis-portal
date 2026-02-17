@@ -26,8 +26,8 @@ interface BannerRecord {
     created_at: string;
 }
 
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
-const MAX_VIDEO_SIZE = 20 * 1024 * 1024; // 20MB
+const MAX_IMAGE_SIZE = 30 * 1024 * 1024; // 30MB
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
 
 export const BannerManagement = () => {
     const queryClient = useQueryClient();
@@ -76,7 +76,7 @@ export const BannerManagement = () => {
         const isVideo = file.type.startsWith('video/');
         const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
         if (file.size > maxSize) {
-            toast.error(`File too large. Max ${isVideo ? '20MB' : '5MB'}.`);
+            toast.error(`File too large. Max ${isVideo ? '50MB' : '30MB'}.`);
             return;
         }
         setLoadingState(true);
@@ -353,7 +353,7 @@ export const BannerManagement = () => {
                                         <>
                                             <Upload className="h-8 w-8" />
                                             <span className="text-sm">Click to upload {formData.type}</span>
-                                            <span className="text-xs">Max {formData.type === 'video' ? '20MB' : '5MB'}</span>
+                                            <span className="text-xs">Max {formData.type === 'video' ? '50MB' : '30MB'}</span>
                                         </>
                                     )}
                                 </button>

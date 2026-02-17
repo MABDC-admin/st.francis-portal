@@ -1,6 +1,7 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { toast } from 'sonner';
 import { TeacherApplicationFormValues as TeacherFormData } from '../schema';
 import { supabase } from '@/integrations/supabase/client';
 import { useState } from 'react';
@@ -19,7 +20,10 @@ export const PrcLicenseStep = ({ formData, updateField }: Props) => {
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { alert('File must be under 5MB'); return; }
+    if (file.size > 30 * 1024 * 1024) {
+      toast.error('File must be under 30MB');
+      return;
+    }
     setUploading(true);
     try {
       const path = `${crypto.randomUUID()}/${file.name}`;

@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30MB
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png'];
 const NAME_MAX_LENGTH = 100;
 const PHONE_PATTERN = /^[+\d\s\-()]*$/;
@@ -222,7 +222,7 @@ export const UserProfilePage = () => {
       return;
     }
     if (file.size > MAX_FILE_SIZE) {
-      toast.error('File size must be under 5MB');
+      toast.error('File size must be under 30MB');
       return;
     }
 
@@ -340,7 +340,7 @@ export const UserProfilePage = () => {
               {pendingFile && (
                 <p className="text-xs text-primary mt-1">New photo selected — save to apply</p>
               )}
-              <p className="text-xs text-muted-foreground mt-1">JPG or PNG, max 5MB</p>
+              <p className="text-xs text-muted-foreground mt-1">JPG or PNG, max 30MB</p>
             </div>
           </div>
         </CardContent>
@@ -358,7 +358,7 @@ export const UserProfilePage = () => {
               placeholder: 'e.g. Juan Dela Cruz',
               error: errors.full_name,
             })}
-            {renderField('email', 'Email', form.email, () => {}, {
+            {renderField('email', 'Email', form.email, () => { }, {
               disabled: true,
               placeholder: 'Email address',
             })}

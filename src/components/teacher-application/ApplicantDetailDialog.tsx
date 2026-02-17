@@ -407,6 +407,9 @@ export const ApplicantDetailDialog = ({ application: app, open, onClose, onStatu
           </div>
 
           <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setTimeout(() => window.print(), 100)}>
+              <Printer className="w-4 h-4 mr-2" /> Print
+            </Button>
             <Button variant="secondary" size="sm" onClick={onClose}>Close</Button>
           </div>
         </DialogFooter>

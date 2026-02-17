@@ -20,7 +20,7 @@ export const DocumentUploadStep = ({ formData, updateField }: Props) => {
   const handleUpload = async (field: keyof TeacherFormData, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { toast.error('File must be under 5MB'); return; }
+    if (file.size > 30 * 1024 * 1024) { toast.error('File must be under 30MB'); return; }
     setUploading(field);
     try {
       const path = `${crypto.randomUUID()}/${file.name}`;
@@ -38,7 +38,7 @@ export const DocumentUploadStep = ({ formData, updateField }: Props) => {
   const handleCertUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { toast.error('File must be under 5MB'); return; }
+    if (file.size > 30 * 1024 * 1024) { toast.error('File must be under 30MB'); return; }
     setUploading('certificates');
     try {
       const path = `${crypto.randomUUID()}/${file.name}`;
@@ -80,7 +80,7 @@ export const DocumentUploadStep = ({ formData, updateField }: Props) => {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">Upload required documents. Max 5MB per file.</p>
+      <p className="text-sm text-muted-foreground">Upload required documents. Max 30MB per file.</p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FileField label="Resume/CV" field="resume_url" required />
         <FileField label="Transcript of Records" field="transcript_url" required />

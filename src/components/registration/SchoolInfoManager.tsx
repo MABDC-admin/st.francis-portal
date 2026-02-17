@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Trash2, Save, Upload, ImagePlus } from 'lucide-react';
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30MB
 const ACCEPTED_TYPES: Record<string, string[]> = {
   'image/jpeg': ['.jpg', '.jpeg'],
   'image/png': ['.png'],
@@ -81,7 +81,7 @@ export const SchoolInfoManager = () => {
       const newUrls: string[] = [];
       for (const file of acceptedFiles) {
         if (file.size > MAX_FILE_SIZE) {
-          toast.error(`${file.name} exceeds 5MB limit`);
+          toast.error(`${file.name} exceeds 30MB limit`);
           continue;
         }
         const ext = file.name.split('.').pop();
@@ -202,9 +202,8 @@ export const SchoolInfoManager = () => {
         <Label className="text-base font-semibold">Facility Photos</Label>
         <div
           {...getRootProps()}
-          className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-            isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'
-          } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+          className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'
+            } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
         >
           <input {...getInputProps()} />
           {uploading ? (
@@ -218,7 +217,7 @@ export const SchoolInfoManager = () => {
               <p className="text-sm text-muted-foreground">
                 {isDragActive ? 'Drop photos here...' : 'Drag & drop photos, or click to browse'}
               </p>
-              <p className="text-xs text-muted-foreground">JPEG, PNG, WebP • Max 5MB each</p>
+              <p className="text-xs text-muted-foreground">JPEG, PNG, WebP • Max 30MB each</p>
             </div>
           )}
         </div>

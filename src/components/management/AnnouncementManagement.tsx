@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { Plus, Edit2, Trash2, Loader2, Bell, Pin, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { MultiFileUploader, Attachment } from '@/components/ui/MultiFileUploader';
+import { FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -30,6 +32,7 @@ interface AnnouncementRecord {
   is_pinned: boolean;
   published_at: string;
   expires_at?: string | null;
+  attachments?: Attachment[] | null;
 }
 
 const GRADE_LEVELS = ['Kinder 1', 'Kinder 2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
@@ -47,7 +50,7 @@ export const AnnouncementManagement = () => {
   const queryClient = useQueryClient();
   const { data: schoolId } = useSchoolId();
   const { selectedYearId } = useAcademicYear();
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -55,7 +58,7 @@ export const AnnouncementManagement = () => {
   const [viewingRecord, setViewingRecord] = useState<AnnouncementRecord | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedPriority, setSelectedPriority] = useState<string>('all');
-  
+
   const [formData, setFormData] = useState({
     title: '',
     content: '',
@@ -64,6 +67,7 @@ export const AnnouncementManagement = () => {
     priority: 'normal',
     is_pinned: false,
     expires_at: '',
+    attachments: [] as Attachment[],
   });
 
   // Fetch announcements
@@ -71,18 +75,18 @@ export const AnnouncementManagement = () => {
     queryKey: ['announcement-management', schoolId, selectedYearId, selectedPriority],
     queryFn: async () => {
       if (!schoolId) return [];
-      
+
       let query = supabase
         .from('announcements')
         .select('*')
         .eq('school_id', schoolId)
         .order('is_pinned', { ascending: false })
         .order('published_at', { ascending: false });
-      
+
       if (selectedPriority !== 'all') {
         query = query.eq('priority', selectedPriority);
       }
-      
+
       const { data, error } = await query;
       if (error) throw error;
       return data || [];
@@ -94,7 +98,7 @@ export const AnnouncementManagement = () => {
   const saveMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       if (!schoolId) throw new Error('Missing school');
-      
+
       const payload = {
         ...data,
         school_id: schoolId,
@@ -102,17 +106,17 @@ export const AnnouncementManagement = () => {
         expires_at: data.expires_at || null,
         published_at: new Date().toISOString(),
       };
-      
+
       if (editingRecord) {
         const { error } = await supabase
           .from('announcements')
-          .update(payload)
+          .update({ ...payload, attachments: data.attachments as any })
           .eq('id', editingRecord.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('announcements')
-          .insert(payload);
+          .insert({ ...payload, attachments: data.attachments as any });
         if (error) throw error;
       }
     },
@@ -171,6 +175,7 @@ export const AnnouncementManagement = () => {
       priority: 'normal',
       is_pinned: false,
       expires_at: '',
+      attachments: [],
     });
   };
 
@@ -184,6 +189,7 @@ export const AnnouncementManagement = () => {
       priority: record.priority,
       is_pinned: record.is_pinned,
       expires_at: record.expires_at?.slice(0, 16) || '',
+      attachments: (record.attachments as unknown as Attachment[]) || [],
     });
     setIsModalOpen(true);
   };
@@ -314,82 +320,83 @@ export const AnnouncementManagement = () => {
                   {announcements.map((record: any) => {
                     const rec = record as AnnouncementRecord;
                     return (
-                    <TableRow key={rec.id} className={isExpired(rec.expires_at ?? undefined) ? 'opacity-50' : ''}>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={rec.is_pinned ? 'text-primary' : 'text-muted-foreground'}
-                          onClick={() => togglePinMutation.mutate({ id: record.id, is_pinned: !record.is_pinned })}
-                        >
-                          <Pin className="h-4 w-4" fill={record.is_pinned ? 'currentColor' : 'none'} />
-                        </Button>
-                      </TableCell>
-                      <TableCell className="font-medium max-w-[250px] truncate">
-                        {record.title}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={priorityColors[record.priority]}>
-                          {record.priority}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {(record.target_audience || []).slice(0, 2).map((audience: string) => (
-                            <Badge key={audience} variant="outline" className="text-xs">
-                              {audience}
-                            </Badge>
-                          ))}
-                          {record.target_audience.length > 2 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{record.target_audience.length - 2}
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {format(new Date(record.published_at), 'MMM d, yyyy')}
-                      </TableCell>
-                      <TableCell>
-                        {record.expires_at ? (
-                          <span className={isExpired(record.expires_at) ? 'text-destructive' : ''}>
-                            {format(new Date(record.expires_at), 'MMM d, yyyy')}
-                            {isExpired(record.expires_at) && (
-                              <Badge variant="destructive" className="ml-2 text-xs">Expired</Badge>
+                      <TableRow key={rec.id} className={isExpired(rec.expires_at ?? undefined) ? 'opacity-50' : ''}>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={rec.is_pinned ? 'text-primary' : 'text-muted-foreground'}
+                            onClick={() => togglePinMutation.mutate({ id: record.id, is_pinned: !record.is_pinned })}
+                          >
+                            <Pin className="h-4 w-4" fill={record.is_pinned ? 'currentColor' : 'none'} />
+                          </Button>
+                        </TableCell>
+                        <TableCell className="font-medium max-w-[250px] truncate">
+                          {record.title}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={priorityColors[record.priority]}>
+                            {record.priority}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {(record.target_audience || []).slice(0, 2).map((audience: string) => (
+                              <Badge key={audience} variant="outline" className="text-xs">
+                                {audience}
+                              </Badge>
+                            ))}
+                            {record.target_audience.length > 2 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{record.target_audience.length - 2}
+                              </Badge>
                             )}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">Never</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleView(record)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(record)}
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(record.id)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )})}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {format(new Date(record.published_at), 'MMM d, yyyy')}
+                        </TableCell>
+                        <TableCell>
+                          {record.expires_at ? (
+                            <span className={isExpired(record.expires_at) ? 'text-destructive' : ''}>
+                              {format(new Date(record.expires_at), 'MMM d, yyyy')}
+                              {isExpired(record.expires_at) && (
+                                <Badge variant="destructive" className="ml-2 text-xs">Expired</Badge>
+                              )}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">Never</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleView(record)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(record)}
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(record.id)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -416,11 +423,11 @@ export const AnnouncementManagement = () => {
                   <Badge key={audience} variant="outline">{audience}</Badge>
                 ))}
               </div>
-              
+
               <div className="prose dark:prose-invert max-w-none">
                 <p className="whitespace-pre-wrap">{viewingRecord.content}</p>
               </div>
-              
+
               <div className="text-sm text-muted-foreground">
                 Published: {format(new Date(viewingRecord.published_at), 'MMMM d, yyyy h:mm a')}
                 {viewingRecord.expires_at && (
@@ -429,6 +436,26 @@ export const AnnouncementManagement = () => {
                   </span>
                 )}
               </div>
+
+              {viewingRecord.attachments && viewingRecord.attachments.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Attachments</Label>
+                  <div className="grid grid-cols-1 gap-2">
+                    {viewingRecord.attachments.map((file, i) => (
+                      <a
+                        key={i}
+                        href={file.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 p-2 border rounded bg-muted/50 hover:bg-muted transition-colors"
+                      >
+                        <FileText className="h-4 w-4 text-primary" />
+                        <span className="text-sm truncate flex-1">{file.name}</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
@@ -529,6 +556,14 @@ export const AnnouncementManagement = () => {
               <Label>Pin this announcement</Label>
             </div>
 
+            <div className="space-y-2">
+              <Label>Attachments</Label>
+              <MultiFileUploader
+                attachments={formData.attachments}
+                onChange={(attachments) => setFormData({ ...formData, attachments })}
+              />
+            </div>
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={handleCloseModal}>
                 Cancel
@@ -563,6 +598,6 @@ export const AnnouncementManagement = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </div >
   );
 };

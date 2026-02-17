@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchoolId } from '@/hooks/useSchoolId';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { MultiFileUploader, Attachment } from '@/components/ui/MultiFileUploader';
 
 interface AssignmentRecord {
   id: string;
@@ -29,6 +30,7 @@ interface AssignmentRecord {
   max_score?: number | null;
   assignment_type: string;
   submission_required: boolean;
+  attachments?: Attachment[] | null;
   subjects?: { code: string; name: string } | null;
 }
 
@@ -68,6 +70,7 @@ export const AssignmentManagement = () => {
     assignment_type: 'homework',
     submission_required: true,
     has_max_score: true,
+    attachments: [] as Attachment[],
   });
 
   // Fetch assignments
@@ -129,6 +132,7 @@ export const AssignmentManagement = () => {
       const payload = {
         ...dbFields,
         max_score: has_max_score ? dbFields.max_score : 0,
+        attachments: data.attachments as any,
         school_id: schoolId,
         academic_year_id: selectedYearId,
       };
@@ -136,13 +140,13 @@ export const AssignmentManagement = () => {
       if (editingRecord) {
         const { error } = await supabase
           .from('student_assignments')
-          .update(payload)
+          .update(payload as any)
           .eq('id', editingRecord.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('student_assignments')
-          .insert(payload);
+          .insert(payload as any);
         if (error) throw error;
       }
     },
@@ -190,6 +194,7 @@ export const AssignmentManagement = () => {
       assignment_type: 'homework',
       submission_required: true,
       has_max_score: true,
+      attachments: [],
     });
   };
 
@@ -206,6 +211,7 @@ export const AssignmentManagement = () => {
       assignment_type: record.assignment_type,
       submission_required: record.submission_required,
       has_max_score: (record.max_score || 0) > 0,
+      attachments: (record.attachments as unknown as Attachment[]) || [],
     });
     setIsModalOpen(true);
   };
@@ -420,6 +426,26 @@ export const AssignmentManagement = () => {
                 </div>
               )}
 
+              {viewingRecord.attachments && viewingRecord.attachments.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Attachments</Label>
+                  <div className="grid grid-cols-1 gap-2">
+                    {viewingRecord.attachments.map((file, i) => (
+                      <a
+                        key={i}
+                        href={file.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 p-2 border rounded bg-muted/50 hover:bg-muted transition-colors"
+                      >
+                        <FileText className="h-4 w-4 text-primary" />
+                        <span className="text-sm truncate flex-1">{file.name}</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <Label className="text-muted-foreground">Max Score</Label>
                 <p className="font-medium">{viewingRecord.max_score || 'Not specified'}</p>
@@ -574,6 +600,14 @@ export const AssignmentManagement = () => {
                 onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
                 placeholder="Detailed instructions for learners"
                 rows={4}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Documents & Media</Label>
+              <MultiFileUploader
+                attachments={formData.attachments}
+                onChange={(attachments) => setFormData({ ...formData, attachments })}
               />
             </div>
 

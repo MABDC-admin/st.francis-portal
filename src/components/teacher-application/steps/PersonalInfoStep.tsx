@@ -33,7 +33,7 @@ export const PersonalInfoStep = ({ formData, updateField, schoolId }: Props) => 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { toast.error('File must be under 5MB'); return; }
+    if (file.size > 30 * 1024 * 1024) { toast.error('File must be under 30MB'); return; }
 
     // Create local preview immediately
     const objectUrl = URL.createObjectURL(file);
