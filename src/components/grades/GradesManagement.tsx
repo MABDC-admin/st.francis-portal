@@ -61,6 +61,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchool } from '@/contexts/SchoolContext';
+import { getSchoolId } from '@/utils/schoolIdMap';
 import { GradeChangeRequestDialog } from './GradeChangeRequestDialog';
 
 interface StudentGrade {
@@ -421,6 +422,7 @@ export const GradesManagement = () => {
         subject_id: formData.subject_id,
         school_id: selectedSchool,
         academic_year_id: formData.academic_year_id || null,
+        school_id: getSchoolId(selectedSchool) || null,
         q1_grade: formData.q1_grade ? parseFloat(formData.q1_grade) : null,
         q2_grade: formData.q2_grade ? parseFloat(formData.q2_grade) : null,
         q3_grade: formData.q3_grade ? parseFloat(formData.q3_grade) : null,

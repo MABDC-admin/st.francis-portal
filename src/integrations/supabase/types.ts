@@ -3611,7 +3611,7 @@ export type Database = {
           q3_grade: number | null
           q4_grade: number | null
           remarks: string | null
-          school_id: string
+          school_id: string | null
           status: string
           student_id: string
           subject_id: string
@@ -3633,7 +3633,7 @@ export type Database = {
           q3_grade?: number | null
           q4_grade?: number | null
           remarks?: string | null
-          school_id: string
+          school_id?: string | null
           status?: string
           student_id: string
           subject_id: string
@@ -3655,7 +3655,7 @@ export type Database = {
           q3_grade?: number | null
           q4_grade?: number | null
           remarks?: string | null
-          school_id?: string
+          school_id?: string | null
           status?: string
           student_id?: string
           subject_id?: string
