@@ -42,7 +42,7 @@ export const StudentDetailPanel = ({ student }: StudentDetailPanelProps) => {
   const [activeTab, setActiveTab] = useState<DetailTab>('overview');
   const { qrCodeUrl, isLoading: qrLoading } = useStudentQRCode(student.id);
   const [currentAcademicYearId, setCurrentAcademicYearId] = useState<string>('');
-  const canViewCredentials = role === 'admin' || role === 'registrar';
+  const canViewCredentials = role === 'admin' || role === 'registrar' || role === 'it';
 
   const tabs = useMemo(() => {
     const t = [...baseTabs];
