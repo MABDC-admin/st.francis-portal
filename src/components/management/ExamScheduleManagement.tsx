@@ -350,7 +350,7 @@ export const ExamScheduleManagement = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {exams.map((record: ExamRecord) => (
+                  {exams.map((record: any) => (
                     <TableRow key={record.id} className={isPast(record.exam_date) ? 'opacity-60' : ''}>
                       <TableCell>
                         <div className="flex items-center gap-2">

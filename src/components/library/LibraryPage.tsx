@@ -62,7 +62,7 @@ const parseStudentLevel = (levelStr: string | null | undefined): number | null =
 interface Book {
   id: string;
   title: string;
-  grade_level: number;
+  grade_level: string;
   subject: string | null;
   cover_url: string | null;
   page_count: number;
@@ -220,7 +220,7 @@ export const LibraryPage = ({ deepLinkBookId, deepLinkPage }: LibraryPageProps =
     // Apply grade filter
     if (selectedGrade && selectedGrade !== 'all') {
       result = result.filter(
-        (book) => book.grade_level === parseInt(selectedGrade)
+        (book) => book.grade_level === selectedGrade
       );
     }
 
@@ -287,7 +287,7 @@ export const LibraryPage = ({ deepLinkBookId, deepLinkPage }: LibraryPageProps =
     
     setShowSearchResults(true);
     await search(searchQuery, {
-      grade_level: selectedGrade !== 'all' ? parseInt(selectedGrade) : undefined,
+      grade_level: selectedGrade !== 'all' ? selectedGrade : undefined,
     });
   };
 

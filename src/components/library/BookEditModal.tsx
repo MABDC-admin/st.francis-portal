@@ -35,7 +35,7 @@ import { toast } from 'sonner';
 interface Book {
   id: string;
   title: string;
-  grade_level: number;
+  grade_level: string;
   subject: string | null;
   cover_url: string | null;
   page_count: number;
@@ -107,7 +107,7 @@ export const BookEditModal = ({
       .from('books')
       .update({
         title: formData.title.trim(),
-        grade_level: parseInt(formData.grade_level),
+        grade_level: formData.grade_level,
         subject: formData.subject || null,
         is_active: formData.is_active,
       })

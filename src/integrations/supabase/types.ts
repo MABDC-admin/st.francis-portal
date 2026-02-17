@@ -201,6 +201,7 @@ export type Database = {
       announcements: {
         Row: {
           academic_year_id: string | null
+          attachments: Json | null
           content: string
           created_at: string | null
           created_by: string | null
@@ -217,6 +218,7 @@ export type Database = {
         }
         Insert: {
           academic_year_id?: string | null
+          attachments?: Json | null
           content: string
           created_at?: string | null
           created_by?: string | null
@@ -233,6 +235,7 @@ export type Database = {
         }
         Update: {
           academic_year_id?: string | null
+          attachments?: Json | null
           content?: string
           created_at?: string | null
           created_by?: string | null
@@ -742,7 +745,7 @@ export type Database = {
         Row: {
           cover_url: string | null
           created_at: string
-          grade_level: number
+          grade_level: string
           id: string
           index_status: string | null
           is_active: boolean | null
@@ -758,7 +761,7 @@ export type Database = {
         Insert: {
           cover_url?: string | null
           created_at?: string
-          grade_level: number
+          grade_level: string
           id?: string
           index_status?: string | null
           is_active?: boolean | null
@@ -774,7 +777,7 @@ export type Database = {
         Update: {
           cover_url?: string | null
           created_at?: string
-          grade_level?: number
+          grade_level?: string
           id?: string
           index_status?: string | null
           is_active?: boolean | null
@@ -1222,6 +1225,7 @@ export type Database = {
       exam_schedules: {
         Row: {
           academic_year_id: string
+          attachments: Json | null
           created_at: string | null
           end_time: string | null
           exam_date: string
@@ -1238,6 +1242,7 @@ export type Database = {
         }
         Insert: {
           academic_year_id: string
+          attachments?: Json | null
           created_at?: string | null
           end_time?: string | null
           exam_date: string
@@ -1254,6 +1259,7 @@ export type Database = {
         }
         Update: {
           academic_year_id?: string
+          attachments?: Json | null
           created_at?: string | null
           end_time?: string | null
           exam_date?: string
