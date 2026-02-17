@@ -203,6 +203,7 @@ export const AssignmentManagement = () => {
       max_score: record.max_score || 100,
       assignment_type: record.assignment_type,
       submission_required: record.submission_required,
+      has_max_score: (record.max_score || 0) > 0,
     });
     setIsModalOpen(true);
   };
