@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
-    
+
     ArrowRight,
     Check,
     AlertTriangle,
@@ -78,14 +78,7 @@ export const PromoteStudentsWorkflow = ({ onClose, onSuccess }: PromoteStudentsW
             if (error) throw error;
 
             const entries: PromotionEntry[] = (students || []).map(s => {
-                // Normalize level name just in case
-                let currentLevel = s.level;
-                if (currentLevel.startsWith('Level ')) {
-                    currentLevel = currentLevel.replace('Level ', 'Grade ');
-                } else if (currentLevel === '1' || currentLevel === '2') {
-                    // Handle raw numbers if old data exists
-                    currentLevel = `Grade ${currentLevel}`;
-                }
+                let currentLevel = normalizeGradeLevel(s.level);
 
                 const nextLevel = getNextLevel(currentLevel);
                 const isGraduating = nextLevel === 'Graduated';

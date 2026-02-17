@@ -20,7 +20,7 @@ interface BookResult {
   book_id: string;
   book_title: string;
   cover_url: string | null;
-  grade_level: number;
+  grade_level: string;
   subject: string | null;
   matches: SearchMatch[];
 }
@@ -60,7 +60,7 @@ serve(async (req) => {
     let results = searchResults;
     if (searchError) {
       console.log("RPC not available, using direct query:", searchError.message);
-      
+
       // Direct query with ILIKE for fallback
       const { data, error } = await supabase
         .from('book_page_index')
@@ -101,7 +101,7 @@ serve(async (req) => {
     for (const row of results) {
       const book = row.books || row;
       const bookId = row.book_id;
-      
+
       // Apply filters
       if (grade_level && book.grade_level !== grade_level) continue;
       if (subject && book.subject !== subject) continue;
@@ -109,17 +109,17 @@ serve(async (req) => {
       // Create snippet with highlighted text
       let snippet = row.extracted_text || row.summary || "";
       const snippetLength = 200;
-      
+
       // Find the position of the search term and create context
       const lowerSnippet = snippet.toLowerCase();
       const termPos = lowerSnippet.indexOf(searchQuery);
-      
+
       if (termPos !== -1) {
         const start = Math.max(0, termPos - 50);
         const end = Math.min(snippet.length, termPos + searchQuery.length + 100);
-        snippet = (start > 0 ? "..." : "") + 
-                  snippet.substring(start, end) + 
-                  (end < snippet.length ? "..." : "");
+        snippet = (start > 0 ? "..." : "") +
+          snippet.substring(start, end) +
+          (end < snippet.length ? "..." : "");
       } else if (snippet.length > snippetLength) {
         snippet = snippet.substring(0, snippetLength) + "...";
       }
@@ -140,7 +140,7 @@ serve(async (req) => {
       if (titleMatch) score += 3;
       if (topicMatch) score += 2;
       if (keywordMatch) score += 1.5;
-      
+
       // Count occurrences
       const regex = new RegExp(searchQuery, 'gi');
       const matches = text.match(regex);
@@ -189,10 +189,10 @@ serve(async (req) => {
     console.log(`Found ${totalMatches} matches in ${bookResults.length} books`);
 
     return new Response(
-      JSON.stringify({ 
-        results: bookResults, 
+      JSON.stringify({
+        results: bookResults,
         total_matches: totalMatches,
-        books_count: bookResults.length 
+        books_count: bookResults.length
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

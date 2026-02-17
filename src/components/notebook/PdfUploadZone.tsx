@@ -12,7 +12,7 @@ interface PdfUploadZoneProps {
   disabled?: boolean;
 }
 
-const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 export function PdfUploadZone({ onPdfExtracted, pdfInfo, disabled }: PdfUploadZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
@@ -26,7 +26,7 @@ export function PdfUploadZone({ onPdfExtracted, pdfInfo, disabled }: PdfUploadZo
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      toast.error('File size must be less than 20MB');
+      toast.error('File size must be less than 50MB');
       return;
     }
 
@@ -52,7 +52,7 @@ export function PdfUploadZone({ onPdfExtracted, pdfInfo, disabled }: PdfUploadZo
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     const file = e.dataTransfer.files[0];
     if (file) {
       handleFile(file);
@@ -94,8 +94,8 @@ export function PdfUploadZone({ onPdfExtracted, pdfInfo, disabled }: PdfUploadZo
                 <p className="text-xs text-muted-foreground">
                   Page {extractionProgress.currentPage} of {extractionProgress.totalPages}
                 </p>
-                <Progress 
-                  value={(extractionProgress.currentPage / extractionProgress.totalPages) * 100} 
+                <Progress
+                  value={(extractionProgress.currentPage / extractionProgress.totalPages) * 100}
                   className="h-1.5 mt-2"
                 />
               </>
@@ -138,8 +138,8 @@ export function PdfUploadZone({ onPdfExtracted, pdfInfo, disabled }: PdfUploadZo
       onDragLeave={handleDragLeave}
       className={cn(
         'border-2 border-dashed rounded-lg p-4 transition-colors cursor-pointer',
-        isDragging 
-          ? 'border-primary bg-primary/5' 
+        isDragging
+          ? 'border-primary bg-primary/5'
           : 'border-border hover:border-primary/50 hover:bg-muted/30',
         disabled && 'opacity-50 cursor-not-allowed'
       )}

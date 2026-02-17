@@ -24,11 +24,9 @@ import { useCreateStudent } from '@/hooks/useStudents';
 import { toast } from 'sonner';
 import { differenceInYears } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
-import { GRADE_LEVELS, SHS_STRANDS, GENDERS, requiresStrand, isKindergartenLevel } from './constants';
+import { GRADE_LEVELS, SHS_STRANDS, GENDERS, requiresStrand, isKindergartenLevel, KINDER_LEVELS } from './constants';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
-// Legacy levels for backward compatibility
-const KINDER_LEVELS = ['Kinder 1', 'Kinder 2', 'Kindergarten'];
 
 const SCHOOLS = [
   { id: 'STFXSA', name: 'St. Francis Xavier Smart Academy Inc', acronym: 'STFXSA' },
@@ -689,7 +687,7 @@ export const EnrollmentForm = () => {
               <h4 className="font-semibold text-foreground mb-2 text-stat-purple">Address Information</h4>
               <div className="bg-secondary/30 rounded-lg p-4">
                 <ReviewItem label="Philippine Address" value={formData.phil_address} />
-                
+
               </div>
             </div>
 

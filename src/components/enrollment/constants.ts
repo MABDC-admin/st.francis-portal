@@ -31,7 +31,7 @@ export const SCHOOLS = [
 
 export const GENDERS = ['Male', 'Female'];
 
-export const KINDER_LEVELS = ['Kindergarten', 'Kinder 1', 'Kinder 2']; // Support both formats
+export const KINDER_LEVELS = ['Kindergarten'];
 
 // Helper function to check if grade level requires strand
 export const requiresStrand = (gradeLevel: string): boolean => {
@@ -47,16 +47,16 @@ export const isKindergartenLevel = (gradeLevel: string): boolean => {
 export const normalizeGradeLevel = (level: string): string => {
     if (!level) return level;
     const trimmed = level.trim();
-    
+
     // Handle "Level X" -> "Grade X"
     const levelMatch = trimmed.match(/^Level\s+(\d+)$/i);
     if (levelMatch) return `Grade ${levelMatch[1]}`;
-    
+
     // Handle "Kinder 1" / "Kinder 2" -> "Kindergarten"
     if (/^Kinder\s*[12]?$/i.test(trimmed)) return 'Kindergarten';
-    
+
     // Handle "Kinder" alone
     if (trimmed.toLowerCase() === 'kinder') return 'Kindergarten';
-    
+
     return trimmed;
 };

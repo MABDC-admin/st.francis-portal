@@ -11,6 +11,7 @@ import { differenceInYears } from 'date-fns';
 
 import QRCode from 'qrcode';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { GRADE_LEVELS, isKindergartenLevel } from './constants';
 
 // Steps
 import { StudentInfoStep } from './steps/StudentInfoStep';
@@ -63,8 +64,8 @@ export const EnrollmentWizard = ({ mode = 'enrollment', onComplete }: Enrollment
 
     // Update school and academic year when context changes
     useMemo(() => {
-        setFormData(prev => ({ 
-            ...prev, 
+        setFormData(prev => ({
+            ...prev,
             school: selectedSchool,
             school_year: selectedYear?.name || ''
         }));
@@ -83,26 +84,26 @@ export const EnrollmentWizard = ({ mode = 'enrollment', onComplete }: Enrollment
     const handleAutoFill = () => {
         const randomNum = Math.floor(Math.random() * 1000);
         const genders = ['Male', 'Female'];
-        const levels = ['Kindergarten', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
+        const levels = GRADE_LEVELS;
         const strands = ['ABM', 'STEM', 'HUMSS', 'GAS'];
         const firstNames = ['John', 'Maria', 'Jose', 'Anna', 'Miguel', 'Sofia', 'Carlos', 'Isabella', 'Luis', 'Elena'];
         const lastNames = ['Santos', 'Reyes', 'Cruz', 'Garcia', 'Fernandez', 'Lopez', 'Martinez', 'Rodriguez', 'Gonzalez', 'Hernandez'];
         const previousSchools = ['Manila Central School', 'Quezon City Elementary', 'Makati High School', 'Cebu International School', 'Davao Learning Center'];
-        
+
         const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
         const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
         const gender = genders[Math.floor(Math.random() * genders.length)];
         const level = levels[Math.floor(Math.random() * levels.length)];
         const isKinder = level === 'Kindergarten';
         const isSHS = level === 'Grade 11' || level === 'Grade 12';
-        
+
         // Generate birth date (6-18 years old)
         const currentYear = new Date().getFullYear();
         const birthYear = currentYear - Math.floor(Math.random() * 13 + 6); // 6-18 years old
         const birthMonth = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0');
         const birthDay = String(Math.floor(Math.random() * 28) + 1).padStart(2, '0');
         const birthDate = `${birthYear}-${birthMonth}-${birthDay}`;
-        
+
         setFormData({
             student_name: `${firstName} ${lastName}`,
             lrn: isKinder ? '' : `1234${String(randomNum).padStart(8, '0')}`,
@@ -123,11 +124,11 @@ export const EnrollmentWizard = ({ mode = 'enrollment', onComplete }: Enrollment
             dialects: 'Tagalog, English',
             signature: ''
         });
-        
+
         // Clear errors and touched state
         setErrors({});
         setTouched({});
-        
+
         toast.success('Form auto-filled with test data');
     };
 
@@ -194,7 +195,7 @@ export const EnrollmentWizard = ({ mode = 'enrollment', onComplete }: Enrollment
 
     const handleBlur = (field: string) => {
         setTouched((prev: any) => ({ ...prev, [field]: true }));
-        if (!formData[field as keyof typeof formData] && field !== 'previous_school' && !(field === 'lrn' && ['Kinder 1', 'Kinder 2'].includes(formData.level))) {
+        if (!formData[field as keyof typeof formData] && field !== 'previous_school' && !(field === 'lrn' && isKindergartenLevel(formData.level))) {
             setErrors((prev: any) => ({ ...prev, [field]: 'Required' }));
         }
     };
@@ -436,7 +437,7 @@ export const EnrollmentWizard = ({ mode = 'enrollment', onComplete }: Enrollment
                     </Button>
                 </div>
             )}
-            
+
             {/* Wizard Progress */}
             <div className="mb-8">
                 <div className="flex items-center justify-between relative z-10">

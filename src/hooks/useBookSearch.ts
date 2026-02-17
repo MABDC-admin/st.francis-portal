@@ -16,7 +16,7 @@ export interface BookSearchResult {
   book_id: string;
   book_title: string;
   cover_url: string | null;
-  grade_level: number;
+  grade_level: string;
   subject: string | null;
   matches: SearchMatch[];
 }
@@ -36,7 +36,7 @@ export const useBookSearch = () => {
   const search = useCallback(async (
     query: string,
     options?: {
-      grade_level?: number;
+      grade_level?: string;
       subject?: string;
       limit?: number;
     }

@@ -933,7 +933,7 @@ const StudentProfile = () => {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      
+
                       <div className="space-y-1">
                         <Label className="text-xs">Philippine Address</Label>
                         <Textarea
@@ -1042,7 +1042,7 @@ const StudentProfile = () => {
                   </div>
                   <div className="p-5 bg-gradient-to-br from-amber-50/50 to-white dark:from-slate-800/50 dark:to-slate-900 relative z-10">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      
+
                       <div>
                         <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">Philippine Address</p>
                         <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.phil_address || 'Not provided'}</p>
@@ -1090,7 +1090,7 @@ const StudentProfile = () => {
                           <SelectValue placeholder="Select level" />
                         </SelectTrigger>
                         <SelectContent>
-                          {['Kinder 1', 'Kinder 2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'].map(level => (
+                          {['Kindergarten', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'].map(level => (
                             <SelectItem key={level} value={level}>{level}</SelectItem>
                           ))}
                         </SelectContent>

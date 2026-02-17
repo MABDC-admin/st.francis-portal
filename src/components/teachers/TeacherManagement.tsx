@@ -17,7 +17,7 @@ import { TeacherCredentialsTab } from './TeacherCredentialsTab';
 import { SeedTeachersButton } from './SeedTeachersButton';
 
 const GRADE_LEVELS = [
-  'Kinder 1', 'Kinder 2',
+  'Kindergarten',
   'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6',
   'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12',
 ];
@@ -71,7 +71,7 @@ export const TeacherManagement = () => {
       .select('*')
       .eq('school', selectedSchool)
       .order('full_name');
-    
+
     if (!error && data) {
       setTeachers(data as Teacher[]);
     }

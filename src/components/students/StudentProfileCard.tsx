@@ -92,8 +92,8 @@ export const StudentProfileCard = ({
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image must be less than 5MB');
+    if (file.size > 30 * 1024 * 1024) {
+      toast.error('Image must be less than 30MB');
       return;
     }
 
@@ -345,7 +345,7 @@ export const StudentProfileCard = ({
           {/* Content */}
           <div className="p-5 bg-gradient-to-br from-amber-50/50 to-white dark:from-slate-800/50 dark:to-slate-900">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
+
               <div>
                 <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">Philippine Address</p>
                 <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.phil_address || 'Not provided'}</p>

@@ -72,8 +72,8 @@ export const AIChatPage = () => {
       toast.error('Only PDF files are supported.');
       return;
     }
-    if (file.size > 20 * 1024 * 1024) {
-      toast.error('File too large. Maximum 20MB.');
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('File too large. Maximum 50MB.');
       return;
     }
     setIsExtractingPdf(true);
