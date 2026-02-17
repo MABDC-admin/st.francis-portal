@@ -122,7 +122,7 @@ export const StudentDashboard = ({
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-white -m-4 sm:-m-0 rounded-t-[3rem] overflow-hidden space-y-4 pb-20">
+    <div className="flex flex-col min-h-screen bg-[url('/assets/student-mobile-bg.webp')] bg-cover bg-center bg-fixed bg-no-repeat sm:bg-none sm:bg-white -m-4 sm:-m-0 rounded-t-[3rem] overflow-hidden space-y-4 pb-20">
 
       {/* Header Container with Background */}
       <div className="relative overflow-hidden rounded-b-[3rem] pb-6">

@@ -201,38 +201,6 @@ export const StudentScheduleTab = ({
           )}
         </div>
 
-        {/* Bottom Nav Cards Section */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-12 pb-24">
-          <div className="bg-white p-4 rounded-[2rem] shadow-md border border-slate-100 flex items-center gap-4 group hover:bg-slate-50 transition-all cursor-pointer">
-            <div className="w-14 h-14 bg-amber-100 rounded-[1.5rem] flex items-center justify-center shrink-0">
-              <StudentPortalIcon icon={STUDENT_ICONS.homework} size={32} className="text-amber-500" />
-            </div>
-            <div>
-              <h5 className="font-black text-slate-800 text-sm">Homework</h5>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">2 remaining</p>
-            </div>
-          </div>
-
-          <div className="bg-white p-4 rounded-[2rem] shadow-md border border-slate-100 flex items-center gap-4 group hover:bg-slate-50 transition-all cursor-pointer">
-            <div className="w-14 h-14 bg-blue-100 rounded-[1.5rem] flex items-center justify-center shrink-0">
-              <StudentPortalIcon icon={(STUDENT_ICONS as any).upcomingTests} size={32} className="text-blue-500" />
-            </div>
-            <div>
-              <h5 className="font-black text-slate-800 text-sm">Upcoming Tests</h5>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">View Schedule</p>
-            </div>
-          </div>
-
-          <div className="bg-white p-4 rounded-[2rem] shadow-md border border-slate-100 flex items-center gap-4 group hover:bg-slate-50 transition-all cursor-pointer">
-            <div className="w-14 h-14 bg-rose-100 rounded-[1.5rem] flex items-center justify-center shrink-0">
-              <StudentPortalIcon icon={(STUDENT_ICONS as any).events} size={32} className="text-rose-500" />
-            </div>
-            <div>
-              <h5 className="font-black text-slate-800 text-sm">Events</h5>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">April 2026</p>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
