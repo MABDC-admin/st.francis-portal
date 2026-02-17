@@ -4,7 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
+import useEmblaCarousel from 'embla-carousel-react';
 import {
   isPassing,
   getGradeDescriptor,
@@ -49,6 +50,28 @@ export const StudentDashboard = ({
   );
 
   const { settings, inSession, countdown } = useZoomSession(schoolId);
+
+  // Embla Carousel Setup for Module Grid
+  const [emblaRef, emblaApi] = useEmblaCarousel({
+    align: 'start',
+    containScroll: 'trimSnaps',
+    dragFree: false
+  });
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  const onSelect = useCallback(() => {
+    if (!emblaApi) return;
+    setSelectedIndex(emblaApi.selectedScrollSnap());
+  }, [emblaApi]);
+
+  useEffect(() => {
+    if (!emblaApi) return;
+    onSelect();
+    emblaApi.on('select', onSelect);
+    return () => {
+      emblaApi.off('select', onSelect);
+    };
+  }, [emblaApi, onSelect]);
 
   // Compute General Averages
   const generalAverages = useMemo(() => {
@@ -116,65 +139,144 @@ export const StudentDashboard = ({
         </div>
       </div>
 
-      {/* Stats Grid (2x2) */}
-      <div className="px-5 grid grid-cols-2 gap-4 -mt-8 relative z-10">
-        <motion.div whileTap={{ scale: 0.95 }} className="cursor-pointer">
-          <Card className="border-none shadow-xl bg-gradient-to-br from-[#FF6B6B] to-[#FF8E8E] text-white rounded-[2rem] overflow-hidden group">
-            <CardContent className="p-5 flex flex-col justify-between h-36">
-              <span className="text-sm font-black opacity-90">Grades</span>
-              <div className="flex items-end justify-between">
-                <div className="text-5xl font-black tracking-tighter">{displayedAverage?.toFixed(0) || 0}</div>
-                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
-                  <img src="/assets/grades.png" className="w-8 h-8 object-contain" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+      {/* Swipeable Module Grid Container */}
+      <div className="px-5 -mt-8 relative z-10">
+        <div className="overflow-hidden" ref={emblaRef}>
+          <div className="flex touch-pan-y">
 
-        <motion.div whileTap={{ scale: 0.95 }} className="cursor-pointer">
-          <Card className="border-none shadow-xl bg-gradient-to-br from-[#6BCB77] to-[#4FB35C] text-white rounded-[2rem] overflow-hidden group">
-            <CardContent className="p-5 flex flex-col justify-between h-36">
-              <span className="text-sm font-black opacity-90">Attendance</span>
-              <div className="flex items-end justify-between">
-                <div className="text-5xl font-black tracking-tighter">{attendance?.summary?.percentage.toFixed(0) || 0}%</div>
-                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
-                  <StudentPortalIcon icon="fluent-emoji-flat:check-mark-button" size={32} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+            {/* Slide 1: Primary Stats */}
+            <div className="flex-[0_0_100%] min-w-0 grid grid-cols-2 gap-4">
+              <motion.div whileTap={{ scale: 0.95 }} className="cursor-pointer">
+                <Card className="border-none shadow-xl bg-gradient-to-br from-[#FF6B6B] to-[#FF8E8E] text-white rounded-[2rem] overflow-hidden group">
+                  <CardContent className="p-5 flex flex-col justify-between h-36">
+                    <span className="text-sm font-black opacity-90">Grades</span>
+                    <div className="flex items-end justify-between">
+                      <div className="text-5xl font-black tracking-tighter">{displayedAverage?.toFixed(0) || 0}</div>
+                      <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
+                        <img src="/assets/grades.png" className="w-8 h-8 object-contain" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
 
-        <motion.div whileTap={{ scale: 0.95 }} className="cursor-pointer">
-          <Card className="border-none shadow-xl bg-gradient-to-br from-[#FFA931] to-[#FF8C32] text-white rounded-[2rem] overflow-hidden group">
-            <CardContent className="p-5 flex flex-col justify-between h-36">
-              <div className="flex flex-col">
-                <span className="text-sm font-black opacity-90 leading-tight">Assignments</span>
-                <div className="text-2xl font-black tracking-tighter mt-1">{assignments?.pending.length} <span className="text-[10px] opacity-80 uppercase tracking-widest pl-1 font-black">due soon</span></div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="w-8 h-8 flex items-center justify-center opacity-0" /> {/* Spacer */}
-                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
-                  <img src="/assets/timetable.png" className="w-8 h-8 object-contain grayscale brightness-200" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+              <motion.div whileTap={{ scale: 0.95 }} className="cursor-pointer">
+                <Card className="border-none shadow-xl bg-gradient-to-br from-[#6BCB77] to-[#4FB35C] text-white rounded-[2rem] overflow-hidden group">
+                  <CardContent className="p-5 flex flex-col justify-between h-36">
+                    <span className="text-sm font-black opacity-90">Attendance</span>
+                    <div className="flex items-end justify-between">
+                      <div className="text-5xl font-black tracking-tighter">{attendance?.summary?.percentage.toFixed(0) || 0}%</div>
+                      <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
+                        <StudentPortalIcon icon="fluent-emoji-flat:check-mark-button" size={32} />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
 
-        <motion.div whileTap={{ scale: 0.95 }} className="cursor-pointer">
-          <Card className="border-none shadow-xl bg-gradient-to-br from-[#4D96FF] to-[#006E7F] text-white rounded-[2rem] overflow-hidden group">
-            <CardContent className="p-5 flex flex-col justify-between h-36">
-              <span className="text-sm font-black opacity-90">Schedule</span>
-              <div className="flex items-center justify-end">
-                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
-                  <StudentPortalIcon icon="fluent-emoji-flat:calendar" size={32} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+              <motion.div whileTap={{ scale: 0.95 }} className="cursor-pointer">
+                <Card className="border-none shadow-xl bg-gradient-to-br from-[#FFA931] to-[#FF8C32] text-white rounded-[2rem] overflow-hidden group">
+                  <CardContent className="p-5 flex flex-col justify-between h-36">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-black opacity-90 leading-tight">Assignments</span>
+                      <div className="text-2xl font-black tracking-tighter mt-1">{assignments?.pending.length} <span className="text-[10px] opacity-80 uppercase tracking-widest pl-1 font-black">due soon</span></div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="w-8 h-8 flex items-center justify-center opacity-0" /> {/* Spacer */}
+                      <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
+                        <img src="/assets/timetable.png" className="w-8 h-8 object-contain grayscale brightness-200" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              <motion.div whileTap={{ scale: 0.95 }} className="cursor-pointer">
+                <Card className="border-none shadow-xl bg-gradient-to-br from-[#4D96FF] to-[#006E7F] text-white rounded-[2rem] overflow-hidden group">
+                  <CardContent className="p-5 flex flex-col justify-between h-36">
+                    <span className="text-sm font-black opacity-90">Schedule</span>
+                    <div className="flex items-center justify-end">
+                      <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
+                        <StudentPortalIcon icon="fluent-emoji-flat:calendar" size={32} />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </div>
+
+            {/* Slide 2: Additional Modules */}
+            <div className="flex-[0_0_100%] min-w-0 grid grid-cols-2 gap-4">
+              <motion.div whileTap={{ scale: 0.95 }} className="cursor-pointer">
+                <Card className="border-none shadow-xl bg-gradient-to-br from-[#A78BFA] to-[#8B5CF6] text-white rounded-[2rem] overflow-hidden group">
+                  <CardContent className="p-5 flex flex-col justify-between h-36">
+                    <span className="text-sm font-black opacity-90">Exams</span>
+                    <div className="flex items-end justify-between">
+                      <div className="text-3xl font-black tracking-tighter">{exams?.upcoming?.length || 0} <span className="text-[10px] opacity-80 uppercase tracking-widest pl-1 font-black">Upcoming</span></div>
+                      <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
+                        <StudentPortalIcon icon="fluent-emoji-flat:pencil" size={32} />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              <motion.div whileTap={{ scale: 0.95 }} className="cursor-pointer">
+                <Card className="border-none shadow-xl bg-gradient-to-br from-[#F472B6] to-[#EC4899] text-white rounded-[2rem] overflow-hidden group">
+                  <CardContent className="p-5 flex flex-col justify-between h-36">
+                    <span className="text-sm font-black opacity-90">Announcements</span>
+                    <div className="flex items-end justify-between">
+                      <div className="text-3xl font-black tracking-tighter">{announcements?.count || 0} <span className="text-[10px] opacity-80 uppercase tracking-widest pl-1 font-black">Active</span></div>
+                      <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
+                        <StudentPortalIcon icon="fluent-emoji-flat:megaphone" size={32} />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              <motion.div whileTap={{ scale: 0.95 }} className="cursor-pointer">
+                <Card className="border-none shadow-xl bg-gradient-to-br from-[#38BDF8] to-[#0EA5E9] text-white rounded-[2rem] overflow-hidden group">
+                  <CardContent className="p-5 flex flex-col justify-between h-36">
+                    <span className="text-sm font-black opacity-90">Teachers</span>
+                    <div className="flex items-center justify-end">
+                      <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
+                        <StudentPortalIcon icon="fluent-emoji-flat:teacher" size={32} />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              <motion.div whileTap={{ scale: 0.95 }} className="cursor-pointer">
+                <Card className="border-none shadow-xl bg-gradient-to-br from-[#FB923C] to-[#F97316] text-white rounded-[2rem] overflow-hidden group">
+                  <CardContent className="p-5 flex flex-col justify-between h-36">
+                    <span className="text-sm font-black opacity-90">Calendar</span>
+                    <div className="flex items-center justify-end">
+                      <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
+                        <StudentPortalIcon icon="fluent-emoji-flat:calendar" size={32} />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </div>
+
+          </div>
+        </div>
+
+        {/* Pagination Indicators */}
+        <div className="flex justify-center gap-2 mt-4">
+          {[0, 1].map((index) => (
+            <div
+              key={index}
+              className={cn(
+                "h-2 rounded-full transition-all duration-300",
+                selectedIndex === index ? "w-8 bg-sky-500" : "w-2 bg-slate-200"
+              )}
+            />
+          ))}
+        </div>
       </div>
 
       {/* Promotional Banner Placeholder / Event Banner */}

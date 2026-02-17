@@ -12,6 +12,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { StudentPortalIcon, STUDENT_ICONS } from '@/components/icons/StudentPortalIcons';
 import { Button } from '@/components/ui/button';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { Upload, Camera, X, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
 
 interface StudentAssignmentsTabProps {
   studentId: string;
@@ -130,10 +137,82 @@ export const StudentAssignmentsTab = ({
 
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionFile, setSubmissionFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const queryClient = useQueryClient();
 
   const handleOpenDetail = (assignment: Assignment) => {
     setSelectedAssignment(assignment);
     setIsDetailOpen(true);
+    setSubmissionFile(null);
+    setUploadProgress(0);
+  };
+
+  const submitMutation = useMutation({
+    mutationFn: async (assignmentId: string) => {
+      if (!submissionFile) throw new Error("Please select a file to submit");
+
+      setIsSubmitting(true);
+      setUploadProgress(10);
+
+      // 1. Upload file to storage
+      const fileExt = submissionFile.name.split('.').pop();
+      const fileName = `${studentId}/${assignmentId}/${Date.now()}.${fileExt}`;
+
+      const { data: uploadData, error: uploadError } = await (supabase.storage
+        .from('student-documents') as any) // Fallback and cast to any for progress support
+        .upload(fileName, submissionFile, {
+          upsert: true,
+          onUploadProgress: (progress: any) => {
+            setUploadProgress(Math.round((progress.loaded / progress.total) * 90));
+          }
+        });
+
+      if (uploadError) throw uploadError;
+
+      // 2. Get public URL
+      const { data: urlData } = supabase.storage
+        .from('student-documents')
+        .getPublicUrl(fileName);
+
+      // 3. Create or Update submission record
+      const { error: submissionError } = await supabase
+        .from('assignment_submissions')
+        .upsert({
+          assignment_id: assignmentId,
+          student_id: studentId,
+          status: 'submitted',
+          submitted_at: new Date().toISOString(),
+          attachments: {
+            files: [{ name: submissionFile.name, url: urlData.publicUrl }]
+          }
+        }, { onConflict: 'assignment_id,student_id' });
+
+      if (submissionError) throw submissionError;
+
+      setUploadProgress(100);
+      return urlData.publicUrl;
+    },
+    onSuccess: () => {
+      toast.success("Assignment submitted successfully! 🎉");
+      setIsDetailOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['assignment-submissions', studentId] });
+      queryClient.invalidateQueries({ queryKey: ['assignments', gradeLevel, schoolId, academicYearId] });
+    },
+    onError: (error: any) => {
+      console.error("Submission error:", error);
+      toast.error(`Submission failed: ${error.message || "Unknown error"}`);
+    },
+    onSettled: () => {
+      setIsSubmitting(false);
+    }
+  });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSubmissionFile(e.target.files[0]);
+    }
   };
 
   if (isLoading) {
@@ -308,14 +387,132 @@ export const StudentAssignmentsTab = ({
                     )}
                   </div>
 
-                  <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end">
-                    <Button
-                      onClick={() => setIsDetailOpen(false)}
-                      className="bg-sky-500 hover:bg-sky-600 text-white font-black rounded-2xl px-8 shadow-lg shadow-sky-200 transition-all active:scale-95"
-                    >
-                      Got it!
-                    </Button>
-                  </div>
+                  {/* Submission Section */}
+                  {!selectedAssignment.submission || selectedAssignment.submission.status === 'pending' || selectedAssignment.submission.status === 'returned' ? (
+                    <div className="mt-8 space-y-4">
+                      <div className="flex items-center justify-between border-t border-slate-100 pt-6 mb-2">
+                        <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4" />
+                          Submit Your Work
+                        </h4>
+                      </div>
+
+                      {submissionFile ? (
+                        <div className="bg-emerald-50/50 border border-emerald-100 rounded-3xl p-4 flex items-center justify-between">
+                          <div className="flex items-center gap-3 overflow-hidden">
+                            <div className="w-10 h-10 bg-emerald-100 rounded-2xl flex items-center justify-center shrink-0">
+                              <FileText className="h-5 w-5 text-emerald-600" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-slate-700 truncate">{submissionFile.name}</p>
+                              <p className="text-[10px] text-slate-400 font-bold">{(submissionFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-slate-400 hover:text-rose-500 rounded-full"
+                            onClick={() => setSubmissionFile(null)}
+                            disabled={isSubmitting}
+                          >
+                            <X className="h-5 w-5" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-3">
+                          <Label className="cursor-pointer">
+                            <Input
+                              type="file"
+                              className="hidden"
+                              onChange={handleFileChange}
+                              disabled={isSubmitting}
+                            />
+                            <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 rounded-[2rem] hover:border-sky-400 hover:bg-sky-50/30 transition-all gap-2 group">
+                              <div className="w-12 h-12 bg-sky-50 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <Upload className="h-6 w-6 text-sky-500" />
+                              </div>
+                              <span className="text-xs font-black text-slate-500">Upload File</span>
+                            </div>
+                          </Label>
+
+                          <Label className="cursor-pointer">
+                            <Input
+                              type="file"
+                              accept="image/*"
+                              capture="environment"
+                              className="hidden"
+                              onChange={handleFileChange}
+                              disabled={isSubmitting}
+                            />
+                            <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 rounded-[2rem] hover:border-emerald-400 hover:bg-emerald-50/30 transition-all gap-2 group">
+                              <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <Camera className="h-6 w-6 text-emerald-500" />
+                              </div>
+                              <span className="text-xs font-black text-slate-500">Use Camera</span>
+                            </div>
+                          </Label>
+                        </div>
+                      )}
+
+                      {isSubmitting && (
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase">
+                            <span>Uploading...</span>
+                            <span>{uploadProgress}%</span>
+                          </div>
+                          <Progress value={uploadProgress} className="h-1.5 bg-slate-100" />
+                        </div>
+                      )}
+
+                      <div className="mt-8 pt-6 border-t border-slate-100 flex gap-3">
+                        <Button
+                          variant="ghost"
+                          onClick={() => setIsDetailOpen(false)}
+                          className="font-black text-slate-400"
+                          disabled={isSubmitting}
+                        >
+                          Later
+                        </Button>
+                        <Button
+                          onClick={() => submitMutation.mutate(selectedAssignment.id)}
+                          disabled={!submissionFile || isSubmitting}
+                          className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-2xl shadow-lg shadow-emerald-200 transition-all active:scale-95 disabled:opacity-50"
+                        >
+                          {isSubmitting ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Submitting...
+                            </>
+                          ) : (
+                            'Turn In Assignment'
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-8 pt-6 border-t border-slate-100">
+                      <div className="bg-sky-50/50 border border-sky-100 rounded-[2rem] p-6 text-center">
+                        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+                          <CheckCircle className="h-8 w-8 text-sky-500" />
+                        </div>
+                        <h4 className="font-black text-slate-800 text-lg mb-1">Assignment Turned In!</h4>
+                        <p className="text-sm font-bold text-slate-500">
+                          {selectedAssignment.submission.status === 'graded'
+                            ? `You scored ${selectedAssignment.submission.score}/${selectedAssignment.max_score}!`
+                            : "Your teacher is currently reviewing your work."}
+                        </p>
+
+                        <div className="mt-6 flex justify-center">
+                          <Button
+                            onClick={() => setIsDetailOpen(false)}
+                            className="bg-sky-500 hover:bg-sky-600 text-white font-black rounded-2xl px-8 shadow-lg shadow-sky-200 transition-all active:scale-95"
+                          >
+                            Awesome!
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
