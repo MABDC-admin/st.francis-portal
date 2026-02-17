@@ -203,7 +203,23 @@ export const TeacherManagement = () => {
     }
   };
 
-  const filteredTeachers = teachers.filter(t =>
+  const sortedTeachers = [...teachers].sort((a, b) => {
+    const levelA = a.grade_level || '';
+    const levelB = b.grade_level || '';
+
+    if (levelA === levelB) return a.full_name.localeCompare(b.full_name);
+
+    const indexA = GRADE_LEVELS.indexOf(levelA);
+    const indexB = GRADE_LEVELS.indexOf(levelB);
+
+    // If one level is not in the list, push it to the end
+    if (indexA === -1) return 1;
+    if (indexB === -1) return -1;
+
+    return indexA - indexB;
+  });
+
+  const filteredTeachers = sortedTeachers.filter(t =>
     t.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     t.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     t.employee_id.toLowerCase().includes(searchQuery.toLowerCase())

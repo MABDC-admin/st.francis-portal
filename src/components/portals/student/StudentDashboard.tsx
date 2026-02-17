@@ -18,7 +18,6 @@ import { AnimatedStudentAvatar } from '@/components/students/AnimatedStudentAvat
 import { SubjectGradeCard } from './SubjectGradeCard';
 import { StudentAcademicInsights } from './widgets/StudentAcademicInsights';
 import { useStudentDashboardStats } from '@/hooks/useStudentPortalData';
-import { PromotionalSlider } from '@/components/portals/student/widgets/PromotionalSlider';
 
 interface StudentDashboardProps {
   studentId: string;
@@ -386,10 +385,6 @@ export const StudentDashboard = ({
         </div>
       </div>
 
-      {/* Promotional Banner Placeholder / Event Banner */}
-      <div className="px-5">
-        <PromotionalSlider schoolId={schoolId} />
-      </div>
 
     </div>
   );
