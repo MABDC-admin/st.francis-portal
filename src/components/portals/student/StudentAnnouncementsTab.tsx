@@ -42,7 +42,7 @@ const AnnouncementCard = ({ announcement, isPinned = false }: { announcement: An
             </div>
 
             <h3 className="font-semibold text-lg">{announcement.title}</h3>
-            
+
             <div className="mt-2 text-sm text-foreground whitespace-pre-wrap">
               {announcement.content}
             </div>
@@ -97,7 +97,7 @@ export const StudentAnnouncementsTab = ({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-h-[60vh] flex flex-col justify-center">
       {/* Header */}
       <div className="flex items-center gap-2">
         <Megaphone className="h-5 w-5 text-primary" />

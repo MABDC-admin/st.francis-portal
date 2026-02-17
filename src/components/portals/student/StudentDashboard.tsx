@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { BlurredPlaygroundBackground } from './BlurredPlaygroundBackground';
+import { RabbitButterflyBackground } from './widgets/RabbitButterflyBackground';
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
 import {
@@ -19,6 +20,10 @@ import { SubjectGradeCard } from './SubjectGradeCard';
 import { StudentAcademicInsights } from './widgets/StudentAcademicInsights';
 import { useStudentDashboardStats } from '@/hooks/useStudentPortalData';
 import { PromotionalSlider } from './widgets/PromotionalSlider';
+import WeatherBackground from '@/components/weather/WeatherBackground';
+import { useZoomSession } from '@/hooks/useZoomSession';
+import { Video, ExternalLink } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface StudentDashboardProps {
   studentId: string;
@@ -31,9 +36,6 @@ interface StudentDashboardProps {
   studentPhotoUrl?: string | null;
   onCardClick?: (section: string) => void;
 }
-import { useZoomSession } from '@/hooks/useZoomSession';
-import { Video, ExternalLink } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 export const StudentDashboard = ({
   studentId,
@@ -53,6 +55,21 @@ export const StudentDashboard = ({
   );
 
   const { settings, inSession, countdown } = useZoomSession(schoolId);
+
+
+
+  // Check for weather-related announcements (Override API weather)
+  const overrideTheme = useMemo(() => {
+    const allAnnouncements = [...announcements.pinned, ...announcements.regular];
+    const weatherKeywords = ['rain', 'typhoon', 'storm', 'habagat', 'monsoon', 'suspension', 'weather', 'heavy rain', 'cancel', 'no class', 'cancelled'];
+
+    const hasBadWeather = allAnnouncements.some(a => {
+      const text = (a.title + a.content).toLowerCase();
+      return weatherKeywords.some(keyword => text.includes(keyword));
+    });
+
+    return hasBadWeather ? 'rainy' : null;
+  }, [announcements]);
 
   // Embla Carousel Setup for Module Grid
   const [emblaRef, emblaApi] = useEmblaCarousel({
@@ -128,8 +145,19 @@ export const StudentDashboard = ({
       <div className="relative overflow-hidden rounded-b-[3rem] pb-6">
         <BlurredPlaygroundBackground />
 
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0 z-0 pointer-events-none">
+          <RabbitButterflyBackground />
+        </div>
+
+        {/* Real-time Weather Background */}
+        <div className="absolute inset-0 z-0">
+          <WeatherBackground forcedTheme={overrideTheme as any} />
+        </div>
+
         {/* Top Greeting Section */}
-        <div className="relative w-full shrink-0 pt-6 pb-2 z-10">
+        {/* INCREASED PADDING TOP HERE (pt-6 -> pt-12) */}
+        <div className="relative w-full shrink-0 pt-12 pb-2 z-10">
           {/* Profile Overlay */}
           <div className="flex items-center justify-between px-6">
             <div className="flex items-center gap-4">
@@ -143,7 +171,14 @@ export const StudentDashboard = ({
                 )}
               </div>
               <div className="flex flex-col">
-                <span className="text-sky-800 font-bold text-sm leading-tight">Good Morning!</span>
+                <span className="text-sky-800 font-bold text-sm leading-tight">
+                  {(() => {
+                    const hour = new Date().getHours();
+                    if (hour >= 5 && hour < 12) return 'Good Morning!';
+                    if (hour >= 12 && hour < 18) return 'Good Afternoon!';
+                    return 'Good Evening!';
+                  })()}
+                </span>
                 <h1 className="text-2xl font-black text-sky-950 leading-tight">
                   {studentName?.split(' ')[0] || "Student"} {studentName?.split(' ').slice(1).join(' ') || ""}
                 </h1>

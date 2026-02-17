@@ -13,6 +13,7 @@ import Index from "./pages/Index";
 import StudentProfile from "./pages/StudentProfile";
 import Auth from "./pages/Auth";
 import Attendance from "./pages/Attendance";
+import { WeatherProvider } from "@/components/weather/WeatherContext";
 import NotFound from "./pages/NotFound";
 import Install from "./pages/Install";
 import PublicRegistrationPage from "./pages/PublicRegistrationPage";
@@ -59,26 +60,28 @@ const App = () => {
             <ColorThemeProvider>
               <AuthProvider>
                 <TooltipProvider>
-                  <Toaster />
-                  <Sonner />
-                  <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                    <Routes>
-                      <Route path="/auth" element={<Auth />} />
-                      <Route path="/attendance" element={<Attendance />} />
-                      <Route path="/" element={<Index />} />
-                      <Route path="/library/book/:bookId" element={<Index />} />
-                      <Route path="/student/:id" element={<StudentProfile />} />
-                      <Route path="/student/:studentId/assignment/:assignmentId" element={<StudentAssignmentView />} />
-                      <Route path="/admin/zoom-runner" element={<ZoomRunner />} />
-                      <Route path="/install" element={<Install />} />
-                      <Route path="/register" element={<PublicRegistrationPage />} />
-                      <Route path="/apply" element={<PublicTeacherApplicationPage />} />
-                      <Route path="/helpdesk" element={<HelpdeskIndex />} />
-                      <Route path="/helpdesk/tickets/:ticketId" element={<TicketDetail />} />
-                      {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </BrowserRouter>
+                  <WeatherProvider>
+                    <Toaster />
+                    <Sonner />
+                    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                      <Routes>
+                        <Route path="/auth" element={<Auth />} />
+                        <Route path="/attendance" element={<Attendance />} />
+                        <Route path="/" element={<Index />} />
+                        <Route path="/library/book/:bookId" element={<Index />} />
+                        <Route path="/student/:id" element={<StudentProfile />} />
+                        <Route path="/student/:studentId/assignment/:assignmentId" element={<StudentAssignmentView />} />
+                        <Route path="/admin/zoom-runner" element={<ZoomRunner />} />
+                        <Route path="/install" element={<Install />} />
+                        <Route path="/register" element={<PublicRegistrationPage />} />
+                        <Route path="/apply" element={<PublicTeacherApplicationPage />} />
+                        <Route path="/helpdesk" element={<HelpdeskIndex />} />
+                        <Route path="/helpdesk/tickets/:ticketId" element={<TicketDetail />} />
+                        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </BrowserRouter>
+                  </WeatherProvider>
                 </TooltipProvider>
               </AuthProvider>
             </ColorThemeProvider>
