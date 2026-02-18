@@ -743,15 +743,18 @@ export type Database = {
       }
       books: {
         Row: {
+          category: string | null
           cover_url: string | null
           created_at: string
           grade_level: string
           id: string
           index_status: string | null
           is_active: boolean | null
+          is_teacher_only: boolean | null
           page_count: number | null
           pdf_url: string | null
           school: string | null
+          source: string | null
           status: string
           subject: string | null
           title: string
@@ -759,15 +762,18 @@ export type Database = {
           uploaded_by: string | null
         }
         Insert: {
+          category?: string | null
           cover_url?: string | null
           created_at?: string
           grade_level: string
           id?: string
           index_status?: string | null
           is_active?: boolean | null
+          is_teacher_only?: boolean | null
           page_count?: number | null
           pdf_url?: string | null
           school?: string | null
+          source?: string | null
           status?: string
           subject?: string | null
           title: string
@@ -775,15 +781,18 @@ export type Database = {
           uploaded_by?: string | null
         }
         Update: {
+          category?: string | null
           cover_url?: string | null
           created_at?: string
           grade_level?: string
           id?: string
           index_status?: string | null
           is_active?: boolean | null
+          is_teacher_only?: boolean | null
           page_count?: number | null
           pdf_url?: string | null
           school?: string | null
+          source?: string | null
           status?: string
           subject?: string | null
           title?: string
