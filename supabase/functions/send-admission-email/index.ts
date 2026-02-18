@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "npm:resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,18 +23,16 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    const { type, to, studentName, school, level, rejectionReason, approvedBy }: EmailRequest = await req.json();
+
     if (!RESEND_API_KEY) {
       console.log("RESEND_API_KEY not set. Mocking email send.");
-      const body = await req.json();
-      console.log("Mock email:", JSON.stringify(body));
+      console.log("Mock email:", JSON.stringify({ type, to, studentName }));
       return new Response(
         JSON.stringify({ success: true, message: "Email mocked (API key missing)" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    const resend = new Resend(RESEND_API_KEY);
-    const { type, to, studentName, school, level, rejectionReason, approvedBy }: EmailRequest = await req.json();
 
     let subject = "";
     let html = "";
@@ -100,17 +97,25 @@ const handler = async (req: Request): Promise<Response> => {
       `;
     }
 
-    const emailResponse = await resend.emails.send({
-      from: "Enrollment <enrollment@sfxsai.org>",
-      to: [to],
-      subject,
-      html,
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+      },
+      body: JSON.stringify({
+        from: "Enrollment <enrollment@sfxsai.org>",
+        to: [to],
+        subject,
+        html,
+      }),
     });
 
+    const emailResponse = await res.json();
     console.log("Email sent successfully:", emailResponse);
 
     return new Response(JSON.stringify(emailResponse), {
-      status: 200,
+      status: res.ok ? 200 : 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {
