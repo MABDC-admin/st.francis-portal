@@ -105,7 +105,7 @@ export const BookUploadModal = ({
         .from('books')
         .insert({
           title: book.title,
-          grade_level: parseInt(book.gradeLevel),
+          grade_level: book.gradeLevel,
           subject: book.subject || null,
           school: school === 'both' ? null : school,
           status: 'processing',
