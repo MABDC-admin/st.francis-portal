@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { encodeBase64 } from "https://deno.land/std@0.168.0/encoding/base64.ts";
+import { encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -110,8 +110,9 @@ serve(async (req) => {
         });
 
     } catch (error) {
-        console.error('Zoom Auth Error:', error.message);
-        return new Response(JSON.stringify({ error: error.message }), {
+        const err = error as Error;
+        console.error('Zoom Auth Error:', err.message);
+        return new Response(JSON.stringify({ error: err.message }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 400,
         });

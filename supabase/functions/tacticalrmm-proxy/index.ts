@@ -75,7 +75,8 @@ serve(async (req) => {
         return new Response(JSON.stringify({ data: meshData, configured: true }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
-      } catch (err) {
+      } catch (e) {
+        const err = e as Error;
         console.error('TacticalRMM takecontrol error:', err);
         return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
@@ -109,7 +110,8 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('TacticalRMM proxy error:', error);
-    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const err = error as Error;
+    console.error('TacticalRMM proxy error:', err);
+    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });

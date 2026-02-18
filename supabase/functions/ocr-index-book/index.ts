@@ -248,6 +248,7 @@ serve(async (req) => {
     };
 
     // Start background processing
+    declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
     EdgeRuntime.waitUntil(backgroundTask());
 
     return new Response(

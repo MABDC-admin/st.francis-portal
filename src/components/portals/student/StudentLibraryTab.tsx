@@ -57,7 +57,7 @@ export const StudentLibraryTab = () => {
                 .select('*')
                 .eq('is_active', true)
                 .eq('is_teacher_only', false)
-                .eq('grade_level', studentGrade);
+                .eq('grade_level', String(studentGrade));
 
             if (studentProfile?.school_id) {
                 query = query.or(`school.eq.${studentProfile.school_id},school.is.null`);
@@ -77,9 +77,10 @@ export const StudentLibraryTab = () => {
             const matchesSearch = book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 book.subject?.toLowerCase().includes(searchQuery.toLowerCase());
 
+            const bookAny = book as any;
             const matchesCategory = selectedCategory === 'All Books' ||
-                (selectedCategory === 'Ebook' && book.category === 'Ebook') ||
-                (selectedCategory === 'Kids Stories' && book.category === 'Kids Stories');
+                (selectedCategory === 'Ebook' && bookAny.category === 'Ebook') ||
+                (selectedCategory === 'Kids Stories' && bookAny.category === 'Kids Stories');
 
             return matchesSearch && matchesCategory;
         });

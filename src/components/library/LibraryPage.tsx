@@ -62,7 +62,7 @@ const parseStudentLevel = (levelStr: string | null | undefined): number | null =
 interface Book {
   id: string;
   title: string;
-  grade_level: number;
+  grade_level: string;
   subject: string | null;
   category: string;
   source: string;
@@ -187,7 +187,7 @@ export const LibraryPage = ({ deepLinkBookId, deepLinkPage }: LibraryPageProps =
       }
 
       if (selectedGrade !== 'all') {
-        query = query.eq('grade_level', parseInt(selectedGrade, 10));
+        query = query.eq('grade_level', selectedGrade);
       }
 
       // Filter by school - show books for this school or books for both (null)
@@ -231,7 +231,7 @@ export const LibraryPage = ({ deepLinkBookId, deepLinkPage }: LibraryPageProps =
     // Apply grade filter
     if (selectedGrade && selectedGrade !== 'all') {
       result = result.filter(
-        (book) => book.grade_level === parseInt(selectedGrade, 10)
+        (book) => book.grade_level === selectedGrade
       );
     }
 
