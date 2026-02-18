@@ -5,6 +5,10 @@ import { VitePWA } from "vite-plugin-pwa";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  define: {
+    'import.meta.env.VITE_SUPABASE_URL': JSON.stringify('https://wdiexrdvnckpyghvepsy.supabase.co'),
+    'import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY': JSON.stringify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndkaWV4cmR2bmNrcHlnaHZlcHN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3MzE5MTMsImV4cCI6MjA4NjMwNzkxM30.vZSMTVwWp7eKw2z4ZFBtEw8m7xax-Symv7sq3_p2MFE'),
+  },
   server: {
     host: "::",
     port: 8080,
