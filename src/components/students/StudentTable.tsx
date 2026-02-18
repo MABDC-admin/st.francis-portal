@@ -25,7 +25,7 @@ import { StudentHoverPreview } from './StudentHoverPreview';
 import { StudentDetailPanel } from './StudentDetailPanel';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { formatName } from '@/utils/textFormatting';
+import { formatName, calculateAge } from '@/utils/textFormatting';
 import {
   Select,
   SelectContent,
@@ -78,7 +78,7 @@ export const StudentTable = ({
   const [sortField, setSortField] = useState<SortField>('student_name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('split');
+  const [viewMode, setViewMode] = useState<ViewMode>('cards');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   // Get unique levels and genders for filters
@@ -186,166 +186,166 @@ export const StudentTable = ({
     <div className="bg-card rounded-2xl shadow-card overflow-hidden">
       {/* Header - hidden in split mode */}
       {viewMode as string !== 'split' && (
-      <div className="p-4 lg:p-6 border-b border-border space-y-3">
-        {/* Single Row: All Controls */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* School Dropdown - Compact */}
-          <Select value={schoolFilter} onValueChange={(v) => setSchoolFilter(v)}>
-            <SelectTrigger className="w-[110px] bg-card border-2 border-stat-purple/20 hover:border-stat-purple/40">
-              <div className="flex items-center gap-1.5">
-                <GraduationCap className="h-4 w-4 text-stat-purple" />
-                <SelectValue>
-                  {SCHOOLS.find(s => s.id === schoolFilter)?.acronym || 'ALL'}
-                </SelectValue>
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              {SCHOOLS.map((school) => (
-                <SelectItem key={school.id} value={school.id}>
-                  <div className="flex flex-col">
-                    <span className="font-semibold">{school.acronym}</span>
-                    <span className="text-xs text-muted-foreground">{school.name}</span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Search Input - Flexible width */}
-          <div className="relative flex-1 min-w-[160px] max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name or LRN..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 h-9"
-            />
-          </div>
-
-          {/* Level Filter - Compact, no label */}
-          <Select value={levelFilter} onValueChange={(v) => setLevelFilter(v)}>
-            <SelectTrigger className="w-[130px] h-9">
-              <SelectValue placeholder="All Levels" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Levels</SelectItem>
-              {levels.map(level => (
-                <SelectItem key={level} value={level}>{level}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* View Mode Toggle - Compact */}
-          <div className="flex items-center gap-0.5 bg-secondary rounded-lg p-0.5">
-            <button
-              onClick={() => setViewMode('cards')}
-              className={cn(
-                "p-1.5 rounded-md transition-all",
-                viewMode === 'cards'
-                  ? "bg-stat-purple text-white shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-              title="Card View"
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setViewMode('compact')}
-              className={cn(
-                "p-1.5 rounded-md transition-all",
-                viewMode === 'compact'
-                  ? "bg-stat-purple text-white shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-              title="Compact View"
-            >
-              <Rows3 className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setViewMode('table')}
-              className={cn(
-                "p-1.5 rounded-md transition-all",
-                viewMode === 'table'
-                  ? "bg-stat-purple text-white shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-              title="Table View"
-            >
-              <List className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setViewMode('split')}
-              className={cn(
-                "p-1.5 rounded-md transition-all",
-                viewMode === 'split'
-                  ? "bg-stat-purple text-white shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-              title="Split Panel View"
-            >
-              <PanelLeftClose className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* Action Buttons */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowFilters(!showFilters)}
-            className={cn("h-9", showFilters && "bg-secondary")}
-          >
-            <Filter className="h-4 w-4 mr-1.5" />
-            More
-          </Button>
-          <Button variant="outline" size="sm" onClick={exportToCSV} className="h-9">
-            <Download className="h-4 w-4 mr-1.5" />
-            Export
-          </Button>
-          {hasActiveFilters && (
-            <Button variant="ghost" size="icon" onClick={clearFilters} title="Clear all filters" className="h-9 w-9">
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-
-        {/* Additional Filters Panel */}
-        <AnimatePresence>
-          {showFilters && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="flex flex-wrap gap-4 pt-3 border-t border-border">
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-muted-foreground">Gender</label>
-                  <Select value={genderFilter} onValueChange={(v) => setGenderFilter(v)}>
-                    <SelectTrigger className="w-[150px] h-9">
-                      <SelectValue placeholder="All Genders" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Genders</SelectItem>
-                      {genders.map(gender => (
-                        <SelectItem key={gender} value={gender!}>{gender}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+        <div className="p-4 lg:p-6 border-b border-border space-y-3">
+          {/* Single Row: All Controls */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* School Dropdown - Compact */}
+            <Select value={schoolFilter} onValueChange={(v) => setSchoolFilter(v)}>
+              <SelectTrigger className="w-[110px] bg-card border-2 border-stat-purple/20 hover:border-stat-purple/40">
+                <div className="flex items-center gap-1.5">
+                  <GraduationCap className="h-4 w-4 text-stat-purple" />
+                  <SelectValue>
+                    {SCHOOLS.find(s => s.id === schoolFilter)?.acronym || 'ALL'}
+                  </SelectValue>
                 </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              </SelectTrigger>
+              <SelectContent>
+                {SCHOOLS.map((school) => (
+                  <SelectItem key={school.id} value={school.id}>
+                    <div className="flex flex-col">
+                      <span className="font-semibold">{school.acronym}</span>
+                      <span className="text-xs text-muted-foreground">{school.name}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-        {/* Results Count */}
-        <div className="text-sm text-muted-foreground">
-          {viewMode === 'cards' && totalPages > 1 ? (
-            <>Page {currentPage} of {totalPages} ({filteredStudents.length} learners)</>
-          ) : (
-            <>Showing {displayedStudents.length} of {filteredStudents.length} learners</>
-          )}
+            {/* Search Input - Flexible width */}
+            <div className="relative flex-1 min-w-[160px] max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or LRN..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10 h-9"
+              />
+            </div>
+
+            {/* Level Filter - Compact, no label */}
+            <Select value={levelFilter} onValueChange={(v) => setLevelFilter(v)}>
+              <SelectTrigger className="w-[130px] h-9">
+                <SelectValue placeholder="All Levels" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Levels</SelectItem>
+                {levels.map(level => (
+                  <SelectItem key={level} value={level}>{level}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* View Mode Toggle - Compact */}
+            <div className="flex items-center gap-0.5 bg-secondary rounded-lg p-0.5">
+              <button
+                onClick={() => setViewMode('cards')}
+                className={cn(
+                  "p-1.5 rounded-md transition-all",
+                  viewMode === 'cards'
+                    ? "bg-stat-purple text-white shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                title="Card View"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('compact')}
+                className={cn(
+                  "p-1.5 rounded-md transition-all",
+                  viewMode === 'compact'
+                    ? "bg-stat-purple text-white shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                title="Compact View"
+              >
+                <Rows3 className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('table')}
+                className={cn(
+                  "p-1.5 rounded-md transition-all",
+                  viewMode === 'table'
+                    ? "bg-stat-purple text-white shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                title="Table View"
+              >
+                <List className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('split')}
+                className={cn(
+                  "p-1.5 rounded-md transition-all",
+                  viewMode === 'split'
+                    ? "bg-stat-purple text-white shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                title="Split Panel View"
+              >
+                <PanelLeftClose className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Action Buttons */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              className={cn("h-9", showFilters && "bg-secondary")}
+            >
+              <Filter className="h-4 w-4 mr-1.5" />
+              More
+            </Button>
+            <Button variant="outline" size="sm" onClick={exportToCSV} className="h-9">
+              <Download className="h-4 w-4 mr-1.5" />
+              Export
+            </Button>
+            {hasActiveFilters && (
+              <Button variant="ghost" size="icon" onClick={clearFilters} title="Clear all filters" className="h-9 w-9">
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+
+          {/* Additional Filters Panel */}
+          <AnimatePresence>
+            {showFilters && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="flex flex-wrap gap-4 pt-3 border-t border-border">
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium text-muted-foreground">Gender</label>
+                    <Select value={genderFilter} onValueChange={(v) => setGenderFilter(v)}>
+                      <SelectTrigger className="w-[150px] h-9">
+                        <SelectValue placeholder="All Genders" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Genders</SelectItem>
+                        {genders.map(gender => (
+                          <SelectItem key={gender} value={gender!}>{gender}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Results Count */}
+          <div className="text-sm text-muted-foreground">
+            {viewMode === 'cards' && totalPages > 1 ? (
+              <>Page {currentPage} of {totalPages} ({filteredStudents.length} learners)</>
+            ) : (
+              <>Showing {displayedStudents.length} of {filteredStudents.length} learners</>
+            )}
+          </div>
         </div>
-      </div>
       )}
 
       {/* Content */}
@@ -670,7 +670,7 @@ export const StudentTable = ({
             <table className="w-full">
               <thead className="bg-teal-600 text-white">
                 <tr>
-                    <th className="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                  <th className="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                     LRN
                   </th>
                   {[
@@ -762,7 +762,7 @@ export const StudentTable = ({
                         </span>
                       </td>
                       <td className="px-4 lg:px-6 py-4 text-muted-foreground">
-                        {student.age || '-'}
+                        {student.age || calculateAge(student.birth_date)}
                       </td>
                       <td className="px-4 lg:px-6 py-4 text-muted-foreground">
                         {student.gender || '-'}

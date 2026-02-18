@@ -285,6 +285,7 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
     case 'admin':
       return [
         { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
+        { id: 'announcement-mgmt', icon: EventsIcon3D, label: 'Announcements' },
         { id: 'applicants', icon: TeacherIcon3D, label: 'Teacher Applicants' },
         {
           id: 'student-records',
@@ -326,7 +327,6 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
             { id: 'messages', icon: EventsIcon3D, label: 'Messages' },
             { id: 'zoom', icon: TeacherIcon3D, label: 'Virtual Classes' },
             { id: 'events', icon: EventsIcon3D, label: 'Events' },
-            { id: 'announcement-mgmt', icon: EventsIcon3D, label: 'Announcements' },
             { id: 'banner-management', icon: ReportsIcon3D, label: 'Banner Management' },
             { id: 'academic-years', icon: ScheduleIcon3D, label: 'Academic Years' },
           ]
@@ -364,6 +364,7 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
     case 'registrar':
       return [
         { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
+        { id: 'announcement-mgmt', icon: EventsIcon3D, label: 'Announcements' },
         { id: 'applicants', icon: TeacherIcon3D, label: 'Teacher Applicants' },
         {
           id: 'student-records',
@@ -405,7 +406,6 @@ const getNavGroupsForRole = (role: string | null): NavGroup[] => {
             { id: 'messages', icon: EventsIcon3D, label: 'Messages' },
             { id: 'zoom', icon: TeacherIcon3D, label: 'Virtual Classes' },
             { id: 'events', icon: EventsIcon3D, label: 'Events' },
-            { id: 'announcement-mgmt', icon: EventsIcon3D, label: 'Announcements' },
             { id: 'banner-management', icon: ReportsIcon3D, label: 'Banner Management' },
           ]
         },

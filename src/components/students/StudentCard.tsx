@@ -5,6 +5,7 @@ import { Student } from '@/types/student';
 import { cn } from '@/lib/utils';
 import { StudentHoverPreview } from './StudentHoverPreview';
 import { AnimatedStudentAvatar } from './AnimatedStudentAvatar';
+import { calculateAge } from '@/utils/textFormatting';
 
 interface StudentCardProps {
   student: Student;
@@ -104,7 +105,7 @@ export const StudentCard = ({ student, onView, onEdit, onDelete, index }: Studen
               <div>
                 <p className="text-muted-foreground text-[10px]">Age</p>
                 <p className="text-foreground font-medium text-xs">
-                  {student.age || '-'}
+                  {student.age || calculateAge(student.birth_date)}
                 </p>
               </div>
             </div>

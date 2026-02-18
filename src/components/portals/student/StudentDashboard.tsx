@@ -142,7 +142,7 @@ export const StudentDashboard = ({
     <div className="flex flex-col min-h-screen bg-[url('/assets/student-mobile-bg.webp')] bg-cover bg-center bg-fixed bg-no-repeat sm:bg-none sm:bg-white -m-4 sm:-m-0 rounded-t-[3rem] overflow-hidden space-y-4 pb-20">
 
       {/* Header Container with Background */}
-      <div className="relative overflow-hidden rounded-b-[3rem] pb-6">
+      <div className="relative overflow-hidden rounded-b-[3rem] pb-2">
         <BlurredPlaygroundBackground />
 
         {/* Animated Background Elements */}
@@ -157,7 +157,7 @@ export const StudentDashboard = ({
 
         {/* Top Greeting Section */}
         {/* INCREASED PADDING TOP HERE (pt-6 -> pt-12) */}
-        <div className="relative w-full shrink-0 pt-12 pb-2 z-10">
+        <div className="relative w-full shrink-0 pt-12 pb-0 z-10">
           {/* Profile Overlay */}
           <div className="flex items-center justify-between px-6">
             <div className="flex items-center gap-4">
@@ -183,6 +183,17 @@ export const StudentDashboard = ({
                   {studentName?.split(' ')[0] || "Student"} {studentName?.split(' ').slice(1).join(' ') || ""}
                 </h1>
               </div>
+            </div>
+
+            {/* Digital Clock/Date Widget */}
+            <div className="flex flex-col items-end">
+              <span className="text-3xl font-black text-sky-950 leading-none tracking-tight">
+                {format(new Date(), 'h:mm')}
+                <span className="text-sm font-bold ml-1 text-sky-700">{format(new Date(), 'a')}</span>
+              </span>
+              <span className="text-xs font-bold text-sky-600 uppercase tracking-widest mt-0.5">
+                {format(new Date(), 'EEEE, MMM d')}
+              </span>
             </div>
           </div>
         </div>
