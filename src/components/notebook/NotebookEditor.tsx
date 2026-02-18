@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { motion, Reorder } from 'framer-motion';
 import { Plus, Save, Check, Presentation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -125,7 +126,7 @@ export function NotebookEditor({ notebookId }: NotebookEditorProps) {
     setStreamingOutput((prev) => ({ ...prev, [cellId]: '' }));
 
     try {
-      const { data: session } = await (await import('@/integrations/supabase/client')).supabase.auth.getSession();
+      const { data: session } = await supabase.auth.getSession();
       if (!session.session) {
         throw new Error('Not authenticated');
       }
@@ -227,7 +228,7 @@ export function NotebookEditor({ notebookId }: NotebookEditorProps) {
     setStreamingOutput((prev) => ({ ...prev, [cellId]: '' }));
 
     try {
-      const { data: session } = await (await import('@/integrations/supabase/client')).supabase.auth.getSession();
+      const { data: session } = await supabase.auth.getSession();
       if (!session.session) {
         throw new Error('Not authenticated');
       }
