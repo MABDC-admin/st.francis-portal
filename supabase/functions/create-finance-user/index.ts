@@ -62,8 +62,9 @@ Deno.serve(async (req) => {
     })
 
   } catch (error) {
-    console.error('Error:', error)
-    return new Response(JSON.stringify({ success: false, error: error.message }), {
+    const err = error as Error;
+    console.error('Error:', err)
+    return new Response(JSON.stringify({ success: false, error: err.message }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })

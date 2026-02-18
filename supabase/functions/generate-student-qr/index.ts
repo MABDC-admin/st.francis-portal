@@ -89,7 +89,8 @@ Deno.serve(async (req) => {
         },
       }
     );
-  } catch (err) {
+  } catch (error) {
+    const err = error as Error;
     console.error("QR generation error:", err);
     return new Response(
       JSON.stringify({ error: err.message }),

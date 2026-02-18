@@ -130,7 +130,8 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (err) {
+  } catch (error) {
+    const err = error as Error;
     console.error("Error in reset-password:", err);
     return new Response(
       JSON.stringify({ error: err.message || "Internal server error" }),
