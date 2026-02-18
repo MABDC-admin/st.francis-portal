@@ -22,8 +22,10 @@ import { BookIndexStatus } from '@/hooks/useBookIndexing';
 interface Book {
   id: string;
   title: string;
-  grade_level: string;
+  grade_level: number;
   subject: string | null;
+  category?: string;
+  source?: string;
   cover_url: string | null;
   page_count: number;
   status: string;

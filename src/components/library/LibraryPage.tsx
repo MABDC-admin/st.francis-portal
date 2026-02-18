@@ -39,14 +39,14 @@ import { toast } from 'sonner';
 // Utility function to parse student level string to numeric grade
 const parseStudentLevel = (levelStr: string | null | undefined): number | null => {
   if (!levelStr) return null;
-  
+
   const normalized = levelStr.toLowerCase().trim();
-  
+
   // Handle "Kinder" levels - map to grade 0 or null
   if (normalized.includes('kinder')) {
     return 0; // Kinder students get grade 0
   }
-  
+
   // Extract number from strings like "Level 3", "Grade 5", "3", etc.
   const match = normalized.match(/\d+/);
   if (match) {
@@ -55,20 +55,23 @@ const parseStudentLevel = (levelStr: string | null | undefined): number | null =
       return grade;
     }
   }
-  
+
   return null;
 };
 
 interface Book {
   id: string;
   title: string;
-  grade_level: string;
+  grade_level: number;
   subject: string | null;
+  category: string;
+  source: string;
   cover_url: string | null;
   page_count: number;
   status: string;
   school: string | null;
   is_active: boolean;
+  is_teacher_only: boolean;
   index_status: string | null;
 }
 
@@ -95,7 +98,7 @@ export const LibraryPage = ({ deepLinkBookId, deepLinkPage }: LibraryPageProps =
   const [showInactive, setShowInactive] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
-  
+
   const { selectedSchool } = useSchool();
   const { role, user } = useAuth();
   const queryClient = useQueryClient();
@@ -110,31 +113,31 @@ export const LibraryPage = ({ deepLinkBookId, deepLinkPage }: LibraryPageProps =
     queryKey: ['student-for-library', user?.id],
     queryFn: async () => {
       if (!user?.id || !isStudent) return null;
-      
+
       // First get the student_id from user_credentials
       const { data: credential, error: credError } = await supabase
         .from('user_credentials')
         .select('student_id')
         .eq('user_id', user.id)
         .maybeSingle();
-      
+
       if (credError || !credential?.student_id) {
         console.warn('Could not find student credentials for library filtering');
         return null;
       }
-      
+
       // Then get the student's level
       const { data: student, error: studentError } = await supabase
         .from('students')
         .select('level, school_id')
         .eq('id', credential.student_id)
         .maybeSingle();
-      
+
       if (studentError || !student) {
         console.warn('Could not find student data for library filtering');
         return null;
       }
-      
+
       return student;
     },
     enabled: !!user?.id && isStudent,
@@ -156,13 +159,13 @@ export const LibraryPage = ({ deepLinkBookId, deepLinkPage }: LibraryPageProps =
 
 
   // Book search hook
-  const { 
-    search, 
-    clearSearch, 
-    isSearching, 
-    searchResults, 
+  const {
+    search,
+    clearSearch,
+    isSearching,
+    searchResults,
     totalMatches,
-    searchQuery: aiSearchQuery 
+    searchQuery: aiSearchQuery
   } = useBookSearch();
 
   // Book indexing hook
@@ -170,7 +173,7 @@ export const LibraryPage = ({ deepLinkBookId, deepLinkPage }: LibraryPageProps =
 
   // Fetch books from database
   const { data: books = [], isLoading } = useQuery({
-    queryKey: ['books', selectedSchool, showInactive],
+    queryKey: ['books', selectedSchool, showInactive, searchQuery, selectedGrade],
     queryFn: async () => {
       let query = supabase.from('books').select('*');
 
@@ -179,14 +182,22 @@ export const LibraryPage = ({ deepLinkBookId, deepLinkPage }: LibraryPageProps =
         query = query.eq('is_active', true);
       }
 
+      if (searchQuery.trim()) {
+        query = query.ilike('title', `%${searchQuery}%`);
+      }
+
+      if (selectedGrade !== 'all') {
+        query = query.eq('grade_level', parseInt(selectedGrade, 10));
+      }
+
       // Filter by school - show books for this school or books for both (null)
       if (selectedSchool) {
         query = query.or(`school.eq.${selectedSchool},school.is.null`);
       }
 
-      const { data, error } = await query.order('title');
+      const { data, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
-      return data as Book[];
+      return data as any as Book[];
     },
   });
 
@@ -220,7 +231,7 @@ export const LibraryPage = ({ deepLinkBookId, deepLinkPage }: LibraryPageProps =
     // Apply grade filter
     if (selectedGrade && selectedGrade !== 'all') {
       result = result.filter(
-        (book) => book.grade_level === selectedGrade
+        (book) => book.grade_level === parseInt(selectedGrade, 10)
       );
     }
 
@@ -259,13 +270,13 @@ export const LibraryPage = ({ deepLinkBookId, deepLinkPage }: LibraryPageProps =
     if (!deletingBook) return;
 
     setIsDeleting(true);
-    
+
     // First delete book page index
     await supabase.from('book_page_index').delete().eq('book_id', deletingBook.id);
-    
+
     // Then delete book pages
     await supabase.from('book_pages').delete().eq('book_id', deletingBook.id);
-    
+
     // Then delete the book
     const { error } = await supabase.from('books').delete().eq('id', deletingBook.id);
 
@@ -284,7 +295,7 @@ export const LibraryPage = ({ deepLinkBookId, deepLinkPage }: LibraryPageProps =
       toast.error('Please enter a search term');
       return;
     }
-    
+
     setShowSearchResults(true);
     await search(searchQuery, {
       grade_level: selectedGrade !== 'all' ? selectedGrade : undefined,
@@ -353,11 +364,11 @@ export const LibraryPage = ({ deepLinkBookId, deepLinkPage }: LibraryPageProps =
                   </Label>
                 </div>
                 <Button onClick={() => setShowUploadModal(true)}
-                className="gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Upload Book
-              </Button>
+                  className="gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Upload Book
+                </Button>
               </div>
             )}
           </div>
@@ -500,10 +511,10 @@ export const LibraryPage = ({ deepLinkBookId, deepLinkPage }: LibraryPageProps =
                   ? 'There are no books available for Kinder students yet. Check back later!'
                   : 'There are no books available for your grade level yet. Check back later!'
                 : searchQuery || selectedGrade !== 'all'
-                ? 'Try adjusting your search or filter criteria.'
-                : canManage
-                ? 'Upload your first book to get started!'
-                : 'There are no books available yet. Check back later!'}
+                  ? 'Try adjusting your search or filter criteria.'
+                  : canManage
+                    ? 'Upload your first book to get started!'
+                    : 'There are no books available yet. Check back later!'}
             </p>
             {canManage && !searchQuery && selectedGrade === 'all' && (
               <Button

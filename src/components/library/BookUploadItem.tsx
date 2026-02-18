@@ -22,6 +22,8 @@ export interface BookUploadData {
   subject: string;
   coverPreview: string | null;
   coverBase64: string | null;
+  category: string;
+  source: string;
   status: 'pending' | 'analyzing' | 'ready' | 'uploading' | 'done' | 'error';
   error?: string;
   aiDetected: boolean;
@@ -48,6 +50,9 @@ const SUBJECTS = [
   'Values Education',
   'Other',
 ];
+
+export const CATEGORIES = ['Ebook', 'Kids Stories'];
+export const SOURCES = ['Internal', 'External', 'Quipper'];
 
 export const BookUploadItem = ({
   book,
@@ -85,7 +90,7 @@ export const BookUploadItem = ({
 
       if (data?.success) {
         const updates: Partial<BookUploadData> = { status: 'ready', aiDetected: false };
-        
+
         if (data.title) {
           updates.title = data.title;
           updates.aiDetected = true;
@@ -115,11 +120,10 @@ export const BookUploadItem = ({
   const isEditable = !disabled && book.status !== 'uploading' && book.status !== 'done';
 
   return (
-    <div className={`border rounded-lg p-3 space-y-3 ${
-      book.status === 'error' ? 'border-destructive bg-destructive/5' :
-      book.status === 'done' ? 'border-green-500 bg-green-500/5' :
-      'border-border'
-    }`}>
+    <div className={`border rounded-lg p-3 space-y-3 ${book.status === 'error' ? 'border-destructive bg-destructive/5' :
+        book.status === 'done' ? 'border-green-500 bg-green-500/5' :
+          'border-border'
+      }`}>
       <div className="flex gap-3">
         {/* Cover Preview */}
         <div className="relative w-16 h-22 flex-shrink-0 rounded overflow-hidden border bg-muted">
@@ -214,6 +218,43 @@ export const BookUploadItem = ({
             </Select>
           </div>
 
+          {/* Category & Source Row */}
+          <div className="flex gap-2">
+            <Select
+              value={book.category}
+              onValueChange={(v) => onUpdate(book.id, { category: v })}
+              disabled={!isEditable}
+            >
+              <SelectTrigger className="h-8 text-xs flex-1">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORIES.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={book.source}
+              onValueChange={(v) => onUpdate(book.id, { source: v })}
+              disabled={!isEditable}
+            >
+              <SelectTrigger className="h-8 text-xs flex-1">
+                <SelectValue placeholder="Source" />
+              </SelectTrigger>
+              <SelectContent>
+                {SOURCES.map((src) => (
+                  <SelectItem key={src} value={src}>
+                    {src}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Status / Progress */}
           {book.status === 'uploading' && book.progress && (
             <div className="space-y-1">
@@ -224,9 +265,9 @@ export const BookUploadItem = ({
                 </span>
                 <span>{book.progress.done}/{book.progress.total}</span>
               </div>
-              <Progress 
-                value={(book.progress.done / book.progress.total) * 100} 
-                className="h-1.5" 
+              <Progress
+                value={(book.progress.done / book.progress.total) * 100}
+                className="h-1.5"
               />
             </div>
           )}

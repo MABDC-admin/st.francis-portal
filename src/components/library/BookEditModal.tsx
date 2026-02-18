@@ -42,6 +42,9 @@ interface Book {
   status: string;
   school: string | null;
   is_active: boolean;
+  category: string;
+  source: string;
+  is_teacher_only: boolean;
 }
 
 interface BookEditModalProps {
@@ -69,6 +72,9 @@ const SUBJECTS = [
   'Other',
 ];
 
+const CATEGORIES = ['Ebook', 'Kids Stories'];
+const SOURCES = ['Internal', 'External', 'Quipper'];
+
 export const BookEditModal = ({
   book,
   open,
@@ -79,7 +85,10 @@ export const BookEditModal = ({
     title: '',
     grade_level: '1',
     subject: '',
+    category: 'Ebook',
+    source: 'Internal',
     is_active: true,
+    is_teacher_only: false,
   });
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -91,7 +100,10 @@ export const BookEditModal = ({
         title: book.title,
         grade_level: book.grade_level.toString(),
         subject: book.subject || '',
+        category: book.category || 'Ebook',
+        source: book.source || 'Internal',
         is_active: book.is_active,
+        is_teacher_only: book.is_teacher_only || false,
       });
     }
   }, [book]);
@@ -109,7 +121,10 @@ export const BookEditModal = ({
         title: formData.title.trim(),
         grade_level: formData.grade_level,
         subject: formData.subject || null,
+        category: formData.category,
+        source: formData.source,
         is_active: formData.is_active,
+        is_teacher_only: formData.is_teacher_only,
       })
       .eq('id', book.id);
 
@@ -127,10 +142,10 @@ export const BookEditModal = ({
     if (!book) return;
 
     setIsDeleting(true);
-    
+
     // First delete book pages
     await supabase.from('book_pages').delete().eq('book_id', book.id);
-    
+
     // Then delete the book
     const { error } = await supabase.from('books').delete().eq('id', book.id);
 
@@ -210,6 +225,63 @@ export const BookEditModal = ({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Category</Label>
+              <Select
+                value={formData.category}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, category: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Source</Label>
+              <Select
+                value={formData.source}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, source: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select source" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SOURCES.map((src) => (
+                    <SelectItem key={src} value={src}>
+                      {src}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <Label>Teacher Only</Label>
+                <p className="text-xs text-muted-foreground">
+                  Hidden from students regardless of grade level
+                </p>
+              </div>
+              <Switch
+                checked={formData.is_teacher_only}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, is_teacher_only: checked })
+                }
+              />
             </div>
 
             <div className="flex items-center justify-between rounded-lg border p-3">

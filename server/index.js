@@ -71,8 +71,11 @@ app.get('/api/weather', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Weather API Error:', error.message);
-        res.status(500).json({ error: 'Failed to fetch weather data' });
+        console.error('Weather API Error:', error.response?.data || error.message);
+        res.status(500).json({ 
+            error: 'Failed to fetch weather data',
+            details: error.response?.data?.message || error.message
+        });
     }
 });
 

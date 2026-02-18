@@ -65,6 +65,8 @@ export const BookUploadModal = ({
       title: file.name.replace('.pdf', ''),
       gradeLevel: '',
       subject: '',
+      category: 'Ebook',
+      source: 'Internal',
       coverPreview: null,
       coverBase64: null,
       status: 'pending' as const,
@@ -107,6 +109,8 @@ export const BookUploadModal = ({
           title: book.title,
           grade_level: book.gradeLevel,
           subject: book.subject || null,
+          category: book.category,
+          source: book.source,
           school: school === 'both' ? null : school,
           status: 'processing',
           page_count: 0,
@@ -146,7 +150,7 @@ export const BookUploadModal = ({
         .eq('id', bookId);
 
       updateBook(book.id, { status: 'done' });
-      
+
       // Auto-trigger AI indexing after upload completes
       toast.success(`Book uploaded! Starting AI indexing for ${book.title}...`);
       startIndexing(bookId);
@@ -247,11 +251,10 @@ export const BookUploadModal = ({
 
           {/* Drop Zone / Add More */}
           <div
-            className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
-              books.length > 0
+            className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${books.length > 0
                 ? 'border-muted-foreground/25 hover:border-primary/50'
                 : 'border-muted-foreground/25 hover:border-primary/50 py-8'
-            } ${isUploading ? 'pointer-events-none opacity-50' : ''}`}
+              } ${isUploading ? 'pointer-events-none opacity-50' : ''}`}
             onClick={() => fileInputRef.current?.click()}
             onDrop={handleDrop}
             onDragOver={(e) => e.preventDefault()}
