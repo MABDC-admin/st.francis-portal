@@ -213,6 +213,15 @@ const Index = () => {
   const updateStudent = useUpdateStudent();
   const deleteStudent = useDeleteStudent();
 
+  // Calculate stats (memoized to avoid re-filtering every render)
+  // MUST be before early returns to comply with React Rules of Hooks
+  const { totalStudents, maleCount, femaleCount, levels } = useMemo(() => ({
+    totalStudents: students.length,
+    maleCount: students.filter(s => s.gender?.toUpperCase() === 'MALE').length,
+    femaleCount: students.filter(s => s.gender?.toUpperCase() === 'FEMALE').length,
+    levels: [...new Set(students.map(s => s.level))].length,
+  }), [students]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -225,13 +234,6 @@ const Index = () => {
     return null;
   }
 
-  // Calculate stats (memoized to avoid re-filtering every render)
-  const { totalStudents, maleCount, femaleCount, levels } = useMemo(() => ({
-    totalStudents: students.length,
-    maleCount: students.filter(s => s.gender?.toUpperCase() === 'MALE').length,
-    femaleCount: students.filter(s => s.gender?.toUpperCase() === 'FEMALE').length,
-    levels: [...new Set(students.map(s => s.level))].length,
-  }), [students]);
 
   const handleTabChange = (tab: string) => {
     if (tab === 'admin' && !isAdminUnlocked) {
