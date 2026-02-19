@@ -105,24 +105,10 @@ export const QuickActions = ({ onNavigate, variant = 'modern' }: QuickActionsPro
                   stiffness: 260,
                   damping: 20
                 }}
-                whileHover={isApple ? {
-                  scale: 1.02,
-                  y: -4,
-                  boxShadow: "0 8px 24px rgba(0, 0, 0, 0.08)"
-                } : {
-                  rotateX: -15,
-                  y: -8,
-                  scale: 1.02,
-                  boxShadow: isClassic
-                    ? "0 25px 30px -5px rgb(0 0 0 / 0.15), 0 10px 15px -6px rgb(0 0 0 / 0.15)"
-                    : "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)"
-                }}
+                whileHover={{ scale: 1.02, y: -4 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={action.onClick}
-                style={isApple ? {} : {
-                  transformOrigin: "top",
-                  perspective: "1000px"
-                }}
+                style={{}}
                 className={cn(
                   "w-full p-4 flex flex-col items-center gap-2 transition-all",
                   isApple ? "rounded-[16px] border-0" : isClassic ? "rounded-2xl border-0" : "rounded-xl border border-border",

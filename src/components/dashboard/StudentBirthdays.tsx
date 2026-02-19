@@ -119,14 +119,8 @@ export const StudentBirthdays = () => {
                                                 }
                                             }
                                         }}
-                                        whileHover={{
-                                            rotateX: 10,
-                                            y: -2,
-                                            scale: 1.01,
-                                            boxShadow: "0 10px 20px -5px rgba(0,0,0,0.1)"
-                                        }}
+                                        whileHover={{ scale: 1.01, y: -2 }}
                                         transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                                        style={{ transformOrigin: "top", perspective: "1000px" }}
                                         className={cn(
                                             "flex items-center justify-between group p-2 rounded-xl transition-all border cursor-pointer relative z-0 hover:z-10",
                                             student.isToday
