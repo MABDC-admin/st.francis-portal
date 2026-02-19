@@ -1,97 +1,54 @@
 
-## Fix All Build Errors
+## Fix: "Rendered more hooks than during the previous render" in Index.tsx
 
-Three distinct issues need to be resolved.
+### Root Cause
 
----
+React's Rules of Hooks require that **all hooks are called unconditionally and in the same order on every render**. In `src/pages/Index.tsx`, two early returns exist at lines 216–226:
 
-### Fix 1: `Deno.serve` handler return type — 9 edge functions
-
-Deno's TypeScript checker requires `Deno.serve` handlers to return `Promise<Response>`, not `Promise<Response | undefined>`. The error occurs because after the `handleCors` early return, the function can reach a code path with no explicit `return`, giving `undefined`.
-
-The fix is to add an explicit fallback `return` at the end of each affected handler, or ensure every code path explicitly returns a `Response`.
-
-**Affected files:**
-- `supabase/functions/canva-api/index.ts`
-- `supabase/functions/canva-auth/index.ts`
-- `supabase/functions/delete-user/index.ts`
-- `supabase/functions/documize-proxy/index.ts`
-- `supabase/functions/generate-ai-image/index.ts`
-- `supabase/functions/nocodb-proxy/index.ts`
-- `supabase/functions/notebook-chat/index.ts`
-- `supabase/functions/omada-proxy/index.ts`
-- `supabase/functions/reset-password/index.ts`
-- `supabase/functions/tacticalrmm-proxy/index.ts`
-
-**Fix pattern** — add a final fallback return inside `Deno.serve`:
 ```typescript
-Deno.serve(async (req): Promise<Response> => {
-  const corsResponse = handleCors(req);
-  if (corsResponse) return corsResponse;
-  // ... rest of handler ...
-});
-```
-
-Adding the explicit `: Promise<Response>` return type annotation forces TypeScript to verify all paths return a `Response`, surfacing any gaps clearly.
-
----
-
-### Fix 2: `handleCors` called with 2 arguments in `sync-students`
-
-`sync-students/index.ts` line 42 calls:
-```typescript
-handleCors(req, { 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key' })
-```
-
-But the shared `handleCors` utility signature is:
-```typescript
-export const handleCors = (req: Request): Response | null => { ... }
-```
-
-It only accepts one argument. The custom header this function needs (`x-api-key`) must be handled inline instead.
-
-**Fix** — remove the second argument and handle the custom CORS headers for the OPTIONS response directly inside `sync-students`:
-```typescript
-// In sync-students/index.ts
-if (req.method === 'OPTIONS') {
-  return new Response(null, {
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key',
-    },
-  });
+// Line 216
+if (loading) {
+  return ( <div>...</div> );
 }
+
+// Line 224
+if (!user) {
+  return null;
+}
+
+// Line 229 — ❌ HOOK CALLED AFTER EARLY RETURN
+const { totalStudents, maleCount, femaleCount, levels } = useMemo(() => ({
+  totalStudents: students.length,
+  ...
+}), [students]);
 ```
 
----
+On the first render, when `loading` is true, React runs all hooks up to line 216 and stops. On the next render, when `loading` is false and `user` exists, React tries to run the `useMemo` at line 229 — but it wasn't called on the previous render. This count mismatch is exactly what causes the crash.
 
-### Fix 3: `ShieldCheck` missing from lucide-react import in `Auth.tsx`
+### Fix
 
-`Auth.tsx` line 244 uses `<ShieldCheck className="h-3 w-3" />` but line 11 only imports:
-```typescript
-import { GraduationCap, Lock, User, RefreshCcw, Eye, EyeOff } from 'lucide-react';
+Move the `useMemo` (and any other logic that runs after the early returns) to **before** the early returns. The `students` array is already available before line 216 (from `useStudents()` at line 211), so the `useMemo` can safely be relocated to run unconditionally.
+
+**Before (broken order):**
+```
+line 211: const { data: students } = useStudents();       ← hook OK
+line 216: if (loading) return ...                         ← EARLY RETURN #1
+line 224: if (!user) return null                          ← EARLY RETURN #2
+line 229: const stats = useMemo(...)                      ← ❌ HOOK AFTER RETURNS
 ```
 
-**Fix** — add `ShieldCheck` to the import:
-```typescript
-import { GraduationCap, Lock, User, RefreshCcw, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+**After (fixed order):**
 ```
-
----
+line 211: const { data: students } = useStudents();       ← hook OK
+line 213: const stats = useMemo(...)                      ← ✓ HOOK BEFORE RETURNS
+line 217: if (loading) return ...                         ← early return (now safe)
+line 225: if (!user) return null                          ← early return (now safe)
+```
 
 ### Files to Modify
 
-| File | Change |
-|---|---|
-| `supabase/functions/canva-api/index.ts` | Add `: Promise<Response>` return type |
-| `supabase/functions/canva-auth/index.ts` | Add `: Promise<Response>` return type |
-| `supabase/functions/delete-user/index.ts` | Add `: Promise<Response>` return type |
-| `supabase/functions/documize-proxy/index.ts` | Add `: Promise<Response>` return type |
-| `supabase/functions/generate-ai-image/index.ts` | Add `: Promise<Response>` return type |
-| `supabase/functions/nocodb-proxy/index.ts` | Add `: Promise<Response>` return type |
-| `supabase/functions/notebook-chat/index.ts` | Add `: Promise<Response>` return type |
-| `supabase/functions/omada-proxy/index.ts` | Add `: Promise<Response>` return type |
-| `supabase/functions/reset-password/index.ts` | Add `: Promise<Response>` return type |
-| `supabase/functions/tacticalrmm-proxy/index.ts` | Add `: Promise<Response>` return type |
-| `supabase/functions/sync-students/index.ts` | Remove 2nd arg from `handleCors`, inline OPTIONS response |
-| `src/pages/Auth.tsx` | Add `ShieldCheck` to lucide-react import |
+- `src/pages/Index.tsx` — Move the `useMemo` block (lines 229–234) to before the `if (loading)` check at line 216.
+
+### Technical Detail
+
+No logic changes are needed — only the **order** of statements within the component function changes. The `useMemo` depends only on `students` which is already declared at line 211, so moving it earlier is fully safe with no side effects.
