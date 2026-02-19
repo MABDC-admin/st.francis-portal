@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { GraduationCap, Lock, User, RefreshCcw, Eye, EyeOff } from 'lucide-react';
+import { GraduationCap, Lock, User, RefreshCcw, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { z } from 'zod';
 import { useSchoolSettings } from '@/hooks/useSchoolSettings';
 import { cn } from '@/lib/utils';

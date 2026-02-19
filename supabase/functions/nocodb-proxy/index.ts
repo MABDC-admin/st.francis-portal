@@ -10,7 +10,7 @@ import {
   requireAuth,
 } from '../_shared/response.ts';
 
-Deno.serve(async (req) => {
+Deno.serve(async (req): Promise<Response> => {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
 

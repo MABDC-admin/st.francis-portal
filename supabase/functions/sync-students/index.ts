@@ -38,11 +38,15 @@ function getClientIP(req: Request): string {
   return req.headers.get('x-real-ip') || 'unknown';
 }
 
-Deno.serve(async (req) => {
-  const corsResponse = handleCors(req, {
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key'
-  });
-  if (corsResponse) return corsResponse;
+Deno.serve(async (req): Promise<Response> => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key',
+      },
+    });
+  }
 
   const clientIP = getClientIP(req);
   const rateLimit = checkRateLimit(clientIP);
