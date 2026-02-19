@@ -35,7 +35,7 @@ const AssignmentCard = ({
 
   const daysUntilDue = Math.ceil((dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 
-  const headerBg = isOverdue ? '#7B241C' : '#C0392B';
+  const headerBg = isOverdue ? '#1565C0' : '#42A5F5';
 
   const renderPill = () => {
     if (assignment.submission) {
