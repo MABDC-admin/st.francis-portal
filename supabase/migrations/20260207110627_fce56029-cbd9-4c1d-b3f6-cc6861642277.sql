@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Users can view their participations" ON public.conversation_participants;

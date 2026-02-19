@@ -1,0 +1,13 @@
+project_id = "wdiexrdvnckpyghvepsy"
+
+[functions.send-registration-email]
+verify_jwt = false
+
+[functions.create-finance-user]
+verify_jwt = false
+
+[functions.reset-password]
+verify_jwt = false
+
+[functions.send-teacher-application-email]
+verify_jwt = false

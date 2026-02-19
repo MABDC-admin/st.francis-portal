@@ -1,0 +1,68 @@
+
+Add-Type -AssemblyName UIAutomationClient
+Add-Type -AssemblyName UIAutomationTypes
+
+Write-Host "---------------------------------------------------"
+Write-Host "ZOOM UI DIAGNOSTIC TOOL"
+Write-Host "---------------------------------------------------"
+Write-Host "Please ensure you are in a Zoom Meeting now."
+Write-Host "Searching for main window..."
+
+$window = [System.Windows.Automation.AutomationElement]::RootElement.FindFirst(
+    [System.Windows.Automation.TreeScope]::Children,
+    (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, "Zoom Meeting"))
+)
+
+if (-not $window) {
+    Write-Host "ERROR: Could not find a window named 'Zoom Meeting'." -ForegroundColor Red
+    Write-Host "Listing ALL open windows to find the correct name:"
+    $allWindows = [System.Windows.Automation.AutomationElement]::RootElement.FindAll(
+        [System.Windows.Automation.TreeScope]::Children,
+        [System.Windows.Automation.Condition]::TrueCondition
+    )
+    foreach ($w in $allWindows) {
+        $name = $w.Current.Name
+        if (-not [string]::IsNullOrWhiteSpace($name)) {
+            Write-Host " - '$name'"
+        }
+    }
+    Write-Host "`nPlease verify the exact window title of your meeting."
+    Read-Host "Press Enter to exit"
+    exit
+}
+
+Write-Host "Found Window: '$($window.Current.Name)'" -ForegroundColor Green
+Write-Host "Scanning for buttons..."
+
+function Dump-Elements {
+    param($root, $indent)
+    try {
+        $elements = $root.FindAll([System.Windows.Automation.TreeScope]::Children, [System.Windows.Automation.Condition]::TrueCondition)
+        foreach ($e in $elements) {
+            $name = $e.Current.Name
+            $type = $e.Current.LocalizedControlType
+            
+            # Print if it looks interesting
+            if ($name -match "Breakout" -or $name -match "More" -or $name -match "Room") {
+                Write-Host "$indent [HIT] [$type] '$name'" -ForegroundColor Cyan
+            }
+            else {
+                Write-Host "$indent [$type] '$name'"
+            }
+            
+            # Recurse specific containers
+            if ($e.Current.ControlType -eq [System.Windows.Automation.ControlType]::ToolBar -or 
+                $e.Current.ControlType -eq [System.Windows.Automation.ControlType]::Group -or
+                $e.Current.ControlType -eq [System.Windows.Automation.ControlType]::Pane) {
+                Dump-Elements $e "$indent  "
+            }
+        }
+    }
+    catch {
+        Write-Host "$indent (Access Denied/Error scanning child)"
+    }
+}
+
+Dump-Elements $window ""
+Write-Host "---------------------------------------------------"
+Read-Host "Press Enter to exit"

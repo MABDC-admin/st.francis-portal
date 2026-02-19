@@ -1,0 +1,586 @@
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Plus, Loader2, Calendar, Edit, Trash2, Check, CalendarCheck, Archive, Lock } from 'lucide-react';
+import { useSchoolId } from '@/hooks/useSchoolId';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+
+interface AcademicYear {
+  id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  is_current: boolean;
+  is_archived: boolean;
+  archived_at: string | null;
+  created_at: string;
+}
+
+const initialFormState = {
+  name: '',
+  start_date: '',
+  end_date: '',
+  is_current: false,
+};
+
+import { PromoteStudentsWorkflow } from './PromoteStudentsWorkflow';
+
+// ... existing imports
+
+export const AcademicYearManagement = () => {
+  const { data: schoolId, isLoading: isSchoolLoading } = useSchoolId();
+  const [years, setYears] = useState<AcademicYear[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPromoteModalOpen, setIsPromoteModalOpen] = useState(false);
+  const [archiveConfirm, setArchiveConfirm] = useState<AcademicYear | null>(null);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [editingYear, setEditingYear] = useState<AcademicYear | null>(null);
+  const [formData, setFormData] = useState(initialFormState);
+
+  const fetchYears = async () => {
+    if (!schoolId) return;
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('academic_years')
+        .select('*')
+        .eq('school_id', schoolId)
+        .order('start_date', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching academic years:', error);
+        toast.error('Failed to load academic years');
+        setYears([]);
+      } else if (data) {
+        setYears(data as AcademicYear[]);
+      }
+    } catch (error: any) {
+      console.error('Exception fetching academic years:', error);
+      toast.error('Failed to load academic years');
+      setYears([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (schoolId) {
+      fetchYears();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [schoolId]);
+
+  const handleOpenModal = (year?: AcademicYear) => {
+    if (year) {
+      setEditingYear(year);
+      setFormData({
+        name: year.name,
+        start_date: year.start_date,
+        end_date: year.end_date,
+        is_current: year.is_current,
+      });
+    } else {
+      setEditingYear(null);
+      setFormData(initialFormState);
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleSave = async () => {
+    // Validation
+    if (!formData.name || !formData.start_date || !formData.end_date) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    // Validate date range
+    const startDate = new Date(formData.start_date);
+    const endDate = new Date(formData.end_date);
+    
+    if (startDate >= endDate) {
+      toast.error('End date must be after start date');
+      return;
+    }
+
+    // Warn if date range is unusual
+    const daysDiff = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysDiff < 180) {
+      toast.warning('Academic year is less than 6 months');
+    }
+    if (daysDiff > 400) {
+      toast.warning('Academic year is longer than usual (more than 13 months)');
+    }
+
+    setIsSaving(true);
+    try {
+      // If setting as current, unset others first
+      if (formData.is_current) {
+        const { error: unsetError } = await supabase
+          .from('academic_years')
+          .update({ is_current: false })
+          .eq('is_current', true)
+          .eq('school_id', schoolId!);
+
+        if (unsetError) {
+          console.error('Error unsetting current year:', unsetError);
+          throw unsetError;
+        }
+      }
+
+      if (editingYear) {
+        // Update existing year
+        const { error } = await supabase
+          .from('academic_years')
+          .update({
+            name: formData.name,
+            start_date: formData.start_date,
+            end_date: formData.end_date,
+            is_current: formData.is_current,
+          })
+          .eq('id', editingYear.id);
+
+        if (error) {
+          console.error('Error updating academic year:', error);
+          throw error;
+        }
+        toast.success('Academic year updated successfully');
+      } else {
+        // Create new year
+        const { error } = await (supabase
+          .from('academic_years') as any)
+          .insert({
+            name: formData.name,
+            start_date: formData.start_date,
+            end_date: formData.end_date,
+            is_current: formData.is_current,
+            school_id: schoolId!,
+          });
+
+        if (error) {
+          console.error('Error creating academic year:', error);
+          throw error;
+        }
+        toast.success('Academic year created successfully');
+      }
+
+      // Reset form and close modal
+      setFormData(initialFormState);
+      setEditingYear(null);
+      setIsModalOpen(false);
+      
+      // Refresh the list
+      await fetchYears();
+    } catch (error: any) {
+      console.error('Error saving academic year:', error);
+      toast.error(error.message || 'Failed to save academic year. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSetCurrent = async (year: AcademicYear) => {
+    if (year.is_archived) {
+      toast.error('Cannot set an archived year as current');
+      return;
+    }
+
+    try {
+      // First unset the current year
+      const { error: unsetError } = await supabase
+        .from('academic_years')
+        .update({ is_current: false })
+        .eq('is_current', true)
+        .eq('school_id', schoolId!);
+
+      if (unsetError) {
+        console.error('Error unsetting current year:', unsetError);
+        throw unsetError;
+      }
+
+      // Then set the new current year
+      const { error: setError } = await supabase
+        .from('academic_years')
+        .update({ is_current: true })
+        .eq('id', year.id);
+
+      if (setError) {
+        console.error('Error setting current year:', setError);
+        throw setError;
+      }
+
+      toast.success(`${year.name} set as current academic year`);
+      await fetchYears();
+    } catch (error: any) {
+      console.error('Error setting current year:', error);
+      toast.error(error.message || 'Failed to set current academic year');
+    }
+  };
+
+  const handleDelete = async (year: AcademicYear) => {
+    if (year.is_archived) {
+      toast.error('Cannot delete an archived academic year');
+      return;
+    }
+    
+    if (year.is_current) {
+      toast.error('Cannot delete the current academic year. Please set another year as current first.');
+      return;
+    }
+
+    // Use AlertDialog instead of confirm
+    if (!window.confirm(`Are you sure you want to delete "${year.name}"?\n\nThis will also delete:\n• All grades for this year\n• All enrollments for this year\n• All attendance records for this year\n\nThis action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('academic_years')
+        .delete()
+        .eq('id', year.id);
+
+      if (error) {
+        console.error('Error deleting academic year:', error);
+        throw error;
+      }
+      
+      toast.success(`${year.name} deleted successfully`);
+      await fetchYears();
+    } catch (error: any) {
+      console.error('Error deleting academic year:', error);
+      
+      // Check for foreign key constraint errors
+      if (error.message?.includes('foreign key') || error.code === '23503') {
+        toast.error('Cannot delete: This academic year has associated records. Please archive it instead.');
+      } else {
+        toast.error(error.message || 'Failed to delete academic year');
+      }
+    }
+  };
+
+  const handleArchive = async () => {
+    if (!archiveConfirm) return;
+    setIsArchiving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // 1. Copy all grades for this year into grade_snapshots
+      const { data: grades, error: gradesError } = await supabase
+        .from('student_grades')
+        .select('*')
+        .eq('academic_year_id', archiveConfirm.id);
+
+      if (gradesError) throw gradesError;
+
+      if (grades && grades.length > 0) {
+        const snapshots = grades.map(g => ({
+          student_id: g.student_id,
+          subject_id: g.subject_id,
+          academic_year_id: g.academic_year_id,
+          school_id: g.school_id,
+          q1_grade: g.q1_grade,
+          q2_grade: g.q2_grade,
+          q3_grade: g.q3_grade,
+          q4_grade: g.q4_grade,
+          final_grade: g.final_grade,
+          remarks: g.remarks,
+          snapshot_data: g,
+        }));
+
+        const { error: snapError } = await (supabase.from('grade_snapshots') as any).insert(snapshots);
+        if (snapError) throw snapError;
+      }
+
+      // 2. Mark year as archived
+      const { error: archiveError } = await supabase
+        .from('academic_years')
+        .update({
+          is_archived: true,
+          archived_at: new Date().toISOString(),
+          archived_by: user?.id,
+        })
+        .eq('id', archiveConfirm.id);
+
+      if (archiveError) throw archiveError;
+
+      toast.success(`${archiveConfirm.name} archived successfully. ${grades?.length || 0} grade snapshots created.`);
+      setArchiveConfirm(null);
+      fetchYears();
+    } catch (error: any) {
+      console.error('Archive error:', error);
+      toast.error('Failed to archive: ' + error.message);
+    } finally {
+      setIsArchiving(false);
+    }
+  };
+
+  if (isSchoolLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <span className="ml-2 text-muted-foreground">Loading school context...</span>
+      </div>
+    );
+  }
+
+  if (!schoolId) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-4">
+        <Calendar className="h-12 w-12 text-muted-foreground opacity-50" />
+        <p className="text-muted-foreground">School not found. Please select a valid school.</p>
+        <Button variant="outline" onClick={() => window.location.reload()}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+      >
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Academic Years</h1>
+          <p className="text-muted-foreground mt-1">Manage school years and terms</p>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={() => handleOpenModal()} variant="outline">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Year
+          </Button>
+          <Button onClick={async () => {
+            const { error } = await supabase.functions.invoke('sync-holidays', {
+              body: { year: 2025 }
+            });
+            if (error) toast.error('Failed to sync holidays');
+            else toast.success('Holidays synced successfully');
+          }} variant="outline" className="text-amber-600 border-amber-600 hover:bg-amber-50">
+            <CalendarCheck className="h-4 w-4 mr-2" />
+            Sync Holidays (2025)
+          </Button>
+          <Button onClick={() => setIsPromoteModalOpen(true)} className="bg-amber-600 hover:bg-amber-700 text-white">
+            <Calendar className="h-4 w-4 mr-2" />
+            Start New School Year
+          </Button>
+        </div>
+      </motion.div>
+
+      <Card>
+        {/* ... existing card content for table */}
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Academic Years
+          </CardTitle>
+          <CardDescription>{years.length} academic years configured</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : years.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Start Date</TableHead>
+                    <TableHead>End Date</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {years.map((year) => (
+                    <TableRow key={year.id}>
+                      <TableCell className="font-medium">{year.name}</TableCell>
+                      <TableCell>{format(new Date(year.start_date), 'MMM d, yyyy')}</TableCell>
+                      <TableCell>{format(new Date(year.end_date), 'MMM d, yyyy')}</TableCell>
+                      <TableCell>
+                        {year.is_archived ? (
+                          <Badge variant="outline" className="border-muted-foreground">
+                            <Lock className="h-3 w-3 mr-1" />Archived
+                          </Badge>
+                        ) : year.is_current ? (
+                          <Badge className="bg-green-500">Current</Badge>
+                        ) : (
+                          <Badge variant="secondary">Inactive</Badge>
+                        )}
+                        {year.archived_at && (
+                          <span className="text-xs text-muted-foreground ml-2">
+                            {format(new Date(year.archived_at), 'MMM d, yyyy')}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          {!year.is_archived && !year.is_current && (
+                            <>
+                              <Button variant="ghost" size="icon" onClick={() => handleSetCurrent(year)} title="Set as current">
+                                <Check className="h-4 w-4 text-green-500" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => setArchiveConfirm(year)} title="Archive this year">
+                                <Archive className="h-4 w-4 text-amber-600" />
+                              </Button>
+                            </>
+                          )}
+                          {!year.is_archived && (
+                            <>
+                              <Button variant="ghost" size="icon" onClick={() => handleOpenModal(year)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => handleDelete(year)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No academic years configured</p>
+              <p className="text-sm">Add an academic year to get started</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Add/Edit Modal */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingYear ? 'Edit Academic Year' : 'Add Academic Year'}</DialogTitle>
+            <DialogDescription>
+              Configure the academic year period
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div>
+              <Label htmlFor="year_name">Name *</Label>
+              <Input
+                id="year_name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g., 2025-2026"
+                required
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Format: YYYY-YYYY (e.g., 2025-2026)
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="start_date">Start Date *</Label>
+                <Input
+                  id="start_date"
+                  type="date"
+                  value={formData.start_date}
+                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="end_date">End Date *</Label>
+                <Input
+                  id="end_date"
+                  type="date"
+                  value={formData.end_date}
+                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                  min={formData.start_date || undefined}
+                  required
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md">
+              <input
+                type="checkbox"
+                id="is_current"
+                checked={formData.is_current}
+                onChange={(e) => setFormData({ ...formData, is_current: e.target.checked })}
+                className="h-4 w-4"
+              />
+              <div className="flex-1">
+                <Label htmlFor="is_current" className="cursor-pointer">Set as current academic year</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  This will unset any other current academic year
+                </p>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {editingYear ? 'Update' : 'Add'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Promotion Workflow Modal */}
+      <Dialog open={isPromoteModalOpen} onOpenChange={setIsPromoteModalOpen}>
+        <DialogContent className="max-w-4xl p-0 border-0 bg-transparent shadow-none">
+          <PromoteStudentsWorkflow
+            onClose={() => setIsPromoteModalOpen(false)}
+            onSuccess={() => {
+              fetchYears();
+              // Optionally trigger other refreshes via context if needed
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Archive Confirmation */}
+      <AlertDialog open={!!archiveConfirm} onOpenChange={(open) => { if (!open) setArchiveConfirm(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive {archiveConfirm?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will:
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>Create immutable snapshots of all grades for this year</li>
+                <li>Lock grade editing for this academic year</li>
+                <li>Mark this year as archived</li>
+              </ul>
+              <p className="mt-2 font-medium text-destructive">This action cannot be undone.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleArchive} disabled={isArchiving} className="bg-amber-600 hover:bg-amber-700">
+              {isArchiving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              <Archive className="h-4 w-4 mr-2" />
+              Archive Year
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+};
