@@ -347,16 +347,8 @@ export const DashboardCalendar = () => {
                                           isToday && d.currentMonth && !hasHoliday && !hasEvent && "bg-success text-white font-bold",
                                           d.currentMonth && !hasHoliday && !hasEvent && !isToday && "hover:bg-slate-100 dark:hover:bg-slate-800"
                                         )}
-                                        whileHover={d.currentMonth ? {
-                                          scale: 1.15,
-                                          rotateX: 10,
-                                          y: -4,
-                                          zIndex: 50,
-                                          filter: 'brightness(1.05)',
-                                          boxShadow: "0 10px 20px -5px rgba(0,0,0,0.1)"
-                                        } : {}}
+                                        whileHover={d.currentMonth ? { scale: 1.1, y: -2 } : {}}
                                         transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                                        style={{ transformOrigin: "top", perspective: "1000px" }}
                                         whileTap={d.currentMonth ? { scale: 0.95 } : {}}
                                         onClick={() => d.currentMonth && handleDayClick(dateStr, dayEvents[0])}
                                       >
@@ -499,14 +491,8 @@ export const DashboardCalendar = () => {
                 const dayCell = (
                   <motion.div
                     onClick={() => dayObj.currentMonth && handleDayClick(dateStr, dayEvent)}
-                    whileHover={dayObj.currentMonth ? {
-                      rotateX: 12,
-                      y: -5,
-                      scale: 1.02,
-                      boxShadow: "0 15px 30px -10px rgba(0,0,0,0.15)"
-                    } : {}}
+                    whileHover={dayObj.currentMonth ? { scale: 1.02, y: -3 } : {}}
                     transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                    style={{ transformOrigin: "top", perspective: "1000px" }}
                     className={cn(
                       "text-center text-xs py-2 sm:py-3 rounded transition-all relative border border-transparent flex flex-col items-center justify-start h-full min-h-[60px] sm:min-h-[80px] cursor-pointer",
                       !dayObj.currentMonth && "opacity-40 cursor-default",
