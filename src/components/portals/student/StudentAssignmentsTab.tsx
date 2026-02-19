@@ -1,19 +1,12 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useStudentAssignments } from '@/hooks/useStudentPortalData';
-import { ASSIGNMENT_TYPE_COLORS, type Assignment } from '@/types/studentPortal';
-import { ClipboardList, Clock, CheckCircle, AlertTriangle, FileText } from 'lucide-react';
+import { type Assignment } from '@/types/studentPortal';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format, formatDistanceToNow, isPast } from 'date-fns';
+import { format, isPast } from 'date-fns';
 import { useState, useMemo } from 'react';
-
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { StudentPortalIcon, STUDENT_ICONS } from '@/components/icons/StudentPortalIcons';
-import { Button } from '@/components/ui/button';
-import { ExternalLink, Paperclip, ImageIcon, VideoIcon, ChevronLeft } from 'lucide-react';
-import { Attachment } from '@/components/ui/MultiFileUploader';
 import { useNavigate } from 'react-router-dom';
 
 interface StudentAssignmentsTabProps {
@@ -34,86 +27,114 @@ const AssignmentCard = ({
 }) => {
   const dueDate = new Date(assignment.due_date);
   const isOverdue = isPast(dueDate) && (!assignment.submission || assignment.submission.status === 'pending');
-  // Use subject icon mapping if available, else default
   const subjectName = assignment.subjects?.name || '';
   const icon = subjectName.toLowerCase().includes('math') ? STUDENT_ICONS.math :
     subjectName.toLowerCase().includes('science') ? STUDENT_ICONS.science :
       subjectName.toLowerCase().includes('english') ? STUDENT_ICONS.english :
-        STUDENT_ICONS.assignments;
+        STUDENT_ICONS.library;
+
+  const daysUntilDue = Math.ceil((dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+
+  const headerBg = isOverdue ? '#7B241C' : '#C0392B';
+
+  const renderPill = () => {
+    if (assignment.submission) {
+      const isGraded = assignment.submission.status === 'graded';
+      return (
+        <span className={cn(
+          "text-[10px] font-black px-2.5 py-1 rounded-full shrink-0",
+          isGraded ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+        )}>
+          {isGraded
+            ? assignment.submission.score !== null
+              ? `${assignment.submission.score}/${assignment.max_score}`
+              : 'Graded'
+            : 'Submitted'}
+        </span>
+      );
+    }
+    if (isOverdue) {
+      return (
+        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-rose-200 text-rose-900 shrink-0">
+          Overdue
+        </span>
+      );
+    }
+    return (
+      <span className="text-[10px] font-black px-2.5 py-1 rounded-full shrink-0" style={{ backgroundColor: '#FEF3C7', color: '#92400E' }}>
+        {daysUntilDue <= 0 ? 'Due Today' : `Due in ${daysUntilDue}d`}
+      </span>
+    );
+  };
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
+      onClick={() => onClick(assignment)}
+      className="rounded-2xl overflow-hidden shadow-md cursor-pointer active:scale-95 transition-transform"
     >
-      <Card
-        onClick={() => onClick(assignment)}
-        className={cn(
-          "group overflow-hidden rounded-[2rem] border-none shadow-sm transition-all hover:shadow-md hover:scale-[1.01] cursor-pointer active:scale-95",
-          isOverdue ? 'bg-rose-50/50 border-rose-100 ring-1 ring-rose-200' : 'bg-white/80 backdrop-blur-sm'
-        )}
+      {/* Header Band */}
+      <div
+        className="px-4 pt-4 pb-3 flex items-start gap-3"
+        style={{ backgroundColor: headerBg }}
       >
-        <CardContent className="p-4 flex items-center gap-4">
-          {/* Subject Icon Box */}
-          <div className={cn(
-            "w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-inner group-hover:scale-110 transition-transform",
-            isOverdue ? "bg-rose-100" : "bg-sky-50"
-          )}>
-            <StudentPortalIcon
-              icon={icon}
-              size={32}
-              className={cn(isOverdue ? "text-rose-500" : "text-sky-500")}
-            />
-          </div>
+        {/* Book icon circle */}
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.18)' }}>
+          <StudentPortalIcon icon={icon} size={22} className="text-white" />
+        </div>
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-0.5">
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                {assignment.subjects?.code || 'GEN'}
-              </span>
-              <Badge variant="outline" className="text-[9px] font-bold py-0 leading-none h-4 border-slate-200 text-slate-500">
+        {/* Title + subject chip */}
+        <div className="flex-1 min-w-0">
+          <h3 className="font-black text-white text-sm leading-snug line-clamp-2 mb-1.5">
+            {assignment.title}
+          </h3>
+          <div className="flex items-center gap-1.5">
+            <span
+              className="text-[10px] font-black px-2 py-0.5 rounded-full text-white"
+              style={{ backgroundColor: '#27AE60' }}
+            >
+              ✓ {subjectName || assignment.subjects?.code || 'General'}
+            </span>
+            {assignment.assignment_type && (
+              <span className="text-[10px] font-bold text-white/70 uppercase tracking-wide">
                 {assignment.assignment_type}
-              </Badge>
-            </div>
-            <h3 className="font-black text-slate-800 text-base leading-tight truncate">
-              {assignment.title}
-            </h3>
-            <div className="flex items-center gap-3 mt-1.5 font-bold text-[10px]">
-              <div className={cn(
-                "flex items-center gap-1",
-                isOverdue ? "text-rose-600" : "text-slate-400"
-              )}>
-                <Clock className="h-3 w-3" />
-                {isOverdue ? 'OVERDUE' : 'DUE'}: {format(dueDate, 'MMM d')}
-              </div>
-              {assignment.max_score && (
-                <span className="text-slate-400">• {assignment.max_score} pts</span>
-              )}
-            </div>
+              </span>
+            )}
           </div>
+        </div>
 
-          {assignment.submission ? (
-            <div className="text-right shrink-0">
-              <div className={cn(
-                "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter",
-                assignment.submission.status === 'graded' ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
-              )}>
-                {assignment.submission.status}
-              </div>
-              {assignment.submission.score !== null && (
-                <p className="text-base font-black text-slate-800 mt-1">
-                  {assignment.submission.score}<span className="text-xs text-slate-400">/{assignment.max_score}</span>
-                </p>
-              )}
-            </div>
-          ) : (
-            <div className="p-2 opacity-20 group-hover:opacity-100 transition-opacity">
-              <StudentPortalIcon icon="fluent:chevron-right-24-filled" size={20} className="text-slate-400" />
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        {/* Due pill */}
+        <div className="shrink-0 mt-0.5">
+          {renderPill()}
+        </div>
+      </div>
+
+      {/* Body */}
+      <div className="px-4 pt-3 pb-0" style={{ backgroundColor: '#FFFBF5' }}>
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-[12px] text-slate-500 leading-relaxed flex-1 line-clamp-2">
+            {(assignment as any).description
+              ? String((assignment as any).description).slice(0, 80)
+              : 'Tap to view assignment details and submit your work.'}
+          </p>
+          <span className="text-[11px] font-bold text-slate-400 shrink-0 mt-0.5">
+            {format(dueDate, 'MMM d')}
+          </span>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="px-4 py-2.5 flex items-center justify-between" style={{ backgroundColor: '#FFFBF5', borderTop: '1px solid #F5E6D3' }}>
+        <span className="text-[11px] font-bold text-slate-400">View Details</span>
+        <button
+          className="text-[11px] font-black px-3 py-1.5 rounded-xl transition-opacity hover:opacity-80"
+          style={{ backgroundColor: '#F5CBA7', color: '#784212' }}
+        >
+          View Details →
+        </button>
+      </div>
     </motion.div>
   );
 };
