@@ -1,125 +1,97 @@
 
 ## Fix All Build Errors
 
-There are two categories of errors to fix:
+Three distinct issues need to be resolved.
 
 ---
 
-### Category 1: TypeScript `unknown` error type in Edge Functions
+### Fix 1: `Deno.serve` handler return type — 9 edge functions
 
-In Deno (strict TypeScript), `catch (error)` binds `error` as type `unknown`, not `Error`. Accessing `.message` on `unknown` is a type error.
+Deno's TypeScript checker requires `Deno.serve` handlers to return `Promise<Response>`, not `Promise<Response | undefined>`. The error occurs because after the `handleCors` early return, the function can reach a code path with no explicit `return`, giving `undefined`.
 
-**Fix pattern** — cast to `Error` in every affected catch block:
-```typescript
-// Before
-} catch (error) {
-  return new Response(JSON.stringify({ error: error.message }), ...)
-}
+The fix is to add an explicit fallback `return` at the end of each affected handler, or ensure every code path explicitly returns a `Response`.
 
-// After
-} catch (error) {
-  const err = error as Error;
-  return new Response(JSON.stringify({ error: err.message }), ...)
-}
-```
-
-**Affected edge functions (10 files):**
-- `supabase/functions/create-finance-user/index.ts` — line 66
-- `supabase/functions/delete-user/index.ts` — line 92
-- `supabase/functions/documize-proxy/index.ts` — line 82
-- `supabase/functions/generate-student-qr/index.ts` — line 95
-- `supabase/functions/nocodb-proxy/index.ts` — line 69
-- `supabase/functions/reset-password/index.ts` — line 136
-- `supabase/functions/send-interview-invitation/index.ts` — line 103
-- `supabase/functions/send-registration-email/index.ts` — line 144
-- `supabase/functions/send-teacher-application-email/index.ts` — line 144
-- `supabase/functions/tacticalrmm-proxy/index.ts` — lines 80, 113
-- `supabase/functions/zoom-auth/index.ts` — lines 113, 114
-
----
-
-### Category 2: `encodeBase64` import in `zoom-auth`
-
-The `encodeBase64` export does not exist in `https://deno.land/std@0.168.0/encoding/base64.ts`. In older Deno std versions the function was named `encode`.
-
-**Fix:** Replace with the correct import from a newer std version that exports `encodeBase64`:
-```typescript
-// Before (line 3)
-import { encodeBase64 } from "https://deno.land/std@0.168.0/encoding/base64.ts";
-
-// After
-import { encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
-```
-
----
-
-### Category 3: `EdgeRuntime.waitUntil` unknown name in `ocr-index-book`
-
-`EdgeRuntime` is a Deno Deploy global but TypeScript doesn't know about it without a type declaration. The fix is to declare it:
-```typescript
-// Add before usage
-declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
-```
-
----
-
-### Category 4: `grade_level` type mismatch in frontend
-
-The `Book` interface in `LibraryPage.tsx` declares `grade_level: number`, but the database schema has it as `TEXT`. This causes cascading errors:
-- Line 190: `parseInt(selectedGrade, 10)` passed to `.eq('grade_level', ...)` — should pass the string directly
-- Line 548: `BookEditModal` receives `Book` from `LibraryPage` (grade_level: number) but `BookEditModal` defines its own `Book` (grade_level: string) — mismatch
-
-**Fix:** Change the `Book` interface in `LibraryPage.tsx` to use `grade_level: string` and remove `parseInt`:
-```typescript
-// LibraryPage.tsx interface
-interface Book {
-  grade_level: string; // was: number
-  ...
-}
-
-// Line 190 fix
-query = query.eq('grade_level', selectedGrade); // remove parseInt(...)
-```
-
----
-
-### Category 5: Missing `category` and `is_teacher_only` columns on `StudentLibraryTab.tsx`
-
-The TypeScript types generated from the database don't yet include the new `category` and `is_teacher_only` columns (migration hasn't been applied yet). The student library tab references `book.category` and `book.is_teacher_only`.
-
-**Fix:** Cast the book objects to `any` in the student library tab's filter and display logic temporarily until types regenerate, OR use optional chaining:
-```typescript
-// StudentLibraryTab.tsx - grade_level comparison (line 60)
-.eq('grade_level', String(studentGrade))  // cast number to string
-
-// Category access (lines 81, 82) - cast book to any
-const book = bookData as any;
-```
-
----
-
-### Technical Summary
-
-| File | Error | Fix |
-|---|---|---|
-| 10x edge functions | `error` is `unknown` | Cast: `const err = error as Error` |
-| `zoom-auth/index.ts` | `encodeBase64` not exported | Update std import to `@0.224.0` |
-| `ocr-index-book/index.ts` | `EdgeRuntime` not found | Add `declare const EdgeRuntime` |
-| `LibraryPage.tsx` | `grade_level: number` vs DB `text` | Change interface to `string`, remove `parseInt` |
-| `StudentLibraryTab.tsx` | `category` not in types, grade comparison | Cast grade to string, cast book to `any` |
-
-### Files to Modify
-- `supabase/functions/create-finance-user/index.ts`
+**Affected files:**
+- `supabase/functions/canva-api/index.ts`
+- `supabase/functions/canva-auth/index.ts`
 - `supabase/functions/delete-user/index.ts`
 - `supabase/functions/documize-proxy/index.ts`
-- `supabase/functions/generate-student-qr/index.ts`
+- `supabase/functions/generate-ai-image/index.ts`
 - `supabase/functions/nocodb-proxy/index.ts`
+- `supabase/functions/notebook-chat/index.ts`
+- `supabase/functions/omada-proxy/index.ts`
 - `supabase/functions/reset-password/index.ts`
-- `supabase/functions/send-interview-invitation/index.ts`
-- `supabase/functions/send-registration-email/index.ts`
-- `supabase/functions/send-teacher-application-email/index.ts`
 - `supabase/functions/tacticalrmm-proxy/index.ts`
-- `supabase/functions/zoom-auth/index.ts`
-- `supabase/functions/ocr-index-book/index.ts`
-- `src/components/library/LibraryPage.tsx`
-- `src/components/portals/student/StudentLibraryTab.tsx`
+
+**Fix pattern** — add a final fallback return inside `Deno.serve`:
+```typescript
+Deno.serve(async (req): Promise<Response> => {
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
+  // ... rest of handler ...
+});
+```
+
+Adding the explicit `: Promise<Response>` return type annotation forces TypeScript to verify all paths return a `Response`, surfacing any gaps clearly.
+
+---
+
+### Fix 2: `handleCors` called with 2 arguments in `sync-students`
+
+`sync-students/index.ts` line 42 calls:
+```typescript
+handleCors(req, { 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key' })
+```
+
+But the shared `handleCors` utility signature is:
+```typescript
+export const handleCors = (req: Request): Response | null => { ... }
+```
+
+It only accepts one argument. The custom header this function needs (`x-api-key`) must be handled inline instead.
+
+**Fix** — remove the second argument and handle the custom CORS headers for the OPTIONS response directly inside `sync-students`:
+```typescript
+// In sync-students/index.ts
+if (req.method === 'OPTIONS') {
+  return new Response(null, {
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key',
+    },
+  });
+}
+```
+
+---
+
+### Fix 3: `ShieldCheck` missing from lucide-react import in `Auth.tsx`
+
+`Auth.tsx` line 244 uses `<ShieldCheck className="h-3 w-3" />` but line 11 only imports:
+```typescript
+import { GraduationCap, Lock, User, RefreshCcw, Eye, EyeOff } from 'lucide-react';
+```
+
+**Fix** — add `ShieldCheck` to the import:
+```typescript
+import { GraduationCap, Lock, User, RefreshCcw, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+```
+
+---
+
+### Files to Modify
+
+| File | Change |
+|---|---|
+| `supabase/functions/canva-api/index.ts` | Add `: Promise<Response>` return type |
+| `supabase/functions/canva-auth/index.ts` | Add `: Promise<Response>` return type |
+| `supabase/functions/delete-user/index.ts` | Add `: Promise<Response>` return type |
+| `supabase/functions/documize-proxy/index.ts` | Add `: Promise<Response>` return type |
+| `supabase/functions/generate-ai-image/index.ts` | Add `: Promise<Response>` return type |
+| `supabase/functions/nocodb-proxy/index.ts` | Add `: Promise<Response>` return type |
+| `supabase/functions/notebook-chat/index.ts` | Add `: Promise<Response>` return type |
+| `supabase/functions/omada-proxy/index.ts` | Add `: Promise<Response>` return type |
+| `supabase/functions/reset-password/index.ts` | Add `: Promise<Response>` return type |
+| `supabase/functions/tacticalrmm-proxy/index.ts` | Add `: Promise<Response>` return type |
+| `supabase/functions/sync-students/index.ts` | Remove 2nd arg from `handleCors`, inline OPTIONS response |
+| `src/pages/Auth.tsx` | Add `ShieldCheck` to lucide-react import |
