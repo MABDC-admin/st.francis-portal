@@ -70,7 +70,7 @@ async function getValidAccessToken(supabase: any, userId: string): Promise<strin
   return connection.access_token;
 }
 
-Deno.serve(async (req) => {
+Deno.serve(async (req): Promise<Response> => {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
 
