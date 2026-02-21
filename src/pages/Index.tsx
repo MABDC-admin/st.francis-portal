@@ -94,6 +94,7 @@ const AdmissionsPage = lazy(() => import('@/components/admissions/AdmissionsPage
 const RegistrationManagement = lazy(() => import('@/components/registration/RegistrationManagement').then(m => ({ default: m.RegistrationManagement })));
 const UserProfilePage = lazy(() => import('@/components/profile/UserProfilePage').then(m => ({ default: m.UserProfilePage })));
 const TeacherApplicantDashboard = lazy(() => import('@/components/teacher-application/TeacherApplicantDashboard').then(m => ({ default: m.TeacherApplicantDashboard })));
+const VisitManagement = lazy(() => import('@/components/registration/VisitManagement').then(m => ({ default: m.VisitManagement })));
 
 // --- Suspense fallback ---
 const TabLoadingFallback = () => (
@@ -629,6 +630,9 @@ const Index = () => {
 
         {/* Registrations - Admin/Registrar only */}
         {activeTab === 'registrations' && hasAdminAccess && <RegistrationManagement />}
+
+        {/* Visits - Admin/Registrar only */}
+        {activeTab === 'visits' && hasAdminAccess && <VisitManagement />}
 
         {/* Teacher Applicants - Admin/Registrar only */}
         {activeTab === 'applicants' && hasAdminAccess && <TeacherApplicantDashboard />}

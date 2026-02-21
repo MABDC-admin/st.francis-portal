@@ -140,6 +140,7 @@ export const icon3DMap: Record<string, IconComponent> = {
     'my-profile': ProfileIcon3D,
     'applicants': TeacherIcon3D,
     'banner-management': ReportsIcon3D,
+    'visits': EventsIcon3D,
 };
 
 export const iconAppleMap: Record<string, IconComponent> = {
@@ -219,6 +220,7 @@ export const iconAppleMap: Record<string, IconComponent> = {
     'my-profile': AppleProfileIcon,
     'applicants': AppleTeacherIcon,
     'banner-management': AppleReportsIcon,
+    'visits': AppleEventsIcon,
 };
 
 // ─── Role Config ─────────────────────────────────────────────────────────────
@@ -277,6 +279,7 @@ export const getNavGroupsForRole = (role: string | null): NavGroup[] => {
                         { id: 'lis', icon: StudentIcon3D, label: 'LIS' },
                         { id: 'admissions', icon: EnrollmentIcon3D, label: 'Admissions' },
                         { id: 'registrations', icon: EnrollmentIcon3D, label: 'Registrations' },
+                        { id: 'visits', icon: EventsIcon3D, label: 'Visits' },
                         { id: 'online-registration', icon: EnrollmentIcon3D, label: 'Online Registration' },
                         { id: 'import', icon: ImportIcon3D, label: 'Import CSV' },
                         { id: 'attendance-mgmt', icon: ScheduleIcon3D, label: 'Attendance' },
@@ -341,6 +344,7 @@ export const getNavGroupsForRole = (role: string | null): NavGroup[] => {
                         { id: 'lis', icon: StudentIcon3D, label: 'LIS' },
                         { id: 'admissions', icon: EnrollmentIcon3D, label: 'Admissions' },
                         { id: 'registrations', icon: EnrollmentIcon3D, label: 'Registrations' },
+                        { id: 'visits', icon: EventsIcon3D, label: 'Visits' },
                         { id: 'online-registration', icon: EnrollmentIcon3D, label: 'Online Registration' },
                         { id: 'import', icon: ImportIcon3D, label: 'Import CSV' },
                         { id: 'attendance-mgmt', icon: ScheduleIcon3D, label: 'Attendance' },
