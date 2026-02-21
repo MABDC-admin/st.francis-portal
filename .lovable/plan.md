@@ -1,79 +1,65 @@
 
-## Transform Assignment Card UI to Match Reference Design
 
-### What Changes
+## Create Public Visit Booking Page at `/visit`
 
-The `AssignmentCard` component inside `src/components/portals/student/StudentAssignmentsTab.tsx` will be fully redesigned to match the reference image style. The tab/filter structure and data logic stay the same — only the visual card design changes.
+### Overview
 
----
-
-### Reference Image Analysis
-
-The reference card has these visual elements:
-- **Red/terracotta header band** across the top of the card with a book icon on the left and a "Due in X days" pill badge on the right
-- **Subject badge** (e.g. "✓ English") shown as a small green-tinted chip in the header band
-- **Title** in bold white text inside the header band
-- **Light body** area below — off-white/cream background
-- **Description preview** text on the left with a date (e.g. "Apr 15") on the right
-- **"View Details" text link** on bottom-left and a styled **"View Details" button** on bottom-right
-- **Rounded corners** throughout; card has soft shadow
+Create a new standalone public page at `/visit` that allows anyone to schedule a school visit by selecting a date, time slot, and filling in their details. This page reuses the existing `school_visits` table and slot-capacity logic from `VisitScheduler`, but as a full-page experience (not embedded in a registration flow).
 
 ---
 
-### New Card Layout
+### What Gets Built
+
+A new page at `/visit` with:
+1. **Branded header** -- matching the style of `/register` (school name, logo icon, "Schedule a Visit" subtitle)
+2. **Calendar picker** -- weekdays only, up to 30 days ahead
+3. **Morning / Afternoon slot cards** -- showing remaining capacity (max 5 per slot)
+4. **Visitor form** -- Name (required), Student Name, Grade Level, Email, Phone, Address
+5. **Confirmation view** -- success animation with booking summary after submission
+
+The page fetches the default school (same pattern as `/register`) and inserts into `school_visits` with no authentication required (public-facing).
+
+---
+
+### Files to Create / Modify
+
+| File | Action | Description |
+|---|---|---|
+| `src/pages/VisitBookingPage.tsx` | **Create** | New standalone page component with calendar, slot picker, visitor form, and confirmation |
+| `src/App.tsx` | **Modify** | Add `<Route path="/visit" element={<VisitBookingPage />} />` |
+
+---
+
+### Page Layout
 
 ```
-┌─────────────────────────────────────────────┐
-│ [📖]  Creative Writing Assignment  [Due 4d] │  ← red/warm header band
-│       ✓ English                             │
-├─────────────────────────────────────────────┤
-│  Write a story on a topic of your choice.  Apr 15  │  ← body
-│                                             │
-│  View Details              [View Details]   │  ← footer row
-└─────────────────────────────────────────────┘
+Header: [Icon] St. Francis Xavier Smart Academy
+        Schedule a School Visit
+
+Body:
+  [Calendar -- select a weekday]
+
+  [Morning Card]     [Afternoon Card]
+   9AM-12PM           1PM-4PM
+   3 slots left        Full
+
+  Visitor Information:
+   Name*  |  Student Name
+   Grade Level  |  Phone
+   Email  |  Address
+
+  [Back to Home]     [Confirm Visit]
+
+Success:
+  [Checkmark] Visit Scheduled!
+  Summary card with all details
 ```
 
----
+### Technical Details
 
-### Technical Implementation Plan
-
-**File to modify:** `src/components/portals/student/StudentAssignmentsTab.tsx`
-
-**Only the `AssignmentCard` component is rewritten.** The tab structure, filters, summary bubbles, and all logic remain unchanged.
-
-#### New `AssignmentCard` design:
-
-1. **Card container** — `rounded-2xl overflow-hidden shadow-md` with a white/cream body, no border. Uses `cursor-pointer` and `active:scale-95` for tap feedback.
-
-2. **Header band** — Full-width colored top section (~80px tall):
-   - Background: warm red `bg-[#C0392B]` or `bg-rose-700` (matching reference). Overdue uses `bg-rose-800`.
-   - Left: book icon in a slightly lighter circle
-   - Center: assignment title in white bold text + subject badge chip below (green checkmark + subject name)
-   - Right: "Due in X days" pill — rounded, cream/yellow background, dark text
-
-3. **Body** — Cream/off-white background `bg-[#FDF6EC]`:
-   - Description preview (first 60 chars of `description` or a placeholder) on the left
-   - Due date formatted as "MMM D" on the right in muted text
-
-4. **Footer row** — Subtle separator, then:
-   - Left: "View Details" text link in muted color
-   - Right: Outlined/filled "View Details" button in warm yellow/cream style
-
-5. **Status overlay** — For submitted/graded cards, the "Due in X days" pill becomes a status badge (e.g. "Graded", "Submitted") in green/amber
-
-6. **Colors:**
-   - Header: `#C0392B` (deep red) for normal, `#922B21` (darker) for overdue
-   - Subject chip: `#27AE60` background with white text
-   - Due pill: cream `#FEF3C7` with `#92400E` text
-   - Body: `#FFFBF5` off-white
-   - Footer button: `#F5CBA7` background with `#784212` text
-
----
-
-### Files to Modify
-
-| File | What Changes |
-|---|---|
-| `src/components/portals/student/StudentAssignmentsTab.tsx` | Rewrite `AssignmentCard` component with new visual design matching the reference image |
-
-No new dependencies needed — all styling uses Tailwind and existing imports (`framer-motion`, `date-fns`, `lucide-react`, `StudentPortalIcon`).
+- Reuses the same `school_visits` table and capacity logic (max 5 per slot) from the existing `VisitScheduler`
+- Loads the default school using the same pattern as `PublicRegistrationPage` (fetch first school + current academic year)
+- Uses the additional visitor columns already in the schema: `visitor_student_name`, `visitor_level`, `visitor_address`, `visitor_birth_date`
+- No authentication required -- fully public page
+- Calendar uses `pointer-events-auto` class for proper interaction
+- Framer Motion animations for slot/form reveal transitions
