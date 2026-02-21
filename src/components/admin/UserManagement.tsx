@@ -50,6 +50,10 @@ export const UserManagement = () => {
   const [bulkGradeLevel, setBulkGradeLevel] = useState<string>('all');
   const [deleteTarget, setDeleteTarget] = useState<UserCredential | null>(null);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [manualResetTarget, setManualResetTarget] = useState<UserCredential | null>(null);
+  const [manualNewPassword, setManualNewPassword] = useState('');
+  const [isManualResetting, setIsManualResetting] = useState(false);
+  const [showManualPassword, setShowManualPassword] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
   const schoolOptions = [
@@ -377,6 +381,48 @@ export const UserManagement = () => {
       toast.error(error.message || 'Failed to reset password');
     } finally {
       setResettingPasswordId(null);
+    }
+  };
+
+  const handleManualResetPassword = async () => {
+    if (!manualResetTarget?.user_id || !manualNewPassword) return;
+
+    // Validate password strength
+    const hasUpper = /[A-Z]/.test(manualNewPassword);
+    const hasLower = /[a-z]/.test(manualNewPassword);
+    const hasNumber = /[0-9]/.test(manualNewPassword);
+    const hasSpecial = /[^A-Za-z0-9]/.test(manualNewPassword);
+    if (manualNewPassword.length < 8 || !hasUpper || !hasLower || !hasNumber || !hasSpecial) {
+      toast.error('Password must be at least 8 characters with uppercase, lowercase, number, and special character');
+      return;
+    }
+
+    setIsManualResetting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('reset-password', {
+        body: {
+          userId: manualResetTarget.user_id,
+          newPassword: manualNewPassword,
+        },
+      });
+
+      if (error) throw error;
+
+      // Also update the temp_password in user_credentials for record keeping
+      await (supabase.from('user_credentials') as any)
+        .update({ temp_password: manualNewPassword, password_changed: false })
+        .eq('id', manualResetTarget.id);
+
+      toast.success(`Password updated for ${manualResetTarget.email}`);
+      setManualResetTarget(null);
+      setManualNewPassword('');
+      setShowManualPassword(false);
+      fetchCredentials();
+    } catch (error: any) {
+      console.error('Error resetting password:', error);
+      toast.error(error.message || 'Failed to reset password');
+    } finally {
+      setIsManualResetting(false);
     }
   };
 
@@ -709,9 +755,19 @@ export const UserManagement = () => {
                             <Button
                               variant="ghost"
                               size="sm"
+                              onClick={() => { setManualResetTarget(cred); setManualNewPassword(''); setShowManualPassword(false); }}
+                              title="Set new password"
+                            >
+                              <Key className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {cred.user_id && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => handleResetPassword(cred)}
                               disabled={resettingPasswordId === cred.id}
-                              title="Reset password"
+                              title="Auto-generate new password"
                             >
                               {resettingPasswordId === cred.id ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -871,6 +927,76 @@ export const UserManagement = () => {
             <Button onClick={executePrint}>
               <Printer className="h-4 w-4 mr-2" />
               Print
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manual Password Reset Dialog */}
+      <Dialog open={!!manualResetTarget} onOpenChange={() => { setManualResetTarget(null); setManualNewPassword(''); setShowManualPassword(false); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5" />
+              Reset Password
+            </DialogTitle>
+            <DialogDescription>
+              Set a new password for <strong>{manualResetTarget?.email}</strong> ({manualResetTarget?.role}).
+              Password must be at least 8 characters with uppercase, lowercase, number, and special character.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>New Password</Label>
+              <div className="relative">
+                <Input
+                  type={showManualPassword ? 'text' : 'password'}
+                  placeholder="Enter new password..."
+                  value={manualNewPassword}
+                  onChange={(e) => setManualNewPassword(e.target.value)}
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                  onClick={() => setShowManualPassword(!showManualPassword)}
+                >
+                  {showManualPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+              {manualNewPassword.length > 0 && (
+                <div className="text-xs space-y-1">
+                  <p className={manualNewPassword.length >= 8 ? 'text-green-600' : 'text-destructive'}>
+                    {manualNewPassword.length >= 8 ? '✓' : '✗'} At least 8 characters
+                  </p>
+                  <p className={/[A-Z]/.test(manualNewPassword) ? 'text-green-600' : 'text-destructive'}>
+                    {/[A-Z]/.test(manualNewPassword) ? '✓' : '✗'} Uppercase letter
+                  </p>
+                  <p className={/[a-z]/.test(manualNewPassword) ? 'text-green-600' : 'text-destructive'}>
+                    {/[a-z]/.test(manualNewPassword) ? '✓' : '✗'} Lowercase letter
+                  </p>
+                  <p className={/[0-9]/.test(manualNewPassword) ? 'text-green-600' : 'text-destructive'}>
+                    {/[0-9]/.test(manualNewPassword) ? '✓' : '✗'} Number
+                  </p>
+                  <p className={/[^A-Za-z0-9]/.test(manualNewPassword) ? 'text-green-600' : 'text-destructive'}>
+                    {/[^A-Za-z0-9]/.test(manualNewPassword) ? '✓' : '✗'} Special character
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setManualResetTarget(null); setManualNewPassword(''); setShowManualPassword(false); }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleManualResetPassword}
+              disabled={isManualResetting || manualNewPassword.length < 8}
+            >
+              {isManualResetting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Key className="h-4 w-4 mr-2" />}
+              Reset Password
             </Button>
           </DialogFooter>
         </DialogContent>
