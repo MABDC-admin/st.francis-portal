@@ -1,65 +1,37 @@
 
 
-## Create Public Visit Booking Page at `/visit`
+## Add Visit Management to Admin and Registrar Sidebar
 
-### Overview
+### What Changes
 
-Create a new standalone public page at `/visit` that allows anyone to schedule a school visit by selecting a date, time slot, and filling in their details. This page reuses the existing `school_visits` table and slot-capacity logic from `VisitScheduler`, but as a full-page experience (not embedded in a registration flow).
+A new "Visits" navigation item will be added to the Admin and Registrar sidebar menus, and a dedicated tab entry will be wired up in `Index.tsx` to render the existing visit management UI as a standalone section.
 
----
-
-### What Gets Built
-
-A new page at `/visit` with:
-1. **Branded header** -- matching the style of `/register` (school name, logo icon, "Schedule a Visit" subtitle)
-2. **Calendar picker** -- weekdays only, up to 30 days ahead
-3. **Morning / Afternoon slot cards** -- showing remaining capacity (max 5 per slot)
-4. **Visitor form** -- Name (required), Student Name, Grade Level, Email, Phone, Address
-5. **Confirmation view** -- success animation with booking summary after submission
-
-The page fetches the default school (same pattern as `/register`) and inserts into `school_visits` with no authentication required (public-facing).
+Currently, visit management is buried inside the "Registrations" page as a sub-tab. This change surfaces it as a first-class sidebar item for quick access.
 
 ---
 
-### Files to Create / Modify
+### How It Works
 
-| File | Action | Description |
-|---|---|---|
-| `src/pages/VisitBookingPage.tsx` | **Create** | New standalone page component with calendar, slot picker, visitor form, and confirmation |
-| `src/App.tsx` | **Modify** | Add `<Route path="/visit" element={<VisitBookingPage />} />` |
+When Admin or Registrar clicks "Visits" in the sidebar, it loads a new `VisitManagement` component that reuses all the existing visit logic (fetching from `school_visits`, status updates, delete, upcoming/past filtering) but as a standalone page -- not nested inside a tab.
 
 ---
 
-### Page Layout
+### Files to Modify
 
-```
-Header: [Icon] St. Francis Xavier Smart Academy
-        Schedule a School Visit
+| File | What Changes |
+|---|---|
+| `src/config/dashboardConfig.ts` | Add `{ id: 'visits', icon: ..., label: 'Visits' }` to the "Learner Records" collapsible group for both `admin` and `registrar` roles |
+| `src/pages/Index.tsx` | Add `activeTab === 'visits'` condition that renders the new `VisitManagement` component |
+| `src/components/registration/VisitManagement.tsx` | **New file** -- standalone visit management component extracted from the visits tab in `RegistrationManagement.tsx`, with the same table, filters, status actions, and delete functionality |
 
-Body:
-  [Calendar -- select a weekday]
+### New Component Details
 
-  [Morning Card]     [Afternoon Card]
-   9AM-12PM           1PM-4PM
-   3 slots left        Full
+The `VisitManagement` component will include:
+- Header with title and a "Share Visit Link" button (copies the `/visit` URL)
+- Upcoming / Past filter toggle
+- Table with columns: Visitor, Date, Slot, Student, Grade Level, Age, Address, Mobile, Status, Actions
+- Status update buttons (Confirm / Cancel)
+- Delete button per row
+- Same data fetching pattern using `useSchool`, `useQuery`, and the `school_visits` table
 
-  Visitor Information:
-   Name*  |  Student Name
-   Grade Level  |  Phone
-   Email  |  Address
-
-  [Back to Home]     [Confirm Visit]
-
-Success:
-  [Checkmark] Visit Scheduled!
-  Summary card with all details
-```
-
-### Technical Details
-
-- Reuses the same `school_visits` table and capacity logic (max 5 per slot) from the existing `VisitScheduler`
-- Loads the default school using the same pattern as `PublicRegistrationPage` (fetch first school + current academic year)
-- Uses the additional visitor columns already in the schema: `visitor_student_name`, `visitor_level`, `visitor_address`, `visitor_birth_date`
-- No authentication required -- fully public page
-- Calendar uses `pointer-events-auto` class for proper interaction
-- Framer Motion animations for slot/form reveal transitions
+No new database changes or dependencies are needed.
