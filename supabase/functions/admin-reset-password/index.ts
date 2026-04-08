@@ -15,12 +15,12 @@ Deno.serve(async (req): Promise<Response> => {
   if (corsResponse) return corsResponse;
 
   try {
-    // Verify this is called with service role key (not anon key)
-    const apikey = req.headers.get('apikey') || '';
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    // Verify via a shared secret passed in x-admin-key header
+    const adminKey = req.headers.get('x-admin-key') || '';
+    const expectedKey = Deno.env.get('SYNC_API_KEY') || '';
     
-    if (apikey !== serviceRoleKey) {
-      return errorResponse('Unauthorized - requires service role key', 401, 'UNAUTHORIZED');
+    if (!expectedKey || adminKey !== expectedKey) {
+      return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
     }
 
     const { userId, newPassword } = await req.json();
