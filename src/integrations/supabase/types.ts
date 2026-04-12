@@ -864,6 +864,78 @@ export type Database = {
         }
         Relationships: []
       }
+      cashier_sessions: {
+        Row: {
+          academic_year_id: string
+          actual_cash: number | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          expected_cash: number
+          id: string
+          notes: string | null
+          opened_at: string
+          opened_by: string
+          opening_cash: number
+          school_id: string
+          status: string
+          terminal_id: string | null
+          updated_at: string
+          variance_cash: number
+        }
+        Insert: {
+          academic_year_id: string
+          actual_cash?: number | null
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          expected_cash?: number
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opened_by?: string
+          opening_cash?: number
+          school_id: string
+          status?: string
+          terminal_id?: string | null
+          updated_at?: string
+          variance_cash?: number
+        }
+        Update: {
+          academic_year_id?: string
+          actual_cash?: number | null
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          expected_cash?: number
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opened_by?: string
+          opening_cash?: number
+          school_id?: string
+          status?: string
+          terminal_id?: string | null
+          updated_at?: string
+          variance_cash?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cashier_sessions_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cashier_sessions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       class_schedules: {
         Row: {
           academic_year_id: string
@@ -1537,6 +1609,91 @@ export type Database = {
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_approval_requests: {
+        Row: {
+          academic_year_id: string
+          amount: number | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_notes: string | null
+          details: Json | null
+          id: string
+          reason: string
+          reference_id: string | null
+          reference_table: string | null
+          request_type: string
+          requested_at: string
+          requested_by: string
+          school_id: string
+          status: string
+          student_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          academic_year_id: string
+          amount?: number | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_notes?: string | null
+          details?: Json | null
+          id?: string
+          reason: string
+          reference_id?: string | null
+          reference_table?: string | null
+          request_type: string
+          requested_at?: string
+          requested_by?: string
+          school_id: string
+          status?: string
+          student_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          academic_year_id?: string
+          amount?: number | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_notes?: string | null
+          details?: Json | null
+          id?: string
+          reason?: string
+          reference_id?: string | null
+          reference_table?: string | null
+          request_type?: string
+          requested_at?: string
+          requested_by?: string
+          school_id?: string
+          status?: string
+          student_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_approval_requests_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_approval_requests_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_approval_requests_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
             referencedColumns: ["id"]
           },
         ]

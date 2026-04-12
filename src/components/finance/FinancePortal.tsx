@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { DollarSign, Users, CheckCircle, Clock, CreditCard, Search, FileText } from 'lucide-react';
+import { DollarSign, Users, CheckCircle, Clock, CreditCard, FileText, ClipboardList, WalletCards, FileCheck } from 'lucide-react';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -50,7 +50,10 @@ export const FinancePortal = ({ onNavigate }: FinancePortalProps) => {
 
   const quickActions = [
     { label: 'Accept Payment', icon: CreditCard, tab: 'cashier' },
+    { label: 'Cashier Sessions', icon: WalletCards, tab: 'cashier-sessions' },
     { label: 'View Learners', icon: Users, tab: 'finance-learners' },
+    { label: 'Statement of Account', icon: ClipboardList, tab: 'statement-of-account' },
+    { label: 'Approval Queue', icon: FileCheck, tab: 'finance-approvals' },
     { label: 'Fee Setup', icon: FileText, tab: 'fee-setup' },
     { label: 'Year-End Close', icon: Clock, tab: 'year-end-close' },
     { label: 'Reports', icon: FileText, tab: 'finance-reports' },

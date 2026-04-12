@@ -82,6 +82,9 @@ const StudentAssessments = lazy(() => import('@/components/finance/StudentAssess
 const PaymentCollection = lazy(() => import('@/components/finance/PaymentCollection').then(m => ({ default: m.PaymentCollection })));
 const PaymentPlans = lazy(() => import('@/components/finance/PaymentPlans').then(m => ({ default: m.PaymentPlans })));
 const StudentLedger = lazy(() => import('@/components/finance/StudentLedger').then(m => ({ default: m.StudentLedger })));
+const CashierSessionControl = lazy(() => import('@/components/finance/CashierSessionControl').then(m => ({ default: m.CashierSessionControl })));
+const StatementOfAccount = lazy(() => import('@/components/finance/StatementOfAccount').then(m => ({ default: m.StatementOfAccount })));
+const FinanceApprovalQueue = lazy(() => import('@/components/finance/FinanceApprovalQueue').then(m => ({ default: m.FinanceApprovalQueue })));
 const DiscountScholarships = lazy(() => import('@/components/finance/DiscountScholarships').then(m => ({ default: m.DiscountScholarships })));
 const FinanceClearance = lazy(() => import('@/components/finance/FinanceClearance').then(m => ({ default: m.FinanceClearance })));
 const FinanceReports = lazy(() => import('@/components/finance/FinanceReports').then(m => ({ default: m.FinanceReports })));
@@ -615,9 +618,12 @@ const Index = () => {
         {activeTab === 'fee-setup' && (role === 'finance' || role === 'admin') && <SectionErrorBoundary><FeeSetup /></SectionErrorBoundary>}
         {activeTab === 'assessments' && (role === 'finance' || role === 'admin') && <SectionErrorBoundary><StudentAssessments /></SectionErrorBoundary>}
         {activeTab === 'cashier' && (role === 'finance' || role === 'admin') && <SectionErrorBoundary><PaymentCollection /></SectionErrorBoundary>}
+        {activeTab === 'cashier-sessions' && (role === 'finance' || role === 'admin') && <SectionErrorBoundary><CashierSessionControl /></SectionErrorBoundary>}
         {activeTab === 'payment-plans' && (role === 'finance' || role === 'admin') && <SectionErrorBoundary><PaymentPlans /></SectionErrorBoundary>}
+        {activeTab === 'statement-of-account' && (role === 'finance' || role === 'admin') && <SectionErrorBoundary><StatementOfAccount /></SectionErrorBoundary>}
         {activeTab === 'student-ledger' && (role === 'finance' || role === 'admin') && <SectionErrorBoundary><StudentLedger /></SectionErrorBoundary>}
         {activeTab === 'discount-scholarships' && (role === 'finance' || role === 'admin') && <SectionErrorBoundary><DiscountScholarships /></SectionErrorBoundary>}
+        {activeTab === 'finance-approvals' && (role === 'finance' || role === 'admin') && <SectionErrorBoundary><FinanceApprovalQueue /></SectionErrorBoundary>}
         {activeTab === 'finance-clearance' && (role === 'finance' || role === 'admin') && <SectionErrorBoundary><FinanceClearance /></SectionErrorBoundary>}
         {activeTab === 'finance-reports' && (role === 'finance' || role === 'admin') && <SectionErrorBoundary><FinanceReports /></SectionErrorBoundary>}
         {activeTab === 'finance-settings' && (role === 'finance' || role === 'admin') && <SectionErrorBoundary><FinanceSettings /></SectionErrorBoundary>}

@@ -125,7 +125,10 @@ export const icon3DMap: Record<string, IconComponent> = {
     'assessments': EnrollmentIcon3D,
     'cashier': EnterGradeIcon3D,
     'payment-plans': ScheduleIcon3D,
+    'cashier-sessions': ScheduleIcon3D,
     'student-ledger': ReportsIcon3D,
+    'statement-of-account': ReportsIcon3D,
+    'finance-approvals': AdminIcon3D,
     'discount-scholarships': StudentIcon3D,
     'finance-clearance': AdminIcon3D,
     'finance-reports': ReportsIcon3D,
@@ -207,7 +210,10 @@ export const iconAppleMap: Record<string, IconComponent> = {
     'assessments': AppleEnrollmentIcon,
     'cashier': AppleGradesIcon,
     'payment-plans': AppleScheduleIcon,
+    'cashier-sessions': AppleScheduleIcon,
     'student-ledger': AppleReportsIcon,
+    'statement-of-account': AppleReportsIcon,
+    'finance-approvals': AppleAdminIcon,
     'discount-scholarships': AppleStudentIcon,
     'finance-clearance': AppleAdminIcon,
     'finance-reports': AppleReportsIcon,
@@ -414,9 +420,7 @@ export const getNavGroupsForRole = (role: string | null): NavGroup[] => {
                     id: 'resources', icon: LibraryIcon3D, label: 'Resources', isCollapsible: true,
                     items: [
                         { id: 'library', icon: LibraryIcon3D, label: 'Library' },
-                        { id: 'canva', icon: CanvaIcon3D, label: 'Canva Studio' },
                         { id: 'notebook', icon: NotebookIcon3D, label: 'Notebook LLM' },
-                        { id: 'ai-chat', icon: NotebookIcon3D, label: 'AI Chat' },
                     ]
                 },
                 { id: 'reports', icon: ReportsIcon3D, label: 'Reports' },
@@ -469,12 +473,14 @@ export const getNavGroupsForRole = (role: string | null): NavGroup[] => {
                     id: 'payments-group', icon: EnterGradeIcon3D, label: 'Payments', isCollapsible: true,
                     items: [
                         { id: 'cashier', icon: EnterGradeIcon3D, label: 'Cashier' },
+                        { id: 'cashier-sessions', icon: ScheduleIcon3D, label: 'Cashier Sessions' },
                         { id: 'payment-plans', icon: ScheduleIcon3D, label: 'Payment Plans' },
                     ]
                 },
                 {
                     id: 'accounts', icon: ProfileIcon3D, label: 'Accounts', isCollapsible: true,
                     items: [
+                        { id: 'statement-of-account', icon: ReportsIcon3D, label: 'Statement of Account' },
                         { id: 'student-ledger', icon: ReportsIcon3D, label: 'Student Ledger' },
                         { id: 'finance-clearance', icon: AdminIcon3D, label: 'Clearance' },
                     ]
@@ -483,6 +489,7 @@ export const getNavGroupsForRole = (role: string | null): NavGroup[] => {
                 {
                     id: 'finance-config', icon: AdminIcon3D, label: 'Settings', isCollapsible: true,
                     items: [
+                        { id: 'finance-approvals', icon: AdminIcon3D, label: 'Approval Queue' },
                         { id: 'finance-settings', icon: AdminIcon3D, label: 'Finance Settings' },
                         { id: 'year-end-close', icon: AdminIcon3D, label: 'Year-End Close' },
                         { id: 'finance-audit', icon: ImportIcon3D, label: 'Audit Logs' },
