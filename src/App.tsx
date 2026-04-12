@@ -30,9 +30,9 @@ import { toast } from "sonner";
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     // Don't expose raw Supabase/network errors to users
-    if (error.message.includes('JWT')) return 'Your session has expired. Please log in again.';
-    if (error.message.includes('NetworkError') || error.message.includes('fetch')) return 'Network error. Please check your connection.';
-    if (error.message.includes('duplicate key')) return 'This record already exists.';
+    if (error.message.includes('JWT')) {return 'Your session has expired. Please log in again.';}
+    if (error.message.includes('NetworkError') || error.message.includes('fetch')) {return 'Network error. Please check your connection.';}
+    if (error.message.includes('duplicate key')) {return 'This record already exists.';}
     return error.message;
   }
   return 'An unexpected error occurred.';

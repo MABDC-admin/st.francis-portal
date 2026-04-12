@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { Json } from '@/integrations/supabase/types';
 import { useAuth } from '@/contexts/AuthContext';
 
 export type AuditAction =
@@ -16,7 +17,7 @@ export interface AuditLogEntry {
     status: 'success' | 'failure';
     lrn?: string;
     error_message?: string;
-    details?: any;
+    details?: Json;
     school?: string;
 }
 

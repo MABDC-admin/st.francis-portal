@@ -4431,6 +4431,10 @@ export type Database = {
       }
     }
     Functions: {
+      admin_system_action: {
+        Args: { p_action: string; p_confirmation_text: string }
+        Returns: Json
+      }
       check_finance_access: { Args: { p_school_id: string }; Returns: boolean }
       get_user_conversation_ids: {
         Args: { _user_id: string }

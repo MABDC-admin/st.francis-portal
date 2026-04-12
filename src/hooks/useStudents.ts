@@ -6,6 +6,16 @@ import { useSchool } from '@/contexts/SchoolContext';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { getSchoolId } from '@/utils/schoolIdMap';
 import { studentSchema, formatValidationErrors } from '@/lib/validation';
+import type { Database } from '@/integrations/supabase/types';
+
+type StudentGradeQuarter = Pick<
+  Database['public']['Tables']['student_grades']['Row'],
+  'q1_grade' | 'q2_grade' | 'q3_grade' | 'q4_grade'
+>;
+
+type StudentWithGrades = Database['public']['Tables']['students']['Row'] & {
+  student_grades: StudentGradeQuarter[] | null;
+};
 
 export const useStudents = () => {
   const { selectedSchool } = useSchool();
@@ -31,15 +41,15 @@ export const useStudents = () => {
         throw error;
       }
 
-      return (data || []).map((student: any) => {
+      return ((data || []) as StudentWithGrades[]).map((student) => {
         const grades = student.student_grades || [];
         const has_grades = grades.length > 0;
 
         const grade_quarters = {
-          q1: grades.some((g: any) => g.q1_grade !== null),
-          q2: grades.some((g: any) => g.q2_grade !== null),
-          q3: grades.some((g: any) => g.q3_grade !== null),
-          q4: grades.some((g: any) => g.q4_grade !== null),
+          q1: grades.some((g) => g.q1_grade !== null),
+          q2: grades.some((g) => g.q2_grade !== null),
+          q3: grades.some((g) => g.q3_grade !== null),
+          q4: grades.some((g) => g.q4_grade !== null),
         };
 
         return {
@@ -57,30 +67,36 @@ export const useStudents = () => {
 
 export const useCreateStudent = () => {
   const queryClient = useQueryClient();
+  const { selectedSchool } = useSchool();
+  const { selectedYearId } = useAcademicYear();
+  const schoolId = getSchoolId(selectedSchool);
 
   return useMutation({
     mutationFn: async (student: StudentFormData) => {
+      if (!schoolId || !selectedYearId) {
+        throw new Error('School and academic year must be selected before adding a learner.');
+      }
+
       // Validate with Zod before sending to Supabase
       const validation = studentSchema.safeParse(student);
       if (!validation.success) {
         throw new Error(formatValidationErrors(validation.error));
       }
 
-      const enriched: any = { ...student };
-      if (student.school && !enriched.school_id) {
-        const schoolId = getSchoolId(student.school);
-        if (schoolId) {
-          enriched.school_id = schoolId;
-        }
-      }
+      const enriched: Database['public']['Tables']['students']['Insert'] = {
+        ...student,
+        school: student.school || selectedSchool,
+        school_id: schoolId,
+        academic_year_id: selectedYearId,
+      };
 
-      const { data, error } = await (supabase
-        .from('students') as any)
+      const { data, error } = await supabase
+        .from('students')
         .insert([enriched])
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {throw error;}
       return data;
     },
     onSuccess: () => {
@@ -95,17 +111,29 @@ export const useCreateStudent = () => {
 
 export const useUpdateStudent = () => {
   const queryClient = useQueryClient();
+  const { selectedSchool } = useSchool();
+  const { selectedYearId } = useAcademicYear();
+  const schoolId = getSchoolId(selectedSchool);
 
   return useMutation({
     mutationFn: async ({ id, ...student }: StudentFormData & { id: string }) => {
+      if (!schoolId || !selectedYearId) {
+        throw new Error('School and academic year must be selected before updating a learner.');
+      }
+
       const { data, error } = await supabase
         .from('students')
-        .update(student)
+        .update({
+          ...student,
+          school: student.school || selectedSchool,
+        })
         .eq('id', id)
+        .eq('school_id', schoolId)
+        .eq('academic_year_id', selectedYearId)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {throw error;}
       return data;
     },
     onSuccess: () => {
@@ -120,15 +148,24 @@ export const useUpdateStudent = () => {
 
 export const useDeleteStudent = () => {
   const queryClient = useQueryClient();
+  const { selectedSchool } = useSchool();
+  const { selectedYearId } = useAcademicYear();
+  const schoolId = getSchoolId(selectedSchool);
 
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!schoolId || !selectedYearId) {
+        throw new Error('School and academic year must be selected before deleting a learner.');
+      }
+
       const { error } = await supabase
         .from('students')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('school_id', schoolId)
+        .eq('academic_year_id', selectedYearId);
 
-      if (error) throw error;
+      if (error) {throw error;}
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
@@ -142,18 +179,32 @@ export const useDeleteStudent = () => {
 
 export const useBulkCreateStudents = () => {
   const queryClient = useQueryClient();
+  const { selectedSchool } = useSchool();
+  const { selectedYearId } = useAcademicYear();
+  const schoolId = getSchoolId(selectedSchool);
 
   return useMutation({
     mutationFn: async (students: StudentFormData[]) => {
-      const { data, error } = await (supabase
-        .from('students') as any)
-        .insert(students)
+      if (!schoolId || !selectedYearId) {
+        throw new Error('School and academic year must be selected before importing learners.');
+      }
+
+      const enrichedStudents = students.map((student) => ({
+        ...student,
+        school: student.school || selectedSchool,
+        school_id: schoolId,
+        academic_year_id: selectedYearId,
+      }));
+
+      const { data, error } = await supabase
+        .from('students')
+        .insert(enrichedStudents)
         .select();
 
-      if (error) throw error;
+      if (error) {throw error;}
       return data;
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: Database['public']['Tables']['students']['Row'][]) => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       toast.success(`${data.length} learners imported successfully`);
     },
