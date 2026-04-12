@@ -4199,6 +4199,224 @@ export type Database = {
           },
         ]
       }
+      teacher_lesson_plans: {
+        Row: {
+          academic_year_id: string
+          assessment: string | null
+          class_schedule_id: string | null
+          competencies: string | null
+          created_at: string
+          created_by: string
+          homework: string | null
+          id: string
+          materials: string | null
+          notes: string | null
+          objectives: string | null
+          plan_date: string
+          procedures: string | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          school_id: string
+          status: string
+          subject_id: string
+          teacher_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          academic_year_id: string
+          assessment?: string | null
+          class_schedule_id?: string | null
+          competencies?: string | null
+          created_at?: string
+          created_by?: string
+          homework?: string | null
+          id?: string
+          materials?: string | null
+          notes?: string | null
+          objectives?: string | null
+          plan_date: string
+          procedures?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          school_id: string
+          status?: string
+          subject_id: string
+          teacher_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          academic_year_id?: string
+          assessment?: string | null
+          class_schedule_id?: string | null
+          competencies?: string | null
+          created_at?: string
+          created_by?: string
+          homework?: string | null
+          id?: string
+          materials?: string | null
+          notes?: string | null
+          objectives?: string | null
+          plan_date?: string
+          procedures?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          school_id?: string
+          status?: string
+          subject_id?: string
+          teacher_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_lesson_plans_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_lesson_plans_class_schedule_id_fkey"
+            columns: ["class_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "class_schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_lesson_plans_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_lesson_plans_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_lesson_plans_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_lesson_plans_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_lesson_plans_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teacher_requests: {
+        Row: {
+          academic_year_id: string
+          created_at: string
+          created_by: string
+          details: string
+          id: string
+          priority: string
+          request_type: string
+          requested_for_date: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          school_id: string
+          status: string
+          subject: string
+          teacher_id: string
+          updated_at: string
+        }
+        Insert: {
+          academic_year_id: string
+          created_at?: string
+          created_by?: string
+          details: string
+          id?: string
+          priority?: string
+          request_type: string
+          requested_for_date?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          school_id: string
+          status?: string
+          subject: string
+          teacher_id: string
+          updated_at?: string
+        }
+        Update: {
+          academic_year_id?: string
+          created_at?: string
+          created_by?: string
+          details?: string
+          id?: string
+          priority?: string
+          request_type?: string
+          requested_for_date?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          school_id?: string
+          status?: string
+          subject?: string
+          teacher_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_requests_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_requests_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_requests_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_requests_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_requests_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teachers: {
         Row: {
           created_at: string | null
@@ -4434,6 +4652,10 @@ export type Database = {
       admin_system_action: {
         Args: { p_action: string; p_confirmation_text: string }
         Returns: Json
+      }
+      current_teacher_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string | null
       }
       check_finance_access: { Args: { p_school_id: string }; Returns: boolean }
       get_user_conversation_ids: {

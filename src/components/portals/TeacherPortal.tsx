@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Users, ClipboardCheck, BookOpen, FileText, MessageSquare, Calendar, LogOut, Loader2, GraduationCap, Award } from 'lucide-react';
+import { Users, ClipboardCheck, BookOpen, FileText, MessageSquare, Calendar, LogOut, Loader2, GraduationCap, NotebookPen, FolderClock } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,18 +17,35 @@ interface TeacherPortalProps {
   onNavigate?: (tab: string) => void;
 }
 
+interface TeacherScheduleItem {
+  id: string;
+  day_of_week: number;
+  grade_level: string;
+  room: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  subjects: {
+    name: string | null;
+  } | null;
+}
+
 export const TeacherPortal = ({ activeSection = 'dashboard', onNavigate }: TeacherPortalProps) => {
   const { user, signOut } = useAuth();
   const { data: teacher, isLoading } = useTeacherProfile(user?.id);
   const { data: schedules = [] } = useTeacherSchedule(teacher?.id);
   const { data: studentCount = 0 } = useTeacherStudentCount(teacher?.id);
+  const typedSchedules = schedules as TeacherScheduleItem[];
+  const todaySchedules = typedSchedules.filter((schedule) => schedule.day_of_week === new Date().getDay());
 
   const displayName = teacher?.full_name || user?.email?.split('@')[0] || 'Teacher';
 
   const quickActions = [
+    { id: 'classes', title: 'My Classes', icon: Users, color: 'bg-cyan-500' },
     { id: 'attendance-mgmt', title: 'Take Attendance', icon: ClipboardCheck, color: 'bg-green-500' },
     { id: 'grades', title: 'Enter Grades', icon: FileText, color: 'bg-blue-500' },
     { id: 'schedule-mgmt', title: 'Class Schedule', icon: Calendar, color: 'bg-purple-500' },
+    { id: 'lesson-plans', title: 'Lesson Plans', icon: NotebookPen, color: 'bg-indigo-500' },
+    { id: 'requests', title: 'Requests', icon: FolderClock, color: 'bg-amber-500' },
     { id: 'messages', title: 'Messages', icon: MessageSquare, color: 'bg-orange-500' },
   ];
 
@@ -106,7 +123,7 @@ export const TeacherPortal = ({ activeSection = 'dashboard', onNavigate }: Teach
                 <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/40 dark:to-purple-900/20 border-purple-200 dark:border-purple-800">
                   <CardContent className="pt-6 text-center">
                     <Calendar className="h-8 w-8 text-purple-600 dark:text-purple-400 mx-auto mb-2" />
-                    <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">{schedules.length}</p>
+                    <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">{todaySchedules.length}</p>
                     <p className="text-xs text-purple-600 dark:text-purple-400">Classes Today</p>
                   </CardContent>
                 </Card>
@@ -123,7 +140,7 @@ export const TeacherPortal = ({ activeSection = 'dashboard', onNavigate }: Teach
             </div>
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
               {quickActions.map((action, index) => (
                 <motion.div
                   key={action.id}
@@ -179,9 +196,8 @@ export const TeacherPortal = ({ activeSection = 'dashboard', onNavigate }: Teach
               <CardContent>
                 {schedules.length > 0 ? (
                   <div className="space-y-3">
-                    {schedules
-                      .filter((s: any) => s.day_of_week === new Date().getDay())
-                      .map((schedule: any, index: number) => (
+                    {todaySchedules
+                      .map((schedule, index: number) => (
                         <motion.div
                           key={schedule.id}
                           initial={{ opacity: 0, x: -20 }}
@@ -202,7 +218,7 @@ export const TeacherPortal = ({ activeSection = 'dashboard', onNavigate }: Teach
                           </div>
                         </motion.div>
                       ))}
-                    {schedules.filter((s: any) => s.day_of_week === new Date().getDay()).length === 0 && (
+                    {todaySchedules.length === 0 && (
                       <p className="text-muted-foreground text-center py-4">No classes scheduled for today.</p>
                     )}
                   </div>

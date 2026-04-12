@@ -29,6 +29,9 @@ const AdminPanel = lazy(() => import('@/components/admin/AdminPanel').then(m => 
 const AdminPortal = lazy(() => import('@/components/portals/AdminPortal').then(m => ({ default: m.AdminPortal })));
 const RegistrarPortal = lazy(() => import('@/components/portals/RegistrarPortal').then(m => ({ default: m.RegistrarPortal })));
 const TeacherPortal = lazy(() => import('@/components/portals/TeacherPortal').then(m => ({ default: m.TeacherPortal })));
+const TeacherClassesPage = lazy(() => import('@/components/teachers/TeacherClassesPage').then(m => ({ default: m.TeacherClassesPage })));
+const TeacherLessonPlansPage = lazy(() => import('@/components/teachers/TeacherLessonPlansPage').then(m => ({ default: m.TeacherLessonPlansPage })));
+const TeacherRequestsPage = lazy(() => import('@/components/teachers/TeacherRequestsPage').then(m => ({ default: m.TeacherRequestsPage })));
 const StudentPortal = lazy(() => import('@/components/portals/StudentPortal').then(m => ({ default: m.StudentPortal })));
 const ParentPortal = lazy(() => import('@/components/portals/ParentPortal').then(m => ({ default: m.ParentPortal })));
 const PrincipalPortal = lazy(() => import('@/components/portals/PrincipalPortal').then(m => ({ default: m.PrincipalPortal })));
@@ -448,6 +451,15 @@ const Index = () => {
         {activeTab === 'teacher-profile' && role === 'teacher' && (
           <TeacherPortal activeSection="profile" />
         )}
+        {activeTab === 'classes' && role === 'teacher' && (
+          <TeacherClassesPage onNavigate={handleTabChange} />
+        )}
+        {activeTab === 'lesson-plans' && role === 'teacher' && (
+          <TeacherLessonPlansPage />
+        )}
+        {activeTab === 'requests' && role === 'teacher' && (
+          <TeacherRequestsPage />
+        )}
         {activeTab === 'teacher-grades' && role === 'teacher' && (
           <TeacherPortal activeSection="grades" />
         )}
@@ -568,8 +580,8 @@ const Index = () => {
           <AttendanceManagement />
         )}
 
-        {/* Schedule Management - Admin/Registrar */}
-        {activeTab === 'schedule-mgmt' && hasAdminAccess && (
+        {/* Schedule Management - Admin/Registrar/Teacher */}
+        {activeTab === 'schedule-mgmt' && (hasAdminAccess || role === 'teacher') && (
           <ScheduleManagement />
         )}
 

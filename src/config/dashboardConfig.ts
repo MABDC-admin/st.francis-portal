@@ -118,6 +118,8 @@ export const icon3DMap: Record<string, IconComponent> = {
     'teacher-profile': ProfileIcon3D,
     'teacher-grades': EnterGradeIcon3D,
     'teacher-schedule': ScheduleIcon3D,
+    'lesson-plans': NotebookIcon3D,
+    requests: ImportIcon3D,
     'my-info': ProfileIcon3D,
     'fee-setup': SubjectsIcon3D,
     'assessments': EnrollmentIcon3D,
@@ -198,6 +200,8 @@ export const iconAppleMap: Record<string, IconComponent> = {
     'teacher-profile': AppleProfileIcon,
     'teacher-grades': AppleGradesIcon,
     'teacher-schedule': AppleScheduleIcon,
+    'lesson-plans': AppleNotebookIcon,
+    requests: AppleImportIcon,
     'my-info': AppleProfileIcon,
     'fee-setup': AppleSubjectsIcon,
     'assessments': AppleEnrollmentIcon,
@@ -385,31 +389,28 @@ export const getNavGroupsForRole = (role: string | null): NavGroup[] => {
         case 'teacher':
             return [
                 { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
+                { id: 'classes', icon: TeacherIcon3D, label: 'My Classes' },
                 {
                     id: 'my-info', icon: ProfileIcon3D, label: 'My Info', isCollapsible: true,
                     items: [
                         { id: 'teacher-profile', icon: ProfileIcon3D, label: 'Profile' },
+                        { id: 'my-profile', icon: ProfileIcon3D, label: 'Account' },
                     ]
                 },
-                {
-                    id: 'student-records', icon: StudentIcon3D, label: 'Learner Records', isCollapsible: true,
-                    items: [
-                        { id: 'students', icon: StudentIcon3D, label: 'Learners' },
-                    ]
-                },
+                { id: 'students', icon: StudentIcon3D, label: 'Learners' },
                 {
                     id: 'academics', icon: EnterGradeIcon3D, label: 'Academics', isCollapsible: true,
                     items: [
                         { id: 'grades', icon: EnterGradeIcon3D, label: 'Grades' },
-                        { id: 'subjects', icon: SubjectsIcon3D, label: 'Subjects' },
-                        { id: 'subject-enrollment', icon: EnrollmentIcon3D, label: 'Subject Enrollment' },
                         { id: 'attendance-mgmt', icon: ScheduleIcon3D, label: 'Attendance' },
                         { id: 'schedule-mgmt', icon: ScheduleIcon3D, label: 'Schedules' },
                         { id: 'assignment-mgmt', icon: ReportsIcon3D, label: 'Assignments' },
                         { id: 'exam-mgmt', icon: ReportsIcon3D, label: 'Exams' },
+                        { id: 'lesson-plans', icon: NotebookIcon3D, label: 'Lesson Plans' },
                     ]
                 },
                 { id: 'messages', icon: EventsIcon3D, label: 'Messages' },
+                { id: 'requests', icon: ImportIcon3D, label: 'Requests' },
                 { id: 'zoom', icon: TeacherIcon3D, label: 'Virtual Classes' },
                 {
                     id: 'resources', icon: LibraryIcon3D, label: 'Resources', isCollapsible: true,
