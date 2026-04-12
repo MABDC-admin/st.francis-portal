@@ -88,7 +88,9 @@ export const ActivityLogs = () => {
   });
 
   const filteredLogs = logs.filter(log => {
-    if (!searchQuery) return true;
+    if (!searchQuery) {
+      return true;
+    }
     const search = searchQuery.toLowerCase();
     return (
       log.user_email?.toLowerCase().includes(search) ||

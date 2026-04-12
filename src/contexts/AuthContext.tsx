@@ -2,7 +2,6 @@ import React, { createContext, useContext, useEffect, useState, useRef, useCallb
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { logAuditAction } from '@/hooks/useAuditLog';
-import { useSchool } from '@/contexts/SchoolContext';
 import { toast } from 'sonner';
 
 type AppRole = 'admin' | 'registrar' | 'teacher' | 'student' | 'parent' | 'finance' | 'principal' | 'it';
@@ -54,7 +53,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('Error fetching user role:', error);
         setRole('student');
       } else if (data) {
-        console.log('User role fetched:', data.role);
         setRole(data.role as AppRole);
       } else {
         console.warn('No role found for user, defaulting to student');
@@ -80,7 +78,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
 
@@ -100,7 +97,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session check:', session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -145,7 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error: error as Error | null };
   };
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     try {
       if (user) {
         await logAuditAction({ action: 'logout', status: 'success' }, user.id);
@@ -161,7 +157,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.warn('Sign out warning:', error);
     }
-  };
+  }, [user]);
 
   const impersonate = (target: { id: string, role: AppRole, full_name?: string | null }) => {
     if (role !== 'admin') {
@@ -199,9 +195,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const warningRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resetTimer = useCallback(() => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    if (warningRef.current) clearTimeout(warningRef.current);
-    if (!user) return;
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    if (warningRef.current) {
+      clearTimeout(warningRef.current);
+    }
+    if (!user) {
+      return;
+    }
 
     // Warning at 28 min
     warningRef.current = setTimeout(() => {
@@ -210,13 +212,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Logout at 30 min
     timeoutRef.current = setTimeout(() => {
-      signOut();
+      void signOut();
       toast.info('Session expired due to inactivity');
     }, 30 * 60 * 1000);
-  }, [user]);
+  }, [user, signOut]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      return;
+    }
 
     const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
     const handler = () => resetTimer();
@@ -226,8 +230,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => {
       events.forEach(e => window.removeEventListener(e, handler));
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      if (warningRef.current) clearTimeout(warningRef.current);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      if (warningRef.current) {
+        clearTimeout(warningRef.current);
+      }
     };
   }, [user, resetTimer]);
 

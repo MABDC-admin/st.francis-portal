@@ -13,6 +13,13 @@ import { ActivityLogs } from './ActivityLogs';
 import { PermissionManagement } from './PermissionManagement';
 import { DataQualityDashboard } from './DataQualityDashboard';
 
+type AdminSystemAction = 'reset_students' | 'delete_all_users';
+
+interface AdminSystemActionResponse {
+  success?: boolean;
+  message?: string;
+}
+
 export const AdminPanel = () => {
   const [isResetting, setIsResetting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -22,6 +29,37 @@ export const AdminPanel = () => {
   const [isDeletingAllUsers, setIsDeletingAllUsers] = useState(false);
   const queryClient = useQueryClient();
 
+  const getErrorMessage = (error: unknown) => {
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    if (error && typeof error === 'object' && 'message' in error) {
+      const message = (error as { message?: unknown }).message;
+      if (typeof message === 'string' && message) {
+        return message;
+      }
+    }
+
+    return 'Unknown error';
+  };
+
+  const runAdminSystemAction = async (
+    action: AdminSystemAction,
+    confirmationText: string,
+  ) => {
+    const { data, error } = await supabase.rpc('admin_system_action', {
+      p_action: action,
+      p_confirmation_text: confirmationText,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    return data as AdminSystemActionResponse;
+  };
+
   const handleDeleteAllUsers = async () => {
     if (confirmDeleteAllText !== 'DELETE ALL USERS') {
       toast.error('Please type DELETE ALL USERS to confirm');
@@ -30,57 +68,16 @@ export const AdminPanel = () => {
 
     setIsDeletingAllUsers(true);
     try {
-      // Step 1: Delete all student-related data first (from handleResetStudents)
-      await supabase.from('student_assessments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      await supabase.from('student_grades').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      await supabase.from('raw_scores').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      await supabase.from('student_attendance').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      await supabase.from('payments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      await supabase.from('student_documents').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      await supabase.from('students').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-
-      // Step 2: Delete all user credentials
-      const { error: credsError } = await supabase
-        .from('user_credentials')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
-      
-      if (credsError) throw new Error(`Failed to delete credentials: ${credsError.message}`);
-
-      // Step 3: Delete user roles
-      const { error: rolesError } = await supabase
-        .from('user_roles')
-        .delete()
-        .neq('user_id', '00000000-0000-0000-0000-000000000000');
-      
-      if (rolesError) throw new Error(`Failed to delete roles: ${rolesError.message}`);
-
-      // Step 4: Delete user school access
-      const { error: accessError } = await supabase
-        .from('user_school_access')
-        .delete()
-        .neq('user_id', '00000000-0000-0000-0000-000000000000');
-      
-      if (accessError) throw new Error(`Failed to delete school access: ${accessError.message}`);
-
-      // Step 5: Delete profiles (this will cascade to auth.users via trigger if set up)
-      const { error: profilesError } = await supabase
-        .from('profiles')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
-      
-      if (profilesError) throw new Error(`Failed to delete profiles: ${profilesError.message}`);
-
-      // Step 6: Delete from auth.users (requires admin privileges)
-      // Note: This requires RPC call or admin API, skipping for now as profiles deletion should trigger cascade
+      const result = await runAdminSystemAction('delete_all_users', confirmDeleteAllText);
 
       await queryClient.invalidateQueries();
-      toast.success('All user accounts, students, teachers, and staff have been deleted');
+      toast.success(result.message || 'All user accounts have been deleted');
       setShowDeleteAllUsers(false);
       setConfirmDeleteAllText('');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Delete all users error:', error);
-      toast.error('Failed to delete all users: ' + error.message);
+      const message = getErrorMessage(error);
+      toast.error(`Failed to delete all users: ${message}`);
     } finally {
       setIsDeletingAllUsers(false);
     }
@@ -94,78 +91,16 @@ export const AdminPanel = () => {
 
     setIsResetting(true);
     try {
-      // Delete in order to respect foreign key constraints
-      // 1. Delete student assessments first (references students)
-      const { error: assessmentError } = await supabase
-        .from('student_assessments')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
-      
-      if (assessmentError) throw new Error(`Failed to delete assessments: ${assessmentError.message}`);
-
-      // 2. Delete student grades
-      const { error: gradesError } = await supabase
-        .from('student_grades')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
-      
-      if (gradesError) throw new Error(`Failed to delete grades: ${gradesError.message}`);
-
-      // 3. Delete raw scores
-      const { error: scoresError } = await supabase
-        .from('raw_scores')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
-      
-      if (scoresError) throw new Error(`Failed to delete scores: ${scoresError.message}`);
-
-      // 4. Delete attendance records
-      const { error: attendanceError } = await supabase
-        .from('student_attendance')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
-      
-      if (attendanceError) throw new Error(`Failed to delete attendance: ${attendanceError.message}`);
-
-      // 5. Delete payments
-      const { error: paymentsError } = await supabase
-        .from('payments')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
-      
-      if (paymentsError) throw new Error(`Failed to delete payments: ${paymentsError.message}`);
-
-      // 6. Delete student documents
-      const { error: docsError } = await supabase
-        .from('student_documents')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
-      
-      if (docsError) throw new Error(`Failed to delete documents: ${docsError.message}`);
-
-      // 7. Delete user credentials linked to students
-      const { error: credsError } = await supabase
-        .from('user_credentials')
-        .delete()
-        .not('student_id', 'is', null);
-      
-      if (credsError) throw new Error(`Failed to delete credentials: ${credsError.message}`);
-
-      // 8. Finally delete students
-      const { error: studentsError } = await supabase
-        .from('students')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
-
-      if (studentsError) throw new Error(`Failed to delete students: ${studentsError.message}`);
+      const result = await runAdminSystemAction('reset_students', confirmText);
 
       await queryClient.invalidateQueries({ queryKey: ['students'] });
-      toast.success('All learner records and related data have been deleted');
+      toast.success(result.message || 'All learner records have been deleted');
       setShowConfirm(false);
       setConfirmText('');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Reset error:', error);
-      toast.error('Failed to reset: ' + error.message);
+      const message = getErrorMessage(error);
+      toast.error(`Failed to reset: ${message}`);
     } finally {
       setIsResetting(false);
     }

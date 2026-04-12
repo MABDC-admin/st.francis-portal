@@ -26,7 +26,7 @@ export const SCHOOL_YEARS = Array.from({ length: 15 }, (_, i) => {
 });
 
 export const SCHOOLS = [
-    { id: 'STFXSA', name: 'St. Francis Xavier Smart Academy Inc', acronym: 'STFXSA' },
+    { id: 'SFXSAI', name: 'St. Francis Xavier Smart Academy Inc', acronym: 'SFXSAI' },
 ];
 
 export const GENDERS = ['Male', 'Female'];
@@ -45,18 +45,18 @@ export const isKindergartenLevel = (gradeLevel: string): boolean => {
 
 // Normalize legacy grade level formats to DepEd-compliant values
 export const normalizeGradeLevel = (level: string): string => {
-    if (!level) return level;
+    if (!level) {return level;}
     const trimmed = level.trim();
 
     // Handle "Level X" -> "Grade X"
     const levelMatch = trimmed.match(/^Level\s+(\d+)$/i);
-    if (levelMatch) return `Grade ${levelMatch[1]}`;
+    if (levelMatch) {return `Grade ${levelMatch[1]}`;}
 
     // Handle "Kinder 1" / "Kinder 2" -> "Kindergarten"
-    if (/^Kinder\s*[12]?$/i.test(trimmed)) return 'Kindergarten';
+    if (/^Kinder\s*[12]?$/i.test(trimmed)) {return 'Kindergarten';}
 
     // Handle "Kinder" alone
-    if (trimmed.toLowerCase() === 'kinder') return 'Kindergarten';
+    if (trimmed.toLowerCase() === 'kinder') {return 'Kindergarten';}
 
     return trimmed;
 };

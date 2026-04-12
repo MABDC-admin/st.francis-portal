@@ -11,7 +11,6 @@ import { toast } from 'sonner';
 import { GraduationCap, Lock, User, RefreshCcw, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { z } from 'zod';
 import { useSchoolSettings } from '@/hooks/useSchoolSettings';
-import { cn } from '@/lib/utils';
 
 const loginSchema = z.object({
   email: z.string().min(1, 'Email or LRN is required'),
@@ -25,7 +24,7 @@ const Auth = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
-  const { data: schoolSettings } = useSchoolSettings('STFXSA');
+  const { data: schoolSettings } = useSchoolSettings(selectedSchool);
 
   const [loginData, setLoginData] = useState({ email: '', password: '' });
   const [rememberMe, setRememberMe] = useState(false);
@@ -48,7 +47,7 @@ const Auth = () => {
 
   const logAudit = async (action: string, status: string, error?: string) => {
     try {
-      await (supabase.from('audit_logs') as any).insert({
+      await supabase.from('audit_logs').insert({
         lrn: loginData.email.includes('@') ? null : loginData.email,
         action,
         status,

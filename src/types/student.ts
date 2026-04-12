@@ -48,6 +48,8 @@ export interface StudentFormData {
   student_name: string;
   level: string;
   school?: string;
+  school_id?: string;
+  academic_year_id?: string;
   birth_date?: string;
   age?: number;
   gender?: string;

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { UserPlus, Loader2, AlertCircle, CheckCircle2, Printer, Key } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -24,12 +24,12 @@ import { useCreateStudent } from '@/hooks/useStudents';
 import { toast } from 'sonner';
 import { differenceInYears } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
-import { GRADE_LEVELS, SHS_STRANDS, GENDERS, requiresStrand, isKindergartenLevel, KINDER_LEVELS } from './constants';
+import { GRADE_LEVELS, GENDERS, KINDER_LEVELS } from './constants';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 
 const SCHOOLS = [
-  { id: 'STFXSA', name: 'St. Francis Xavier Smart Academy Inc', acronym: 'STFXSA' },
+  { id: 'SFXSAI', name: 'St. Francis Xavier Smart Academy Inc', acronym: 'SFXSAI' },
 ];
 
 interface FormErrors {
@@ -71,8 +71,7 @@ export const EnrollmentForm = () => {
     previous_school: '',
   });
 
-  // Update school when selectedSchool changes
-  useMemo(() => {
+  useEffect(() => {
     setFormData(prev => ({ ...prev, school: selectedSchool }));
   }, [selectedSchool]);
 
@@ -91,7 +90,7 @@ export const EnrollmentForm = () => {
 
   // Auto-calculate age from birth date
   const calculatedAge = useMemo(() => {
-    if (!formData.birth_date) return null;
+    if (!formData.birth_date) {return null;}
     const birthDate = new Date(formData.birth_date);
     const age = differenceInYears(new Date(), birthDate);
     return age >= 0 ? age : null;
@@ -100,38 +99,38 @@ export const EnrollmentForm = () => {
   const validateField = (field: string, value: string): string | undefined => {
     switch (field) {
       case 'student_name':
-        if (!value.trim()) return 'Full name is required';
-        if (value.trim().length < 2) return 'Name must be at least 2 characters';
+        if (!value.trim()) {return 'Full name is required';}
+        if (value.trim().length < 2) {return 'Name must be at least 2 characters';}
         break;
       case 'lrn':
-        if (!isKinderLevel && !value.trim()) return 'LRN is required for this grade level';
-        if (value.trim() && !/^\d{12}$/.test(value.trim())) return 'LRN must be exactly 12 digits';
+        if (!isKinderLevel && !value.trim()) {return 'LRN is required for this grade level';}
+        if (value.trim() && !/^\d{12}$/.test(value.trim())) {return 'LRN must be exactly 12 digits';}
         break;
       case 'level':
-        if (!value) return 'Grade level is required';
+        if (!value) {return 'Grade level is required';}
         break;
       case 'birth_date':
-        if (!value) return 'Birth date is required';
+        if (!value) {return 'Birth date is required';}
         break;
       case 'gender':
-        if (!value) return 'Gender is required';
+        if (!value) {return 'Gender is required';}
         break;
       case 'mother_maiden_name':
-        if (!value.trim()) return "Mother's maiden name is required";
+        if (!value.trim()) {return "Mother's maiden name is required";}
         break;
       case 'mother_contact':
-        if (!value.trim()) return "Mother's contact is required";
-        if (!/^[\d+\-\s()]+$/.test(value.trim())) return 'Invalid phone number format';
+        if (!value.trim()) {return "Mother's contact is required";}
+        if (!/^[\d+\-\s()]+$/.test(value.trim())) {return 'Invalid phone number format';}
         break;
       case 'father_name':
-        if (!value.trim()) return "Father's name is required";
+        if (!value.trim()) {return "Father's name is required";}
         break;
       case 'father_contact':
-        if (!value.trim()) return "Father's contact is required";
-        if (!/^[\d+\-\s()]+$/.test(value.trim())) return 'Invalid phone number format';
+        if (!value.trim()) {return "Father's contact is required";}
+        if (!/^[\d+\-\s()]+$/.test(value.trim())) {return 'Invalid phone number format';}
         break;
       case 'phil_address':
-        if (!value.trim()) return 'Philippine address is required';
+        if (!value.trim()) {return 'Philippine address is required';}
         break;
     }
     return undefined;
@@ -240,7 +239,7 @@ export const EnrollmentForm = () => {
         previous_school: formData.previous_school.trim() || undefined,
         academic_year_id: selectedYearId,
         school_id: resolvedSchoolId,
-      } as any);
+      });
 
       // Auto-create student account
       try {
@@ -270,15 +269,16 @@ export const EnrollmentForm = () => {
       }
 
       setEnrollmentComplete(true);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Enrollment error:', error);
-      toast.error(error?.message || 'Failed to enroll student');
+      const message = error instanceof Error ? error.message : 'Failed to enroll student';
+      toast.error(message);
     }
   };
 
   const handlePrint = () => {
     const printContent = printRef.current;
-    if (!printContent) return;
+    if (!printContent) {return;}
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -389,7 +389,7 @@ export const EnrollmentForm = () => {
   };
 
   const FieldError = ({ error }: { error?: string }) => {
-    if (!error) return null;
+    if (!error) {return null;}
     return (
       <div className="flex items-center gap-1 text-destructive text-sm mt-1">
         <AlertCircle className="h-3 w-3" />
