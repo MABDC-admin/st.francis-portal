@@ -77,7 +77,7 @@ export const createServiceClient = (): SupabaseClient => {
  * Verify the Authorization header and return the authenticated user.
  * Returns an error Response if auth fails, or the user object if valid.
  */
-export const requireAuth = async (req: Request) => {
+export const requireAuth = async (req: Request): Promise<{ error: Response } | { user: any; userClient: SupabaseClient }> => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
         return { error: errorResponse('Missing Authorization header', 401, 'UNAUTHORIZED') };
@@ -106,7 +106,7 @@ export const requireRole = async (
     serviceClient: SupabaseClient,
     userId: string,
     allowedRoles: string[],
-) => {
+): Promise<{ error: Response } | { role: string }> => {
     const { data: roleData } = await serviceClient
         .from('user_roles')
         .select('role')
