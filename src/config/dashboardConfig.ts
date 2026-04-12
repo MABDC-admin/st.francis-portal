@@ -316,9 +316,7 @@ export const getNavGroupsForRole = (role: string | null): NavGroup[] => {
                     id: 'resources', icon: LibraryIcon3D, label: 'Resources', isCollapsible: true,
                     items: [
                         { id: 'library', icon: LibraryIcon3D, label: 'Library' },
-                        { id: 'canva', icon: CanvaIcon3D, label: 'Canva Studio' },
                         { id: 'notebook', icon: NotebookIcon3D, label: 'Notebook LLM' },
-                        { id: 'ai-chat', icon: NotebookIcon3D, label: 'AI Chat' },
                     ]
                 },
                 { id: 'reports', icon: ReportsIcon3D, label: 'Reports' },

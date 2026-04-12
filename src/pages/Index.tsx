@@ -506,8 +506,8 @@ const Index = () => {
           <LibraryPage deepLinkBookId={bookId} deepLinkPage={searchParams.get('page') ? parseInt(searchParams.get('page')!) : undefined} />
         )}
 
-        {/* Canva Studio - Admin and Teacher only */}
-        {activeTab === 'canva' && (role === 'admin' || role === 'teacher') && (
+        {/* Canva Studio - Admin only */}
+        {activeTab === 'canva' && role === 'admin' && (
           <CanvaStudio />
         )}
 
@@ -523,8 +523,8 @@ const Index = () => {
           </SectionErrorBoundary>
         )}
 
-        {/* AI Chat - Admin, Teacher, Registrar, and IT */}
-        {activeTab === 'ai-chat' && (role === 'admin' || role === 'teacher' || role === 'registrar' || role === 'it') && (
+        {/* AI Chat - Admin, Registrar, and IT */}
+        {activeTab === 'ai-chat' && (role === 'admin' || role === 'registrar' || role === 'it') && (
           <SectionErrorBoundary>
             <AIChatPage />
           </SectionErrorBoundary>
