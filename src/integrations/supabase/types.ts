@@ -881,7 +881,7 @@ export type Database = {
           status: string
           terminal_id: string | null
           updated_at: string
-          variance_cash: number
+          variance_cash: number | null
         }
         Insert: {
           academic_year_id: string
@@ -899,7 +899,7 @@ export type Database = {
           status?: string
           terminal_id?: string | null
           updated_at?: string
-          variance_cash?: number
+          variance_cash?: number | null
         }
         Update: {
           academic_year_id?: string
@@ -917,7 +917,7 @@ export type Database = {
           status?: string
           terminal_id?: string | null
           updated_at?: string
-          variance_cash?: number
+          variance_cash?: number | null
         }
         Relationships: [
           {
@@ -1563,56 +1563,6 @@ export type Database = {
           },
         ]
       }
-      finance_audit_logs: {
-        Row: {
-          action: string
-          created_at: string
-          id: string
-          ip_address: string | null
-          new_values: Json | null
-          old_values: Json | null
-          reason: string | null
-          record_id: string | null
-          school_id: string
-          table_name: string
-          user_id: string | null
-        }
-        Insert: {
-          action: string
-          created_at?: string
-          id?: string
-          ip_address?: string | null
-          new_values?: Json | null
-          old_values?: Json | null
-          reason?: string | null
-          record_id?: string | null
-          school_id: string
-          table_name: string
-          user_id?: string | null
-        }
-        Update: {
-          action?: string
-          created_at?: string
-          id?: string
-          ip_address?: string | null
-          new_values?: Json | null
-          old_values?: Json | null
-          reason?: string | null
-          record_id?: string | null
-          school_id?: string
-          table_name?: string
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "finance_audit_logs_school_id_fkey"
-            columns: ["school_id"]
-            isOneToOne: false
-            referencedRelation: "schools"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       finance_approval_requests: {
         Row: {
           academic_year_id: string
@@ -1694,6 +1644,56 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          ip_address: string | null
+          new_values: Json | null
+          old_values: Json | null
+          reason: string | null
+          record_id: string | null
+          school_id: string
+          table_name: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          new_values?: Json | null
+          old_values?: Json | null
+          reason?: string | null
+          record_id?: string | null
+          school_id: string
+          table_name: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          new_values?: Json | null
+          old_values?: Json | null
+          reason?: string | null
+          record_id?: string | null
+          school_id?: string
+          table_name?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_audit_logs_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
             referencedColumns: ["id"]
           },
         ]
@@ -4092,11 +4092,12 @@ export type Database = {
       students: {
         Row: {
           academic_year_id: string
+          achievements: string | null
           age: number | null
           birth_date: string | null
           created_at: string
-          disabilities_special_needs: string | null
           dialects: string | null
+          disabilities_special_needs: string | null
           emergency_contact_name: string | null
           emergency_contact_number: string | null
           emergency_contact_relationship: string | null
@@ -4106,8 +4107,9 @@ export type Database = {
           household_information: string | null
           id: string
           immunization_record: string | null
-          level: string
+          interventions_provided: string | null
           learning_style: string | null
+          level: string
           lrn: string
           medical_history: string | null
           mother_contact: string | null
@@ -4128,16 +4130,15 @@ export type Database = {
           student_name: string
           uae_address: string | null
           updated_at: string
-          interventions_provided: string | null
-          achievements: string | null
         }
         Insert: {
           academic_year_id: string
+          achievements?: string | null
           age?: number | null
           birth_date?: string | null
           created_at?: string
-          disabilities_special_needs?: string | null
           dialects?: string | null
+          disabilities_special_needs?: string | null
           emergency_contact_name?: string | null
           emergency_contact_number?: string | null
           emergency_contact_relationship?: string | null
@@ -4147,8 +4148,9 @@ export type Database = {
           household_information?: string | null
           id?: string
           immunization_record?: string | null
-          level: string
+          interventions_provided?: string | null
           learning_style?: string | null
+          level: string
           lrn: string
           medical_history?: string | null
           mother_contact?: string | null
@@ -4169,16 +4171,15 @@ export type Database = {
           student_name: string
           uae_address?: string | null
           updated_at?: string
-          interventions_provided?: string | null
-          achievements?: string | null
         }
         Update: {
           academic_year_id?: string
+          achievements?: string | null
           age?: number | null
           birth_date?: string | null
           created_at?: string
-          disabilities_special_needs?: string | null
           dialects?: string | null
+          disabilities_special_needs?: string | null
           emergency_contact_name?: string | null
           emergency_contact_number?: string | null
           emergency_contact_relationship?: string | null
@@ -4188,8 +4189,9 @@ export type Database = {
           household_information?: string | null
           id?: string
           immunization_record?: string | null
-          level?: string
+          interventions_provided?: string | null
           learning_style?: string | null
+          level?: string
           lrn?: string
           medical_history?: string | null
           mother_contact?: string | null
@@ -4210,8 +4212,6 @@ export type Database = {
           student_name?: string
           uae_address?: string | null
           updated_at?: string
-          interventions_provided?: string | null
-          achievements?: string | null
         }
         Relationships: [
           {
@@ -4919,11 +4919,8 @@ export type Database = {
         Args: { p_action: string; p_confirmation_text: string }
         Returns: Json
       }
-      current_teacher_id: {
-        Args: Record<PropertyKey, never>
-        Returns: string | null
-      }
       check_finance_access: { Args: { p_school_id: string }; Returns: boolean }
+      current_teacher_id: { Args: never; Returns: string }
       get_user_conversation_ids: {
         Args: { _user_id: string }
         Returns: string[]
