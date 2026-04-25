@@ -41,7 +41,7 @@ export const TeacherPortal = ({ activeSection = 'dashboard', onNavigate }: Teach
   const { selectedYearId } = useAcademicYear();
   const { data: schedules = [] } = useTeacherSchedule(teacher?.id, schoolId, selectedYearId, teacher?.grade_level);
   const { data: studentCount = 0 } = useTeacherStudentCount(teacher?.id, schoolId, selectedYearId, teacher?.grade_level);
-  const typedSchedules = schedules as TeacherScheduleItem[];
+  const typedSchedules = schedules as unknown as TeacherScheduleItem[];
   const todaySchedules = typedSchedules.filter((schedule) => schedule.day_of_week === new Date().getDay());
 
   const scheduleSubjectNames = Array.from(
