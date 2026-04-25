@@ -120,7 +120,7 @@ export const FinanceApprovalQueue = () => {
         reason: reason.trim(),
         details: details.trim() ? { notes: details.trim() } : null,
         status: 'pending',
-        requested_by: user?.id ?? null,
+        requested_by: user?.id ?? undefined,
       };
 
       const { error } = await supabase.from('finance_approval_requests').insert(payload);
