@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import { format } from 'date-fns';
+import { loadImageAsDataUrl, resolveSchoolLogo } from '@/lib/schoolBranding';
 
 interface StudentData {
     student_name: string;
@@ -24,9 +25,10 @@ interface SchoolMetadata {
     region: string;
     division: string;
     district: string;
+    schoolLogoUrl?: string;
 }
 
-export const generateAnnex1 = (student: StudentData, school: SchoolMetadata) => {
+export const generateAnnex1 = async (student: StudentData, school: SchoolMetadata) => {
     const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
@@ -42,16 +44,13 @@ export const generateAnnex1 = (student: StudentData, school: SchoolMetadata) => 
     doc.setFontSize(8);
     doc.text('Annex 1', pageWidth - 25, margin + 5);
 
-    // Graphical Seal Placeholders
-    const drawSealPlaceholder = (x: number, y: number, label: string) => {
-        doc.setDrawColor(200, 200, 200);
-        doc.circle(x, y, 12, 'D');
-        doc.setFontSize(6);
-        doc.text(label, x, y, { align: 'center' });
-    };
-
-    drawSealPlaceholder(margin + 15, margin + 15, 'Republic of\nthe Philippines');
-    drawSealPlaceholder(pageWidth - margin - 15, margin + 15, 'Department\nof Education');
+    try {
+        const logoDataUrl = await loadImageAsDataUrl(resolveSchoolLogo(school.schoolLogoUrl));
+        doc.addImage(logoDataUrl, 'PNG', margin + 4, margin + 2, 22, 22);
+        doc.addImage(logoDataUrl, 'PNG', pageWidth - margin - 26, margin + 2, 22, 22);
+    } catch {
+        // Keep the form export working even if the logo cannot be loaded.
+    }
 
     doc.setFontSize(10);
     doc.text('Republic of the Philippines', pageWidth / 2, margin + 10, { align: 'center' });

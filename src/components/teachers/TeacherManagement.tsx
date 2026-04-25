@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { UserPlus, Loader2, Search, Edit, Trash2, Mail, Phone, BookOpen, GraduationCap, KeyRound } from 'lucide-react';
+import { UserPlus, Loader2, Search, Edit, Trash2, Mail, BookOpen, GraduationCap, KeyRound, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ import { useSchool, SchoolType } from '@/contexts/SchoolContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { TeacherCredentialsTab } from './TeacherCredentialsTab';
 import { SeedTeachersButton } from './SeedTeachersButton';
+import { TeacherProfileDialog } from './TeacherProfileDialog';
 
 const GRADE_LEVELS = [
   'Kindergarten',
@@ -62,6 +63,7 @@ export const TeacherManagement = () => {
   const [quickAssignTeacher, setQuickAssignTeacher] = useState<Teacher | null>(null);
   const [quickAssignLevel, setQuickAssignLevel] = useState('');
   const [credentialsTeacher, setCredentialsTeacher] = useState<Teacher | null>(null);
+  const [profileTeacher, setProfileTeacher] = useState<Teacher | null>(null);
   const isAdmin = role === 'admin';
 
   const fetchTeachers = async () => {
@@ -145,6 +147,7 @@ export const TeacherManagement = () => {
               action: 'create_teacher',
               email: formData.email,
               fullName: formData.full_name,
+              school: formData.school || 'SFXSAI',
             },
           });
 
@@ -264,7 +267,9 @@ export const TeacherManagement = () => {
       <Card>
         <CardHeader>
           <CardTitle>Teacher List</CardTitle>
-          <CardDescription>{teachers.length} teachers registered</CardDescription>
+          <CardDescription>
+            {teachers.length} teachers registered. Click any teacher row to open the profile.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -287,7 +292,11 @@ export const TeacherManagement = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredTeachers.map((teacher) => (
-                    <TableRow key={teacher.id}>
+                    <TableRow
+                      key={teacher.id}
+                      className="cursor-pointer hover:bg-muted/40"
+                      onClick={() => setProfileTeacher(teacher)}
+                    >
                       <TableCell className="font-mono text-sm">{teacher.employee_id}</TableCell>
                       <TableCell className="font-medium">{teacher.full_name}</TableCell>
                       <TableCell>
@@ -305,12 +314,26 @@ export const TeacherManagement = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="View Profile"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setProfileTeacher(teacher);
+                            }}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
                           {isAdmin && (
                             <Button
                               variant="ghost"
                               size="icon"
                               title="View Credentials"
-                              onClick={() => setCredentialsTeacher(teacher)}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setCredentialsTeacher(teacher);
+                              }}
                             >
                               <KeyRound className="h-4 w-4" />
                             </Button>
@@ -319,17 +342,32 @@ export const TeacherManagement = () => {
                             variant="ghost"
                             size="icon"
                             title="Assign Grade Level"
-                            onClick={() => {
+                            onClick={(event) => {
+                              event.stopPropagation();
                               setQuickAssignTeacher(teacher);
                               setQuickAssignLevel(teacher.grade_level || '');
                             }}
                           >
                             <GraduationCap className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleOpenModal(teacher)}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleOpenModal(teacher);
+                            }}
+                          >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(teacher)}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleDelete(teacher);
+                            }}
+                          >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
@@ -512,6 +550,15 @@ export const TeacherManagement = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <TeacherProfileDialog
+        teacher={profileTeacher}
+        open={!!profileTeacher}
+        onOpenChange={(open) => {
+          if (!open) setProfileTeacher(null);
+        }}
+        selectedSchool={selectedSchool}
+      />
     </div>
   );
 };

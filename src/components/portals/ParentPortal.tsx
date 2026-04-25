@@ -4,9 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSchool } from '@/contexts/SchoolContext';
+import { SchoolLogo } from '@/components/branding/SchoolLogo';
 
 export const ParentPortal = () => {
   const { user, signOut } = useAuth();
+  const { schoolTheme } = useSchool();
 
   // Placeholder data - will be connected to linked children data
   const linkedChildren = [
@@ -50,6 +53,10 @@ export const ParentPortal = () => {
         className="flex items-center justify-between"
       >
         <div>
+          <div className="mb-2 flex items-center gap-3">
+            <SchoolLogo src={schoolTheme.logoSrc} className="h-11 w-11 rounded-2xl border border-border/60 shadow-sm" />
+            <p className="text-sm font-medium text-muted-foreground">{schoolTheme.fullName}</p>
+          </div>
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Parent Portal</h1>
           <p className="text-muted-foreground mt-1">Monitor your children's academic progress</p>
         </div>

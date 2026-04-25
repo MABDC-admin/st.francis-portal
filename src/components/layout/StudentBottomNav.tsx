@@ -1,6 +1,6 @@
-import { STUDENT_ICONS, StudentPortalIcon } from '@/components/icons/StudentPortalIcons';
-import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { BookOpen, CalendarDays, ClipboardCheck, LayoutGrid, NotebookPen } from "lucide-react";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 interface StudentBottomNavProps {
   activeTab: string;
@@ -8,62 +8,43 @@ interface StudentBottomNavProps {
 }
 
 const navItems = [
-  { id: 'portal', label: 'Home', icon: '/assets/home.png' },
-  { id: 'student-schedule', label: 'Timetable', icon: '/assets/timetable.png' },
-  { id: 'student-assignments', label: 'Assignments', icon: '/assets/assignement.png' },
-  { id: 'student-grades', label: 'Grades', icon: '/assets/grades.png' },
-  { id: 'student-library', label: 'Library', icon: '/assets/library.png' },
+  { id: "portal", label: "Home", icon: LayoutGrid },
+  { id: "student-schedule", label: "Schedule", icon: CalendarDays },
+  { id: "student-assignments", label: "Tasks", icon: NotebookPen },
+  { id: "student-grades", label: "Grades", icon: ClipboardCheck },
+  { id: "student-library", label: "Library", icon: BookOpen },
 ];
 
 export const StudentBottomNav = ({ activeTab, onTabChange }: StudentBottomNavProps) => {
   return (
     <nav
-      className={cn(
-        "student-bottom-nav fixed bottom-0 left-0 right-0 z-50 lg:hidden",
-        "bg-white border-t border-slate-100",
-        "shadow-[0_-8px_32px_rgba(0,0,0,0.06)]"
-      )}
-      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-border/80 bg-card/98 shadow-[0_-12px_40px_rgba(15,23,42,0.08)] backdrop-blur md:hidden"
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <div className="flex items-center justify-around px-2 h-20">
+      <div className="grid grid-cols-5 gap-1 px-2 py-2">
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
+          const Icon = item.icon;
 
           return (
             <motion.button
               key={item.id}
-              whileTap={{ scale: 0.8 }}
+              whileTap={{ scale: 0.96 }}
               onClick={() => onTabChange(item.id)}
               className={cn(
-                "relative flex flex-col items-center justify-center gap-1 w-16 h-16 transition-all duration-300",
-                isActive ? "text-primary" : "text-slate-400"
+                "flex min-h-[62px] flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-center transition-all",
+                isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-muted/70",
               )}
             >
               <div
                 className={cn(
-                  "relative flex items-center justify-center h-11 w-11 transition-all duration-500",
-                  isActive ? "" : ""
+                  "flex h-10 w-10 items-center justify-center rounded-full transition-all",
+                  isActive ? "bg-primary text-primary-foreground shadow-glow" : "bg-muted text-muted-foreground",
                 )}
               >
-                <img
-                  src={item.icon}
-                  alt={item.label}
-                  className={cn(
-                    "w-full h-full object-contain drop-shadow-sm transition-all duration-500",
-                    isActive ? "drop-shadow-[0_4px_8px_rgba(0,0,0,0.15)]" : ""
-                  )}
-                />
-
-                {/* Active Glow Effect */}
-                {isActive && (
-                  <div className="absolute -inset-2 bg-primary/10 blur-xl rounded-full -z-10 animate-pulse" />
-                )}
+                <Icon className="h-[18px] w-[18px]" />
               </div>
-
-              <span className={cn(
-                "text-[8px] font-black uppercase tracking-tighter transition-all duration-300",
-                isActive ? "text-primary opacity-100" : "text-slate-500 opacity-100"
-              )}>
+              <span className={cn("text-[10px] font-semibold uppercase tracking-[0.16em]", isActive && "text-primary")}>
                 {item.label}
               </span>
             </motion.button>

@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import tailwindcssAnimate from "tailwindcss-animate";
 
 export default {
   darkMode: ["class"],
@@ -14,8 +15,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        sans: ['ui-sans-serif', 'system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'],
+        mono: ['"SFMono-Regular"', '"Cascadia Code"', '"JetBrains Mono"', 'monospace'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -73,9 +74,18 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        hrms: {
+          success: "hsl(var(--hrms-success))",
+          warning: "hsl(var(--hrms-warning))",
+          online: "hsl(var(--hrms-online))",
+          offline: "hsl(var(--hrms-offline))",
+          "blue-light": "hsl(var(--hrms-blue-light))",
+          "blue-dark": "hsl(var(--hrms-blue-dark))",
+        },
         stat: {
           purple: "hsl(var(--stat-purple))",
           "purple-light": "hsl(var(--stat-purple-light))",
+          "purple-dark": "hsl(var(--stat-purple-dark))",
           pink: "hsl(var(--stat-pink))",
           "pink-light": "hsl(var(--stat-pink-light))",
           yellow: "hsl(var(--stat-yellow))",
@@ -110,6 +120,18 @@ export default {
           from: { opacity: "0", transform: "scale(0.95)" },
           to: { opacity: "1", transform: "scale(1)" },
         },
+        "slide-in-right": {
+          from: { opacity: "0", transform: "translateX(14px)" },
+          to: { opacity: "1", transform: "translateX(0)" },
+        },
+        "pulse-glow": {
+          "0%, 100%": { boxShadow: "0 0 0 0 hsl(var(--primary) / 0.16)" },
+          "50%": { boxShadow: "0 0 0 8px hsl(var(--primary) / 0)" },
+        },
+        "count-up": {
+          from: { opacity: "0.6", transform: "translateY(10px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -117,8 +139,11 @@ export default {
         "fade-in": "fade-in 0.3s ease-out forwards",
         "slide-up": "slide-up 0.4s ease-out forwards",
         "scale-in": "scale-in 0.2s ease-out forwards",
+        "slide-in-right": "slide-in-right 0.3s ease-out forwards",
+        "pulse-glow": "pulse-glow 2s ease-in-out infinite",
+        "count-up": "count-up 0.5s ease-out forwards",
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [tailwindcssAnimate],
 } satisfies Config;

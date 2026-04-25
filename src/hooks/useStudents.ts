@@ -4,7 +4,7 @@ import { Student, StudentFormData } from '@/types/student';
 import { toast } from 'sonner';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
-import { getSchoolId } from '@/utils/schoolIdMap';
+import { useSchoolId } from '@/hooks/useSchoolId';
 import { studentSchema, formatValidationErrors } from '@/lib/validation';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -20,10 +20,10 @@ type StudentWithGrades = Database['public']['Tables']['students']['Row'] & {
 export const useStudents = () => {
   const { selectedSchool } = useSchool();
   const { selectedYearId } = useAcademicYear();
-  const schoolId = getSchoolId(selectedSchool);
+  const { data: schoolId } = useSchoolId();
 
   return useQuery({
-    queryKey: ['students', selectedSchool, selectedYearId],
+    queryKey: ['students', schoolId, selectedYearId],
     queryFn: async (): Promise<Student[]> => {
       if (!schoolId || !selectedYearId) {
         return [];
@@ -69,7 +69,7 @@ export const useCreateStudent = () => {
   const queryClient = useQueryClient();
   const { selectedSchool } = useSchool();
   const { selectedYearId } = useAcademicYear();
-  const schoolId = getSchoolId(selectedSchool);
+  const { data: schoolId } = useSchoolId();
 
   return useMutation({
     mutationFn: async (student: StudentFormData) => {
@@ -113,7 +113,7 @@ export const useUpdateStudent = () => {
   const queryClient = useQueryClient();
   const { selectedSchool } = useSchool();
   const { selectedYearId } = useAcademicYear();
-  const schoolId = getSchoolId(selectedSchool);
+  const { data: schoolId } = useSchoolId();
 
   return useMutation({
     mutationFn: async ({ id, ...student }: StudentFormData & { id: string }) => {
@@ -148,9 +148,8 @@ export const useUpdateStudent = () => {
 
 export const useDeleteStudent = () => {
   const queryClient = useQueryClient();
-  const { selectedSchool } = useSchool();
   const { selectedYearId } = useAcademicYear();
-  const schoolId = getSchoolId(selectedSchool);
+  const { data: schoolId } = useSchoolId();
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -181,7 +180,7 @@ export const useBulkCreateStudents = () => {
   const queryClient = useQueryClient();
   const { selectedSchool } = useSchool();
   const { selectedYearId } = useAcademicYear();
-  const schoolId = getSchoolId(selectedSchool);
+  const { data: schoolId } = useSchoolId();
 
   return useMutation({
     mutationFn: async (students: StudentFormData[]) => {

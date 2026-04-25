@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Calendar, Maximize2, Plus, Loader2, Trash2, Edit2 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -15,6 +15,16 @@ interface SchoolEvent {
   event_date: string;
   event_type: string;
   school?: string | null;
+}
+
+interface SchoolEventMutationPayload {
+  event_type: string;
+  title: string;
+}
+
+interface SchoolEventCreatePayload extends SchoolEventMutationPayload {
+  event_date: string;
+  school: SchoolType;
 }
 
 import { useSchool } from '@/contexts/SchoolContext';
@@ -63,7 +73,7 @@ export const DashboardCalendar = () => {
   const [eventType, setEventType] = useState('event');
 
   // Update calendarSchool when selectedSchool changes, but allow manual override
-  useMemo(() => {
+  useEffect(() => {
     setCalendarSchool(selectedSchool);
   }, [selectedSchool]);
 
@@ -95,7 +105,7 @@ export const DashboardCalendar = () => {
   });
 
   const createEventMutation = useMutation({
-    mutationFn: async (newEvent: any) => {
+    mutationFn: async (newEvent: SchoolEventCreatePayload) => {
       const { error } = await supabase.from('school_events').insert([newEvent]);
       if (error) throw error;
     },
@@ -108,7 +118,7 @@ export const DashboardCalendar = () => {
   });
 
   const updateEventMutation = useMutation({
-    mutationFn: async (updatedEvent: any) => {
+    mutationFn: async (updatedEvent: SchoolEventMutationPayload & { id: string }) => {
       const { error } = await supabase
         .from('school_events')
         .update({ title: updatedEvent.title, event_type: updatedEvent.event_type })

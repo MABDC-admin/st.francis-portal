@@ -5,6 +5,9 @@ import { logAuditAction } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
 
 type AppRole = 'admin' | 'registrar' | 'teacher' | 'student' | 'parent' | 'finance' | 'principal' | 'it';
+type ApprovalStatus = 'none' | 'pending' | 'approved' | 'rejected';
+
+const ROLE_PRIORITY: AppRole[] = ['admin', 'principal', 'registrar', 'finance', 'it', 'teacher', 'parent', 'student'];
 
 interface AuthContextType {
   user: User | null;
@@ -12,6 +15,7 @@ interface AuthContextType {
   role: AppRole | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signInWithGoogle: () => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   hasRole: (role: AppRole) => boolean;
@@ -20,6 +24,9 @@ interface AuthContextType {
   isImpersonating: boolean;
   actualRole: AppRole | null;
   actualUser: User | null;
+  approvalStatus: ApprovalStatus;
+  approvalAssignedRole: AppRole | null;
+  isGoogleApprovalRequired: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,32 +44,157 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [approvalStatus, setApprovalStatus] = useState<ApprovalStatus>('none');
+  const [approvalAssignedRole, setApprovalAssignedRole] = useState<AppRole | null>(null);
 
   // Impersonation state
   const [impersonatedUser, setImpersonatedUser] = useState<{ id: string, role: AppRole, full_name?: string | null } | null>(null);
 
-  const fetchUserRole = async (userId: string) => {
+  const resolvePrimaryRole = (roles: AppRole[]): AppRole | null => {
+    for (const preferredRole of ROLE_PRIORITY) {
+      if (roles.includes(preferredRole)) {
+        return preferredRole;
+      }
+    }
+
+    return roles[0] ?? null;
+  };
+
+  const isGoogleAuthUser = (authUser: User | null) => {
+    if (!authUser) return false;
+
+    const directProvider = typeof authUser.app_metadata?.provider === 'string'
+      ? authUser.app_metadata.provider
+      : null;
+
+    if (directProvider === 'google') {
+      return true;
+    }
+
+    const identities = Array.isArray((authUser as User & { identities?: Array<{ provider?: string }> }).identities)
+      ? (authUser as User & { identities?: Array<{ provider?: string }> }).identities
+      : [];
+
+    return identities.some((identity) => identity.provider === 'google');
+  };
+
+  const ensureGoogleApprovalRecord = async (authUser: User) => {
+    const approvalsTable = 'google_login_approvals' as any;
+    const { data: existing, error } = await supabase
+      .from(approvalsTable)
+      .select('status, assigned_role')
+      .eq('user_id', authUser.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error checking Google approval state:', error);
+      return { status: 'pending' as ApprovalStatus, assignedRole: null as AppRole | null };
+    }
+
+    if (existing) {
+      return {
+        status: (existing.status as ApprovalStatus) || 'pending',
+        assignedRole: (existing.assigned_role as AppRole | null) || null,
+      };
+    }
+
+    const metadata = authUser.user_metadata || {};
+    const { error: insertError } = await supabase
+      .from(approvalsTable)
+      .insert({
+        user_id: authUser.id,
+        email: authUser.email ?? null,
+        full_name: metadata.full_name || metadata.name || null,
+        avatar_url: metadata.avatar_url || metadata.picture || null,
+        provider: 'google',
+        status: 'pending',
+      });
+
+    if (insertError) {
+      console.error('Error creating Google approval record:', insertError);
+    }
+
+    return { status: 'pending' as ApprovalStatus, assignedRole: null as AppRole | null };
+  };
+
+  const fetchApprovalState = async (authUser: User | null) => {
+    if (!isGoogleAuthUser(authUser)) {
+      setApprovalStatus('none');
+      setApprovalAssignedRole(null);
+      return { status: 'none' as ApprovalStatus, assignedRole: null as AppRole | null };
+    }
+
+    const approval = await ensureGoogleApprovalRecord(authUser);
+    setApprovalStatus(approval.status);
+    setApprovalAssignedRole(approval.assignedRole);
+    return approval;
+  };
+
+  const fetchUserRole = async (userId: string, options?: { fallbackToStudent?: boolean }) => {
+    const fallbackToStudent = options?.fallbackToStudent ?? true;
+
     try {
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', userId)
-        .maybeSingle();
+        .eq('user_id', userId);
 
       if (error) {
         console.warn('Error fetching user role:', error);
-        setRole('student');
-      } else if (data) {
-        setRole(data.role as AppRole);
+        setRole(fallbackToStudent ? 'student' : null);
+        return fallbackToStudent ? 'student' : null;
       } else {
-        console.warn('No role found for user, defaulting to student');
-        setRole('student');
+        const roles = (data ?? [])
+          .map((entry) => entry.role as AppRole)
+          .filter(Boolean);
+
+        if (roles.length === 0) {
+          console.warn('No role found for user', fallbackToStudent ? 'defaulting to student' : 'while approval is pending');
+          const resolvedFallback = fallbackToStudent ? 'student' : null;
+          setRole(resolvedFallback);
+          return resolvedFallback;
+        }
+
+        const primaryRole = resolvePrimaryRole(roles);
+
+        if (roles.length > 1) {
+          console.warn('Multiple roles found for user, resolved by priority:', roles, '->', primaryRole);
+        }
+
+        setRole(primaryRole);
+        return primaryRole;
       }
     } catch (err) {
       console.error('Exception in fetchUserRole:', err);
-      setRole('student');
+      const resolvedFallback = fallbackToStudent ? 'student' : null;
+      setRole(resolvedFallback);
+      return resolvedFallback;
     }
   };
+
+  const syncAuthState = useCallback(async (nextSession: Session | null) => {
+    setSession(nextSession);
+    setUser(nextSession?.user ?? null);
+
+    if (nextSession?.user) {
+      const approval = await fetchApprovalState(nextSession.user);
+      const resolvedRole = await fetchUserRole(nextSession.user.id, {
+        fallbackToStudent: approval.status !== 'pending' && approval.status !== 'rejected',
+      });
+
+      if (!resolvedRole && approval.status === 'approved' && approval.assignedRole) {
+        setRole(approval.assignedRole);
+      }
+    } else {
+      setRole(null);
+      setApprovalStatus('none');
+      setApprovalAssignedRole(null);
+      setImpersonatedUser(null);
+      sessionStorage.removeItem('impersonating_target');
+    }
+
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
     // Load impersonation from sessionStorage
@@ -78,35 +210,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-
-        // Defer role fetching
-        if (session?.user) {
-          setTimeout(() => {
-            fetchUserRole(session.user.id);
-          }, 0);
-        } else {
-          setRole(null);
-          setImpersonatedUser(null);
-          sessionStorage.removeItem('impersonating_target');
-        }
-        setLoading(false);
+        void event;
+        void syncAuthState(session);
       }
     );
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserRole(session.user.id);
-      }
-      setLoading(false);
+      void syncAuthState(session);
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [syncAuthState]);
 
   const signIn = async (email: string, password: string) => {
     await logAuditAction({ action: 'login_attempt', status: 'success', error_message: `Attempt for ${email}` });
@@ -123,6 +238,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         action: 'login_success',
         status: 'success'
       }, data.user.id);
+    }
+
+    return { error: error as Error | null };
+  };
+
+  const signInWithGoogle = async () => {
+    await logAuditAction({ action: 'google_login_attempt', status: 'pending' });
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/`,
+      },
+    });
+
+    if (error) {
+      await logAuditAction({
+        action: 'google_login_failure',
+        status: 'failure',
+        error_message: error.message,
+      });
     }
 
     return { error: error as Error | null };
@@ -150,6 +286,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       setSession(null);
       setRole(null);
+      setApprovalStatus('none');
+      setApprovalAssignedRole(null);
       setImpersonatedUser(null);
       sessionStorage.removeItem('impersonating_target');
 
@@ -189,6 +327,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const currentRole = impersonatedUser?.role || role;
   const isImpersonating = !!impersonatedUser;
+  const isGoogleApprovalRequired = approvalStatus === 'pending' || approvalStatus === 'rejected';
 
   // Session timeout (30 min inactivity)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -248,6 +387,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       role: currentRole,
       loading,
       signIn,
+      signInWithGoogle,
       signUp,
       signOut,
       hasRole,
@@ -255,7 +395,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       stopImpersonating,
       isImpersonating,
       actualRole: role,
-      actualUser: user
+      actualUser: user,
+      approvalStatus,
+      approvalAssignedRole,
+      isGoogleApprovalRequired,
     }}>
       {children}
     </AuthContext.Provider>

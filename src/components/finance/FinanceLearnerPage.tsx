@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { Search, X, Loader2, Users, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -12,16 +13,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { AnimatedStudentAvatar } from '@/components/students/AnimatedStudentAvatar';
-import { StudentProfileModal } from '@/components/students/StudentProfileModal';
-import type { Student } from '@/types/student';
 
 export const FinanceLearnerPage = () => {
+  const navigate = useNavigate();
   const { selectedSchool } = useSchool();
   const { selectedYearId } = useAcademicYear();
   const [searchQuery, setSearchQuery] = useState('');
   const [gradeFilter, setGradeFilter] = useState('all');
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [profileOpen, setProfileOpen] = useState(false);
 
   // Get school UUID
   const { data: schoolId } = useQuery({
@@ -39,21 +37,21 @@ export const FinanceLearnerPage = () => {
 
   // Fetch students for this school
   const { data: students = [], isLoading } = useQuery({
-    queryKey: ['finance-learners', schoolId],
+    queryKey: ['finance-learners', schoolId, selectedYearId],
     queryFn: async () => {
-      if (!schoolId) return [];
+      if (!schoolId || !selectedYearId) return [];
 
-      // Students table uses text 'school' column (SFXSAI), not UUID school_id
       const { data, error } = await supabase
         .from('students')
         .select('*')
-        .eq('school', selectedSchool)
+        .eq('school_id', schoolId)
+        .eq('academic_year_id', selectedYearId)
         .order('student_name', { ascending: true });
 
       if (error) throw error;
       return data || [];
     },
-    enabled: !!schoolId,
+    enabled: !!schoolId && !!selectedYearId,
   });
 
   // Fetch financial summaries for these students
@@ -252,7 +250,7 @@ export const FinanceLearnerPage = () => {
                         <TableCell>
                           <button
                             className="font-medium text-primary hover:underline underline-offset-2 cursor-pointer text-left"
-                            onClick={() => { setSelectedStudent(student as Student); setProfileOpen(true); }}
+                            onClick={() => navigate(`/student/${student.id}`)}
                           >
                             {student.student_name}
                           </button>
@@ -273,11 +271,6 @@ export const FinanceLearnerPage = () => {
           )}
         </CardContent>
       </Card>
-      <StudentProfileModal
-        student={selectedStudent}
-        isOpen={profileOpen}
-        onClose={() => { setProfileOpen(false); setSelectedStudent(null); }}
-      />
     </div>
   );
 };

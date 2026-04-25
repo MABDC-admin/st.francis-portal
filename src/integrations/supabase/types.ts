@@ -3422,6 +3422,70 @@ export type Database = {
         }
         Relationships: []
       }
+      sections: {
+        Row: {
+          academic_year_id: string
+          advisor_teacher_id: string | null
+          capacity: number | null
+          created_at: string
+          grade_level: string
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          academic_year_id: string
+          advisor_teacher_id?: string | null
+          capacity?: number | null
+          created_at?: string
+          grade_level: string
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          academic_year_id?: string
+          advisor_teacher_id?: string | null
+          capacity?: number | null
+          created_at?: string
+          grade_level?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sections_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sections_advisor_teacher_id_fkey"
+            columns: ["advisor_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sections_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_assessments: {
         Row: {
           academic_year_id: string
@@ -4031,78 +4095,123 @@ export type Database = {
           age: number | null
           birth_date: string | null
           created_at: string
+          disabilities_special_needs: string | null
           dialects: string | null
+          emergency_contact_name: string | null
+          emergency_contact_number: string | null
+          emergency_contact_relationship: string | null
           father_contact: string | null
           father_name: string | null
           gender: string | null
+          household_information: string | null
           id: string
+          immunization_record: string | null
           level: string
+          learning_style: string | null
           lrn: string
+          medical_history: string | null
           mother_contact: string | null
           mother_maiden_name: string | null
           mother_tongue: string | null
+          parent_education_attainment: string | null
+          parent_occupation: string | null
           phil_address: string | null
           photo_url: string | null
           previous_school: string | null
+          program_inclusion: string | null
           religion: string | null
           school: string | null
           school_id: string
+          section: string | null
           strand: string | null
+          strengths_interests: string | null
           student_name: string
           uae_address: string | null
           updated_at: string
+          interventions_provided: string | null
+          achievements: string | null
         }
         Insert: {
           academic_year_id: string
           age?: number | null
           birth_date?: string | null
           created_at?: string
+          disabilities_special_needs?: string | null
           dialects?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_number?: string | null
+          emergency_contact_relationship?: string | null
           father_contact?: string | null
           father_name?: string | null
           gender?: string | null
+          household_information?: string | null
           id?: string
+          immunization_record?: string | null
           level: string
+          learning_style?: string | null
           lrn: string
+          medical_history?: string | null
           mother_contact?: string | null
           mother_maiden_name?: string | null
           mother_tongue?: string | null
+          parent_education_attainment?: string | null
+          parent_occupation?: string | null
           phil_address?: string | null
           photo_url?: string | null
           previous_school?: string | null
+          program_inclusion?: string | null
           religion?: string | null
           school?: string | null
           school_id: string
+          section?: string | null
           strand?: string | null
+          strengths_interests?: string | null
           student_name: string
           uae_address?: string | null
           updated_at?: string
+          interventions_provided?: string | null
+          achievements?: string | null
         }
         Update: {
           academic_year_id?: string
           age?: number | null
           birth_date?: string | null
           created_at?: string
+          disabilities_special_needs?: string | null
           dialects?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_number?: string | null
+          emergency_contact_relationship?: string | null
           father_contact?: string | null
           father_name?: string | null
           gender?: string | null
+          household_information?: string | null
           id?: string
+          immunization_record?: string | null
           level?: string
+          learning_style?: string | null
           lrn?: string
+          medical_history?: string | null
           mother_contact?: string | null
           mother_maiden_name?: string | null
           mother_tongue?: string | null
+          parent_education_attainment?: string | null
+          parent_occupation?: string | null
           phil_address?: string | null
           photo_url?: string | null
           previous_school?: string | null
+          program_inclusion?: string | null
           religion?: string | null
           school?: string | null
           school_id?: string
+          section?: string | null
           strand?: string | null
+          strengths_interests?: string | null
           student_name?: string
           uae_address?: string | null
           updated_at?: string
+          interventions_provided?: string | null
+          achievements?: string | null
         }
         Relationships: [
           {

@@ -1,6 +1,6 @@
-import { motion } from 'framer-motion';
-import { LucideIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { motion } from "framer-motion";
+import { LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface StatsCardProps {
   title: string;
@@ -8,34 +8,26 @@ interface StatsCardProps {
   subtitle?: string;
   icon: LucideIcon;
   trend?: { value: number; isPositive: boolean };
-  variant?: 'purple' | 'pink' | 'yellow' | 'green';
+  variant?: "purple" | "pink" | "yellow" | "green";
   delay?: number;
 }
 
 const variantStyles = {
   purple: {
-    card: 'bg-stat-purple-light',
-    icon: 'bg-stat-purple text-white',
-    title: 'text-stat-purple',
-    value: 'text-foreground',
+    shell: "from-primary/12 via-background to-background",
+    icon: "bg-primary/12 text-primary",
   },
   pink: {
-    card: 'bg-stat-pink-light',
-    icon: 'bg-stat-pink text-white',
-    title: 'text-stat-pink',
-    value: 'text-foreground',
+    shell: "from-info/12 via-background to-background",
+    icon: "bg-info/12 text-info",
   },
   yellow: {
-    card: 'bg-stat-yellow-light',
-    icon: 'bg-stat-yellow text-white',
-    title: 'text-stat-yellow',
-    value: 'text-foreground',
+    shell: "from-warning/14 via-background to-background",
+    icon: "bg-warning/14 text-warning",
   },
   green: {
-    card: 'bg-stat-green-light',
-    icon: 'bg-stat-green text-white',
-    title: 'text-stat-green',
-    value: 'text-foreground',
+    shell: "from-hrms-success/12 via-background to-background",
+    icon: "bg-hrms-success/12 text-hrms-success",
   },
 };
 
@@ -45,54 +37,31 @@ export const StatsCard = ({
   subtitle,
   icon: Icon,
   trend,
-  variant = 'purple',
-  delay = 0
+  variant = "purple",
+  delay = 0,
 }: StatsCardProps) => {
   const styles = variantStyles[variant];
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.3 }}
-      className={cn(
-        "relative overflow-hidden rounded-xl p-4 shadow-card",
-        styles.card
-      )}
+      className={cn("rounded-lg border bg-gradient-to-br p-5 shadow-card", styles.shell)}
     >
-      <div className="flex flex-col items-center text-center gap-2">
-        <div className={cn(
-          "rounded-xl p-2.5",
-          styles.icon
-        )}>
-          <Icon className="h-5 w-5" />
-        </div>
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <p className={cn(
-            "text-sm font-medium",
-            styles.title
-          )}>
-            {title}
-          </p>
-          <p className={cn(
-            "mt-1 text-3xl font-bold tracking-tight",
-            styles.value
-          )}>
-            {value}
-          </p>
-          {subtitle && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              {subtitle}
+          <p className="micro-label">{title}</p>
+          <p className="tabular mt-3 text-3xl font-bold tracking-tight text-foreground">{value}</p>
+          {subtitle && <p className="mt-2 text-xs text-muted-foreground">{subtitle}</p>}
+          {trend && (
+            <p className={cn("mt-3 text-xs font-semibold", trend.isPositive ? "text-hrms-success" : "text-destructive")}>
+              {trend.isPositive ? "Up" : "Down"} {Math.abs(trend.value)}%
             </p>
           )}
-          {trend && (
-            <div className={cn(
-              "mt-2 flex items-center justify-center gap-1 text-sm font-medium",
-              trend.isPositive ? 'text-success' : 'text-destructive'
-            )}>
-              <span>{trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}%</span>
-            </div>
-          )}
+        </div>
+        <div className={cn("rounded-2xl p-2.5", styles.icon)}>
+          <Icon className="h-5 w-5" />
         </div>
       </div>
     </motion.div>

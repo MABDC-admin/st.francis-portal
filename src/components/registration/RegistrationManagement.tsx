@@ -224,9 +224,11 @@ export const RegistrationManagement = () => {
     const csv = Papa.unparse(exportData);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
+    const objectUrl = URL.createObjectURL(blob);
+    link.href = objectUrl;
     link.download = `${filename}.csv`;
     link.click();
+    URL.revokeObjectURL(objectUrl);
     toast.success(`Exported ${data.length} records`);
   };
 

@@ -1,154 +1,56 @@
-import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
-import { AdmitStudentIcon3D, ScheduleIcon3D, EnterGradeIcon3D, EventsIcon3D } from '@/components/icons/ThreeDIcons';
-import { AppleAdmitIcon, AppleScheduleIcon, AppleGradesIcon, AppleEventsIcon } from '@/components/icons/AppleStyleIcons';
-import { LayoutStyle } from '@/contexts/DashboardLayoutContext';
-import useEmblaCarousel from 'embla-carousel-react';
-import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { motion } from "framer-motion";
+import { CalendarDays, ClipboardCheck, MessageSquare, UserPlus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { LayoutStyle } from "@/contexts/DashboardLayoutContext";
 
 interface QuickActionsProps {
   onNavigate: (tab: string) => void;
   variant?: LayoutStyle;
 }
 
-export const QuickActions = ({ onNavigate, variant = 'modern' }: QuickActionsProps) => {
-  const navigate = useNavigate();
-  const isClassic = variant === 'classicBlue';
-  const isApple = variant === 'apple';
+const actions = [
+  { label: "Admit Learner", icon: UserPlus, tab: "enrollment" },
+  { label: "Messages", icon: MessageSquare, tab: "messages" },
+  { label: "Academic Years", icon: CalendarDays, tab: "academic-years" },
+  { label: "Enter Grades", icon: ClipboardCheck, tab: "grades" },
+];
 
-  const [emblaRef, emblaApi] = useEmblaCarousel({
-    align: 'start',
-    loop: true,
-    dragFree: true,
-  });
-
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [scrollSnaps, setScrollSnaps] = useState<number[]>([]);
-
-  const onSelect = useCallback(() => {
-    if (!emblaApi) return;
-    setSelectedIndex(emblaApi.selectedScrollSnap());
-  }, [emblaApi]);
-
-  useEffect(() => {
-    if (!emblaApi) return;
-    setScrollSnaps(emblaApi.scrollSnapList());
-    emblaApi.on('select', onSelect);
-    onSelect();
-    return () => { emblaApi.off('select', onSelect); };
-  }, [emblaApi, onSelect]);
-
-  const actions = [
-    {
-      icon: isApple ? AppleAdmitIcon : AdmitStudentIcon3D,
-      label: 'Admit Learner',
-      onClick: () => onNavigate('enrollment'),
-      bgClass: isApple ? 'apple-card' : isClassic ? 'classic-card' : 'bg-card hover:bg-muted',
-      iconBg: isApple ? 'bg-[#007AFF]/10' : 'bg-info/10',
-      iconColor: isApple ? 'text-[#007AFF]' : 'text-info',
-    },
-    {
-      icon: isApple ? AppleEventsIcon : EventsIcon3D,
-      label: 'Messages',
-      onClick: () => onNavigate('messages'),
-      bgClass: isApple ? 'apple-card' : isClassic ? 'classic-card' : 'bg-card hover:bg-muted',
-      iconBg: isApple ? 'bg-[#34C759]/10' : 'bg-success/10',
-      iconColor: isApple ? 'text-[#34C759]' : 'text-success',
-    },
-    {
-      icon: isApple ? AppleScheduleIcon : ScheduleIcon3D,
-      label: 'Schedule',
-      onClick: () => onNavigate('academic-years'),
-      bgClass: isApple ? 'apple-card' : isClassic ? 'classic-card' : 'bg-card hover:bg-muted',
-      iconBg: isApple ? 'bg-[#FF9500]/10' : 'bg-warning/10',
-      iconColor: isApple ? 'text-[#FF9500]' : 'text-warning',
-    },
-    {
-      icon: isApple ? AppleGradesIcon : EnterGradeIcon3D,
-      label: 'Enter Grades',
-      onClick: () => onNavigate('grades'),
-      bgClass: isApple ? 'apple-card' : isClassic ? 'classic-card' : 'bg-card hover:bg-muted',
-      iconBg: isApple ? 'bg-[#AF52DE]/10' : 'bg-stat-purple/10',
-      iconColor: isApple ? 'text-[#AF52DE]' : 'text-stat-purple',
-    },
-    {
-      icon: isApple ? AppleScheduleIcon : ScheduleIcon3D,
-      label: 'Attendance Kiosk',
-      onClick: () => navigate('/attendance'),
-      bgClass: isApple ? 'apple-card' : isClassic ? 'classic-card' : 'bg-card hover:bg-muted',
-      iconBg: isApple ? 'bg-[#FF3B30]/10' : 'bg-destructive/10',
-      iconColor: isApple ? 'text-[#FF3B30]' : 'text-destructive',
-    },
-  ];
-
+export const QuickActions = ({ onNavigate }: QuickActionsProps) => {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.2 }}
-      className="mb-6"
-    >
-      <div className="overflow-hidden" ref={emblaRef}>
-        <div className="flex -ml-3">
-          {actions.map((action, index) => (
-            <div
-              key={action.label}
-              className="min-w-0 shrink-0 grow-0 basis-1/2 lg:basis-1/4 pl-3"
-            >
-              <motion.button
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  delay: 0.2 + index * 0.05,
-                  type: "spring",
-                  stiffness: 260,
-                  damping: 20
-                }}
-                whileHover={{ scale: 1.02, y: -4 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={action.onClick}
-                style={{}}
-                className={cn(
-                  "w-full p-4 flex flex-col items-center gap-2 transition-all",
-                  isApple ? "rounded-[16px] border-0" : isClassic ? "rounded-2xl border-0" : "rounded-xl border border-border",
-                  action.bgClass
-                )}
-              >
-                <div className={cn(
-                  "p-2 h-12 w-12 flex items-center justify-center",
-                  isApple ? "rounded-xl" : "rounded-full",
-                  action.iconBg
-                )}>
-                  <action.icon className={cn(
-                    "h-full w-full",
-                    isApple ? action.iconColor : "drop-shadow-sm"
-                  )} />
-                </div>
-                <span className={cn(
-                  "font-medium text-foreground",
-                  isApple ? "text-[13px] font-medium" : "text-sm"
-                )}>{action.label}</span>
-              </motion.button>
-            </div>
-          ))}
+    <div className="page-surface p-6">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <p className="micro-label">Quick Actions</p>
+          <h2 className="text-lg font-semibold text-foreground">Move the day forward</h2>
         </div>
       </div>
-      {/* Dot indicators */}
-      <div className="flex justify-center gap-1.5 mt-3">
-        {scrollSnaps.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => emblaApi?.scrollTo(index)}
-            className={cn(
-              "h-1.5 rounded-full transition-all duration-300",
-              index === selectedIndex
-                ? "w-4 bg-primary"
-                : "w-1.5 bg-muted-foreground/30"
-            )}
-          />
-        ))}
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {actions.map((action, index) => {
+          const Icon = action.icon;
+
+          return (
+            <motion.div
+              key={action.tab}
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: index * 0.08 }}
+              style={{ animationDelay: `${index * 100}ms` }}
+            >
+              <Button
+                variant="outline"
+                className="h-auto w-full justify-start gap-3 rounded-lg px-4 py-4 text-left"
+                onClick={() => onNavigate(action.tab)}
+              >
+                <span className="rounded-2xl bg-accent p-2 text-accent-foreground">
+                  <Icon className="h-4 w-4" />
+                </span>
+                <span className="text-sm font-medium">{action.label}</span>
+              </Button>
+            </motion.div>
+          );
+        })}
       </div>
-    </motion.div>
+    </div>
   );
 };

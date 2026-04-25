@@ -47,6 +47,7 @@ export const SeedTeachersButton = ({ onComplete }: SeedTeachersButtonProps) => {
             email: teacher.email,
             password: '123456',
             fullName: teacher.full_name,
+            school: 'SFXSAI',
           },
         });
 

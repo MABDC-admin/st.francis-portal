@@ -3,10 +3,11 @@ import { useNavigate, useLocation, useParams, useSearchParams } from 'react-rout
 import { motion } from 'framer-motion';
 import { Users, GraduationCap, TrendingUp, UserPlus, BookUser, Loader2 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { GoogleApprovalStatusPage } from '@/components/auth/GoogleApprovalStatusPage';
+import { getNavGroupsForRole } from '@/config/dashboardConfig';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { Charts } from '@/components/dashboard/Charts';
 import { GlobalStudentSearch } from '@/components/dashboard/GlobalStudentSearch';
-import { StudentProfileModal } from '@/components/students/StudentProfileModal';
 import { StudentFormModal } from '@/components/students/StudentFormModal';
 import { DeleteConfirmModal } from '@/components/students/DeleteConfirmModal';
 import { AdminPinModal } from '@/components/admin/AdminPinModal';
@@ -31,7 +32,6 @@ const RegistrarPortal = lazy(() => import('@/components/portals/RegistrarPortal'
 const TeacherPortal = lazy(() => import('@/components/portals/TeacherPortal').then(m => ({ default: m.TeacherPortal })));
 const TeacherClassesPage = lazy(() => import('@/components/teachers/TeacherClassesPage').then(m => ({ default: m.TeacherClassesPage })));
 const TeacherLessonPlansPage = lazy(() => import('@/components/teachers/TeacherLessonPlansPage').then(m => ({ default: m.TeacherLessonPlansPage })));
-const TeacherRequestsPage = lazy(() => import('@/components/teachers/TeacherRequestsPage').then(m => ({ default: m.TeacherRequestsPage })));
 const StudentPortal = lazy(() => import('@/components/portals/StudentPortal').then(m => ({ default: m.StudentPortal })));
 const ParentPortal = lazy(() => import('@/components/portals/ParentPortal').then(m => ({ default: m.ParentPortal })));
 const PrincipalPortal = lazy(() => import('@/components/portals/PrincipalPortal').then(m => ({ default: m.PrincipalPortal })));
@@ -70,6 +70,7 @@ const ImpersonatePage = lazy(() => import('@/components/admin/ImpersonatePage').
 // Management CRUD Components
 const AttendanceManagement = lazy(() => import('@/components/management').then(m => ({ default: m.AttendanceManagement })));
 const ScheduleManagement = lazy(() => import('@/components/management').then(m => ({ default: m.ScheduleManagement })));
+const SectionsManagement = lazy(() => import('@/components/management').then(m => ({ default: m.SectionsManagement })));
 const AssignmentManagement = lazy(() => import('@/components/management').then(m => ({ default: m.AssignmentManagement })));
 const ExamScheduleManagement = lazy(() => import('@/components/management').then(m => ({ default: m.ExamScheduleManagement })));
 const AnnouncementManagement = lazy(() => import('@/components/management').then(m => ({ default: m.AnnouncementManagement })));
@@ -115,7 +116,7 @@ const Index = () => {
   const { bookId } = useParams<{ bookId?: string }>();
 
 
-  const { user, loading, role, session } = useAuth();
+  const { user, loading, role, session, actualRole, approvalStatus, isGoogleApprovalRequired, signOut } = useAuth();
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -173,9 +174,29 @@ const Index = () => {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const hasInitialized = useRef(false);
+  const availableTabs = useMemo(() => {
+    const navGroups = getNavGroupsForRole(role);
+    const tabs = new Set<string>();
+
+    navGroups.forEach((group) => {
+      tabs.add(group.id);
+      group.items?.forEach((item) => tabs.add(item.id));
+    });
+
+    if (actualRole === 'admin') {
+      tabs.add('impersonate');
+    }
+    if (role === 'admin' || role === 'it') {
+      tabs.add('admin');
+    }
+
+    return tabs;
+  }, [actualRole, role]);
 
   // Derive activeTab from URL query param — URL is the source of truth
-  const defaultTab = role === 'finance' ? 'finance-reports' : 'portal';
+  const defaultTab = availableTabs.has('portal')
+    ? 'portal'
+    : (Array.from(availableTabs)[0] || 'portal');
   const activeTab = searchParams.get('tab') || defaultTab;
 
   // Set active tab by updating the URL (enables back/forward & deep links)
@@ -202,10 +223,15 @@ const Index = () => {
       }
       hasInitialized.current = true;
     }
-  }, [user, loading, role, location.state, navigate, location.pathname]);
+  }, [user, loading, role, location.state, navigate, location.pathname, searchParams, setSearchParams, defaultTab]);
+
+  useEffect(() => {
+    if (!loading && user && role && !availableTabs.has(activeTab)) {
+      setSearchParams({ tab: defaultTab }, { replace: true });
+    }
+  }, [activeTab, availableTabs, defaultTab, loading, role, setSearchParams, user]);
 
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
@@ -234,6 +260,15 @@ const Index = () => {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
       </div>
+    );
+  }
+
+  if (user && isGoogleApprovalRequired) {
+    return (
+      <GoogleApprovalStatusPage
+        status={approvalStatus === 'rejected' ? 'rejected' : 'pending'}
+        onSignOut={signOut}
+      />
     );
   }
 
@@ -460,9 +495,6 @@ const Index = () => {
         {activeTab === 'lesson-plans' && role === 'teacher' && (
           <TeacherLessonPlansPage />
         )}
-        {activeTab === 'requests' && role === 'teacher' && (
-          <TeacherRequestsPage />
-        )}
         {activeTab === 'teacher-grades' && role === 'teacher' && (
           <TeacherPortal activeSection="grades" />
         )}
@@ -588,6 +620,11 @@ const Index = () => {
           <ScheduleManagement />
         )}
 
+        {/* Sections Management - Admin/Registrar */}
+        {activeTab === 'sections-mgmt' && hasAdminAccess && (
+          <SectionsManagement />
+        )}
+
         {/* Assignment Management - Admin/Registrar/Teacher */}
         {activeTab === 'assignment-mgmt' && (role === 'admin' || role === 'registrar' || role === 'teacher') && (
           <AssignmentManagement />
@@ -607,7 +644,7 @@ const Index = () => {
         {activeTab === 'documize' && (role === 'admin' || role === 'it') && <DocumizeDashboard />}
 
         {/* Impersonate - Admin only */}
-        {activeTab === 'impersonate' && role === 'admin' && <ImpersonatePage />}
+        {activeTab === 'impersonate' && actualRole === 'admin' && <ImpersonatePage />}
 
         {/* Announcement Management - Admin/Registrar */}
         {activeTab === 'announcement-mgmt' && hasAdminAccess && (
@@ -678,15 +715,6 @@ const Index = () => {
             setPendingTab(null);
           }}
           onSuccess={handleAdminUnlock}
-        />
-
-        <StudentProfileModal
-          student={selectedStudent}
-          isOpen={isViewModalOpen}
-          onClose={() => {
-            setIsViewModalOpen(false);
-            setSelectedStudent(null);
-          }}
         />
 
         <StudentFormModal

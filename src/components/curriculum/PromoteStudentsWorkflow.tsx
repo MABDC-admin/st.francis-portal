@@ -27,6 +27,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { useSchoolId } from '@/hooks/useSchoolId';
 import { GRADE_LEVELS, normalizeGradeLevel } from '@/components/enrollment/constants';
 
 interface PromoteStudentsWorkflowProps {
@@ -53,7 +54,8 @@ const getNextLevel = (current: string): string => {
 
 export const PromoteStudentsWorkflow = ({ onClose, onSuccess }: PromoteStudentsWorkflowProps) => {
     const { selectedSchool } = useSchool();
-    const { academicYears, refetch: refetchYears } = useAcademicYear();
+    const { academicYears, selectedYearId, setSelectedYearId, refetch: refetchYears } = useAcademicYear();
+    const { data: schoolId } = useSchoolId();
 
     const [step, setStep] = useState<1 | 2 | 3>(1);
     const [targetYearId, setTargetYearId] = useState<string>('');
@@ -62,16 +64,21 @@ export const PromoteStudentsWorkflow = ({ onClose, onSuccess }: PromoteStudentsW
 
     // Step 1: Select Target Year
     // Filter years to only show future years or non-current years
-    const availableYears = academicYears.filter(y => !y.is_current);
+    const availableYears = academicYears.filter(y => y.id !== selectedYearId);
 
     const fetchStudentsForPromotion = async () => {
+        if (!schoolId || !selectedYearId) {
+            toast.error('Select a valid school and source academic year first.');
+            return;
+        }
+
         setIsLoading(true);
         try {
-            // CRITICAL: Filter by selectedSchool
             const { data: students, error } = await supabase
                 .from('students')
                 .select('id, student_name, level')
-                .eq('school', selectedSchool)
+                .eq('school_id', schoolId)
+                .eq('academic_year_id', selectedYearId)
                 .order('level', { ascending: true })
                 .order('student_name', { ascending: true });
 
@@ -103,51 +110,58 @@ export const PromoteStudentsWorkflow = ({ onClose, onSuccess }: PromoteStudentsW
     };
 
     const executePromotion = async () => {
+        if (!schoolId || !selectedYearId || !targetYearId) {
+            toast.error('Missing school or academic year context for promotion.');
+            return;
+        }
+
         setIsLoading(true);
         try {
-            // 1. Update Student Levels
-            const pendingUpdates = promotions
-                .filter(p => p.selected && p.status !== 'retain')
-                .map(p => ({
-                    id: p.studentId,
-                    level: p.status === 'graduated' ? 'Alumni' : p.nextLevel,
-                    // If graduated, maybe update a status flag too? For now just level 'Alumni' or 'Graduated'
-                }));
-
-            // Supabase doesn't support bulk update with different values easily in one call 
-            // without a custom function or multiple calls.
-            // For safety, we will do parallel requests in chunks or a loop.
-            // Given ~500 students, a loop might be slow but safe.
-
-            // Optimization: Group by target level
+            // Promote within the selected school only and move each student record
+            // into the chosen target academic year.
             const updatesByLevel: Record<string, string[]> = {};
             promotions.forEach(p => {
                 if (!p.selected) return; // Skip
 
-                // Determine new level value
-                let newLevelVal = p.currentLevel; // default retain
+                let newLevelVal = p.currentLevel;
                 if (p.status === 'promote') newLevelVal = p.nextLevel;
-                if (p.status === 'graduated') newLevelVal = '1st Year College'; // Or just mark alumni via status? keeping it simple for now as 'Graduated'
+                if (p.status === 'graduated') newLevelVal = 'Alumni';
 
-                if (newLevelVal !== p.currentLevel) {
-                    if (!updatesByLevel[newLevelVal]) updatesByLevel[newLevelVal] = [];
-                    updatesByLevel[newLevelVal].push(p.studentId);
-                }
+                if (!updatesByLevel[newLevelVal]) updatesByLevel[newLevelVal] = [];
+                updatesByLevel[newLevelVal].push(p.studentId);
             });
 
+            // Set the target year as current before moving records so the DB year-lock
+            // trigger allows the update into the destination year.
+            const { error: unsetCurrentError } = await supabase
+                .from('academic_years')
+                .update({ is_current: false })
+                .eq('school_id', schoolId)
+                .eq('is_current', true);
+
+            if (unsetCurrentError) throw unsetCurrentError;
+
+            const { error: setTargetError } = await supabase
+                .from('academic_years')
+                .update({ is_current: true })
+                .eq('id', targetYearId)
+                .eq('school_id', schoolId);
+
+            if (setTargetError) throw setTargetError;
+
             const promises = Object.entries(updatesByLevel).map(([lvl, ids]) =>
-                supabase.from('students').update({ level: lvl }).in('id', ids)
+                supabase
+                    .from('students')
+                    .update({ level: lvl, academic_year_id: targetYearId })
+                    .eq('school_id', schoolId)
+                    .eq('academic_year_id', selectedYearId)
+                    .in('id', ids)
             );
 
             await Promise.all(promises);
 
-            // 2. Set Active Year
-            // Unset current
-            await supabase.from('academic_years').update({ is_current: false }).eq('is_current', true);
-            // Set new
-            await supabase.from('academic_years').update({ is_current: true }).eq('id', targetYearId);
-
             await refetchYears();
+            setSelectedYearId(targetYearId);
             onSuccess();
             toast.success('School Year Promoted Successfully!');
             onClose();

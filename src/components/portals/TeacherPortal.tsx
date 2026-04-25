@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Users, ClipboardCheck, BookOpen, FileText, MessageSquare, Calendar, LogOut, Loader2, GraduationCap, NotebookPen, FolderClock } from 'lucide-react';
+import { Users, ClipboardCheck, BookOpen, FileText, FileBarChart2, MessageSquare, Calendar, LogOut, Loader2, GraduationCap, NotebookPen } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,10 @@ import { GradesManagement } from '@/components/grades/GradesManagement';
 import { AttendanceManagement } from '@/components/management/AttendanceManagement';
 import { AssignmentManagement } from '@/components/management/AssignmentManagement';
 import { ScheduleManagement } from '@/components/management/ScheduleManagement';
+import { useSchool } from '@/contexts/SchoolContext';
+import { useSchoolId } from '@/hooks/useSchoolId';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { SchoolLogo } from '@/components/branding/SchoolLogo';
 
 
 interface TeacherPortalProps {
@@ -31,11 +35,26 @@ interface TeacherScheduleItem {
 
 export const TeacherPortal = ({ activeSection = 'dashboard', onNavigate }: TeacherPortalProps) => {
   const { user, signOut } = useAuth();
-  const { data: teacher, isLoading } = useTeacherProfile(user?.id);
-  const { data: schedules = [] } = useTeacherSchedule(teacher?.id);
-  const { data: studentCount = 0 } = useTeacherStudentCount(teacher?.id);
+  const { schoolTheme } = useSchool();
+  const { data: teacher, isLoading } = useTeacherProfile(user?.id, user?.email);
+  const { data: schoolId } = useSchoolId();
+  const { selectedYearId } = useAcademicYear();
+  const { data: schedules = [] } = useTeacherSchedule(teacher?.id, schoolId, selectedYearId, teacher?.grade_level);
+  const { data: studentCount = 0 } = useTeacherStudentCount(teacher?.id, schoolId, selectedYearId, teacher?.grade_level);
   const typedSchedules = schedules as TeacherScheduleItem[];
   const todaySchedules = typedSchedules.filter((schedule) => schedule.day_of_week === new Date().getDay());
+
+  const scheduleSubjectNames = Array.from(
+    new Set(
+      typedSchedules
+        .map((schedule) => schedule.subjects?.name?.trim())
+        .filter((name): name is string => !!name),
+    ),
+  );
+
+  const displaySubjects = (teacher?.subjects && teacher.subjects.length > 0)
+    ? teacher.subjects
+    : scheduleSubjectNames;
 
   const displayName = teacher?.full_name || user?.email?.split('@')[0] || 'Teacher';
 
@@ -45,7 +64,7 @@ export const TeacherPortal = ({ activeSection = 'dashboard', onNavigate }: Teach
     { id: 'grades', title: 'Enter Grades', icon: FileText, color: 'bg-blue-500' },
     { id: 'schedule-mgmt', title: 'Class Schedule', icon: Calendar, color: 'bg-purple-500' },
     { id: 'lesson-plans', title: 'Lesson Plans', icon: NotebookPen, color: 'bg-indigo-500' },
-    { id: 'requests', title: 'Requests', icon: FolderClock, color: 'bg-amber-500' },
+    { id: 'reports', title: 'Reports', icon: FileBarChart2, color: 'bg-fuchsia-500' },
     { id: 'messages', title: 'Messages', icon: MessageSquare, color: 'bg-orange-500' },
   ];
 
@@ -114,7 +133,7 @@ export const TeacherPortal = ({ activeSection = 'dashboard', onNavigate }: Teach
                 <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/40 dark:to-blue-900/20 border-blue-200 dark:border-blue-800">
                   <CardContent className="pt-6 text-center">
                     <BookOpen className="h-8 w-8 text-blue-600 dark:text-blue-400 mx-auto mb-2" />
-                    <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">{teacher?.subjects?.length || 0}</p>
+                    <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">{displaySubjects.length}</p>
                     <p className="text-xs text-blue-600 dark:text-blue-400">Subjects</p>
                   </CardContent>
                 </Card>
@@ -164,7 +183,7 @@ export const TeacherPortal = ({ activeSection = 'dashboard', onNavigate }: Teach
             </div>
 
             {/* My Subjects */}
-            {teacher?.subjects && teacher.subjects.length > 0 && (
+            {displaySubjects.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -174,7 +193,7 @@ export const TeacherPortal = ({ activeSection = 'dashboard', onNavigate }: Teach
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
-                    {teacher.subjects.map((subject, idx) => (
+                    {displaySubjects.map((subject, idx) => (
                       <Badge key={idx} variant="secondary" className="text-sm py-1 px-3">
                         {subject}
                       </Badge>
@@ -242,6 +261,10 @@ export const TeacherPortal = ({ activeSection = 'dashboard', onNavigate }: Teach
         className="flex items-center justify-between"
       >
         <div>
+          <div className="mb-2 flex items-center gap-3">
+            <SchoolLogo src={schoolTheme.logoSrc} className="h-11 w-11 rounded-2xl border border-border/60 shadow-sm" />
+            <p className="text-sm font-medium text-muted-foreground">{schoolTheme.fullName}</p>
+          </div>
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
             {activeSection === 'dashboard' ? 'Teacher Portal' : sectionTitles[activeSection]}
           </h1>

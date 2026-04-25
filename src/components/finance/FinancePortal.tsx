@@ -18,15 +18,17 @@ export const FinancePortal = ({ onNavigate }: FinancePortalProps) => {
   const { data: stats } = useQuery({
     queryKey: ['finance-stats', selectedSchool, selectedYearId],
     queryFn: async () => {
+      if (!selectedYearId) return { collections: 0, outstanding: 0, cleared: 0, pending: 0 };
+
       const schoolQuery = supabase.from('schools').select('id').eq('code', selectedSchool).single();
       const { data: school } = await schoolQuery;
       if (!school) return { collections: 0, outstanding: 0, cleared: 0, pending: 0 };
 
       const [paymentsRes, assessmentsRes, clearanceRes] = await Promise.all([
-        supabase.from('payments').select('amount').eq('school_id', school.id).eq('status', 'verified')
+        supabase.from('payments').select('amount').eq('school_id', school.id).eq('academic_year_id', selectedYearId).eq('status', 'verified')
           .then(r => r.data || []),
-        supabase.from('student_assessments').select('balance, status').eq('school_id', school.id),
-        supabase.from('finance_clearance').select('is_cleared').eq('school_id', school.id),
+        supabase.from('student_assessments').select('balance, status').eq('school_id', school.id).eq('academic_year_id', selectedYearId),
+        supabase.from('finance_clearance').select('is_cleared').eq('school_id', school.id).eq('academic_year_id', selectedYearId),
       ]);
 
       const totalCollections = paymentsRes.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
@@ -38,7 +40,7 @@ export const FinancePortal = ({ onNavigate }: FinancePortalProps) => {
 
       return { collections: totalCollections, outstanding, cleared: clearedCount, pending: pendingPayments };
     },
-    enabled: !!selectedSchool,
+    enabled: !!selectedSchool && !!selectedYearId,
   });
 
   const statCards = [

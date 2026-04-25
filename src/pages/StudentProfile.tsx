@@ -124,7 +124,7 @@ const INCIDENT_CATEGORIES = [
 const StudentProfile = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('personal');
+  const [activeTab, setActiveTab] = useState('overview');
   const { theme } = useColorTheme();
   const [enrolledSubjects, setEnrolledSubjects] = useState<EnrolledSubject[]>([]);
   const [grades, setGrades] = useState<StudentGrade[]>([]);
@@ -144,6 +144,7 @@ const StudentProfile = () => {
   // Edit mode states
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
   const [isEditingAcademic, setIsEditingAcademic] = useState(false);
+  const [isEditingOverview, setIsEditingOverview] = useState(false);
   const [isSavingStudent, setIsSavingStudent] = useState(false);
 
   const [incidentForm, setIncidentForm] = useState({
@@ -169,10 +170,25 @@ const StudentProfile = () => {
     uae_address: '',
     phil_address: '',
     level: '',
+    section: '',
     school: '',
     previous_school: '',
     mother_tongue: '',
-    dialects: ''
+    dialects: '',
+    parent_occupation: '',
+    parent_education_attainment: '',
+    household_information: '',
+    achievements: '',
+    medical_history: '',
+    immunization_record: '',
+    disabilities_special_needs: '',
+    learning_style: '',
+    strengths_interests: '',
+    program_inclusion: '',
+    interventions_provided: '',
+    emergency_contact_name: '',
+    emergency_contact_number: '',
+    emergency_contact_relationship: '',
   });
 
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -198,10 +214,25 @@ const StudentProfile = () => {
         uae_address: student.uae_address || '',
         phil_address: student.phil_address || '',
         level: student.level || '',
+        section: student.section || '',
         school: student.school || '',
         previous_school: student.previous_school || '',
         mother_tongue: student.mother_tongue || '',
-        dialects: student.dialects || ''
+        dialects: student.dialects || '',
+        parent_occupation: student.parent_occupation || '',
+        parent_education_attainment: student.parent_education_attainment || '',
+        household_information: student.household_information || '',
+        achievements: student.achievements || '',
+        medical_history: student.medical_history || '',
+        immunization_record: student.immunization_record || '',
+        disabilities_special_needs: student.disabilities_special_needs || '',
+        learning_style: student.learning_style || '',
+        strengths_interests: student.strengths_interests || '',
+        program_inclusion: student.program_inclusion || '',
+        interventions_provided: student.interventions_provided || '',
+        emergency_contact_name: student.emergency_contact_name || '',
+        emergency_contact_number: student.emergency_contact_number || '',
+        emergency_contact_relationship: student.emergency_contact_relationship || '',
       });
     }
   }, [student?.id]); // Only re-run when student ID changes
@@ -340,6 +371,7 @@ const StudentProfile = () => {
       toast.success('Student information updated');
       setIsEditingPersonal(false);
       setIsEditingAcademic(false);
+      setIsEditingOverview(false);
     } catch (error) {
       toast.error('Failed to update student');
     } finally {
@@ -347,16 +379,41 @@ const StudentProfile = () => {
     }
   };
 
+  const handleClearOverviewFields = () => {
+    if (!confirm('Clear extended learner profile fields? This will remove saved profile details for overview sections.')) {
+      return;
+    }
+
+    setStudentForm((prev) => ({
+      ...prev,
+      parent_occupation: '',
+      parent_education_attainment: '',
+      household_information: '',
+      achievements: '',
+      medical_history: '',
+      immunization_record: '',
+      disabilities_special_needs: '',
+      learning_style: '',
+      strengths_interests: '',
+      program_inclusion: '',
+      interventions_provided: '',
+      emergency_contact_name: '',
+      emergency_contact_number: '',
+      emergency_contact_relationship: '',
+    }));
+  };
+
   const handleExportSF1 = async () => {
     if (!student) return;
     setIsExporting(true);
     try {
-      generateSF1(student as any, {
+      await generateSF1(student as any, {
         schoolName: schoolTheme.fullName,
         schoolId: schoolTheme.schoolId,
         region: schoolTheme.region,
         division: schoolTheme.division,
-        district: schoolTheme.district
+        district: schoolTheme.district,
+        schoolLogoUrl: schoolTheme.logoSrc,
       });
       toast.success('SF1 generated successfully');
     } catch (error) {
@@ -371,12 +428,13 @@ const StudentProfile = () => {
     if (!student) return;
     setIsExporting(true);
     try {
-      generateAnnex1(student as any, {
+      await generateAnnex1(student as any, {
         schoolName: schoolTheme.fullName,
         schoolId: schoolTheme.schoolId,
         region: schoolTheme.region,
         division: schoolTheme.division,
-        district: schoolTheme.district
+        district: schoolTheme.district,
+        schoolLogoUrl: schoolTheme.logoSrc,
       });
       toast.success('Annex 1 generated successfully');
     } catch (error) {
@@ -448,7 +506,7 @@ const StudentProfile = () => {
         };
       });
 
-      generateSF9(student as any, formattedGrades, aggregatedAttendance, academicYear);
+      await generateSF9(student as any, formattedGrades, aggregatedAttendance, academicYear, schoolTheme.logoSrc);
       toast.success('SF9 Report Card generated successfully');
     } catch (error) {
       console.error('Error generating SF9:', error);
@@ -596,6 +654,36 @@ const StudentProfile = () => {
     </div>
   );
 
+  const showValue = (value: string | number | null | undefined) => {
+    if (value === null || value === undefined) return 'Not provided';
+    if (typeof value === 'string' && value.trim().length === 0) return 'Not provided';
+    return String(value);
+  };
+
+  const latestIncident = incidents[0] || null;
+  const averageGrade = grades.length > 0
+    ? Math.round(
+      (grades
+        .map((grade) => grade.final_grade)
+        .filter((grade): grade is number => grade !== null)
+        .reduce((sum, grade) => sum + grade, 0) /
+        Math.max(1, grades.filter((grade) => grade.final_grade !== null).length)
+      ) * 100
+    ) / 100
+    : null;
+
+  const emergencyContactName = student.emergency_contact_name || student.mother_maiden_name || student.father_name || '';
+  const emergencyContactNumber = student.emergency_contact_number || student.mother_contact || student.father_contact || '';
+  const emergencyRelationship = student.emergency_contact_relationship
+    || (student.mother_contact ? 'Mother/Guardian' : student.father_contact ? 'Father/Guardian' : '');
+  const handleBackNavigation = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate('/', { state: { activeTab: 'students' } });
+  };
+
   const EditableField = ({
     label,
     value,
@@ -618,6 +706,28 @@ const StudentProfile = () => {
     </div>
   );
 
+  const EditableTextArea = ({
+    label,
+    field,
+    rows = 3,
+    placeholder,
+  }: {
+    label: string;
+    field: keyof typeof studentForm;
+    rows?: number;
+    placeholder?: string;
+  }) => (
+    <div className="space-y-1">
+      <Label className="text-xs">{label}</Label>
+      <Textarea
+        value={studentForm[field]}
+        onChange={(e) => setStudentForm({ ...studentForm, [field]: e.target.value })}
+        rows={rows}
+        placeholder={placeholder}
+      />
+    </div>
+  );
+
   return (
     <div className={cn("min-h-screen bg-background transition-colors duration-500", theme.pageBg)}>
       {/* Top Navigation Bar */}
@@ -629,7 +739,7 @@ const StudentProfile = () => {
           <Button
             variant="ghost"
             className="gap-2"
-            onClick={() => navigate('/', { state: { activeTab: 'students' } })}
+            onClick={handleBackNavigation}
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Students
@@ -685,8 +795,8 @@ const StudentProfile = () => {
             background: 'linear-gradient(135deg, #0891b2 0%, #22d3ee 50%, #67e8f9 100%)'
           }}
         >
-          <div className="p-6">
-            <div className="flex flex-col lg:flex-row lg:items-center gap-6">
+          <div className="p-2">
+            <div className="flex flex-col lg:flex-row lg:items-center gap-2">
               {/* Avatar with brick animation */}
               <motion.div
                 className="relative group shrink-0"
@@ -704,7 +814,7 @@ const StudentProfile = () => {
                 <AnimatedStudentAvatar
                   photoUrl={student.photo_url}
                   name={student.student_name}
-                  size="5xl"
+                  size="xl"
                   borderColor="rgba(255,255,255,0.3)"
                 />
                 <button
@@ -713,29 +823,29 @@ const StudentProfile = () => {
                   className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
                 >
                   {isUploadingPhoto ? (
-                    <Loader2 className="h-5 w-5 text-white animate-spin" />
+                    <Loader2 className="h-4 w-4 text-white animate-spin" />
                   ) : (
-                    <Camera className="h-5 w-5 text-white" />
+                    <Camera className="h-4 w-4 text-white" />
                   )}
                 </button>
               </motion.div>
 
               {/* Student Info */}
-              <div className="flex-1 space-y-1">
+              <div className="flex-1 space-y-0.5">
                 <motion.div
-                  className="flex items-center gap-3 flex-wrap"
+                  className="flex items-center gap-2 flex-wrap"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.4, delay: 0.2 }}
                 >
-                  <h1 className="text-xl lg:text-2xl font-bold text-white">{student.student_name}</h1>
-                  <Badge className="bg-amber-400 text-amber-900 hover:bg-amber-400 border-0 font-semibold">
+                  <h1 className="text-base lg:text-lg font-bold text-white">{student.student_name}</h1>
+                  <Badge className="bg-amber-400 text-amber-900 hover:bg-amber-400 border-0 font-semibold text-xs px-2 py-0.5">
                     Active
                   </Badge>
                 </motion.div>
 
                 <motion.p
-                  className="text-white/80 text-sm"
+                  className="text-white/80 text-xs"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.4, delay: 0.3 }}
@@ -744,7 +854,7 @@ const StudentProfile = () => {
                 </motion.p>
 
                 <motion.div
-                  className="flex items-center gap-4 text-sm text-white/70 flex-wrap"
+                  className="flex items-center gap-2 text-xs text-white/70 flex-wrap"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.4, delay: 0.4 }}
@@ -768,7 +878,7 @@ const StudentProfile = () => {
                 transition={{ duration: 0.5, delay: 0.3 }}
               >
                 <motion.p
-                  className="text-4xl font-bold text-white"
+                  className="text-lg lg:text-xl font-bold text-white"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4, delay: 0.5 }}
@@ -778,7 +888,7 @@ const StudentProfile = () => {
                     : '--'}
                 </motion.p>
                 <motion.p
-                  className="text-sm text-white/70"
+                  className="text-xs text-white/70"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.3, delay: 0.6 }}
@@ -794,6 +904,14 @@ const StudentProfile = () => {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div style={{ '--accent-color': theme.accentColor } as React.CSSProperties}>
             <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent flex-wrap">
+              <TabsTrigger
+                value="overview"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:bg-transparent px-4 py-3"
+                style={activeTab === 'overview' ? { borderBottomColor: theme.accentColor || 'hsl(var(--primary))' } : {}}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Profile Overview
+              </TabsTrigger>
               <TabsTrigger
                 value="personal"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:bg-transparent px-4 py-3"
@@ -852,6 +970,204 @@ const StudentProfile = () => {
               </TabsTrigger>
             </TabsList>
           </div>
+
+          {/* Profile Overview Tab */}
+          <TabsContent value="overview" className="mt-6">
+            <div className="flex justify-end mb-4">
+              {isEditingOverview ? (
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={handleClearOverviewFields}>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Clear Fields
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setIsEditingOverview(false)}>
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel
+                  </Button>
+                  <Button size="sm" onClick={handleSaveStudent} disabled={isSavingStudent}>
+                    {isSavingStudent ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                    Save Profile
+                  </Button>
+                </div>
+              ) : (
+                <Button variant="default" size="sm" onClick={() => setIsEditingOverview(true)} className="bg-slate-700 hover:bg-slate-800 text-white gap-2">
+                  <Pencil className="h-4 w-4" />
+                  Edit Overview
+                </Button>
+              )}
+            </div>
+
+            {isEditingOverview ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">2. Family Background</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <EditableField label="Parent Occupation" value={studentForm.parent_occupation} field="parent_occupation" />
+                    <EditableField
+                      label="Parent Educational Attainment"
+                      value={studentForm.parent_education_attainment}
+                      field="parent_education_attainment"
+                    />
+                    <EditableTextArea label="Household Information" field="household_information" rows={3} />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">3. Academic Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <EditableField label="Section" value={studentForm.section} field="section" />
+                    <EditableTextArea label="Academic Achievements" field="achievements" rows={3} />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">4. Health and Physical Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <EditableTextArea label="Medical History or Conditions" field="medical_history" rows={3} />
+                    <EditableTextArea label="Immunization Record" field="immunization_record" rows={3} />
+                    <EditableTextArea label="Disabilities or Special Needs" field="disabilities_special_needs" rows={3} />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">5. Learner Characteristics</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <EditableTextArea label="Learning Style or Preferences" field="learning_style" rows={2} />
+                    <EditableTextArea label="Strengths and Interests" field="strengths_interests" rows={3} />
+                    <EditableField label="Mother Tongue" value={studentForm.mother_tongue} field="mother_tongue" />
+                    <EditableField label="Dialects / Home Language" value={studentForm.dialects} field="dialects" />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">6. Special Programs / Needs</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <EditableTextArea label="Program Inclusion (SPED/ALS/Gifted)" field="program_inclusion" rows={3} />
+                    <EditableTextArea label="Interventions Provided" field="interventions_provided" rows={3} />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">7. Emergency Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <EditableField label="Emergency Contact Person" value={studentForm.emergency_contact_name} field="emergency_contact_name" />
+                    <EditableField label="Emergency Contact Number" value={studentForm.emergency_contact_number} field="emergency_contact_number" />
+                    <EditableField
+                      label="Relationship"
+                      value={studentForm.emergency_contact_relationship}
+                      field="emergency_contact_relationship"
+                    />
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card className="lg:col-span-2">
+                  <CardHeader>
+                    <CardTitle className="text-base">1. Basic Personal Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <InfoRow label="Full Name" value={student.student_name} />
+                    <InfoRow label="Learner Reference Number (LRN)" value={student.lrn} />
+                    <InfoRow label="Date of Birth" value={formatDate(student.birth_date)} />
+                    <InfoRow label="Age" value={showValue(student.age)} />
+                    <InfoRow label="Sex/Gender" value={student.gender} />
+                    <InfoRow label="Address" value={student.phil_address || student.uae_address || ''} />
+                    <InfoRow label="Contact Details" value={student.mother_contact || student.father_contact || ''} />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">2. Family Background</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <InfoRow label="Father/Guardian Name" value={student.father_name} />
+                    <InfoRow label="Mother/Guardian Name" value={student.mother_maiden_name} />
+                    <InfoRow label="Father/Guardian Contact" value={student.father_contact} />
+                    <InfoRow label="Mother/Guardian Contact" value={student.mother_contact} />
+                    <InfoRow label="Parent Occupation" value={student.parent_occupation} />
+                    <InfoRow label="Parent Educational Attainment" value={student.parent_education_attainment} />
+                    <InfoRow label="Household Information" value={student.household_information} />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">3. Academic Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <InfoRow label="Current Grade Level" value={student.level} />
+                    <InfoRow label="Section" value={student.section} />
+                    <InfoRow label="School Name" value={schoolTheme.fullName} />
+                    <InfoRow label="School ID" value={schoolTheme.schoolId} />
+                    <InfoRow label="Previous School Attended" value={student.previous_school} />
+                    <InfoRow label="Academic Performance (Average)" value={averageGrade !== null ? averageGrade.toString() : ''} />
+                    <InfoRow label="Achievements" value={student.achievements} />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">4. Health and Physical Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <InfoRow label="Medical History / Conditions" value={student.medical_history} />
+                    <InfoRow label="Immunization Record" value={student.immunization_record} />
+                    <InfoRow label="Disabilities or Special Needs" value={student.disabilities_special_needs} />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">5. Learner Characteristics</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <InfoRow label="Learning Style / Preferences" value={student.learning_style} />
+                    <InfoRow label="Strengths and Interests" value={student.strengths_interests} />
+                    <InfoRow
+                      label="Behavioral Observations"
+                      value={latestIncident ? `${latestIncident.title} (${latestIncident.status})` : 'No behavior incidents recorded'}
+                    />
+                    <InfoRow label="Language Spoken at Home" value={student.mother_tongue || student.dialects || ''} />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">6. Special Programs / Needs</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <InfoRow label="Program Inclusion (SPED/ALS/Gifted)" value={student.program_inclusion} />
+                    <InfoRow label="Interventions Provided" value={student.interventions_provided} />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">7. Emergency Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <InfoRow label="Emergency Contact Person" value={emergencyContactName} />
+                    <InfoRow label="Emergency Contact Number" value={emergencyContactNumber} />
+                    <InfoRow label="Relationship" value={emergencyRelationship} />
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </TabsContent>
 
           {/* Personal Information Tab */}
           <TabsContent value="personal" className="mt-6">
@@ -1096,6 +1412,7 @@ const StudentProfile = () => {
                         </SelectContent>
                       </Select>
                     </div>
+                    <EditableField label="Section" value={studentForm.section} field="section" />
                     <div className="space-y-1">
                       <Label className="text-xs">School</Label>
                       <Select value={studentForm.school} onValueChange={(v) => setStudentForm({ ...studentForm, school: v })}>
@@ -1131,10 +1448,14 @@ const StudentProfile = () => {
                     <h3 className="font-semibold text-white">Academic Background</h3>
                   </div>
                   <div className="p-5 space-y-4 bg-gradient-to-br from-blue-50/50 to-white dark:from-slate-800/50 dark:to-slate-900 relative z-10">
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div>
                         <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Current Level</p>
                         <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.level}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Section</p>
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.section || 'Not set'}</p>
                       </div>
                       <div>
                         <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">School</p>

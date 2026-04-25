@@ -1,10 +1,10 @@
-import { useState, useRef, useMemo } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserPlus as EnrollIcon, Loader2, CheckCircle2, ChevronRight, ChevronLeft, Printer, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useCreateStudent } from '@/hooks/useStudents';
-import { getSchoolId } from '@/utils/schoolIdMap';
+import { useSchoolId } from '@/hooks/useSchoolId';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { differenceInYears } from 'date-fns';
@@ -38,6 +38,7 @@ export const EnrollmentWizard = ({ mode = 'enrollment', onComplete }: Enrollment
     const { selectedSchool } = useSchool();
     const { user } = useAuth();
     const { selectedYearId, selectedYear } = useAcademicYear();
+    const { data: schoolId } = useSchoolId();
     const [currentStep, setCurrentStep] = useState(1);
     const [, setDirection] = useState(0);
     const [hasLrn, setHasLrn] = useState(true);
@@ -63,7 +64,7 @@ export const EnrollmentWizard = ({ mode = 'enrollment', onComplete }: Enrollment
     });
 
     // Update school and academic year when context changes
-    useMemo(() => {
+    useEffect(() => {
         setFormData(prev => ({
             ...prev,
             school: selectedSchool,
@@ -216,8 +217,7 @@ export const EnrollmentWizard = ({ mode = 'enrollment', onComplete }: Enrollment
         }
 
         // Pre-submit guard: ensure school_id and academic_year_id are available
-        const resolvedSchoolId = getSchoolId(formData.school);
-        if (!resolvedSchoolId) {
+        if (!schoolId) {
             toast.error('Unable to resolve school. Please select a valid school and try again.');
             return;
         }
@@ -234,12 +234,45 @@ export const EnrollmentWizard = ({ mode = 'enrollment', onComplete }: Enrollment
 
             // --- ADMISSION MODE: insert into admissions table ---
             if (mode === 'admission') {
+                if (finalLrn && !finalLrn.startsWith('TEMP-')) {
+                    const [{ data: existingStudent, error: existingStudentError }, { data: existingAdmission, error: existingAdmissionError }] =
+                        await Promise.all([
+                            supabase
+                                .from('students')
+                                .select('id')
+                                .eq('lrn', finalLrn)
+                                .eq('school_id', schoolId)
+                                .eq('academic_year_id', selectedYearId)
+                                .maybeSingle(),
+                            (supabase.from('admissions') as any)
+                                .select('id')
+                                .eq('lrn', finalLrn)
+                                .eq('school_id', schoolId)
+                                .eq('academic_year_id', selectedYearId)
+                                .in('status', ['pending', 'approved'])
+                                .maybeSingle(),
+                        ]);
+
+                    if (existingStudentError) throw existingStudentError;
+                    if (existingAdmissionError) throw existingAdmissionError;
+
+                    if (existingStudent) {
+                        toast.error('A learner with this LRN already exists for the selected academic year.');
+                        return;
+                    }
+
+                    if (existingAdmission) {
+                        toast.error('An admission application with this LRN already exists for the selected academic year.');
+                        return;
+                    }
+                }
+
                 const { data: inserted, error: admError } = await (supabase.from('admissions') as any).insert([{
                     student_name: formData.student_name.trim(),
                     lrn: finalLrn.startsWith('TEMP') ? null : finalLrn,
                     level: formData.level,
                     school: formData.school,
-                    school_id: resolvedSchoolId,
+                    school_id: schoolId,
                     academic_year_id: selectedYearId,
                     birth_date: formData.birth_date || null,
                     gender: formData.gender || null,
@@ -279,11 +312,12 @@ export const EnrollmentWizard = ({ mode = 'enrollment', onComplete }: Enrollment
                     .from('students')
                     .select('id')
                     .eq('lrn', finalLrn)
-                    .eq('school', formData.school)
+                    .eq('school_id', schoolId)
+                    .eq('academic_year_id', selectedYearId)
                     .maybeSingle();
 
                 if (existingLrn) {
-                    toast.error('A learner with this LRN already exists in this school');
+                    toast.error('A learner with this LRN already exists for the selected academic year.');
                     return;
                 }
             }
@@ -306,7 +340,7 @@ export const EnrollmentWizard = ({ mode = 'enrollment', onComplete }: Enrollment
                 uae_address: formData.uae_address.trim(),
                 previous_school: formData.previous_school.trim() || undefined,
                 academic_year_id: selectedYearId,
-                school_id: resolvedSchoolId,
+                school_id: schoolId,
             } as any);
 
             // 2. Create Credentials

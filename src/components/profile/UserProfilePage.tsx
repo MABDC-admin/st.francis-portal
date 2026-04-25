@@ -23,6 +23,7 @@ const sanitize = (val: string) => val.replace(/<[^>]*>/g, '').trim();
 const resizeImage = (file: File): Promise<Blob> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
     img.onload = () => {
       const canvas = document.createElement('canvas');
       canvas.width = 300;
@@ -39,9 +40,13 @@ const resizeImage = (file: File): Promise<Blob> => {
         if (blob) resolve(blob);
         else reject(new Error('Failed to create blob'));
       }, 'image/jpeg', 0.85);
+      URL.revokeObjectURL(objectUrl);
     };
-    img.onerror = () => reject(new Error('Failed to load image'));
-    img.src = URL.createObjectURL(file);
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Failed to load image'));
+    };
+    img.src = objectUrl;
   });
 };
 
@@ -100,6 +105,14 @@ export const UserProfilePage = () => {
       });
     }
   }, [profile]);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
@@ -229,7 +242,13 @@ export const UserProfilePage = () => {
     try {
       const resized = await resizeImage(file);
       setPendingFile(resized);
-      setPreviewUrl(URL.createObjectURL(resized));
+      setPreviewUrl((currentUrl) => {
+        if (currentUrl?.startsWith('blob:')) {
+          URL.revokeObjectURL(currentUrl);
+        }
+
+        return URL.createObjectURL(resized);
+      });
     } catch {
       toast.error('Failed to process image');
     }

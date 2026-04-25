@@ -2,20 +2,15 @@ import express from 'express';
 import cors from 'cors';
 import axios from 'axios';
 import dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 
 dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 // --- Security: CORS origin restriction ---
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',')
+    ? process.env.ALLOWED_ORIGINS.split(',').map((origin) => origin.trim()).filter(Boolean)
     : ['http://localhost:5173', 'http://localhost:8080'];
 
 app.use(cors({
@@ -35,6 +30,20 @@ app.use(express.json());
 const rateLimit = new Map();
 const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutes
 const RATE_LIMIT_MAX = 100; // max requests per window
+const RATE_LIMIT_PRUNE_INTERVAL = RATE_LIMIT_WINDOW;
+
+const pruneRateLimitRecords = () => {
+    const now = Date.now();
+
+    for (const [ip, record] of rateLimit.entries()) {
+        if (now - record.start > RATE_LIMIT_WINDOW) {
+            rateLimit.delete(ip);
+        }
+    }
+};
+
+const rateLimitPruneTimer = setInterval(pruneRateLimitRecords, RATE_LIMIT_PRUNE_INTERVAL);
+rateLimitPruneTimer.unref?.();
 
 app.use('/api/', (req, res, next) => {
     const ip = req.ip || req.connection.remoteAddress;
@@ -92,7 +101,7 @@ app.get('/api/weather', async (req, res) => {
         }
 
         const url = `https://api.openweathermap.org/data/2.5/weather?lat=${LAT}&lon=${LON}&appid=${API_KEY}&units=metric`;
-        const response = await axios.get(url);
+        const response = await axios.get(url, { timeout: 5000 });
         const data = response.data;
 
         // Logic to determine theme
@@ -130,12 +139,16 @@ app.get('/api/weather', async (req, res) => {
     }
 });
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-    console.log('SIGTERM received. Shutting down gracefully...');
-    process.exit(0);
-});
-
-app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Weather Server running on port ${PORT}`);
 });
+
+const shutdown = (signal) => {
+    console.log('SIGTERM received. Shutting down gracefully...');
+    clearInterval(rateLimitPruneTimer);
+    server.close(() => process.exit(0));
+};
+
+// Graceful shutdown
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));

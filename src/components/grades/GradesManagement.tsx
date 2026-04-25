@@ -61,7 +61,8 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchool } from '@/contexts/SchoolContext';
-import { getSchoolId } from '@/utils/schoolIdMap';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { useSchoolId } from '@/hooks/useSchoolId';
 import { GradeChangeRequestDialog } from './GradeChangeRequestDialog';
 
 interface StudentGrade {
@@ -124,6 +125,8 @@ interface CSVGradeRow {
 export const GradesManagement = () => {
   const navigate = useNavigate();
   const { selectedSchool } = useSchool();
+  const { selectedYearId } = useAcademicYear();
+  const { data: schoolId } = useSchoolId();
   const [grades, setGrades] = useState<StudentGrade[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -131,7 +134,7 @@ export const GradesManagement = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLevel, setSelectedLevel] = useState<string>('all');
-  const [selectedYear, setSelectedYear] = useState<string>('all');
+  const [selectedYear, setSelectedYear] = useState<string>(selectedYearId || 'all');
 
   // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -177,39 +180,45 @@ export const GradesManagement = () => {
 
   // Fetch data when school changes
   useEffect(() => {
+    if (!schoolId) {
+      setStudents([]);
+      setGrades([]);
+      setAcademicYears([]);
+      setIsLoading(false);
+      return;
+    }
     fetchData();
-  }, [selectedSchool]);
+  }, [schoolId, selectedSchool]);
+
+  useEffect(() => {
+    setSelectedYear(selectedYearId || 'all');
+  }, [selectedYearId]);
 
   const fetchData = async () => {
+    if (!schoolId) return;
+
     setIsLoading(true);
     try {
-      // Fetch students filtered by school first
+      // Fetch students scoped by database school
       const { data: studentsData } = await supabase
         .from('students')
         .select('id, student_name, lrn, level')
-        .eq('school', selectedSchool)
+        .eq('school_id', schoolId)
         .order('student_name');
       setStudents(studentsData || []);
 
-      const studentIds = (studentsData || []).map(s => s.id);
+      const { data: gradesData = [], error: gradesError } = await supabase
+        .from('student_grades')
+        .select(`
+          *,
+          students:student_id (student_name, lrn, level),
+          subjects:subject_id (code, name),
+          academic_years:academic_year_id (name)
+        `)
+        .eq('school_id', schoolId)
+        .order('created_at', { ascending: false });
 
-      // Fetch grades only for students in the selected school
-      let gradesData: any[] = [];
-      if (studentIds.length > 0) {
-        const { data, error: gradesError } = await supabase
-          .from('student_grades')
-          .select(`
-            *,
-            students:student_id (student_name, lrn, level),
-            subjects:subject_id (code, name),
-            academic_years:academic_year_id (name)
-          `)
-          .in('student_id', studentIds)
-          .order('created_at', { ascending: false });
-
-        if (gradesError) throw gradesError;
-        gradesData = data || [];
-      }
+      if (gradesError) throw gradesError;
 
       const formattedGrades = gradesData.map((g: any) => ({
         ...g,
@@ -235,6 +244,7 @@ export const GradesManagement = () => {
       const { data: yearsData } = await supabase
         .from('academic_years')
         .select('id, name, is_current')
+        .eq('school_id', schoolId)
         .order('start_date', { ascending: false });
       setAcademicYears((yearsData || []).map(y => ({ ...y, is_current: y.is_current ?? false })));
 
@@ -247,11 +257,11 @@ export const GradesManagement = () => {
   };
 
   const handleAdd = (studentId?: string) => {
-    const currentYear = academicYears.find(y => y.is_current);
+    const defaultYearId = selectedYearId || academicYears.find(y => y.is_current)?.id || '';
     setFormData({
       student_id: studentId || '',
       subject_id: '',
-      academic_year_id: currentYear?.id || '',
+      academic_year_id: defaultYearId,
       q1_grade: '',
       q2_grade: '',
       q3_grade: '',
@@ -259,7 +269,7 @@ export const GradesManagement = () => {
       remarks: ''
     });
     if (studentId) {
-      initializeBulkGrades(studentId, currentYear?.id);
+      initializeBulkGrades(studentId, defaultYearId);
     } else {
       setBulkGrades({});
     }
@@ -318,6 +328,11 @@ export const GradesManagement = () => {
   };
 
   const handleBulkSave = async () => {
+    if (!schoolId) {
+      toast.error('School context is not ready yet');
+      return;
+    }
+
     if (!formData.student_id) {
       toast.error('Please select a student');
       return;
@@ -329,7 +344,7 @@ export const GradesManagement = () => {
       .map(([subjectId, grades]) => ({
         student_id: formData.student_id,
         subject_id: subjectId,
-        school_id: selectedSchool,
+        school_id: schoolId,
         academic_year_id: formData.academic_year_id || null,
         q1_grade: grades.q1 ? parseFloat(grades.q1) : null,
         q2_grade: grades.q2 ? parseFloat(grades.q2) : null,
@@ -410,6 +425,11 @@ export const GradesManagement = () => {
   };
 
   const handleSave = async () => {
+    if (!schoolId) {
+      toast.error('School context is not ready yet');
+      return;
+    }
+
     if (!formData.student_id || !formData.subject_id) {
       toast.error('Please select a student and subject');
       return;
@@ -420,7 +440,7 @@ export const GradesManagement = () => {
       const gradeData = {
         student_id: formData.student_id,
         subject_id: formData.subject_id,
-        school_id: getSchoolId(selectedSchool) || null,
+        school_id: schoolId || null,
         academic_year_id: formData.academic_year_id || null,
         q1_grade: formData.q1_grade ? parseFloat(formData.q1_grade) : null,
         q2_grade: formData.q2_grade ? parseFloat(formData.q2_grade) : null,
@@ -531,8 +551,8 @@ export const GradesManagement = () => {
         setCsvData(parsed);
 
         // Set default academic year
-        const currentYear = academicYears.find(y => y.is_current);
-        if (currentYear) setImportAcademicYear(currentYear.id);
+        const defaultYearId = selectedYearId || academicYears.find(y => y.is_current)?.id;
+        if (defaultYearId) setImportAcademicYear(defaultYearId);
       },
       error: (error) => {
         toast.error('Failed to parse CSV file');
@@ -545,6 +565,11 @@ export const GradesManagement = () => {
   };
 
   const handleImportGrades = async () => {
+    if (!schoolId) {
+      toast.error('School context is not ready yet');
+      return;
+    }
+
     const validRows = csvData.filter(row => row.isValid);
     if (validRows.length === 0) {
       toast.error('No valid grades to import');
@@ -561,7 +586,7 @@ export const GradesManagement = () => {
       const gradesToInsert = validRows.map(row => ({
         student_id: row.student_id!,
         subject_id: row.subject_id!,
-        school_id: selectedSchool,
+        school_id: schoolId,
         academic_year_id: importAcademicYear,
         q1_grade: row.q1 ? parseFloat(row.q1) : null,
         q2_grade: row.q2 ? parseFloat(row.q2) : null,

@@ -18,80 +18,298 @@ export interface TeacherRecord {
   updated_at: string | null;
 }
 
-// Fetch teacher profile by matching user_id
-export const useTeacherProfile = (userId: string | undefined) => {
+interface TeacherScheduleFallbackOptions {
+  schoolId?: string | null;
+  academicYearId?: string | null;
+  gradeLevel?: string | null;
+}
+
+interface ScheduleLookupRow {
+  id: string;
+  grade_level: string;
+  section: string | null;
+}
+
+const normalizeGradeLevelForMatch = (value: string | null | undefined) => {
+  if (!value) return '';
+
+  const normalized = value.toLowerCase().replace(/\s+/g, ' ').trim();
+  if (normalized.includes('kinder')) {
+    return normalized.replace(/\s+/g, '');
+  }
+
+  const stripped = normalized.replace(/^grade\s*/i, '').replace(/^g\s*/i, '').trim();
+  if (/^\d{1,2}$/.test(stripped)) {
+    return `grade-${stripped}`;
+  }
+
+  return stripped.replace(/\s+/g, '');
+};
+
+const buildGradeLevelVariants = (levels: string[]) => {
+  const variants = new Set<string>();
+
+  for (const level of levels) {
+    const raw = level.trim();
+    if (!raw) continue;
+
+    variants.add(raw);
+    variants.add(raw.replace(/\s+/g, ' ').trim());
+
+    const lower = raw.toLowerCase().trim();
+    if (!lower.includes('kinder')) {
+      const stripped = lower.replace(/^grade\s*/i, '').replace(/^g\s*/i, '').trim();
+      const digitMatch = stripped.match(/^(\d{1,2})$/);
+
+      if (digitMatch) {
+        const gradeNum = digitMatch[1];
+        variants.add(gradeNum);
+        variants.add(`G${gradeNum}`);
+        variants.add(`Grade ${gradeNum}`);
+      }
+    }
+  }
+
+  return Array.from(variants);
+};
+
+const fetchTeacherSchedulesWithFallback = async <T extends ScheduleLookupRow>({
+  teacherId,
+  selectClause,
+  schoolId,
+  academicYearId,
+  gradeLevel,
+}: {
+  teacherId: string;
+  selectClause: string;
+} & TeacherScheduleFallbackOptions): Promise<T[]> => {
+  const runDirectLookup = async (withSchoolFilter: boolean, withYearFilter: boolean) => {
+    let query = supabase
+      .from('class_schedules')
+      .select(selectClause)
+      .eq('teacher_id', teacherId);
+
+    if (withSchoolFilter && schoolId) {
+      query = query.eq('school_id', schoolId);
+    }
+
+    if (withYearFilter && academicYearId) {
+      query = query.eq('academic_year_id', academicYearId);
+    }
+
+    const { data, error } = await query
+      .order('day_of_week', { ascending: true })
+      .order('start_time', { ascending: true });
+
+    if (error) {
+      throw error;
+    }
+
+    return (data || []) as T[];
+  };
+
+  if (schoolId && academicYearId) {
+    const selectedYearSchedules = await runDirectLookup(true, true);
+    if (selectedYearSchedules.length > 0) {
+      return selectedYearSchedules;
+    }
+  }
+
+  if (schoolId) {
+    const schoolSchedules = await runDirectLookup(true, false);
+    if (schoolSchedules.length > 0) {
+      return schoolSchedules;
+    }
+  }
+
+  const directSchedules = await runDirectLookup(false, false);
+  if (directSchedules.length > 0) {
+    return directSchedules;
+  }
+
+  if (!schoolId || !academicYearId || !gradeLevel) {
+    return [];
+  }
+
+  const { data: advisorySections } = await supabase
+    .from('sections')
+    .select('name, grade_level')
+    .eq('advisor_teacher_id', teacherId)
+    .eq('school_id', schoolId)
+    .eq('academic_year_id', academicYearId)
+    .eq('is_active', true);
+
+  const sectionNames = [...new Set((advisorySections || []).map((row) => row.name).filter((name): name is string => !!name))];
+  const advisoryLevels = [...new Set((advisorySections || []).map((row) => row.grade_level).filter((level): level is string => !!level))];
+
+  if (sectionNames.length > 0 && advisoryLevels.length > 0) {
+    let advisoryQuery = supabase
+      .from('class_schedules')
+      .select(selectClause)
+      .eq('school_id', schoolId)
+      .eq('academic_year_id', academicYearId);
+
+    advisoryQuery = advisoryLevels.length === 1
+      ? advisoryQuery.eq('grade_level', advisoryLevels[0])
+      : advisoryQuery.in('grade_level', advisoryLevels);
+
+    advisoryQuery = sectionNames.length === 1
+      ? advisoryQuery.eq('section', sectionNames[0])
+      : advisoryQuery.in('section', sectionNames);
+
+    const { data: advisorySchedules, error: advisoryError } = await advisoryQuery
+      .order('day_of_week', { ascending: true })
+      .order('start_time', { ascending: true });
+
+    if (advisoryError) {
+      throw advisoryError;
+    }
+
+    if ((advisorySchedules || []).length > 0) {
+      return (advisorySchedules || []) as T[];
+    }
+  }
+
+  const { data: gradeSchedules, error: gradeError } = await supabase
+    .from('class_schedules')
+    .select(selectClause)
+    .eq('school_id', schoolId)
+    .eq('academic_year_id', academicYearId)
+    .eq('grade_level', gradeLevel)
+    .order('day_of_week', { ascending: true })
+    .order('start_time', { ascending: true });
+
+  if (gradeError) {
+    throw gradeError;
+  }
+
+  return (gradeSchedules || []) as T[];
+};
+
+// Fetch teacher profile by matching user_id, linked credentials, or email fallback
+export const useTeacherProfile = (userId: string | undefined, userEmail?: string | null) => {
   return useQuery({
-    queryKey: ['teacher-profile', userId],
+    queryKey: ['teacher-profile', userId, userEmail ?? null],
     queryFn: async () => {
-      if (!userId) return null;
+      if (!userId && !userEmail) return null;
+
+      const fetchTeacherById = async (teacherId: string) => {
+        const { data: teacherById, error: teacherByIdError } = await supabase
+          .from('teachers')
+          .select('*')
+          .eq('id', teacherId)
+          .maybeSingle();
+
+        if (teacherByIdError) {
+          console.error('Error fetching teacher by ID:', teacherByIdError);
+          return null;
+        }
+
+        return teacherById as TeacherRecord | null;
+      };
 
       // First try direct user_id match on teachers table
-      const { data: teacher, error } = await supabase
-        .from('teachers')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
+      if (userId) {
+        const { data: teacher, error } = await supabase
+          .from('teachers')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle();
 
-      if (error) {
-        console.error('Error fetching teacher profile:', error);
+        if (error) {
+          console.error('Error fetching teacher profile:', error);
+        } else if (teacher) {
+          return teacher as TeacherRecord;
+        }
+
+        // Fallback: check user_credentials for teacher_id link by user_id
+        const { data: creds, error: credError } = await supabase
+          .from('user_credentials')
+          .select('teacher_id')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (!credError && creds?.teacher_id) {
+          const teacherByCred = await fetchTeacherById(creds.teacher_id);
+          if (teacherByCred) {
+            return teacherByCred;
+          }
+        }
+      }
+
+      let resolvedEmail = userEmail?.trim().toLowerCase() || null;
+      if (!resolvedEmail && userId) {
+        const { data: authData } = await supabase.auth.getUser();
+        resolvedEmail = authData.user?.email?.trim().toLowerCase() || null;
+      }
+
+      if (!resolvedEmail) {
         return null;
       }
 
-      if (teacher) return teacher as TeacherRecord;
-
-      // Fallback: check user_credentials for teacher_id link
-      const { data: creds, error: credError } = await supabase
+      // Fallback: check user_credentials by email
+      const { data: credsByEmail, error: credsByEmailError } = await supabase
         .from('user_credentials')
         .select('teacher_id')
-        .eq('user_id', userId)
+        .ilike('email', resolvedEmail)
         .maybeSingle();
 
-      if (credError || !creds?.teacher_id) return null;
+      if (!credsByEmailError && credsByEmail?.teacher_id) {
+        const teacherByEmailCred = await fetchTeacherById(credsByEmail.teacher_id);
+        if (teacherByEmailCred) {
+          return teacherByEmailCred;
+        }
+      }
 
-      const { data: teacherByCred, error: teacherError } = await supabase
+      // Final fallback: direct teacher email match
+      const { data: teacherByEmail, error: teacherByEmailError } = await supabase
         .from('teachers')
         .select('*')
-        .eq('id', creds.teacher_id)
+        .ilike('email', resolvedEmail)
         .maybeSingle();
 
-      if (teacherError) {
-        console.error('Error fetching teacher by credential:', teacherError);
+      if (teacherByEmailError) {
+        console.error('Error fetching teacher by email:', teacherByEmailError);
         return null;
       }
 
-      return teacherByCred as TeacherRecord | null;
+      return teacherByEmail as TeacherRecord | null;
     },
-    enabled: !!userId,
+    enabled: !!userId || !!userEmail,
     staleTime: 5 * 60 * 1000,
   });
 };
 
 // Fetch class schedules assigned to a teacher
-export const useTeacherSchedule = (teacherId: string | undefined, schoolId?: string | null) => {
+export const useTeacherSchedule = (
+  teacherId: string | undefined,
+  schoolId?: string | null,
+  academicYearId?: string | null,
+  gradeLevel?: string | null,
+) => {
   return useQuery({
-    queryKey: ['teacher-schedule', teacherId, schoolId],
+    queryKey: ['teacher-schedule', teacherId, schoolId, academicYearId, gradeLevel],
     queryFn: async () => {
       if (!teacherId) return [];
 
-      let query = supabase
-        .from('class_schedules')
-        .select(`
-          *,
-          subjects:subject_id(id, name, code),
-          academic_years:academic_year_id(name, is_current)
-        `)
-        .eq('teacher_id', teacherId)
-        .order('day_of_week', { ascending: true })
-        .order('start_time', { ascending: true });
+      try {
+        const rows = await fetchTeacherSchedulesWithFallback<ScheduleLookupRow & Record<string, unknown>>({
+          teacherId,
+          selectClause: `
+            *,
+            subjects:subject_id(id, name, code),
+            academic_years:academic_year_id(name, is_current)
+          `,
+          schoolId,
+          academicYearId,
+          gradeLevel,
+        });
 
-      const { data, error } = await query;
-
-      if (error) {
+        return rows;
+      } catch (error) {
         console.error('Error fetching teacher schedule:', error);
         return [];
       }
-
-      return data || [];
     },
     enabled: !!teacherId,
     staleTime: 5 * 60 * 1000,
@@ -99,29 +317,102 @@ export const useTeacherSchedule = (teacherId: string | undefined, schoolId?: str
 };
 
 // Fetch students in classes taught by this teacher (via class_schedules grade_level + section)
-export const useTeacherStudentCount = (teacherId: string | undefined) => {
+export const useTeacherStudentCount = (
+  teacherId: string | undefined,
+  schoolId?: string | null,
+  academicYearId?: string | null,
+  gradeLevel?: string | null,
+) => {
   return useQuery({
-    queryKey: ['teacher-student-count', teacherId],
+    queryKey: ['teacher-student-count', teacherId, schoolId, academicYearId, gradeLevel],
     queryFn: async () => {
       if (!teacherId) return 0;
 
-      // Get the grade levels this teacher teaches
-      const { data: schedules, error: schedError } = await supabase
-        .from('class_schedules')
-        .select('grade_level')
-        .eq('teacher_id', teacherId);
+      try {
+        const schedules = await fetchTeacherSchedulesWithFallback<ScheduleLookupRow>({
+          teacherId,
+          selectClause: 'id, grade_level, section, day_of_week, start_time',
+          schoolId,
+          academicYearId,
+          gradeLevel,
+        });
 
-      if (schedError || !schedules?.length) return 0;
+        const gradeLevels = schedules.length > 0
+          ? [...new Set(schedules.map((schedule) => schedule.grade_level))]
+          : (gradeLevel ? [gradeLevel] : []);
+        const gradeLevelVariants = buildGradeLevelVariants(gradeLevels);
 
-      const gradeLevels = [...new Set(schedules.map(s => s.grade_level))];
+        if (!gradeLevels.length) return 0;
 
-      const { count, error } = await supabase
-        .from('students')
-        .select('id', { count: 'exact', head: true })
-        .in('level', gradeLevels);
+        const fetchStudents = async (withSchoolFilter: boolean, withYearFilter: boolean) => {
+          let studentsQuery = supabase
+            .from('students')
+            .select('id, level, section')
+            .in('level', gradeLevelVariants);
 
-      if (error) return 0;
-      return count || 0;
+          if (withSchoolFilter && schoolId) {
+            studentsQuery = studentsQuery.eq('school_id', schoolId);
+          }
+
+          if (withYearFilter && academicYearId) {
+            studentsQuery = studentsQuery.eq('academic_year_id', academicYearId);
+          }
+
+          const { data, error } = await studentsQuery;
+          if (error) {
+            throw error;
+          }
+          return data || [];
+        };
+
+        let students: Array<{ id: string; level: string; section: string | null }> = [];
+
+        if (schoolId && academicYearId) {
+          students = await fetchStudents(true, true);
+        }
+
+        if (students.length === 0 && schoolId) {
+          students = await fetchStudents(true, false);
+        }
+
+        if (students.length === 0) {
+          students = await fetchStudents(false, false);
+        }
+
+        if (!students.length) {
+          return 0;
+        }
+
+        const classSlots = schedules.length > 0
+          ? schedules.map((schedule) => ({
+              level: schedule.grade_level,
+              section: schedule.section,
+            }))
+          : gradeLevels.map((level) => ({
+              level,
+              section: null,
+            }));
+
+        const matchedLearnerIds = new Set<string>();
+        for (const student of students) {
+          const isMatch = classSlots.some((slot) => {
+            const sameLevel = normalizeGradeLevelForMatch(slot.level) === normalizeGradeLevelForMatch(student.level);
+            if (!sameLevel) return false;
+            if (!slot.section) return true;
+            if (!student.section) return true;
+            return slot.section === student.section;
+          });
+
+          if (isMatch) {
+            matchedLearnerIds.add(student.id);
+          }
+        }
+
+        return matchedLearnerIds.size;
+      } catch (error) {
+        console.error('Error fetching teacher learner count:', error);
+        return 0;
+      }
     },
     enabled: !!teacherId,
     staleTime: 5 * 60 * 1000,

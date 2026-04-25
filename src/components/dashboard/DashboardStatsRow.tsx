@@ -1,30 +1,7 @@
-import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
-import { useEffect } from 'react';
-import { cn } from '@/lib/utils';
-import { StudentIcon3D, TeacherIcon3D, ClassesIcon3D, LibraryIcon3D } from '@/components/icons/ThreeDIcons';
-import { AppleStudentIcon, AppleTeacherIcon, AppleClassesIcon, AppleLibraryIcon } from '@/components/icons/AppleStyleIcons';
-import { LayoutStyle } from '@/contexts/DashboardLayoutContext';
-
-const AnimatedCounter = ({ value, duration = 3 }: { value: number | string, duration?: number }) => {
-  const numericValue = typeof value === 'string' ? parseFloat(value) : value;
-  const isPercentage = typeof value === 'string' && value.includes('%');
-
-  const count = useMotionValue(0);
-  const displayValue = useTransform(count, (latest) => {
-    const rounded = Math.round(latest);
-    return isPercentage ? `${rounded}%` : rounded.toString();
-  });
-
-  useEffect(() => {
-    const controls = animate(count, numericValue, {
-      duration: duration,
-      ease: "easeOut",
-    });
-    return controls.stop;
-  }, [numericValue, count, duration]);
-
-  return <motion.span>{displayValue}</motion.span>;
-};
+import { motion } from "framer-motion";
+import { BookOpen, GraduationCap, Library, Users } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { LayoutStyle } from "@/contexts/DashboardLayoutContext";
 
 interface DashboardStatsRowProps {
   totalStudents: number;
@@ -35,96 +12,90 @@ interface DashboardStatsRowProps {
   variant?: LayoutStyle;
 }
 
+const stats = [
+  {
+    key: "students",
+    label: "Total Learners",
+    tint: "text-primary",
+    shell: "from-primary/12 via-background to-background",
+    iconBg: "bg-primary/12 text-primary",
+    icon: Users,
+  },
+  {
+    key: "teachers",
+    label: "Teachers",
+    tint: "text-hrms-success",
+    shell: "from-hrms-success/12 via-background to-background",
+    iconBg: "bg-hrms-success/12 text-hrms-success",
+    icon: GraduationCap,
+  },
+  {
+    key: "classes",
+    label: "Grade Levels",
+    tint: "text-warning",
+    shell: "from-warning/14 via-background to-background",
+    iconBg: "bg-warning/14 text-warning",
+    icon: BookOpen,
+  },
+  {
+    key: "library",
+    label: "Library Items",
+    tint: "text-info",
+    shell: "from-info/12 via-background to-background",
+    iconBg: "bg-info/12 text-info",
+    icon: Library,
+  },
+];
+
 export const DashboardStatsRow = ({
   totalStudents,
   totalTeachers,
   totalClasses,
   libraryCount = 0,
   onLibraryClick,
-  variant = 'modern'
 }: DashboardStatsRowProps) => {
-  const isClassic = variant === 'classicBlue';
-  const isApple = variant === 'apple';
-  
-  const stats = [
-    {
-      value: totalStudents,
-      label: 'Total Learners',
-      bgClass: isApple ? 'apple-stat-green' : isClassic ? 'classic-stat-green' : 'bg-success',
-      icon: isApple ? AppleStudentIcon : StudentIcon3D,
-    },
-    {
-      value: totalTeachers,
-      label: 'Teachers',
-      bgClass: isApple ? 'apple-stat-blue' : isClassic ? 'classic-stat-blue' : 'bg-info',
-      icon: isApple ? AppleTeacherIcon : TeacherIcon3D,
-    },
-    {
-      value: totalClasses,
-      label: 'Classes',
-      bgClass: isApple ? 'apple-stat-orange' : isClassic ? 'classic-stat-yellow' : 'bg-yellow-500',
-      icon: isApple ? AppleClassesIcon : ClassesIcon3D,
-    },
-    {
-      value: libraryCount,
-      label: 'Library',
-      sublabel: 'Browse Flipbooks',
-      bgClass: isApple ? 'apple-stat-red' : isClassic ? 'classic-stat-red' : 'bg-purple-500',
-      icon: isApple ? AppleLibraryIcon : LibraryIcon3D,
-      onClick: onLibraryClick,
-    },
-  ];
+  const values: Record<string, number> = {
+    students: totalStudents,
+    teachers: totalTeachers,
+    classes: totalClasses,
+    library: libraryCount,
+  };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6"
-    >
-      {stats.map((stat, index) => (
-        <motion.div
-          key={stat.label}
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: index * 0.1 }}
-          onClick={stat.onClick}
-          className={cn(
-            "rounded-xl p-4 text-white flex items-center justify-between gap-3 overflow-hidden relative",
-            stat.bgClass,
-            isApple ? "rounded-[20px] shadow-[0_2px_12px_rgba(0,0,0,0.08)]" : isClassic ? "rounded-2xl shadow-lg" : "shadow-md",
-            stat.onClick && "cursor-pointer hover:scale-[1.02] transition-transform"
-          )}
-        >
-          {/* Icon container */}
-          <div className={cn(
-            "p-2 rounded-lg shrink-0 w-12 h-12 flex items-center justify-center",
-            isApple ? "bg-white/25 rounded-xl" : "bg-white/20"
-          )}>
-            <stat.icon className={cn(
-              "w-full h-full",
-              isApple ? "stroke-white" : "drop-shadow-md"
-            )} />
-          </div>
-          <div className="text-right">
-            <p className={cn(
-              "font-bold",
-              isApple ? "text-2xl lg:text-3xl font-semibold" : isClassic ? "text-3xl lg:text-4xl" : "text-2xl lg:text-3xl"
-            )}>
-              <AnimatedCounter value={stat.value} />
-            </p>
-            <p className={cn(
-              "opacity-90",
-              isApple ? "text-[11px] font-medium tracking-wide" : "text-xs"
-            )}>{stat.label}</p>
-            {stat.sublabel && (
-              <p className={cn(
-                "opacity-75",
-                isApple ? "text-[9px] font-medium" : "text-[10px]"
-              )}>{stat.sublabel}</p>
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {stats.map((stat, index) => {
+        const Icon = stat.icon;
+        const isInteractive = stat.key === "library" && onLibraryClick;
+
+        return (
+          <motion.button
+            key={stat.key}
+            type="button"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
+            onClick={isInteractive ? onLibraryClick : undefined}
+            className={cn(
+              "relative overflow-hidden rounded-lg border bg-gradient-to-br p-5 text-left shadow-card transition-all duration-500",
+              stat.shell,
+              isInteractive ? "hover:scale-[1.02] hover:shadow-lg" : "cursor-default",
             )}
-          </div>
-        </motion.div>
-      ))}
-    </motion.div>
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="micro-label">{stat.label}</p>
+                <p className="tabular mt-3 text-3xl font-bold tracking-tight text-foreground">{values[stat.key]}</p>
+              </div>
+              <div className={cn("rounded-2xl p-2.5", stat.iconBg)}>
+                <Icon className="h-5 w-5" />
+              </div>
+            </div>
+            <p className={cn("mt-4 text-xs font-medium", stat.tint)}>
+              {stat.key === "library" ? "Browse learning resources" : "Updated from live records"}
+            </p>
+          </motion.button>
+        );
+      })}
+    </div>
   );
 };

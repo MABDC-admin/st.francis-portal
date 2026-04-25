@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
-import { Users, CalendarDays, ClipboardCheck, FileText, Clock4, BookOpen } from 'lucide-react';
+import { Users, CalendarDays, ClipboardCheck, FileText, Clock4, BookOpen, TriangleAlert } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeacherProfile } from '@/hooks/useTeacherData';
 import { useSchoolId } from '@/hooks/useSchoolId';
@@ -34,63 +35,251 @@ interface ScheduleRow {
 interface StudentSummary {
   id: string;
   level: string;
+  section: string | null;
 }
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+type ScheduleSource =
+  | 'direct_selected_year'
+  | 'direct_school'
+  | 'direct_any'
+  | 'advisory_section'
+  | 'grade_level'
+  | 'none';
+
+interface ScheduleQueryResult {
+  rows: ScheduleRow[];
+  source: ScheduleSource;
+}
+
+const normalizeGradeLevelForMatch = (value: string | null | undefined) => {
+  if (!value) return '';
+
+  const normalized = value.toLowerCase().replace(/\s+/g, ' ').trim();
+  if (normalized.includes('kinder')) {
+    return normalized.replace(/\s+/g, '');
+  }
+
+  const stripped = normalized.replace(/^grade\s*/i, '').replace(/^g\s*/i, '').trim();
+  if (/^\d{1,2}$/.test(stripped)) {
+    return `grade-${stripped}`;
+  }
+
+  return stripped.replace(/\s+/g, '');
+};
+
+const buildGradeLevelVariants = (levels: string[]) => {
+  const variants = new Set<string>();
+
+  for (const level of levels) {
+    const raw = level.trim();
+    if (!raw) continue;
+
+    variants.add(raw);
+    variants.add(raw.replace(/\s+/g, ' ').trim());
+
+    const lower = raw.toLowerCase().trim();
+    if (!lower.includes('kinder')) {
+      const stripped = lower.replace(/^grade\s*/i, '').replace(/^g\s*/i, '').trim();
+      const digitMatch = stripped.match(/^(\d{1,2})$/);
+
+      if (digitMatch) {
+        const gradeNum = digitMatch[1];
+        variants.add(gradeNum);
+        variants.add(`G${gradeNum}`);
+        variants.add(`Grade ${gradeNum}`);
+      }
+    }
+  }
+
+  return Array.from(variants);
+};
 
 export const TeacherClassesPage = ({ onNavigate }: TeacherClassesPageProps) => {
   const { user } = useAuth();
-  const { data: teacherProfile } = useTeacherProfile(user?.id);
+  const { data: teacherProfile } = useTeacherProfile(user?.id, user?.email);
   const { data: schoolId } = useSchoolId();
   const { selectedYearId } = useAcademicYear();
 
-  const { data: schedules = [], isLoading: loadingSchedules } = useQuery({
+  const { data: scheduleData, isLoading: loadingSchedules } = useQuery({
     queryKey: ['teacher-classes-schedules', teacherProfile?.id, schoolId, selectedYearId],
     queryFn: async () => {
-      if (!teacherProfile?.id || !schoolId || !selectedYearId) {
-        return [] as ScheduleRow[];
+      if (!teacherProfile?.id) {
+        return { rows: [], source: 'none' } as ScheduleQueryResult;
       }
 
-      const { data, error } = await supabase
-        .from('class_schedules')
-        .select('id, subject_id, grade_level, section, day_of_week, start_time, end_time, room, subjects:subject_id(code, name)')
-        .eq('teacher_id', teacherProfile.id)
+      const selectClause = 'id, subject_id, grade_level, section, day_of_week, start_time, end_time, room, subjects:subject_id(code, name)';
+
+      const getDirectSchedules = async (withSchool: boolean, withYear: boolean) => {
+        let query = supabase
+          .from('class_schedules')
+          .select(selectClause)
+          .eq('teacher_id', teacherProfile.id);
+
+        if (withSchool && schoolId) {
+          query = query.eq('school_id', schoolId);
+        }
+        if (withYear && selectedYearId) {
+          query = query.eq('academic_year_id', selectedYearId);
+        }
+
+        const { data, error } = await query
+          .order('day_of_week', { ascending: true })
+          .order('start_time', { ascending: true });
+
+        if (error) {
+          throw error;
+        }
+
+        return (data || []) as ScheduleRow[];
+      };
+
+      if (schoolId && selectedYearId) {
+        const directSelectedYear = await getDirectSchedules(true, true);
+        if (directSelectedYear.length > 0) {
+          return { rows: directSelectedYear, source: 'direct_selected_year' } as ScheduleQueryResult;
+        }
+      }
+
+      if (schoolId) {
+        const directSchool = await getDirectSchedules(true, false);
+        if (directSchool.length > 0) {
+          return { rows: directSchool, source: 'direct_school' } as ScheduleQueryResult;
+        }
+      }
+
+      const directAny = await getDirectSchedules(false, false);
+      if (directAny.length > 0) {
+        return { rows: directAny, source: 'direct_any' } as ScheduleQueryResult;
+      }
+
+      if (!schoolId || !selectedYearId || !teacherProfile.grade_level) {
+        return { rows: [], source: 'none' } as ScheduleQueryResult;
+      }
+
+      const { data: advisorySections } = await supabase
+        .from('sections')
+        .select('name, grade_level')
+        .eq('advisor_teacher_id', teacherProfile.id)
         .eq('school_id', schoolId)
         .eq('academic_year_id', selectedYearId)
+        .eq('is_active', true);
+
+      const sectionNames = [...new Set((advisorySections || []).map((row) => row.name).filter((name): name is string => !!name))];
+      const advisoryLevels = [...new Set((advisorySections || []).map((row) => row.grade_level).filter((level): level is string => !!level))];
+
+      if (sectionNames.length > 0 && advisoryLevels.length > 0) {
+        let advisoryQuery = supabase
+          .from('class_schedules')
+          .select(selectClause)
+          .eq('school_id', schoolId)
+          .eq('academic_year_id', selectedYearId);
+
+        advisoryQuery = advisoryLevels.length === 1
+          ? advisoryQuery.eq('grade_level', advisoryLevels[0])
+          : advisoryQuery.in('grade_level', advisoryLevels);
+
+        advisoryQuery = sectionNames.length === 1
+          ? advisoryQuery.eq('section', sectionNames[0])
+          : advisoryQuery.in('section', sectionNames);
+
+        const { data: advisorySchedules, error: advisoryError } = await advisoryQuery
+          .order('day_of_week', { ascending: true })
+          .order('start_time', { ascending: true });
+
+        if (advisoryError) {
+          throw advisoryError;
+        }
+
+        if ((advisorySchedules || []).length > 0) {
+          return { rows: (advisorySchedules || []) as ScheduleRow[], source: 'advisory_section' } as ScheduleQueryResult;
+        }
+      }
+
+      const { data: gradeSchedules, error: gradeError } = await supabase
+        .from('class_schedules')
+        .select(selectClause)
+        .eq('school_id', schoolId)
+        .eq('academic_year_id', selectedYearId)
+        .eq('grade_level', teacherProfile.grade_level)
         .order('day_of_week', { ascending: true })
         .order('start_time', { ascending: true });
 
-      if (error) {
-        throw error;
+      if (gradeError) {
+        throw gradeError;
       }
 
-      return (data || []) as ScheduleRow[];
+      if ((gradeSchedules || []).length > 0) {
+        return { rows: (gradeSchedules || []) as ScheduleRow[], source: 'grade_level' } as ScheduleQueryResult;
+      }
+
+      return { rows: [], source: 'none' } as ScheduleQueryResult;
     },
-    enabled: !!teacherProfile?.id && !!schoolId && !!selectedYearId,
+    enabled: !!teacherProfile?.id,
   });
 
+  const schedules = scheduleData?.rows || [];
+  const scheduleSource = scheduleData?.source || 'none';
+
   const { data: students = [], isLoading: loadingStudents } = useQuery({
-    queryKey: ['teacher-classes-students', schoolId, selectedYearId, schedules.map((s) => s.grade_level).join('|')],
+    queryKey: [
+      'teacher-classes-students',
+      schoolId,
+      selectedYearId,
+      scheduleSource,
+      schedules.map((s) => `${s.grade_level}:${s.section ?? '-'}`).join('|'),
+      teacherProfile?.grade_level || '-',
+    ],
     queryFn: async () => {
-      if (!schoolId || !selectedYearId || schedules.length === 0) {
+      const levels = schedules.length > 0
+        ? [...new Set(schedules.map((s) => s.grade_level))]
+        : (teacherProfile?.grade_level ? [teacherProfile.grade_level] : []);
+      const levelVariants = buildGradeLevelVariants(levels);
+
+      if (levels.length === 0) {
         return [] as StudentSummary[];
       }
 
-      const levels = [...new Set(schedules.map((s) => s.grade_level))];
-      const { data, error } = await supabase
-        .from('students')
-        .select('id, level')
-        .eq('school_id', schoolId)
-        .eq('academic_year_id', selectedYearId)
-        .in('level', levels);
+      const fetchStudents = async (withSchoolFilter: boolean, withYearFilter: boolean) => {
+        let query = supabase
+          .from('students')
+          .select('id, level, section')
+          .in('level', levelVariants);
 
-      if (error) {
-        throw error;
+        if (withSchoolFilter && schoolId) {
+          query = query.eq('school_id', schoolId);
+        }
+
+        if (withYearFilter && selectedYearId) {
+          query = query.eq('academic_year_id', selectedYearId);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+          throw error;
+        }
+
+        return (data || []) as StudentSummary[];
+      };
+
+      if (schoolId && selectedYearId) {
+        const strictRows = await fetchStudents(true, true);
+        if (strictRows.length > 0) {
+          return strictRows;
+        }
       }
 
-      return (data || []) as StudentSummary[];
+      if (schoolId) {
+        const schoolRows = await fetchStudents(true, false);
+        if (schoolRows.length > 0) {
+          return schoolRows;
+        }
+      }
+
+      return fetchStudents(false, false);
     },
-    enabled: !!schoolId && !!selectedYearId && schedules.length > 0,
+    enabled: !!schoolId && (schedules.length > 0 || !!teacherProfile?.grade_level),
   });
 
   const classGroups = useMemo(() => {
@@ -107,7 +296,14 @@ export const TeacherClassesPage = ({ onNavigate }: TeacherClassesPageProps) => {
     }
 
     return Array.from(grouped.values()).map(({ schedule, sessionsPerWeek }) => {
-      const learnerCount = students.filter((student) => student.level === schedule.grade_level).length;
+      const learnerCount = students.filter((student) => {
+        const sameLevel = normalizeGradeLevelForMatch(student.level) === normalizeGradeLevelForMatch(schedule.grade_level);
+        if (!sameLevel) return false;
+        if (!schedule.section) return true;
+        if (!student.section) return true;
+        return student.section === schedule.section;
+      }).length;
+
       return {
         ...schedule,
         sessionsPerWeek,
@@ -123,6 +319,21 @@ export const TeacherClassesPage = ({ onNavigate }: TeacherClassesPageProps) => {
 
   const totalLearners = useMemo(() => students.length, [students]);
   const isLoading = loadingSchedules || loadingStudents;
+
+  const fallbackNotice = useMemo(() => {
+    switch (scheduleSource) {
+      case 'direct_school':
+        return 'Showing your class assignments from another academic year because no classes are assigned to your account in the selected year.';
+      case 'direct_any':
+        return 'Showing your class assignments from another school/year context because no direct class assignment matched the current school.';
+      case 'advisory_section':
+        return 'No direct class schedule was linked to your account, so advisory section schedules are shown for visibility.';
+      case 'grade_level':
+        return `No direct teacher schedule was found, so grade-level schedules for ${teacherProfile?.grade_level} are shown as fallback.`;
+      default:
+        return null;
+    }
+  }, [scheduleSource, teacherProfile?.grade_level]);
 
   return (
     <div className="space-y-6">
@@ -146,6 +357,13 @@ export const TeacherClassesPage = ({ onNavigate }: TeacherClassesPageProps) => {
           </Button>
         </div>
       </motion.div>
+
+      {fallbackNotice && (
+        <Alert className="border-amber-300 bg-amber-50 text-amber-900">
+          <TriangleAlert className="h-4 w-4 text-amber-700" />
+          <AlertDescription>{fallbackNotice}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>

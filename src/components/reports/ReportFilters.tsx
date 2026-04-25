@@ -10,23 +10,35 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { useSchoolId } from '@/hooks/useSchoolId';
+import { supabase } from '@/integrations/supabase/client';
 import { ReportFiltersState, DEFAULT_FILTERS, GRADE_LEVELS } from './reportTypes';
 
 interface ReportFiltersProps {
   filters: ReportFiltersState;
   onChange: (filters: ReportFiltersState) => void;
+  userRole: string | null;
 }
 
-export const ReportFilters = ({ filters, onChange }: ReportFiltersProps) => {
+interface TeacherOption {
+  id: string;
+  full_name: string;
+  status: string | null;
+}
+
+export const ReportFilters = ({ filters, onChange, userRole }: ReportFiltersProps) => {
   const { academicYears, selectedYearId } = useAcademicYear();
+  const { data: schoolId } = useSchoolId();
   const [studentSearch, setStudentSearch] = useState(filters.studentSearch);
+  const [sectionOptions, setSectionOptions] = useState<string[]>([]);
+  const [teacherOptions, setTeacherOptions] = useState<TeacherOption[]>([]);
 
   // Set default school year from context on mount
   useEffect(() => {
     if (!filters.schoolYearId && selectedYearId) {
       onChange({ ...filters, schoolYearId: selectedYearId });
     }
-  }, [selectedYearId]);
+  }, [filters, onChange, selectedYearId]);
 
   // Debounce student search
   useEffect(() => {
@@ -36,7 +48,76 @@ export const ReportFilters = ({ filters, onChange }: ReportFiltersProps) => {
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [studentSearch]);
+  }, [studentSearch, filters, onChange]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadFilterOptions = async () => {
+      if (!schoolId) {
+        if (!cancelled) {
+          setSectionOptions([]);
+          setTeacherOptions([]);
+        }
+        return;
+      }
+
+      const { data: teachersData } = await supabase
+        .from('teachers')
+        .select('id, full_name, status')
+        .order('full_name', { ascending: true });
+
+      if (!cancelled) {
+        const activeTeachers = ((teachersData || []) as TeacherOption[])
+          .filter((teacher) => !teacher.status || teacher.status.toLowerCase() === 'active');
+        setTeacherOptions(activeTeachers);
+      }
+
+      const sectionSet = new Set<string>();
+
+      let sectionsQuery = supabase
+        .from('sections')
+        .select('name')
+        .eq('school_id', schoolId)
+        .eq('is_active', true) as any;
+      if (filters.schoolYearId) {
+        sectionsQuery = sectionsQuery.eq('academic_year_id', filters.schoolYearId);
+      }
+
+      const { data: sectionsData, error: sectionsError } = await sectionsQuery;
+      if (!sectionsError) {
+        (sectionsData || []).forEach((row: { name: string | null }) => {
+          const value = (row.name || '').trim();
+          if (value) sectionSet.add(value);
+        });
+      }
+
+      if (sectionSet.size === 0) {
+        let studentSectionsQuery = supabase
+          .from('students')
+          .select('section')
+          .eq('school_id', schoolId) as any;
+        if (filters.schoolYearId) {
+          studentSectionsQuery = studentSectionsQuery.eq('academic_year_id', filters.schoolYearId);
+        }
+
+        const { data: studentSections } = await studentSectionsQuery.limit(2000);
+        (studentSections || []).forEach((row: { section: string | null }) => {
+          const value = (row.section || '').trim();
+          if (value) sectionSet.add(value);
+        });
+      }
+
+      if (!cancelled) {
+        setSectionOptions(Array.from(sectionSet).sort((a, b) => a.localeCompare(b)));
+      }
+    };
+
+    loadFilterOptions();
+    return () => {
+      cancelled = true;
+    };
+  }, [filters.schoolYearId, schoolId]);
 
   const update = useCallback(
     (partial: Partial<ReportFiltersState>) => onChange({ ...filters, ...partial }),
@@ -98,6 +179,42 @@ export const ReportFilters = ({ filters, onChange }: ReportFiltersProps) => {
             </SelectContent>
           </Select>
         </div>
+
+        {/* Section */}
+        <div className="w-36">
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">Section</label>
+          <Select value={filters.section || 'all'} onValueChange={(v) => update({ section: v === 'all' ? null : v })}>
+            <SelectTrigger className="h-9 text-sm">
+              <SelectValue placeholder="All Sections" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sections</SelectItem>
+              {sectionOptions.map((section) => (
+                <SelectItem key={section} value={section}>{section}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Teacher */}
+        {(userRole === 'admin' || userRole === 'registrar') && (
+          <div className="w-44">
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Teacher</label>
+            <Select value={filters.teacherId || 'all'} onValueChange={(v) => update({ teacherId: v === 'all' ? null : v })}>
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue placeholder="All Teachers" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Teachers</SelectItem>
+                {teacherOptions.map((teacher) => (
+                  <SelectItem key={teacher.id} value={teacher.id}>
+                    {teacher.full_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Student Search */}
         <div className="w-48">

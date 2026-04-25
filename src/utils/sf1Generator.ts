@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
+import { loadImageAsDataUrl, resolveSchoolLogo } from '@/lib/schoolBranding';
 
 interface StudentData {
     student_name: string;
@@ -23,9 +24,10 @@ interface SchoolMetadata {
     region: string;
     division: string;
     district: string;
+    schoolLogoUrl?: string;
 }
 
-export const generateSF1 = (student: StudentData, school: SchoolMetadata) => {
+export const generateSF1 = async (student: StudentData, school: SchoolMetadata) => {
     const doc = new jsPDF({
         orientation: 'landscape',
         unit: 'mm',
@@ -34,24 +36,33 @@ export const generateSF1 = (student: StudentData, school: SchoolMetadata) => {
 
     const pageWidth = doc.internal.pageSize.width;
     const pageHeight = doc.internal.pageSize.height;
+    let headerY = 15;
+
+    try {
+        const logoDataUrl = await loadImageAsDataUrl(resolveSchoolLogo(school.schoolLogoUrl));
+        doc.addImage(logoDataUrl, 'PNG', pageWidth / 2 - 10, 8, 20, 20);
+        headerY = 32;
+    } catch {
+        headerY = 15;
+    }
 
     // Header Section
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text('School Form 1 (SF1) Register of Learners', pageWidth / 2, 15, { align: 'center' });
+    doc.text('School Form 1 (SF1) Register of Learners', pageWidth / 2, headerY, { align: 'center' });
 
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Region: ${school.region}`, 15, 25);
-    doc.text(`Division: ${school.division}`, 15, 30);
-    doc.text(`District: ${school.district}`, 15, 35);
+    doc.text(`Region: ${school.region}`, 15, headerY + 10);
+    doc.text(`Division: ${school.division}`, 15, headerY + 15);
+    doc.text(`District: ${school.district}`, 15, headerY + 20);
 
-    doc.text(`School Name: ${school.schoolName}`, pageWidth / 2, 25, { align: 'center' });
-    doc.text(`School ID: ${school.schoolId}`, pageWidth / 2, 30, { align: 'center' });
-    doc.text(`School Year: ${format(new Date(), 'yyyy')}-${parseInt(format(new Date(), 'yyyy')) + 1}`, pageWidth / 2, 35, { align: 'center' });
+    doc.text(`School Name: ${school.schoolName}`, pageWidth / 2, headerY + 10, { align: 'center' });
+    doc.text(`School ID: ${school.schoolId}`, pageWidth / 2, headerY + 15, { align: 'center' });
+    doc.text(`School Year: ${format(new Date(), 'yyyy')}-${parseInt(format(new Date(), 'yyyy')) + 1}`, pageWidth / 2, headerY + 20, { align: 'center' });
 
-    doc.text(`Grade Level: ${student.level}`, pageWidth - 15, 25, { align: 'right' });
-    doc.text(`Section: N/A`, pageWidth - 15, 30, { align: 'right' });
+    doc.text(`Grade Level: ${student.level}`, pageWidth - 15, headerY + 10, { align: 'right' });
+    doc.text(`Section: N/A`, pageWidth - 15, headerY + 15, { align: 'right' });
 
     // Student Data Table
     const tableData = [
@@ -75,7 +86,7 @@ export const generateSF1 = (student: StudentData, school: SchoolMetadata) => {
     ];
 
     autoTable(doc, {
-        startY: 45,
+        startY: headerY + 30,
         head: [[
             'LRN',
             'NAME (Last Name, First Name, Middle Name)',

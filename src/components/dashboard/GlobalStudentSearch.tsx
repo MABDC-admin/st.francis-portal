@@ -1,14 +1,14 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Search, User, X, Loader2 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
-import { useSchool } from '@/contexts/SchoolContext';
-import { useAcademicYear } from '@/contexts/AcademicYearContext';
-import { getSchoolId } from '@/utils/schoolIdMap';
-import { AnimatedStudentAvatar } from '@/components/students/AnimatedStudentAvatar';
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
+import { Loader2, Search, User, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
+import { useSchool } from "@/contexts/SchoolContext";
+import { useAcademicYear } from "@/contexts/AcademicYearContext";
+import { getSchoolId } from "@/utils/schoolIdMap";
+import { AnimatedStudentAvatar } from "@/components/students/AnimatedStudentAvatar";
 
 interface Student {
   id: string;
@@ -24,14 +24,13 @@ export const GlobalStudentSearch = () => {
   const { selectedSchool, schoolTheme } = useSchool();
   const { selectedYearId } = useAcademicYear();
   const schoolId = getSchoolId(selectedSchool);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const [results, setResults] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -39,19 +38,13 @@ export const GlobalStudentSearch = () => {
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Search students
   useEffect(() => {
     const searchStudents = async () => {
-      if (query.length < 2) {
-        setResults([]);
-        return;
-      }
-
-      if (!schoolId || !selectedYearId) {
+      if (query.length < 2 || !schoolId || !selectedYearId) {
         setResults([]);
         return;
       }
@@ -59,17 +52,17 @@ export const GlobalStudentSearch = () => {
       setIsLoading(true);
       try {
         const { data, error } = await supabase
-          .from('students')
-          .select('id, student_name, lrn, level, photo_url, gender')
-          .eq('school_id', schoolId)
-          .eq('academic_year_id', selectedYearId)
+          .from("students")
+          .select("id, student_name, lrn, level, photo_url, gender")
+          .eq("school_id", schoolId)
+          .eq("academic_year_id", selectedYearId)
           .or(`student_name.ilike.%${query}%,lrn.ilike.%${query}%`)
           .limit(8);
 
         if (error) throw error;
         setResults(data || []);
       } catch (error) {
-        console.error('Error searching students:', error);
+        console.error("Error searching students:", error);
         setResults([]);
       } finally {
         setIsLoading(false);
@@ -81,43 +74,35 @@ export const GlobalStudentSearch = () => {
   }, [query, schoolId, selectedYearId]);
 
   const handleSelect = (student: Student) => {
-    setQuery('');
+    setQuery("");
     setIsOpen(false);
     navigate(`/student/${student.id}`);
   };
 
-  const getInitials = (name: string): string => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
   return (
-    <div ref={containerRef} className="relative w-full max-w-md">
+    <div ref={containerRef} className="relative w-full max-w-xl">
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           ref={inputRef}
           value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
+          onChange={(event) => {
+            setQuery(event.target.value);
             setIsOpen(true);
           }}
           onFocus={() => setIsOpen(true)}
           placeholder="Search learner by name or LRN..."
-          className="pl-10 pr-10 h-10 bg-background/50 backdrop-blur-sm border-border/50 focus:border-primary"
+          className="h-11 rounded-full border-border bg-card pl-10 pr-11 shadow-sm"
         />
         {query && (
           <button
+            type="button"
             onClick={() => {
-              setQuery('');
+              setQuery("");
               setResults([]);
               inputRef.current?.focus();
             }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
           >
             <X className="h-4 w-4" />
           </button>
@@ -127,24 +112,24 @@ export const GlobalStudentSearch = () => {
       <AnimatePresence>
         {isOpen && query.length >= 2 && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
+            exit={{ opacity: 0, y: 8 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-lg shadow-lg overflow-hidden z-50"
+            className="absolute inset-x-0 top-full z-50 mt-3 overflow-hidden rounded-2xl border bg-card shadow-soft"
           >
             {isLoading ? (
-              <div className="flex items-center justify-center py-6">
+              <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : results.length > 0 ? (
-              <div className="max-h-80 overflow-y-auto">
+              <div className="max-h-80 overflow-y-auto p-2">
                 {results.map((student) => (
                   <motion.button
                     key={student.id}
                     onClick={() => handleSelect(student)}
-                    className="w-full flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors text-left"
-                    whileHover={{ x: 4 }}
+                    whileHover={{ x: 2 }}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-accent"
                   >
                     <AnimatedStudentAvatar
                       photoUrl={student.photo_url}
@@ -152,11 +137,11 @@ export const GlobalStudentSearch = () => {
                       size="sm"
                       borderColor={schoolTheme.accentColor}
                     />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{student.student_name}</p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="font-mono">{student.lrn}</span>
-                        <Badge variant="outline" className="text-xs py-0">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-foreground">{student.student_name}</p>
+                      <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="tabular font-mono">{student.lrn}</span>
+                        <Badge variant="outline" className="px-2 py-0.5 text-[10px]">
                           {student.level}
                         </Badge>
                       </div>
@@ -165,10 +150,10 @@ export const GlobalStudentSearch = () => {
                 ))}
               </div>
             ) : (
-              <div className="py-6 text-center text-muted-foreground">
-                <User className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No learners found</p>
-                <p className="text-xs">Try a different search term</p>
+              <div className="py-8 text-center">
+                <User className="mx-auto mb-2 h-8 w-8 text-muted-foreground/60" />
+                <p className="text-sm font-medium text-foreground">No learners found</p>
+                <p className="text-xs text-muted-foreground">Try another name or LRN</p>
               </div>
             )}
           </motion.div>

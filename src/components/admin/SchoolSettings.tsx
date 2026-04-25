@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Building2, Save, Loader2, Upload, Palette, Check, Plus, Trash2 } from 'lucide-react';
+import { Save, Loader2, Upload, Palette, Check, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { SchoolLogo } from '@/components/branding/SchoolLogo';
+import { resolveSchoolLogo } from '@/lib/schoolBranding';
 
 interface SchoolInfo {
   id: string;
@@ -414,15 +416,12 @@ export const SchoolSettings = () => {
           {/* Logo Upload */}
           <div className="flex items-center gap-6">
             <div className="w-24 h-24 rounded-xl border-2 border-dashed border-border flex items-center justify-center overflow-hidden bg-muted/30">
-              {formData.logo_url ? (
-                <img
-                  src={formData.logo_url}
-                  alt="School logo"
-                  className="w-full h-full object-contain"
-                />
-              ) : (
-                <Building2 className="h-8 w-8 text-muted-foreground" />
-              )}
+              <SchoolLogo
+                src={resolveSchoolLogo(formData.logo_url)}
+                alt="School logo"
+                className="h-full w-full rounded-none bg-transparent"
+                imageClassName="object-contain"
+              />
             </div>
             <div>
               <Label className="text-sm font-medium">School Logo</Label>

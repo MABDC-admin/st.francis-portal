@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Trash2, AlertTriangle, Loader2, Database, RefreshCcw, Users, Settings, Building2, Activity, Shield, School, ClipboardCheck } from 'lucide-react';
+import { Trash2, AlertTriangle, Loader2, Database, RefreshCcw, Users, Settings, Building2, Activity, Shield, School, ClipboardCheck, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,6 +12,7 @@ import { SchoolManagement } from './SchoolManagement';
 import { ActivityLogs } from './ActivityLogs';
 import { PermissionManagement } from './PermissionManagement';
 import { DataQualityDashboard } from './DataQualityDashboard';
+import { GoogleLoginApprovalDashboard } from './GoogleLoginApprovalDashboard';
 
 type AdminSystemAction = 'reset_students' | 'delete_all_users';
 
@@ -118,10 +119,15 @@ export const AdminPanel = () => {
       </div>
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-7 lg:w-[980px]">
+        <div className="overflow-x-auto pb-1">
+          <TabsList className="inline-flex min-w-max gap-1">
           <TabsTrigger value="users" className="gap-2">
             <Users className="h-4 w-4" />
             <span className="hidden sm:inline">Users</span>
+          </TabsTrigger>
+          <TabsTrigger value="google-access" className="gap-2">
+            <ShieldCheck className="h-4 w-4" />
+            <span className="hidden sm:inline">Google Access</span>
           </TabsTrigger>
           <TabsTrigger value="permissions" className="gap-2">
             <Shield className="h-4 w-4" />
@@ -147,10 +153,15 @@ export const AdminPanel = () => {
             <Settings className="h-4 w-4" />
             <span className="hidden sm:inline">System</span>
           </TabsTrigger>
-        </TabsList>
+          </TabsList>
+        </div>
         
         <TabsContent value="users" className="mt-6">
           <UserManagement />
+        </TabsContent>
+
+        <TabsContent value="google-access" className="mt-6">
+          <GoogleLoginApprovalDashboard />
         </TabsContent>
 
         <TabsContent value="permissions" className="mt-6">

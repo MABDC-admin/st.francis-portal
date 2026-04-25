@@ -43,6 +43,7 @@ export const StudentFormModal = ({
         lrn: student.lrn,
         student_name: student.student_name,
         level: student.level,
+        section: student.section || undefined,
         birth_date: student.birth_date || undefined,
         age: student.age || undefined,
         gender: student.gender || undefined,
@@ -139,11 +140,11 @@ export const StudentFormModal = ({
                         placeholder="Enter full name"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="level">Grade Level *</Label>
-                      <Select
-                        value={formData.level}
-                        onValueChange={(v) => handleChange('level', v)}
+                  <div className="space-y-2">
+                    <Label htmlFor="level">Grade Level *</Label>
+                    <Select
+                      value={formData.level}
+                      onValueChange={(v) => handleChange('level', v)}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select grade level" />
@@ -154,6 +155,15 @@ export const StudentFormModal = ({
                           ))}
                         </SelectContent>
                       </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="section">Section</Label>
+                      <Input
+                        id="section"
+                        value={formData.section || ''}
+                        onChange={(e) => handleChange('section', e.target.value)}
+                        placeholder="Enter section"
+                      />
                     </div>
                     {requiresStrand(formData.level) && (
                       <div className="space-y-2">

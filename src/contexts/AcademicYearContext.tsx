@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchool } from '@/contexts/SchoolContext';
+import { getSchoolId } from '@/utils/schoolIdMap';
 
 export interface AcademicYear {
   id: string;
@@ -36,12 +37,43 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
   // Resolve school code to UUID
   useEffect(() => {
     const resolveSchool = async () => {
+      const fallbackSchoolId = getSchoolId(selectedSchool) || null;
+
       const { data } = await supabase
         .from('schools')
         .select('id')
         .eq('code', selectedSchool)
-        .single();
-      setResolvedSchoolId(data?.id || null);
+        .maybeSingle();
+
+      if (data?.id) {
+        setResolvedSchoolId(data.id);
+        return;
+      }
+
+      const aliasCodes = selectedSchool === 'SFXSAI'
+        ? ['STFXSA', 'SFXSAI']
+        : [selectedSchool];
+
+      const { data: aliasSchool } = await supabase
+        .from('schools')
+        .select('id')
+        .in('code', aliasCodes)
+        .limit(1)
+        .maybeSingle();
+
+      if (aliasSchool?.id) {
+        setResolvedSchoolId(aliasSchool.id);
+        return;
+      }
+
+      const { data: namedSchool } = await supabase
+        .from('schools')
+        .select('id')
+        .or(`name.ilike.%${selectedSchool}%,code.ilike.%${selectedSchool}%`)
+        .limit(1)
+        .maybeSingle();
+
+      setResolvedSchoolId(namedSchool?.id || fallbackSchoolId);
     };
     resolveSchool();
   }, [selectedSchool]);

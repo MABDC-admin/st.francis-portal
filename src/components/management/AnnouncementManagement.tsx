@@ -74,12 +74,13 @@ export const AnnouncementManagement = () => {
   const { data: announcements = [], isLoading } = useQuery({
     queryKey: ['announcement-management', schoolId, selectedYearId, selectedPriority],
     queryFn: async () => {
-      if (!schoolId) return [];
+      if (!schoolId || !selectedYearId) return [];
 
       let query = supabase
         .from('announcements')
         .select('*')
         .eq('school_id', schoolId)
+        .eq('academic_year_id', selectedYearId)
         .order('is_pinned', { ascending: false })
         .order('published_at', { ascending: false });
 
@@ -91,13 +92,14 @@ export const AnnouncementManagement = () => {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!schoolId,
+    enabled: !!schoolId && !!selectedYearId,
   });
 
   // Create/Update mutation
   const saveMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       if (!schoolId) throw new Error('Missing school');
+      if (!selectedYearId) throw new Error('Missing academic year');
 
       const payload = {
         ...data,
@@ -111,7 +113,9 @@ export const AnnouncementManagement = () => {
         const { error } = await supabase
           .from('announcements')
           .update({ ...payload, attachments: data.attachments as any })
-          .eq('id', editingRecord.id);
+          .eq('id', editingRecord.id)
+          .eq('school_id', schoolId)
+          .eq('academic_year_id', selectedYearId);
         if (error) throw error;
       } else {
         const { error } = await supabase
@@ -133,10 +137,13 @@ export const AnnouncementManagement = () => {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      if (!selectedYearId) throw new Error('Missing academic year');
       const { error } = await supabase
         .from('announcements')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('school_id', schoolId!)
+        .eq('academic_year_id', selectedYearId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -153,10 +160,13 @@ export const AnnouncementManagement = () => {
   // Toggle pin mutation
   const togglePinMutation = useMutation({
     mutationFn: async ({ id, is_pinned }: { id: string; is_pinned: boolean }) => {
+      if (!selectedYearId) throw new Error('Missing academic year');
       const { error } = await supabase
         .from('announcements')
         .update({ is_pinned })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('school_id', schoolId!)
+        .eq('academic_year_id', selectedYearId);
       if (error) throw error;
     },
     onSuccess: () => {

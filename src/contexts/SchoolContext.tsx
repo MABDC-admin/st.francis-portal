@@ -1,10 +1,12 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
+import { DEFAULT_SCHOOL_LOGO } from '@/lib/schoolBranding';
 
 export type SchoolType = 'SFXSAI';
 
 interface SchoolTheme {
   name: string;
   fullName: string;
+  logoSrc: string;
   sidebarBg: string;
   sidebarText: string;
   menuActiveBg: string;
@@ -23,6 +25,7 @@ export const SCHOOL_THEMES: Record<SchoolType, SchoolTheme> = {
   SFXSAI: {
     name: 'SFXSAI',
     fullName: 'St. Francis Xavier Smart Academy Inc',
+    logoSrc: DEFAULT_SCHOOL_LOGO,
     sidebarBg: 'from-blue-900 to-indigo-800',
     sidebarText: 'text-blue-100',
     menuActiveBg: 'bg-blue-500',

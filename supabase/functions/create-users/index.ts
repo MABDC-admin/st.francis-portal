@@ -26,6 +26,57 @@ interface CreateUserRequest {
   gradeLevel?: string;
 }
 
+async function resolveSchoolIdForAccess(
+  supabaseAdmin: ReturnType<typeof createServiceClient>,
+  schoolHint?: string | null,
+): Promise<string | null> {
+  const normalizedHint = schoolHint?.trim();
+
+  if (normalizedHint) {
+    const { data: byCode } = await supabaseAdmin
+      .from('schools')
+      .select('id')
+      .ilike('code', normalizedHint)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (byCode?.id) {
+      return byCode.id;
+    }
+
+    const { data: byName } = await supabaseAdmin
+      .from('schools')
+      .select('id')
+      .ilike('name', normalizedHint)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (byName?.id) {
+      return byName.id;
+    }
+  }
+
+  const { data: sfxsai } = await supabaseAdmin
+    .from('schools')
+    .select('id')
+    .eq('code', 'SFXSAI')
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (sfxsai?.id) {
+    return sfxsai.id;
+  }
+
+  const { data: singleActiveSchool } = await supabaseAdmin
+    .from('schools')
+    .select('id')
+    .eq('is_active', true)
+    .limit(1)
+    .maybeSingle();
+
+  return singleActiveSchool?.id ?? null;
+}
+
 // Generate a cryptographically secure random password
 function generateSecurePassword(length = 12): string {
   const uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -117,6 +168,26 @@ Deno.serve(async (req) => {
         temp_password: generatedPassword,
         role,
       }, { onConflict: 'user_id' });
+
+      // Grant school access for staff accounts to ensure school-scoped RLS visibility.
+      const staffRoles = new Set(['admin', 'registrar', 'teacher', 'finance', 'principal', 'it']);
+      if (staffRoles.has(role)) {
+        const targetSchoolId = await resolveSchoolIdForAccess(supabaseAdmin, school);
+        if (targetSchoolId) {
+          await supabaseAdmin
+            .from('user_school_access')
+            .upsert(
+              {
+                user_id: authUserId,
+                school_id: targetSchoolId,
+                role,
+                is_active: true,
+                granted_at: new Date().toISOString(),
+              },
+              { onConflict: 'user_id,school_id' },
+            );
+        }
+      }
 
       return jsonResponse({
         success: true,

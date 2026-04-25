@@ -28,7 +28,15 @@ export const PersonalInfoStep = ({ formData, updateField, schoolId }: Props) => 
           if (data?.signedUrl) setPreviewUrl(data.signedUrl);
         });
     }
-  }, [formData.photo_url]);
+  }, [formData.photo_url, previewUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -37,7 +45,13 @@ export const PersonalInfoStep = ({ formData, updateField, schoolId }: Props) => 
 
     // Create local preview immediately
     const objectUrl = URL.createObjectURL(file);
-    setPreviewUrl(objectUrl);
+    setPreviewUrl((currentUrl) => {
+      if (currentUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(currentUrl);
+      }
+
+      return objectUrl;
+    });
     setUploading(true);
 
     try {
@@ -129,7 +143,13 @@ export const PersonalInfoStep = ({ formData, updateField, schoolId }: Props) => 
               <span className="text-sm text-muted-foreground truncate">{formData.photo_url.split('/').pop()}</span>
               <Button variant="ghost" size="icon" onClick={() => {
                 updateField('photo_url', '');
-                setPreviewUrl(null);
+                setPreviewUrl((currentUrl) => {
+                  if (currentUrl?.startsWith('blob:')) {
+                    URL.revokeObjectURL(currentUrl);
+                  }
+
+                  return null;
+                });
               }}><X className="h-4 w-4" /></Button>
             </div>
           </div>

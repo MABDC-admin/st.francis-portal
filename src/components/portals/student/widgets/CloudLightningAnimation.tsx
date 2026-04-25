@@ -1,24 +1,29 @@
 
 import { motion } from 'framer-motion';
 import { Cloud, CloudLightning, Zap } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export const CloudLightningAnimation = () => {
     const [lightningActive, setLightningActive] = useState(false);
+    const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const nextFlashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         // Random lightning flashes
         const triggerLightning = () => {
             setLightningActive(true);
-            setTimeout(() => setLightningActive(false), 200); // Flash duration
+            flashTimeoutRef.current = setTimeout(() => setLightningActive(false), 200); // Flash duration
 
             // Schedule next flash randomly between 3-8 seconds
             const nextFlash = Math.random() * 5000 + 3000;
-            setTimeout(triggerLightning, nextFlash);
+            nextFlashTimeoutRef.current = setTimeout(triggerLightning, nextFlash);
         };
 
-        const timeout = setTimeout(triggerLightning, 2000);
-        return () => clearTimeout(timeout);
+        nextFlashTimeoutRef.current = setTimeout(triggerLightning, 2000);
+        return () => {
+            if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
+            if (nextFlashTimeoutRef.current) clearTimeout(nextFlashTimeoutRef.current);
+        };
     }, []);
 
     return (

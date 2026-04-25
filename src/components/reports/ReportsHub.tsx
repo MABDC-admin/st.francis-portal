@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FileText } from 'lucide-react';
 import { toast } from 'sonner';
@@ -36,6 +36,15 @@ export const ReportsHub = () => {
   const [selectedSubTypeId, setSelectedSubTypeId] = useState<string | null>(null);
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!selectedYearId) return;
+    setFilters((previous) =>
+      previous.schoolYearId === selectedYearId
+        ? previous
+        : { ...previous, schoolYearId: selectedYearId }
+    );
+  }, [selectedYearId]);
 
   // Chart data derived from report data
   const enrollmentChart = reportData && selectedSubTypeId?.startsWith('enrollment')
@@ -86,7 +95,10 @@ export const ReportsHub = () => {
     }
     setIsLoading(true);
     try {
-      const data = await generateReport(selectedSubTypeId, schoolId, filters);
+      const data = await generateReport(selectedSubTypeId, schoolId, filters, {
+        role,
+        userId: user?.id || null,
+      });
       setReportData(data);
       if (data.rows.length === 0) toast.info('No records found for the selected filters');
     } catch (err) {
@@ -95,7 +107,7 @@ export const ReportsHub = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedSubTypeId, schoolId, filters]);
+  }, [selectedSubTypeId, schoolId, filters, role, user?.id]);
 
   const getReportTitle = () => {
     const cat = REPORT_CATEGORIES.find(c => c.id === selectedCategoryId);
@@ -172,7 +184,7 @@ export const ReportsHub = () => {
       </motion.div>
 
       {/* Filters */}
-      <ReportFilters filters={filters} onChange={setFilters} />
+      <ReportFilters filters={filters} onChange={setFilters} userRole={role} />
 
       {/* Charts */}
       <ReportCharts

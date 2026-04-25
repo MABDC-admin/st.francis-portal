@@ -24,6 +24,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useSchoolSettings } from '@/hooks/useSchoolSettings';
 import { generateInvoicePDF } from '@/utils/generateInvoicePDF';
+import { resolveSchoolLogo } from '@/lib/schoolBranding';
 
 const PAYMENT_METHODS = ['cash', 'bank_deposit', 'online_transfer', 'e_wallet', 'card'];
 
@@ -54,7 +55,7 @@ const numberToWords = (num: number): string => {
   return result;
 };
 
-const printReceipt = async (payment: any, schoolName: string, schoolId: string, academicYearId: string) => {
+const printReceipt = async (payment: any, schoolName: string, schoolId: string, academicYearId: string, schoolLogoUrl?: string) => {
   // Only fetch assessment data if we have valid school and academic year IDs
   if (!schoolId || !academicYearId) {
     console.warn('Missing schoolId or academicYearId for balance calculation');
@@ -101,9 +102,11 @@ const printReceipt = async (payment: any, schoolName: string, schoolId: string, 
       .balance-row { display: flex; justify-content: space-between; margin: 6px 0; font-weight: bold; color: #dc2626; }
       h2 { margin: 4px 0; font-size: 16px; }
       h3 { margin: 4px 0; font-size: 13px; }
+      .logo { width: 68px; height: 68px; margin: 0 auto 8px; object-fit: cover; border-radius: 999px; border: 2px solid #16a34a; }
       @media print { body { padding: 0; } }
     </style></head><body>
       <div class="center">
+        ${schoolLogoUrl ? `<img src="${schoolLogoUrl}" alt="School logo" class="logo" />` : ''}
         <h2>${schoolName}</h2>
         <h3>OFFICIAL RECEIPT</h3>
       </div>
@@ -135,7 +138,7 @@ const printReceipt = async (payment: any, schoolName: string, schoolId: string, 
 };
 
 export const PaymentCollection = () => {
-  const { selectedSchool } = useSchool();
+  const { selectedSchool, schoolTheme } = useSchool();
   const { selectedYearId } = useAcademicYear();
   const { isReadOnly } = useYearGuard();
   const { user } = useAuth();
@@ -178,17 +181,18 @@ export const PaymentCollection = () => {
   });
 
   const { data: recentPayments = [] } = useQuery({
-    queryKey: ['recent-payments', schoolData?.id],
+    queryKey: ['recent-payments', schoolData?.id, selectedYearId],
     queryFn: async () => {
       const { data } = await supabase
         .from('payments')
         .select('*, students(student_name, lrn, level)')
         .eq('school_id', schoolData!.id)
+        .eq('academic_year_id', selectedYearId!)
         .order('created_at', { ascending: false })
         .limit(50);
       return data || [];
     },
-    enabled: !!schoolData?.id,
+    enabled: !!schoolData?.id && !!selectedYearId,
   });
 
   const gradeLevels = [...new Set(recentPayments.map((p: any) => p.students?.level).filter(Boolean))].sort();
@@ -198,18 +202,19 @@ export const PaymentCollection = () => {
     : recentPayments.filter((p: any) => p.students?.level === gradeFilter);
 
   const { data: searchResults = [] } = useQuery({
-    queryKey: ['student-search-payment', schoolData?.id, studentSearch],
+    queryKey: ['student-search-payment', schoolData?.id, selectedYearId, studentSearch],
     queryFn: async () => {
       if (!studentSearch || studentSearch.length < 2) return [];
       const { data } = await supabase
         .from('students')
         .select('id, student_name, lrn, level')
         .eq('school_id', schoolData!.id)
+        .eq('academic_year_id', selectedYearId!)
         .or(`student_name.ilike.%${studentSearch}%,lrn.ilike.%${studentSearch}%`)
         .limit(10);
       return data || [];
     },
-    enabled: !!schoolData?.id && studentSearch.length >= 2,
+    enabled: !!schoolData?.id && !!selectedYearId && studentSearch.length >= 2,
   });
 
   const { data: assessment } = useQuery({
@@ -306,7 +311,7 @@ export const PaymentCollection = () => {
       try {
         await generateInvoicePDF({
           schoolName: schoolSettings?.name || schoolData?.name || selectedSchool || 'School',
-          schoolLogoUrl: schoolSettings?.logo_url || undefined,
+          schoolLogoUrl: resolveSchoolLogo(schoolSettings?.logo_url || schoolTheme.logoSrc),
           schoolAddress: schoolSettings?.address || undefined,
           schoolPhone: schoolSettings?.phone || undefined,
           studentName: selectedStudent?.student_name || 'N/A',
@@ -609,7 +614,7 @@ export const PaymentCollection = () => {
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       )}
-                      <Button variant="ghost" size="icon" className="h-7 w-7" title="Print Receipt" onClick={() => printReceipt(p, schoolData?.name || selectedSchool || 'School', schoolData?.id || '', selectedYearId || '')}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" title="Print Receipt" onClick={() => printReceipt(p, schoolData?.name || selectedSchool || 'School', schoolData?.id || '', p.academic_year_id || selectedYearId || '', resolveSchoolLogo(schoolSettings?.logo_url || schoolTheme.logoSrc))}>
                         <Printer className="h-3.5 w-3.5" />
                       </Button>
                       {p.status === 'verified' && (
@@ -621,7 +626,7 @@ export const PaymentCollection = () => {
                               .eq('id', p.assessment_id).maybeSingle();
                             await generateInvoicePDF({
                               schoolName: schoolSettings?.name || schoolData?.name || selectedSchool || 'School',
-                              schoolLogoUrl: schoolSettings?.logo_url || undefined,
+                              schoolLogoUrl: resolveSchoolLogo(schoolSettings?.logo_url || schoolTheme.logoSrc),
                               schoolAddress: schoolSettings?.address || undefined,
                               schoolPhone: schoolSettings?.phone || undefined,
                               studentName: p.students?.student_name || 'N/A',

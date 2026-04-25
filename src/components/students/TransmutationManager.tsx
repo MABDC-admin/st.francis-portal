@@ -280,9 +280,11 @@ export const TransmutationManager = ({ student, academicYearId }: TransmutationM
         const csvContent = csvRows.map(row => row.join(',')).join('\n');
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
+        const objectUrl = URL.createObjectURL(blob);
+        link.href = objectUrl;
         link.download = `transmutation_${student.lrn}_Q${quarter}.csv`;
         link.click();
+        URL.revokeObjectURL(objectUrl);
         toast.success('CSV exported successfully!');
     };
 

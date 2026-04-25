@@ -668,9 +668,9 @@ export const StudentTable = ({
           /* Table View */
           <div className="overflow-x-auto -mx-4 lg:-mx-6">
             <table className="w-full">
-              <thead className="bg-teal-600 text-white">
+              <thead className="bg-secondary/70 text-secondary-foreground">
                 <tr>
-                  <th className="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                  <th className="px-4 lg:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider">
                     LRN
                   </th>
                   {[
@@ -682,7 +682,7 @@ export const StudentTable = ({
                     <th
                       key={field}
                       onClick={() => handleSort(field)}
-                      className="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider cursor-pointer hover:text-white/80 transition-colors"
+                      className="px-4 lg:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider cursor-pointer transition-colors hover:text-secondary-foreground/80"
                     >
                       <div className="flex items-center gap-1">
                         {label}
@@ -690,21 +690,21 @@ export const StudentTable = ({
                       </div>
                     </th>
                   ))}
-                  <th className="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                  <th className="px-4 lg:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider">
                     Birthdate
                   </th>
-                  <th className="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                  <th className="px-4 lg:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider">
                     Mother
                   </th>
-                  <th className="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                  <th className="px-4 lg:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider">
                     Contact
                   </th>
-                  <th className="px-4 lg:px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">
+                  <th className="px-4 lg:px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border [&>tr:nth-child(even)]:bg-gray-50 dark:[&>tr:nth-child(even)]:bg-gray-800/30">
+              <tbody className="divide-y divide-border [&>tr:nth-child(even)]:bg-muted/30">
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i} className="animate-pulse">

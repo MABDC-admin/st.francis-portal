@@ -9,11 +9,12 @@ import {
     Globe,
     Mail,
     User,
-    ShieldCheck,
     Calendar,
     Hash
 } from 'lucide-react';
 import { Student } from '@/types/student';
+import { useSchool } from '@/contexts/SchoolContext';
+import { SchoolLogo } from '@/components/branding/SchoolLogo';
 
 interface StudentIDCardProps {
     student: Student;
@@ -22,6 +23,7 @@ interface StudentIDCardProps {
 export const StudentIDCard = ({ student }: StudentIDCardProps) => {
     const [isFlipped, setIsFlipped] = useState(false);
     const [qrDataUrl, setQrDataUrl] = useState<string>('');
+    const { schoolTheme } = useSchool();
 
     useEffect(() => {
         const generateQR = async () => {
@@ -61,9 +63,11 @@ export const StudentIDCard = ({ student }: StudentIDCardProps) => {
 
                         {/* Header / Logo */}
                         <div className="pt-10 pb-6 px-8 text-center bg-white/5 backdrop-blur-sm">
-                            <div className="w-16 h-16 bg-white rounded-full mx-auto mb-3 flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
-                                <ShieldCheck className="h-10 w-10 text-primary" />
-                            </div>
+                            <SchoolLogo
+                                src={schoolTheme.logoSrc}
+                                alt={schoolTheme.fullName}
+                                className="mx-auto mb-3 h-16 w-16 rounded-full shadow-lg transform group-hover:scale-110 transition-transform"
+                            />
                             <h2 className="text-white font-black tracking-tighter text-xl uppercase leading-none">
                                 {student.school || 'St. Francis Xavier Smart Academy Inc'}
                             </h2>

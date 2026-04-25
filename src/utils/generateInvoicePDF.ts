@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { loadImageAsDataUrl, resolveSchoolLogo } from '@/lib/schoolBranding';
 
 interface InvoiceData {
   schoolName: string;
@@ -51,17 +52,12 @@ export const generateInvoicePDF = async (data: InvoiceData) => {
 
   // Try to load logo
   let logoLoaded = false;
-  if (data.schoolLogoUrl) {
+  const schoolLogoSrc = resolveSchoolLogo(data.schoolLogoUrl);
+  if (schoolLogoSrc) {
     try {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = () => reject();
-        img.src = data.schoolLogoUrl!;
-      });
+      const logoDataUrl = await loadImageAsDataUrl(schoolLogoSrc);
       const logoSize = 18;
-      doc.addImage(img, 'PNG', pageWidth / 2 - logoSize / 2, y, logoSize, logoSize);
+      doc.addImage(logoDataUrl, 'PNG', pageWidth / 2 - logoSize / 2, y, logoSize, logoSize);
       y += logoSize + 3;
       logoLoaded = true;
     } catch {

@@ -22,15 +22,16 @@ import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
-import { useSchool } from '@/contexts/SchoolContext';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { useSchoolId } from '@/hooks/useSchoolId';
 import { cn } from '@/lib/utils';
-import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 
 export const Attendance = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const { selectedYearId } = useAcademicYear();
+    const { data: schoolId } = useSchoolId();
 
     const [mode, setMode] = useState<'in' | 'out'>('in');
     const [lrn, setLrn] = useState('');
@@ -103,6 +104,10 @@ export const Attendance = () => {
 
     const handleAttendance = async (inputLrn: string, currentMode: 'in' | 'out') => {
         if (!inputLrn || inputLrn.length < 5 || isSubmitting) return;
+        if (!schoolId) {
+            toast.error('School context is not ready yet. Please try again.');
+            return;
+        }
 
         setIsSubmitting(true);
         // Vibrate on scan if available
@@ -113,6 +118,7 @@ export const Attendance = () => {
                 .from('students')
                 .select('*')
                 .eq('lrn', inputLrn)
+                .eq('school_id', schoolId!)
                 .maybeSingle();
 
             if (studentError || !student) {
@@ -121,8 +127,11 @@ export const Attendance = () => {
                 return;
             }
 
-            const schoolToUse = student.school_id || 'SFXSAI';
+            const schoolToUse = student.school_id || schoolId;
             const academicYearToUse = selectedYearId || student.academic_year_id;
+            if (!schoolToUse || !academicYearToUse) {
+                throw new Error('Attendance context is incomplete for this learner.');
+            }
             const today = format(new Date(), 'yyyy-MM-dd');
             const timeStr = format(new Date(), 'HH:mm:ss');
 
@@ -145,6 +154,8 @@ export const Attendance = () => {
                 .from('student_attendance')
                 .select('*')
                 .eq('student_id', student.id)
+                .eq('school_id', schoolToUse)
+                .eq('academic_year_id', academicYearToUse)
                 .eq('date', today)
                 .maybeSingle();
 

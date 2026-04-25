@@ -24,6 +24,10 @@ export const studentSchema = z.object({
   level: z.string()
     .min(1, "Grade level is required")
     .max(20, "Grade level must be 20 characters or less"),
+  section: z.string()
+    .max(50, "Section must be 50 characters or less")
+    .optional()
+    .nullable(),
   school: z.string()
     .min(1, "School is required")
     .max(50, "School name must be 50 characters or less")
@@ -84,6 +88,63 @@ export const studentSchema = z.object({
     .nullable(),
   dialects: z.string()
     .max(100, "Dialects must be 100 characters or less")
+    .optional()
+    .nullable(),
+  parent_occupation: z.string()
+    .max(255, "Parent occupation must be 255 characters or less")
+    .optional()
+    .nullable(),
+  parent_education_attainment: z.string()
+    .max(255, "Parent educational attainment must be 255 characters or less")
+    .optional()
+    .nullable(),
+  household_information: z.string()
+    .max(1000, "Household information must be 1000 characters or less")
+    .optional()
+    .nullable(),
+  achievements: z.string()
+    .max(1000, "Achievements must be 1000 characters or less")
+    .optional()
+    .nullable(),
+  medical_history: z.string()
+    .max(2000, "Medical history must be 2000 characters or less")
+    .optional()
+    .nullable(),
+  immunization_record: z.string()
+    .max(2000, "Immunization record must be 2000 characters or less")
+    .optional()
+    .nullable(),
+  disabilities_special_needs: z.string()
+    .max(2000, "Disabilities or special needs must be 2000 characters or less")
+    .optional()
+    .nullable(),
+  learning_style: z.string()
+    .max(500, "Learning style must be 500 characters or less")
+    .optional()
+    .nullable(),
+  strengths_interests: z.string()
+    .max(1000, "Strengths and interests must be 1000 characters or less")
+    .optional()
+    .nullable(),
+  program_inclusion: z.string()
+    .max(1000, "Program inclusion must be 1000 characters or less")
+    .optional()
+    .nullable(),
+  interventions_provided: z.string()
+    .max(2000, "Interventions must be 2000 characters or less")
+    .optional()
+    .nullable(),
+  emergency_contact_name: z.string()
+    .max(100, "Emergency contact name must be 100 characters or less")
+    .optional()
+    .nullable(),
+  emergency_contact_number: z.string()
+    .max(20, "Emergency contact number too long")
+    .regex(/^[0-9+\s-]*$/, "Invalid emergency contact number format")
+    .optional()
+    .nullable(),
+  emergency_contact_relationship: z.string()
+    .max(100, "Emergency relationship must be 100 characters or less")
     .optional()
     .nullable(),
   photo_url: z.string()

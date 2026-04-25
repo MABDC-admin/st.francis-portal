@@ -3,6 +3,7 @@ export interface Student {
   lrn: string;
   student_name: string;
   level: string;
+  section: string | null;
   school: string | null;
   school_id: string;
   academic_year_id: string;
@@ -19,6 +20,20 @@ export interface Student {
   religion: string | null;
   mother_tongue: string | null;
   dialects: string | null;
+  parent_occupation: string | null;
+  parent_education_attainment: string | null;
+  household_information: string | null;
+  achievements: string | null;
+  medical_history: string | null;
+  immunization_record: string | null;
+  disabilities_special_needs: string | null;
+  learning_style: string | null;
+  strengths_interests: string | null;
+  program_inclusion: string | null;
+  interventions_provided: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_number: string | null;
+  emergency_contact_relationship: string | null;
   photo_url: string | null;
   created_at: string;
   updated_at: string;
@@ -47,6 +62,7 @@ export interface StudentFormData {
   lrn: string;
   student_name: string;
   level: string;
+  section?: string;
   school?: string;
   school_id?: string;
   academic_year_id?: string;
@@ -64,6 +80,20 @@ export interface StudentFormData {
   mother_tongue?: string;
   dialects?: string;
   strand?: string;
+  parent_occupation?: string;
+  parent_education_attainment?: string;
+  household_information?: string;
+  achievements?: string;
+  medical_history?: string;
+  immunization_record?: string;
+  disabilities_special_needs?: string;
+  learning_style?: string;
+  strengths_interests?: string;
+  program_inclusion?: string;
+  interventions_provided?: string;
+  emergency_contact_name?: string;
+  emergency_contact_number?: string;
+  emergency_contact_relationship?: string;
 }
 
 export interface CSVStudent {

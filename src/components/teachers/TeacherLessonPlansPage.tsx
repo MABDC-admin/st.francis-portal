@@ -92,7 +92,7 @@ const emptyForm = {
 export const TeacherLessonPlansPage = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { data: teacherProfile } = useTeacherProfile(user?.id);
+  const { data: teacherProfile } = useTeacherProfile(user?.id, user?.email);
   const { data: schoolId } = useSchoolId();
   const { selectedYearId } = useAcademicYear();
   const { isReadOnly, guardMutation } = useYearGuard();

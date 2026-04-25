@@ -1,563 +1,525 @@
-/**
- * Dashboard Configuration — extracted from DashboardLayout.tsx
- * 
- * Contains: icon maps, nav group definitions per role, role colors/labels,
- * and helper functions. Single source of truth for sidebar navigation.
- */
-
-import React from 'react';
-
+import type { LucideIcon } from "lucide-react";
 import {
-    HomeIcon3D,
-    StudentIcon3D,
-    TeacherIcon3D,
-    EnterGradeIcon3D,
-    SubjectsIcon3D,
-    ScheduleIcon3D,
-    EventsIcon3D,
-    EnrollmentIcon3D,
-    ReportsIcon3D,
-    ImportIcon3D,
-    AdminIcon3D,
-    ProfileIcon3D,
-    LibraryIcon3D,
-    CanvaIcon3D,
-    NotebookIcon3D
-} from '@/components/icons/ThreeDIcons';
-import {
-    AppleHomeIcon,
-    AppleStudentIcon,
-    AppleTeacherIcon,
-    AppleGradesIcon,
-    AppleSubjectsIcon,
-    AppleScheduleIcon,
-    AppleEventsIcon,
-    AppleEnrollmentIcon,
-    AppleReportsIcon,
-    AppleImportIcon,
-    AppleAdminIcon,
-    AppleProfileIcon,
-    AppleLibraryIcon,
-    AppleCanvaIcon,
-    AppleNotebookIcon
-} from '@/components/icons/AppleStyleIcons';
+  Bell,
+  BookCopy,
+  BookOpen,
+  Bot,
+  CalendarDays,
+  ClipboardCheck,
+  FileBarChart2,
+  FileSpreadsheet,
+  FolderKanban,
+  GraduationCap,
+  LayoutGrid,
+  Library,
+  Layers3,
+  LucideShield,
+  MessageSquare,
+  MonitorCog,
+  NotebookPen,
+  ReceiptText,
+  ScanSearch,
+  School,
+  Settings,
+  Sparkles,
+  SquarePen,
+  UserCog,
+  UserRound,
+  Users,
+  Wallet,
+  Waypoints,
+  Wrench,
+} from "lucide-react";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-/** Shared type for all dashboard icon components (3D and Apple styles) */
-export type IconComponent = React.ComponentType<{ className?: string }>;
+export type IconComponent = LucideIcon;
 
 export interface NavItem {
-    id: string;
-    icon: IconComponent;
-    label: string;
+  id: string;
+  icon: IconComponent;
+  label: string;
 }
 
 export interface NavGroup {
-    id: string;
-    icon: IconComponent;
-    label: string;
-    items?: NavItem[];
-    isCollapsible?: boolean;
+  id: string;
+  icon: IconComponent;
+  label: string;
+  items?: NavItem[];
+  isCollapsible?: boolean;
 }
 
-// ─── Icon Maps ───────────────────────────────────────────────────────────────
-
-export const icon3DMap: Record<string, IconComponent> = {
-    portal: HomeIcon3D,
-    dashboard: HomeIcon3D,
-    students: StudentIcon3D,
-    teachers: TeacherIcon3D,
-    grades: EnterGradeIcon3D,
-    subjects: SubjectsIcon3D,
-    'academic-years': ScheduleIcon3D,
-    events: EventsIcon3D,
-    'subject-enrollment': EnrollmentIcon3D,
-    library: LibraryIcon3D,
-    canva: CanvaIcon3D,
-    notebook: NotebookIcon3D,
-    reports: ReportsIcon3D,
-    enrollment: EnrollmentIcon3D,
-    import: ImportIcon3D,
-    profile: ProfileIcon3D,
-    classes: TeacherIcon3D,
-    children: StudentIcon3D,
-    admin: AdminIcon3D,
-    lis: StudentIcon3D,
-    'student-records': StudentIcon3D,
-    academics: EnterGradeIcon3D,
-    'school-management': TeacherIcon3D,
-    resources: LibraryIcon3D,
-    'my-records': ProfileIcon3D,
-    'attendance-mgmt': ScheduleIcon3D,
-    'schedule-mgmt': ScheduleIcon3D,
-    'assignment-mgmt': ReportsIcon3D,
-    'exam-mgmt': ReportsIcon3D,
-    'announcement-mgmt': EventsIcon3D,
-    'student-schedule': ScheduleIcon3D,
-    'student-attendance': ScheduleIcon3D,
-    'student-assignments': ReportsIcon3D,
-    'student-exams': ReportsIcon3D,
-    'student-announcements': EventsIcon3D,
-    'student-calendar': EventsIcon3D,
-    'student-grades': EnterGradeIcon3D,
-    'student-subjects': SubjectsIcon3D,
-    'student-profile': ProfileIcon3D,
-    'messages': EventsIcon3D,
-    'zoom': TeacherIcon3D,
-    'nocodb': ImportIcon3D,
-    'onlyoffice': ReportsIcon3D,
-    'excalidraw': CanvaIcon3D,
-    'omada': TeacherIcon3D,
-    'tacticalrmm': AdminIcon3D,
-    'documize': LibraryIcon3D,
-    'integrations': AdminIcon3D,
-    'ai-chat': NotebookIcon3D,
-    'impersonate': AdminIcon3D,
-    'teacher-import': ImportIcon3D,
-    'teacher-profile': ProfileIcon3D,
-    'teacher-grades': EnterGradeIcon3D,
-    'teacher-schedule': ScheduleIcon3D,
-    'lesson-plans': NotebookIcon3D,
-    requests: ImportIcon3D,
-    'my-info': ProfileIcon3D,
-    'fee-setup': SubjectsIcon3D,
-    'assessments': EnrollmentIcon3D,
-    'cashier': EnterGradeIcon3D,
-    'payment-plans': ScheduleIcon3D,
-    'cashier-sessions': ScheduleIcon3D,
-    'student-ledger': ReportsIcon3D,
-    'statement-of-account': ReportsIcon3D,
-    'finance-approvals': AdminIcon3D,
-    'discount-scholarships': StudentIcon3D,
-    'finance-clearance': AdminIcon3D,
-    'finance-reports': ReportsIcon3D,
-    'finance-settings': AdminIcon3D,
-    'year-end-close': AdminIcon3D,
-    'finance-audit': ImportIcon3D,
-    'billing': ReportsIcon3D,
-    'payments-group': EnterGradeIcon3D,
-    'accounts': ProfileIcon3D,
-    'finance-config': AdminIcon3D,
-    'finance-learners': StudentIcon3D,
-    'helpdesk': AdminIcon3D,
-    'admissions': EnrollmentIcon3D,
-    'my-profile': ProfileIcon3D,
-    'applicants': TeacherIcon3D,
-    'banner-management': ReportsIcon3D,
-    'visits': EventsIcon3D,
+const iconMap: Record<string, IconComponent> = {
+  portal: LayoutGrid,
+  dashboard: LayoutGrid,
+  students: Users,
+  teachers: GraduationCap,
+  grades: ClipboardCheck,
+  subjects: BookCopy,
+  "academic-years": CalendarDays,
+  events: CalendarDays,
+  "subject-enrollment": FileSpreadsheet,
+  library: Library,
+  "student-library": Library,
+  canva: Sparkles,
+  notebook: NotebookPen,
+  reports: FileBarChart2,
+  enrollment: SquarePen,
+  import: FileSpreadsheet,
+  profile: UserRound,
+  classes: School,
+  children: Users,
+  admin: LucideShield,
+  lis: ScanSearch,
+  "student-records": Users,
+  academics: BookOpen,
+  "school-management": School,
+  resources: Library,
+  "my-records": UserRound,
+  "attendance-mgmt": ClipboardCheck,
+  "schedule-mgmt": CalendarDays,
+  "sections-mgmt": Layers3,
+  "assignment-mgmt": SquarePen,
+  "exam-mgmt": FileBarChart2,
+  "announcement-mgmt": Bell,
+  "student-schedule": CalendarDays,
+  "student-attendance": ClipboardCheck,
+  "student-assignments": SquarePen,
+  "student-exams": FileBarChart2,
+  "student-announcements": Bell,
+  "student-calendar": CalendarDays,
+  "student-grades": ClipboardCheck,
+  "student-subjects": BookCopy,
+  "student-profile": UserRound,
+  messages: MessageSquare,
+  zoom: MonitorCog,
+  nocodb: FolderKanban,
+  onlyoffice: FileBarChart2,
+  excalidraw: Sparkles,
+  omada: Waypoints,
+  tacticalrmm: Wrench,
+  documize: BookOpen,
+  integrations: MonitorCog,
+  "ai-chat": Bot,
+  impersonate: UserCog,
+  "teacher-import": FileSpreadsheet,
+  "teacher-profile": UserRound,
+  "teacher-grades": ClipboardCheck,
+  "teacher-schedule": CalendarDays,
+  "lesson-plans": NotebookPen,
+  "my-info": UserRound,
+  "fee-setup": ReceiptText,
+  assessments: Wallet,
+  cashier: Wallet,
+  "payment-plans": ReceiptText,
+  "cashier-sessions": Wallet,
+  "student-ledger": ReceiptText,
+  "statement-of-account": ReceiptText,
+  "finance-approvals": LucideShield,
+  "discount-scholarships": Wallet,
+  "finance-clearance": LucideShield,
+  "finance-reports": FileBarChart2,
+  "finance-settings": Settings,
+  "year-end-close": Settings,
+  "finance-audit": ScanSearch,
+  billing: ReceiptText,
+  "payments-group": Wallet,
+  accounts: UserRound,
+  "finance-config": Settings,
+  "finance-learners": Users,
+  helpdesk: Wrench,
+  admissions: SquarePen,
+  "my-profile": UserRound,
+  applicants: GraduationCap,
+  "banner-management": Bell,
+  visits: CalendarDays,
+  registrations: SquarePen,
+  "online-registration": SquarePen,
+  "user-mgmt": UserCog,
 };
 
-export const iconAppleMap: Record<string, IconComponent> = {
-    portal: AppleHomeIcon,
-    dashboard: AppleHomeIcon,
-    students: AppleStudentIcon,
-    teachers: AppleTeacherIcon,
-    grades: AppleGradesIcon,
-    subjects: AppleSubjectsIcon,
-    'academic-years': AppleScheduleIcon,
-    events: AppleEventsIcon,
-    'subject-enrollment': AppleEnrollmentIcon,
-    library: AppleLibraryIcon,
-    canva: AppleCanvaIcon,
-    notebook: AppleNotebookIcon,
-    reports: AppleReportsIcon,
-    enrollment: AppleEnrollmentIcon,
-    import: AppleImportIcon,
-    profile: AppleProfileIcon,
-    classes: AppleTeacherIcon,
-    children: AppleStudentIcon,
-    admin: AppleAdminIcon,
-    lis: AppleStudentIcon,
-    'student-records': AppleStudentIcon,
-    academics: AppleGradesIcon,
-    'school-management': AppleTeacherIcon,
-    resources: AppleLibraryIcon,
-    'my-records': AppleProfileIcon,
-    'attendance-mgmt': AppleScheduleIcon,
-    'schedule-mgmt': AppleScheduleIcon,
-    'assignment-mgmt': AppleReportsIcon,
-    'exam-mgmt': AppleReportsIcon,
-    'announcement-mgmt': AppleEventsIcon,
-    'student-schedule': AppleScheduleIcon,
-    'student-attendance': AppleScheduleIcon,
-    'student-assignments': AppleReportsIcon,
-    'student-exams': AppleReportsIcon,
-    'student-announcements': AppleEventsIcon,
-    'student-calendar': AppleEventsIcon,
-    'student-grades': AppleGradesIcon,
-    'student-subjects': AppleSubjectsIcon,
-    'student-profile': AppleProfileIcon,
-    'messages': AppleEventsIcon,
-    'zoom': AppleTeacherIcon,
-    'nocodb': AppleImportIcon,
-    'onlyoffice': AppleReportsIcon,
-    'excalidraw': AppleCanvaIcon,
-    'omada': AppleTeacherIcon,
-    'tacticalrmm': AppleAdminIcon,
-    'documize': AppleLibraryIcon,
-    'integrations': AppleAdminIcon,
-    'ai-chat': AppleNotebookIcon,
-    'impersonate': AppleAdminIcon,
-    'teacher-import': AppleImportIcon,
-    'teacher-profile': AppleProfileIcon,
-    'teacher-grades': AppleGradesIcon,
-    'teacher-schedule': AppleScheduleIcon,
-    'lesson-plans': AppleNotebookIcon,
-    requests: AppleImportIcon,
-    'my-info': AppleProfileIcon,
-    'fee-setup': AppleSubjectsIcon,
-    'assessments': AppleEnrollmentIcon,
-    'cashier': AppleGradesIcon,
-    'payment-plans': AppleScheduleIcon,
-    'cashier-sessions': AppleScheduleIcon,
-    'student-ledger': AppleReportsIcon,
-    'statement-of-account': AppleReportsIcon,
-    'finance-approvals': AppleAdminIcon,
-    'discount-scholarships': AppleStudentIcon,
-    'finance-clearance': AppleAdminIcon,
-    'finance-reports': AppleReportsIcon,
-    'finance-settings': AppleAdminIcon,
-    'year-end-close': AppleAdminIcon,
-    'finance-audit': AppleImportIcon,
-    'billing': AppleReportsIcon,
-    'payments-group': AppleGradesIcon,
-    'accounts': AppleProfileIcon,
-    'finance-config': AppleAdminIcon,
-    'finance-learners': AppleStudentIcon,
-    'helpdesk': AppleAdminIcon,
-    'admissions': AppleEnrollmentIcon,
-    'my-profile': AppleProfileIcon,
-    'applicants': AppleTeacherIcon,
-    'banner-management': AppleReportsIcon,
-    'visits': AppleEventsIcon,
-};
-
-// ─── Role Config ─────────────────────────────────────────────────────────────
-
-export const adminItem: NavItem = { id: 'admin', icon: AdminIcon3D, label: 'Admin' };
+export const adminItem: NavItem = { id: "admin", icon: LucideShield, label: "Admin Panel" };
 
 export const roleColors: Record<string, string> = {
-    admin: 'bg-red-500',
-    registrar: 'bg-blue-500',
-    teacher: 'bg-green-500',
-    student: 'bg-purple-500',
-    parent: 'bg-orange-500',
-    finance: 'bg-emerald-600',
-    principal: 'bg-amber-500',
+  admin: "bg-destructive/12 text-destructive border-destructive/15",
+  registrar: "bg-primary/12 text-primary border-primary/15",
+  teacher: "bg-hrms-success/12 text-hrms-success border-hrms-success/15",
+  student: "bg-primary/12 text-primary border-primary/15",
+  parent: "bg-warning/12 text-warning border-warning/15",
+  finance: "bg-hrms-success/12 text-hrms-success border-hrms-success/15",
+  principal: "bg-accent text-accent-foreground border-primary/10",
+  it: "bg-secondary text-secondary-foreground border-border",
 };
 
 export const roleLabels: Record<string, string> = {
-    admin: 'Administrator',
-    registrar: 'Registrar',
-    teacher: 'Teacher',
-    student: 'Learner',
-    parent: 'Parent',
-    finance: 'Finance',
-    principal: 'Principal',
+  admin: "Administrator Portal",
+  registrar: "Registrar Portal",
+  teacher: "Teacher Portal",
+  student: "Learner Portal",
+  parent: "Parent Portal",
+  finance: "Finance Portal",
+  principal: "Principal Portal",
+  it: "IT Portal",
 };
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-/** Get the icon component for a given item ID, respecting Apple/3D theme */
-export const getIconForItem = (itemId: string, isApple: boolean) => {
-    return isApple ? (iconAppleMap[itemId] || iconAppleMap.portal) : (icon3DMap[itemId] || icon3DMap.portal);
+export const getIconForItem = (itemId: string, _isApple: boolean) => {
+  return iconMap[itemId] || LayoutGrid;
 };
 
-/** Check if any item in a group is active */
 export const isGroupActive = (group: NavGroup, activeTab: string): boolean => {
-    if (group.id === activeTab) return true;
-    if (group.items) {
-        return group.items.some(item => item.id === activeTab);
-    }
-    return false;
+  if (group.id === activeTab) return true;
+  return group.items ? group.items.some((item) => item.id === activeTab) : false;
 };
-
-// ─── Nav Groups per Role ─────────────────────────────────────────────────────
 
 export const getNavGroupsForRole = (role: string | null): NavGroup[] => {
-    switch (role) {
-        case 'admin':
-            return [
-                { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
-                { id: 'announcement-mgmt', icon: EventsIcon3D, label: 'Announcements' },
-                { id: 'applicants', icon: TeacherIcon3D, label: 'Teacher Applicants' },
-                {
-                    id: 'student-records', icon: StudentIcon3D, label: 'Learner Records', isCollapsible: true,
-                    items: [
-                        { id: 'students', icon: StudentIcon3D, label: 'Learners' },
-                        { id: 'lis', icon: StudentIcon3D, label: 'LIS' },
-                        { id: 'admissions', icon: EnrollmentIcon3D, label: 'Admissions' },
-                        { id: 'registrations', icon: EnrollmentIcon3D, label: 'Registrations' },
-                        { id: 'visits', icon: EventsIcon3D, label: 'Visits' },
-                        { id: 'online-registration', icon: EnrollmentIcon3D, label: 'Online Registration' },
-                        { id: 'import', icon: ImportIcon3D, label: 'Import CSV' },
-                        { id: 'attendance-mgmt', icon: ScheduleIcon3D, label: 'Attendance' },
-                    ]
-                },
-                {
-                    id: 'academics', icon: EnterGradeIcon3D, label: 'Academics', isCollapsible: true,
-                    items: [
-                        { id: 'grades', icon: EnterGradeIcon3D, label: 'Grades' },
-                        { id: 'subjects', icon: SubjectsIcon3D, label: 'Subjects' },
-                        { id: 'subject-enrollment', icon: EnrollmentIcon3D, label: 'Subject Enrollment' },
-                        { id: 'schedule-mgmt', icon: ScheduleIcon3D, label: 'Schedules' },
-                        { id: 'assignment-mgmt', icon: ReportsIcon3D, label: 'Assignments' },
-                        { id: 'exam-mgmt', icon: ReportsIcon3D, label: 'Exams' },
-                    ]
-                },
-                {
-                    id: 'school-management', icon: TeacherIcon3D, label: 'School Management', isCollapsible: true,
-                    items: [
-                        { id: 'teachers', icon: TeacherIcon3D, label: 'Teachers' },
-                        { id: 'teacher-import', icon: ImportIcon3D, label: 'Teacher Import' },
-                        { id: 'messages', icon: EventsIcon3D, label: 'Messages' },
-                        { id: 'zoom', icon: TeacherIcon3D, label: 'Virtual Classes' },
-                        { id: 'events', icon: EventsIcon3D, label: 'Events' },
-                        { id: 'banner-management', icon: ReportsIcon3D, label: 'Banner Management' },
-                        { id: 'academic-years', icon: ScheduleIcon3D, label: 'Academic Years' },
-                    ]
-                },
-                {
-                    id: 'resources', icon: LibraryIcon3D, label: 'Resources', isCollapsible: true,
-                    items: [
-                        { id: 'library', icon: LibraryIcon3D, label: 'Library' },
-                        { id: 'notebook', icon: NotebookIcon3D, label: 'Notebook LLM' },
-                    ]
-                },
-                { id: 'reports', icon: ReportsIcon3D, label: 'Reports' },
-                {
-                    id: 'integrations', icon: AdminIcon3D, label: 'Integrations', isCollapsible: true,
-                    items: [
-                        { id: 'nocodb', icon: ImportIcon3D, label: 'NocoDB' },
-                        { id: 'onlyoffice', icon: ReportsIcon3D, label: 'Google Docs' },
-                        { id: 'excalidraw', icon: CanvaIcon3D, label: 'Excalidraw' },
-                        { id: 'omada', icon: TeacherIcon3D, label: 'Omada' },
-                        { id: 'tacticalrmm', icon: AdminIcon3D, label: 'Tactical RMM' },
-                        { id: 'documize', icon: LibraryIcon3D, label: 'Documize' },
-                    ]
-                },
-                { id: 'impersonate', icon: AdminIcon3D, label: 'Impersonate' },
-                { id: 'helpdesk', icon: AdminIcon3D, label: 'Helpdesk' },
-            ];
-        case 'registrar':
-            return [
-                { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
-                { id: 'announcement-mgmt', icon: EventsIcon3D, label: 'Announcements' },
-                { id: 'applicants', icon: TeacherIcon3D, label: 'Teacher Applicants' },
-                {
-                    id: 'student-records', icon: StudentIcon3D, label: 'Learner Records', isCollapsible: true,
-                    items: [
-                        { id: 'students', icon: StudentIcon3D, label: 'Learners' },
-                        { id: 'lis', icon: StudentIcon3D, label: 'LIS' },
-                        { id: 'admissions', icon: EnrollmentIcon3D, label: 'Admissions' },
-                        { id: 'registrations', icon: EnrollmentIcon3D, label: 'Registrations' },
-                        { id: 'visits', icon: EventsIcon3D, label: 'Visits' },
-                        { id: 'online-registration', icon: EnrollmentIcon3D, label: 'Online Registration' },
-                        { id: 'import', icon: ImportIcon3D, label: 'Import CSV' },
-                        { id: 'attendance-mgmt', icon: ScheduleIcon3D, label: 'Attendance' },
-                    ]
-                },
-                {
-                    id: 'academics', icon: EnterGradeIcon3D, label: 'Academics', isCollapsible: true,
-                    items: [
-                        { id: 'grades', icon: EnterGradeIcon3D, label: 'Grades' },
-                        { id: 'subjects', icon: SubjectsIcon3D, label: 'Subjects' },
-                        { id: 'subject-enrollment', icon: EnrollmentIcon3D, label: 'Subject Enrollment' },
-                        { id: 'schedule-mgmt', icon: ScheduleIcon3D, label: 'Schedules' },
-                        { id: 'assignment-mgmt', icon: ReportsIcon3D, label: 'Assignments' },
-                        { id: 'exam-mgmt', icon: ReportsIcon3D, label: 'Exams' },
-                    ]
-                },
-                {
-                    id: 'school-management', icon: TeacherIcon3D, label: 'School Management', isCollapsible: true,
-                    items: [
-                        { id: 'teachers', icon: TeacherIcon3D, label: 'Teachers' },
-                        { id: 'teacher-import', icon: ImportIcon3D, label: 'Teacher Import' },
-                        { id: 'messages', icon: EventsIcon3D, label: 'Messages' },
-                        { id: 'zoom', icon: TeacherIcon3D, label: 'Virtual Classes' },
-                        { id: 'events', icon: EventsIcon3D, label: 'Events' },
-                        { id: 'banner-management', icon: ReportsIcon3D, label: 'Banner Management' },
-                    ]
-                },
-                {
-                    id: 'resources', icon: LibraryIcon3D, label: 'Resources', isCollapsible: true,
-                    items: [
-                        { id: 'library', icon: LibraryIcon3D, label: 'Library' },
-                        { id: 'ai-chat', icon: NotebookIcon3D, label: 'AI Chat' },
-                    ]
-                },
-                { id: 'reports', icon: ReportsIcon3D, label: 'Reports' },
-                { id: 'helpdesk', icon: AdminIcon3D, label: 'Helpdesk' },
-            ];
-        case 'teacher':
-            return [
-                { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
-                { id: 'classes', icon: TeacherIcon3D, label: 'My Classes' },
-                {
-                    id: 'my-info', icon: ProfileIcon3D, label: 'My Info', isCollapsible: true,
-                    items: [
-                        { id: 'teacher-profile', icon: ProfileIcon3D, label: 'Profile' },
-                        { id: 'my-profile', icon: ProfileIcon3D, label: 'Account' },
-                    ]
-                },
-                { id: 'students', icon: StudentIcon3D, label: 'Learners' },
-                {
-                    id: 'academics', icon: EnterGradeIcon3D, label: 'Academics', isCollapsible: true,
-                    items: [
-                        { id: 'grades', icon: EnterGradeIcon3D, label: 'Grades' },
-                        { id: 'attendance-mgmt', icon: ScheduleIcon3D, label: 'Attendance' },
-                        { id: 'schedule-mgmt', icon: ScheduleIcon3D, label: 'Schedules' },
-                        { id: 'assignment-mgmt', icon: ReportsIcon3D, label: 'Assignments' },
-                        { id: 'exam-mgmt', icon: ReportsIcon3D, label: 'Exams' },
-                        { id: 'lesson-plans', icon: NotebookIcon3D, label: 'Lesson Plans' },
-                    ]
-                },
-                { id: 'messages', icon: EventsIcon3D, label: 'Messages' },
-                { id: 'requests', icon: ImportIcon3D, label: 'Requests' },
-                { id: 'zoom', icon: TeacherIcon3D, label: 'Virtual Classes' },
-                {
-                    id: 'resources', icon: LibraryIcon3D, label: 'Resources', isCollapsible: true,
-                    items: [
-                        { id: 'library', icon: LibraryIcon3D, label: 'Library' },
-                        { id: 'notebook', icon: NotebookIcon3D, label: 'Notebook LLM' },
-                    ]
-                },
-                { id: 'reports', icon: ReportsIcon3D, label: 'Reports' },
-                { id: 'helpdesk', icon: AdminIcon3D, label: 'Helpdesk' },
-            ];
-        case 'student':
-            return [
-                { id: 'portal', icon: HomeIcon3D, label: 'Dashboard' },
-                {
-                    id: 'my-records', icon: ProfileIcon3D, label: 'My Records', isCollapsible: true,
-                    items: [
-                        { id: 'student-profile', icon: ProfileIcon3D, label: 'Profile' },
-                        { id: 'student-grades', icon: EnterGradeIcon3D, label: 'Grades' },
-                        { id: 'student-subjects', icon: SubjectsIcon3D, label: 'Subjects' },
-                        { id: 'student-attendance', icon: ScheduleIcon3D, label: 'Attendance' },
-                    ]
-                },
-                {
-                    id: 'academics', icon: EnterGradeIcon3D, label: 'Academics', isCollapsible: true,
-                    items: [
-                        { id: 'student-schedule', icon: ScheduleIcon3D, label: 'Schedule' },
-                        { id: 'student-assignments', icon: ReportsIcon3D, label: 'Assignments' },
-                        { id: 'student-exams', icon: ReportsIcon3D, label: 'Exams' },
-                    ]
-                },
-                { id: 'student-library', icon: LibraryIcon3D, label: 'Library' },
-                { id: 'student-calendar', icon: EventsIcon3D, label: 'Calendar' },
-                { id: 'student-announcements', icon: EventsIcon3D, label: 'Announcements' },
-                { id: 'helpdesk', icon: AdminIcon3D, label: 'Helpdesk' },
-            ];
-        case 'parent':
-            return [
-                { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
-                { id: 'children', icon: StudentIcon3D, label: 'My Children' },
-                { id: 'library', icon: LibraryIcon3D, label: 'Library' },
-                { id: 'helpdesk', icon: AdminIcon3D, label: 'Helpdesk' },
-            ];
-        case 'finance':
-            return [
-                { id: 'finance-learners', icon: StudentIcon3D, label: 'Learners' },
-                {
-                    id: 'billing', icon: ReportsIcon3D, label: 'Billing', isCollapsible: true,
-                    items: [
-                        { id: 'fee-setup', icon: SubjectsIcon3D, label: 'Fees Setup' },
-                        { id: 'assessments', icon: EnrollmentIcon3D, label: 'Assessments' },
-                        { id: 'discount-scholarships', icon: StudentIcon3D, label: 'Discounts' },
-                    ]
-                },
-                {
-                    id: 'payments-group', icon: EnterGradeIcon3D, label: 'Payments', isCollapsible: true,
-                    items: [
-                        { id: 'cashier', icon: EnterGradeIcon3D, label: 'Cashier' },
-                        { id: 'cashier-sessions', icon: ScheduleIcon3D, label: 'Cashier Sessions' },
-                        { id: 'payment-plans', icon: ScheduleIcon3D, label: 'Payment Plans' },
-                    ]
-                },
-                {
-                    id: 'accounts', icon: ProfileIcon3D, label: 'Accounts', isCollapsible: true,
-                    items: [
-                        { id: 'statement-of-account', icon: ReportsIcon3D, label: 'Statement of Account' },
-                        { id: 'student-ledger', icon: ReportsIcon3D, label: 'Student Ledger' },
-                        { id: 'finance-clearance', icon: AdminIcon3D, label: 'Clearance' },
-                    ]
-                },
-                { id: 'finance-reports', icon: ReportsIcon3D, label: 'Reports' },
-                {
-                    id: 'finance-config', icon: AdminIcon3D, label: 'Settings', isCollapsible: true,
-                    items: [
-                        { id: 'finance-approvals', icon: AdminIcon3D, label: 'Approval Queue' },
-                        { id: 'finance-settings', icon: AdminIcon3D, label: 'Finance Settings' },
-                        { id: 'year-end-close', icon: AdminIcon3D, label: 'Year-End Close' },
-                        { id: 'finance-audit', icon: ImportIcon3D, label: 'Audit Logs' },
-                    ]
-                },
-                { id: 'library', icon: LibraryIcon3D, label: 'Library' },
-                { id: 'helpdesk', icon: AdminIcon3D, label: 'Helpdesk' },
-            ];
-        case 'principal':
-            return [
-                { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
-                {
-                    id: 'student-records', icon: StudentIcon3D, label: 'Learner Records', isCollapsible: true,
-                    items: [
-                        { id: 'students', icon: StudentIcon3D, label: 'Learners' },
-                    ]
-                },
-                {
-                    id: 'academics', icon: EnterGradeIcon3D, label: 'Academics', isCollapsible: true,
-                    items: [
-                        { id: 'grades', icon: EnterGradeIcon3D, label: 'Grades' },
-                        { id: 'reports', icon: ReportsIcon3D, label: 'Reports' },
-                    ]
-                },
-                {
-                    id: 'school-management', icon: TeacherIcon3D, label: 'School Management', isCollapsible: true,
-                    items: [
-                        { id: 'teachers', icon: TeacherIcon3D, label: 'Teachers' },
-                        { id: 'events', icon: EventsIcon3D, label: 'Events' },
-                        { id: 'messages', icon: EventsIcon3D, label: 'Messages' },
-                    ]
-                },
-                { id: 'library', icon: LibraryIcon3D, label: 'Library' },
-                { id: 'my-profile', icon: ProfileIcon3D, label: 'My Profile' },
-                { id: 'helpdesk', icon: AdminIcon3D, label: 'Helpdesk' },
-            ];
-        case 'it':
-            return [
-                { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
-                {
-                    id: 'user-mgmt', icon: AdminIcon3D, label: 'User Management', isCollapsible: true,
-                    items: [
-                        { id: 'admin', icon: AdminIcon3D, label: 'Permissions' },
-                    ]
-                },
-                {
-                    id: 'integrations', icon: AdminIcon3D, label: 'System Tools', isCollapsible: true,
-                    items: [
-                        { id: 'nocodb', icon: ImportIcon3D, label: 'NocoDB' },
-                        { id: 'omada', icon: TeacherIcon3D, label: 'Omada' },
-                        { id: 'tacticalrmm', icon: AdminIcon3D, label: 'Tactical RMM' },
-                        { id: 'documize', icon: LibraryIcon3D, label: 'Documize' },
-                        { id: 'excalidraw', icon: CanvaIcon3D, label: 'Excalidraw' },
-                    ]
-                },
-                {
-                    id: 'resources', icon: LibraryIcon3D, label: 'Resources', isCollapsible: true,
-                    items: [
-                        { id: 'library', icon: LibraryIcon3D, label: 'Library' },
-                        { id: 'ai-chat', icon: NotebookIcon3D, label: 'AI Chat' },
-                    ]
-                },
-                { id: 'my-profile', icon: ProfileIcon3D, label: 'My Profile' },
-                { id: 'helpdesk', icon: AdminIcon3D, label: 'Helpdesk' },
-            ];
-        default:
-            return [
-                { id: 'portal', icon: HomeIcon3D, label: 'Portal Home' },
-            ];
-    }
+  switch (role) {
+    case "admin":
+      return [
+        { id: "portal", icon: LayoutGrid, label: "Portal Home" },
+        { id: "announcement-mgmt", icon: Bell, label: "Announcements" },
+        { id: "applicants", icon: GraduationCap, label: "Teacher Applicants" },
+        {
+          id: "student-records",
+          icon: Users,
+          label: "Learner Records",
+          isCollapsible: true,
+          items: [
+            { id: "students", icon: Users, label: "Learners" },
+            { id: "lis", icon: ScanSearch, label: "LIS" },
+            { id: "admissions", icon: SquarePen, label: "Admissions" },
+            { id: "registrations", icon: SquarePen, label: "Registrations" },
+            { id: "visits", icon: CalendarDays, label: "Visits" },
+            { id: "online-registration", icon: SquarePen, label: "Online Registration" },
+            { id: "import", icon: FileSpreadsheet, label: "Import CSV" },
+            { id: "attendance-mgmt", icon: ClipboardCheck, label: "Attendance" },
+          ],
+        },
+        {
+          id: "academics",
+          icon: BookOpen,
+          label: "Academics",
+          isCollapsible: true,
+          items: [
+            { id: "grades", icon: ClipboardCheck, label: "Grades" },
+            { id: "subjects", icon: BookCopy, label: "Subjects" },
+            { id: "sections-mgmt", icon: Layers3, label: "Sections" },
+            { id: "subject-enrollment", icon: FileSpreadsheet, label: "Subject Enrollment" },
+            { id: "schedule-mgmt", icon: CalendarDays, label: "Schedules" },
+            { id: "assignment-mgmt", icon: SquarePen, label: "Assignments" },
+            { id: "exam-mgmt", icon: FileBarChart2, label: "Exams" },
+          ],
+        },
+        {
+          id: "school-management",
+          icon: School,
+          label: "School Management",
+          isCollapsible: true,
+          items: [
+            { id: "teachers", icon: GraduationCap, label: "Teachers" },
+            { id: "teacher-import", icon: FileSpreadsheet, label: "Teacher Import" },
+            { id: "messages", icon: MessageSquare, label: "Messages" },
+            { id: "zoom", icon: MonitorCog, label: "Virtual Classes" },
+            { id: "events", icon: CalendarDays, label: "Events" },
+            { id: "banner-management", icon: Bell, label: "Banner Management" },
+            { id: "academic-years", icon: CalendarDays, label: "Academic Years" },
+          ],
+        },
+        {
+          id: "resources",
+          icon: Library,
+          label: "Resources",
+          isCollapsible: true,
+          items: [
+            { id: "library", icon: Library, label: "Library" },
+            { id: "notebook", icon: NotebookPen, label: "Notebook LLM" },
+          ],
+        },
+        { id: "reports", icon: FileBarChart2, label: "Reports" },
+        {
+          id: "integrations",
+          icon: MonitorCog,
+          label: "Integrations",
+          isCollapsible: true,
+          items: [
+            { id: "nocodb", icon: FolderKanban, label: "NocoDB" },
+            { id: "onlyoffice", icon: FileBarChart2, label: "Google Docs" },
+            { id: "excalidraw", icon: Sparkles, label: "Excalidraw" },
+            { id: "omada", icon: Waypoints, label: "Omada" },
+            { id: "tacticalrmm", icon: Wrench, label: "Tactical RMM" },
+            { id: "documize", icon: BookOpen, label: "Documize" },
+          ],
+        },
+        { id: "impersonate", icon: UserCog, label: "Impersonate" },
+        { id: "helpdesk", icon: Wrench, label: "Helpdesk" },
+      ];
+    case "registrar":
+      return [
+        { id: "portal", icon: LayoutGrid, label: "Portal Home" },
+        { id: "announcement-mgmt", icon: Bell, label: "Announcements" },
+        { id: "applicants", icon: GraduationCap, label: "Teacher Applicants" },
+        {
+          id: "student-records",
+          icon: Users,
+          label: "Learner Records",
+          isCollapsible: true,
+          items: [
+            { id: "students", icon: Users, label: "Learners" },
+            { id: "lis", icon: ScanSearch, label: "LIS" },
+            { id: "admissions", icon: SquarePen, label: "Admissions" },
+            { id: "registrations", icon: SquarePen, label: "Registrations" },
+            { id: "visits", icon: CalendarDays, label: "Visits" },
+            { id: "online-registration", icon: SquarePen, label: "Online Registration" },
+            { id: "import", icon: FileSpreadsheet, label: "Import CSV" },
+            { id: "attendance-mgmt", icon: ClipboardCheck, label: "Attendance" },
+          ],
+        },
+        {
+          id: "academics",
+          icon: BookOpen,
+          label: "Academics",
+          isCollapsible: true,
+          items: [
+            { id: "grades", icon: ClipboardCheck, label: "Grades" },
+            { id: "subjects", icon: BookCopy, label: "Subjects" },
+            { id: "sections-mgmt", icon: Layers3, label: "Sections" },
+            { id: "subject-enrollment", icon: FileSpreadsheet, label: "Subject Enrollment" },
+            { id: "schedule-mgmt", icon: CalendarDays, label: "Schedules" },
+            { id: "assignment-mgmt", icon: SquarePen, label: "Assignments" },
+            { id: "exam-mgmt", icon: FileBarChart2, label: "Exams" },
+          ],
+        },
+        {
+          id: "school-management",
+          icon: School,
+          label: "School Management",
+          isCollapsible: true,
+          items: [
+            { id: "teachers", icon: GraduationCap, label: "Teachers" },
+            { id: "teacher-import", icon: FileSpreadsheet, label: "Teacher Import" },
+            { id: "messages", icon: MessageSquare, label: "Messages" },
+            { id: "zoom", icon: MonitorCog, label: "Virtual Classes" },
+            { id: "events", icon: CalendarDays, label: "Events" },
+            { id: "banner-management", icon: Bell, label: "Banner Management" },
+          ],
+        },
+        {
+          id: "resources",
+          icon: Library,
+          label: "Resources",
+          isCollapsible: true,
+          items: [
+            { id: "library", icon: Library, label: "Library" },
+            { id: "ai-chat", icon: Bot, label: "AI Chat" },
+          ],
+        },
+        { id: "reports", icon: FileBarChart2, label: "Reports" },
+        { id: "helpdesk", icon: Wrench, label: "Helpdesk" },
+      ];
+    case "teacher":
+      return [
+        { id: "portal", icon: LayoutGrid, label: "Portal Home" },
+        { id: "classes", icon: School, label: "My Classes" },
+        {
+          id: "my-info",
+          icon: UserRound,
+          label: "My Info",
+          isCollapsible: true,
+          items: [
+            { id: "teacher-profile", icon: UserRound, label: "Profile" },
+            { id: "my-profile", icon: UserRound, label: "Account" },
+          ],
+        },
+        { id: "students", icon: Users, label: "Learners" },
+        {
+          id: "academics",
+          icon: BookOpen,
+          label: "Academics",
+          isCollapsible: true,
+          items: [
+            { id: "grades", icon: ClipboardCheck, label: "Grades" },
+            { id: "attendance-mgmt", icon: ClipboardCheck, label: "Attendance" },
+            { id: "schedule-mgmt", icon: CalendarDays, label: "Schedules" },
+            { id: "assignment-mgmt", icon: SquarePen, label: "Assignments" },
+            { id: "exam-mgmt", icon: FileBarChart2, label: "Exams" },
+            { id: "lesson-plans", icon: NotebookPen, label: "Lesson Plans" },
+          ],
+        },
+        { id: "messages", icon: MessageSquare, label: "Messages" },
+        { id: "zoom", icon: MonitorCog, label: "Virtual Classes" },
+        {
+          id: "resources",
+          icon: Library,
+          label: "Resources",
+          isCollapsible: true,
+          items: [
+            { id: "library", icon: Library, label: "Library" },
+            { id: "notebook", icon: NotebookPen, label: "Notebook LLM" },
+          ],
+        },
+        { id: "reports", icon: FileBarChart2, label: "Reports" },
+        { id: "helpdesk", icon: Wrench, label: "Helpdesk" },
+      ];
+    case "student":
+      return [
+        { id: "portal", icon: LayoutGrid, label: "Dashboard" },
+        {
+          id: "my-records",
+          icon: UserRound,
+          label: "My Records",
+          isCollapsible: true,
+          items: [
+            { id: "student-profile", icon: UserRound, label: "Profile" },
+            { id: "student-grades", icon: ClipboardCheck, label: "Grades" },
+            { id: "student-subjects", icon: BookCopy, label: "Subjects" },
+            { id: "student-attendance", icon: ClipboardCheck, label: "Attendance" },
+          ],
+        },
+        {
+          id: "academics",
+          icon: BookOpen,
+          label: "Academics",
+          isCollapsible: true,
+          items: [
+            { id: "student-schedule", icon: CalendarDays, label: "Schedule" },
+            { id: "student-assignments", icon: SquarePen, label: "Assignments" },
+            { id: "student-exams", icon: FileBarChart2, label: "Exams" },
+          ],
+        },
+        { id: "student-library", icon: Library, label: "Library" },
+        { id: "student-calendar", icon: CalendarDays, label: "Calendar" },
+        { id: "student-announcements", icon: Bell, label: "Announcements" },
+        { id: "helpdesk", icon: Wrench, label: "Helpdesk" },
+      ];
+    case "parent":
+      return [
+        { id: "portal", icon: LayoutGrid, label: "Portal Home" },
+        { id: "children", icon: Users, label: "My Children" },
+        { id: "library", icon: Library, label: "Library" },
+        { id: "helpdesk", icon: Wrench, label: "Helpdesk" },
+      ];
+    case "finance":
+      return [
+        { id: "portal", icon: LayoutGrid, label: "Portal Home" },
+        { id: "finance-learners", icon: Users, label: "Learners" },
+        {
+          id: "billing",
+          icon: ReceiptText,
+          label: "Billing",
+          isCollapsible: true,
+          items: [
+            { id: "fee-setup", icon: ReceiptText, label: "Fees Setup" },
+            { id: "assessments", icon: Wallet, label: "Assessments" },
+            { id: "discount-scholarships", icon: Wallet, label: "Discounts" },
+          ],
+        },
+        {
+          id: "payments-group",
+          icon: Wallet,
+          label: "Payments",
+          isCollapsible: true,
+          items: [
+            { id: "cashier", icon: Wallet, label: "Cashier" },
+            { id: "cashier-sessions", icon: Wallet, label: "Cashier Sessions" },
+            { id: "payment-plans", icon: ReceiptText, label: "Payment Plans" },
+          ],
+        },
+        {
+          id: "accounts",
+          icon: UserRound,
+          label: "Accounts",
+          isCollapsible: true,
+          items: [
+            { id: "statement-of-account", icon: ReceiptText, label: "Statement of Account" },
+            { id: "student-ledger", icon: ReceiptText, label: "Student Ledger" },
+            { id: "finance-clearance", icon: LucideShield, label: "Clearance" },
+          ],
+        },
+        { id: "finance-reports", icon: FileBarChart2, label: "Reports" },
+        {
+          id: "finance-config",
+          icon: Settings,
+          label: "Settings",
+          isCollapsible: true,
+          items: [
+            { id: "finance-approvals", icon: LucideShield, label: "Approval Queue" },
+            { id: "finance-settings", icon: Settings, label: "Finance Settings" },
+            { id: "year-end-close", icon: Settings, label: "Year-End Close" },
+            { id: "finance-audit", icon: ScanSearch, label: "Audit Logs" },
+          ],
+        },
+        { id: "library", icon: Library, label: "Library" },
+        { id: "helpdesk", icon: Wrench, label: "Helpdesk" },
+      ];
+    case "principal":
+      return [
+        { id: "portal", icon: LayoutGrid, label: "Portal Home" },
+        {
+          id: "student-records",
+          icon: Users,
+          label: "Learner Records",
+          isCollapsible: true,
+          items: [{ id: "students", icon: Users, label: "Learners" }],
+        },
+        {
+          id: "academics",
+          icon: BookOpen,
+          label: "Academics",
+          isCollapsible: true,
+          items: [
+            { id: "grades", icon: ClipboardCheck, label: "Grades" },
+            { id: "reports", icon: FileBarChart2, label: "Reports" },
+          ],
+        },
+        {
+          id: "school-management",
+          icon: School,
+          label: "School Management",
+          isCollapsible: true,
+          items: [
+            { id: "teachers", icon: GraduationCap, label: "Teachers" },
+            { id: "events", icon: CalendarDays, label: "Events" },
+            { id: "messages", icon: MessageSquare, label: "Messages" },
+          ],
+        },
+        { id: "library", icon: Library, label: "Library" },
+        { id: "my-profile", icon: UserRound, label: "My Profile" },
+        { id: "helpdesk", icon: Wrench, label: "Helpdesk" },
+      ];
+    case "it":
+      return [
+        { id: "portal", icon: LayoutGrid, label: "Portal Home" },
+        {
+          id: "user-mgmt",
+          icon: UserCog,
+          label: "User Management",
+          isCollapsible: true,
+          items: [{ id: "admin", icon: LucideShield, label: "Permissions" }],
+        },
+        {
+          id: "integrations",
+          icon: MonitorCog,
+          label: "System Tools",
+          isCollapsible: true,
+          items: [
+            { id: "nocodb", icon: FolderKanban, label: "NocoDB" },
+            { id: "omada", icon: Waypoints, label: "Omada" },
+            { id: "tacticalrmm", icon: Wrench, label: "Tactical RMM" },
+            { id: "documize", icon: BookOpen, label: "Documize" },
+            { id: "excalidraw", icon: Sparkles, label: "Excalidraw" },
+          ],
+        },
+        {
+          id: "resources",
+          icon: Library,
+          label: "Resources",
+          isCollapsible: true,
+          items: [
+            { id: "library", icon: Library, label: "Library" },
+            { id: "ai-chat", icon: Bot, label: "AI Chat" },
+          ],
+        },
+        { id: "my-profile", icon: UserRound, label: "My Profile" },
+        { id: "helpdesk", icon: Wrench, label: "Helpdesk" },
+      ];
+    default:
+      return [{ id: "portal", icon: LayoutGrid, label: "Portal Home" }];
+  }
 };

@@ -26,6 +26,7 @@ import { differenceInYears } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { GRADE_LEVELS, GENDERS, KINDER_LEVELS } from './constants';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { useSchoolId } from '@/hooks/useSchoolId';
 
 
 const SCHOOLS = [
@@ -48,11 +49,11 @@ interface FormErrors {
 }
 
 import { useSchool } from '@/contexts/SchoolContext';
-import { getSchoolId } from '@/utils/schoolIdMap';
 
 export const EnrollmentForm = () => {
   const { selectedSchool } = useSchool();
   const { selectedYearId, selectedYear } = useAcademicYear();
+  const { data: schoolId } = useSchoolId();
   const [formData, setFormData] = useState({
     student_name: '',
     lrn: '',
@@ -72,8 +73,12 @@ export const EnrollmentForm = () => {
   });
 
   useEffect(() => {
-    setFormData(prev => ({ ...prev, school: selectedSchool }));
-  }, [selectedSchool]);
+    setFormData(prev => ({
+      ...prev,
+      school: selectedSchool,
+      school_year: selectedYear?.name || '',
+    }));
+  }, [selectedSchool, selectedYear]);
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -193,8 +198,7 @@ export const EnrollmentForm = () => {
 
   const handleConfirmEnrollment = async () => {
     // Pre-submit guard
-    const resolvedSchoolId = getSchoolId(formData.school);
-    if (!resolvedSchoolId) {
+    if (!schoolId) {
       toast.error('Unable to resolve school. Please select a valid school and try again.');
       return;
     }
@@ -213,11 +217,12 @@ export const EnrollmentForm = () => {
           .from('students')
           .select('id')
           .eq('lrn', finalLrn)
-          .eq('school', formData.school)
+          .eq('school_id', schoolId)
+          .eq('academic_year_id', selectedYearId)
           .maybeSingle();
 
         if (existingLrn) {
-          toast.error('A learner with this LRN already exists in this school');
+          toast.error('A learner with this LRN already exists for the selected academic year.');
           return;
         }
       }
@@ -238,7 +243,7 @@ export const EnrollmentForm = () => {
         uae_address: formData.uae_address.trim() || undefined,
         previous_school: formData.previous_school.trim() || undefined,
         academic_year_id: selectedYearId,
-        school_id: resolvedSchoolId,
+        school_id: schoolId,
       });
 
       // Auto-create student account

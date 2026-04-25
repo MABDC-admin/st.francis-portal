@@ -7,6 +7,19 @@ import { Student } from '@/types/student';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeacherProfile } from '@/hooks/useTeacherData';
 
+const normalizeGradeLevel = (value: string | null | undefined) => {
+  if (!value) return '';
+  const normalized = value.toLowerCase().replace(/\s+/g, ' ').trim();
+  if (normalized.includes('kinder')) {
+    return normalized.replace(/\s+/g, '');
+  }
+  const stripped = normalized.replace(/^grade\s*/i, '').replace(/^g\s*/i, '').trim();
+  if (/^\d{1,2}$/.test(stripped)) {
+    return `grade-${stripped}`;
+  }
+  return stripped.replace(/\s+/g, '');
+};
+
 interface TeacherStudentsViewProps {
   students: Student[];
   isLoading: boolean;
@@ -30,12 +43,14 @@ export const TeacherStudentsView = ({
 }: TeacherStudentsViewProps) => {
   const { user } = useAuth();
   const { data: teacherProfile } = useTeacherProfile(
-    role === 'teacher' ? user?.id : undefined
+    role === 'teacher' ? user?.id : undefined,
+    role === 'teacher' ? user?.email : undefined,
   );
 
   const filteredStudents = useMemo(() => {
     if (role === 'teacher' && teacherProfile?.grade_level) {
-      return students.filter(s => s.level === teacherProfile.grade_level);
+      const teacherLevel = normalizeGradeLevel(teacherProfile.grade_level);
+      return students.filter((student) => normalizeGradeLevel(student.level) === teacherLevel);
     }
     return students;
   }, [students, role, teacherProfile?.grade_level]);

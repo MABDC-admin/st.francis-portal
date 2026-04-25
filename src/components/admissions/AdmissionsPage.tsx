@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { getSchoolId } from '@/utils/schoolIdMap';
+import { useSchoolId } from '@/hooks/useSchoolId';
 import { toast } from 'sonner';
 import { ClipboardList, Search, CheckCircle2, XCircle, Clock, Loader2, UserPlus } from 'lucide-react';
 import { EnrollmentWizard } from '@/components/enrollment/EnrollmentWizard';
@@ -58,7 +58,7 @@ export const AdmissionsPage = () => {
   const { selectedYearId } = useAcademicYear();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const schoolId = getSchoolId(selectedSchool);
+  const { data: schoolId } = useSchoolId();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showWizard, setShowWizard] = useState(false);
@@ -97,14 +97,42 @@ export const AdmissionsPage = () => {
   // Approve admission
   const approveAdmission = useMutation({
     mutationFn: async (admission: AdmissionRecord) => {
+      if (!schoolId || !selectedYearId) {
+        throw new Error('School and academic year must be selected before approving admissions.');
+      }
+      if (!user?.id) {
+        throw new Error('You must be signed in to approve admissions.');
+      }
+      if (admission.school_id !== schoolId || admission.academic_year_id !== selectedYearId) {
+        throw new Error('This admission does not belong to the active school year.');
+      }
+
+      const finalLrn = admission.lrn || `TEMP-${Date.now()}`;
+      if (!finalLrn.startsWith('TEMP-')) {
+        const { data: existingStudent, error: existingStudentError } = await supabase
+          .from('students')
+          .select('id')
+          .eq('lrn', finalLrn)
+          .eq('school_id', admission.school_id)
+          .eq('academic_year_id', admission.academic_year_id)
+          .maybeSingle();
+
+        if (existingStudentError) throw existingStudentError;
+        if (existingStudent) {
+          throw new Error('A learner with this LRN already exists for the selected academic year.');
+        }
+      }
+
       const { error: updateError } = await (supabase.from('admissions') as any)
         .update({ status: 'approved', reviewed_by: user?.id, reviewed_at: new Date().toISOString() })
-        .eq('id', admission.id);
+        .eq('id', admission.id)
+        .eq('school_id', admission.school_id)
+        .eq('academic_year_id', admission.academic_year_id);
       if (updateError) throw updateError;
 
       const { data: studentData, error: studentError } = await (supabase.from('students') as any).insert([{
         student_name: admission.student_name,
-        lrn: admission.lrn || `TEMP-${Date.now()}`,
+        lrn: finalLrn,
         level: admission.level,
         school: admission.school,
         school_id: admission.school_id,
@@ -156,8 +184,6 @@ export const AdmissionsPage = () => {
         },
       }]);
 
-      return accountCredentials;
-
       try {
         if (admission.parent_email) {
           await supabase.functions.invoke('send-admission-email', {
@@ -171,6 +197,8 @@ export const AdmissionsPage = () => {
           });
         }
       } catch (e) { console.error('Email send failed:', e); }
+
+      return accountCredentials;
     },
     onSuccess: (credentials) => {
       queryClient.invalidateQueries({ queryKey: ['admissions'] });
@@ -188,9 +216,21 @@ export const AdmissionsPage = () => {
   // Reject admission
   const rejectAdmission = useMutation({
     mutationFn: async ({ admission, reason }: { admission: AdmissionRecord; reason: string }) => {
+      if (!schoolId || !selectedYearId) {
+        throw new Error('School and academic year must be selected before rejecting admissions.');
+      }
+      if (!user?.id) {
+        throw new Error('You must be signed in to reject admissions.');
+      }
+      if (admission.school_id !== schoolId || admission.academic_year_id !== selectedYearId) {
+        throw new Error('This admission does not belong to the active school year.');
+      }
+
       const { error } = await (supabase.from('admissions') as any)
         .update({ status: 'rejected', reviewed_by: user?.id, reviewed_at: new Date().toISOString(), rejection_reason: reason })
-        .eq('id', admission.id);
+        .eq('id', admission.id)
+        .eq('school_id', admission.school_id)
+        .eq('academic_year_id', admission.academic_year_id);
       if (error) throw error;
 
       await (supabase.from('admission_audit_logs') as any).insert([{
