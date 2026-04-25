@@ -6,6 +6,8 @@ export type AuditAction =
     | 'login_attempt'
     | 'login_success'
     | 'login_failure'
+    | 'google_login_attempt'
+    | 'google_login_failure'
     | 'logout'
     | 'impersonation_start'
     | 'impersonation_stop'
@@ -14,7 +16,7 @@ export type AuditAction =
 
 export interface AuditLogEntry {
     action: AuditAction;
-    status: 'success' | 'failure';
+    status: 'success' | 'failure' | 'pending';
     lrn?: string;
     error_message?: string;
     details?: Json;

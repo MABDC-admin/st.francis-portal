@@ -72,7 +72,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const identities = Array.isArray((authUser as User & { identities?: Array<{ provider?: string }> }).identities)
-      ? (authUser as User & { identities?: Array<{ provider?: string }> }).identities
+      ? (authUser as User & { identities?: Array<{ provider?: string }> }).identities ?? []
       : [];
 
     return identities.some((identity) => identity.provider === 'google');
@@ -92,9 +92,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     if (existing) {
+      const row = existing as { status?: string | null; assigned_role?: string | null };
       return {
-        status: (existing.status as ApprovalStatus) || 'pending',
-        assignedRole: (existing.assigned_role as AppRole | null) || null,
+        status: (row.status as ApprovalStatus) || 'pending',
+        assignedRole: (row.assigned_role as AppRole | null) || null,
       };
     }
 
@@ -118,7 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const fetchApprovalState = async (authUser: User | null) => {
-    if (!isGoogleAuthUser(authUser)) {
+    if (!authUser || !isGoogleAuthUser(authUser)) {
       setApprovalStatus('none');
       setApprovalAssignedRole(null);
       return { status: 'none' as ApprovalStatus, assignedRole: null as AppRole | null };
