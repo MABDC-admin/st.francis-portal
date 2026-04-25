@@ -105,7 +105,7 @@ const fetchTeacherSchedulesWithFallback = async <T extends ScheduleLookupRow>({
       throw error;
     }
 
-    return (data || []) as T[];
+    return (data || []) as unknown as T[];
   };
 
   if (schoolId && academicYearId) {
@@ -166,7 +166,7 @@ const fetchTeacherSchedulesWithFallback = async <T extends ScheduleLookupRow>({
     }
 
     if ((advisorySchedules || []).length > 0) {
-      return (advisorySchedules || []) as T[];
+      return (advisorySchedules || []) as unknown as T[];
     }
   }
 
@@ -183,7 +183,7 @@ const fetchTeacherSchedulesWithFallback = async <T extends ScheduleLookupRow>({
     throw gradeError;
   }
 
-  return (gradeSchedules || []) as T[];
+  return (gradeSchedules || []) as unknown as T[];
 };
 
 // Fetch teacher profile by matching user_id, linked credentials, or email fallback

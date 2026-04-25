@@ -4966,6 +4966,13 @@ export type Database = {
         }
         Returns: string
       }
+      teacher_grade_levels: {
+        Args: { _user_id: string }
+        Returns: {
+          grade_level: string
+          school_id: string
+        }[]
+      }
       title_case: { Args: { input_text: string }; Returns: string }
       user_has_school_access: {
         Args: { p_school_id: string; p_user_id: string }
