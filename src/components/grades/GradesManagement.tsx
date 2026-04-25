@@ -220,7 +220,7 @@ export const GradesManagement = () => {
 
       if (gradesError) throw gradesError;
 
-      const formattedGrades = gradesData.map((g: any) => ({
+      const formattedGrades = (gradesData ?? []).map((g: any) => ({
         ...g,
         student_name: g.students?.student_name,
         student_lrn: g.students?.lrn,

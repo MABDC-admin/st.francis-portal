@@ -10,7 +10,8 @@ import {
     Mail,
     User,
     Calendar,
-    Hash
+    Hash,
+    ShieldCheck
 } from 'lucide-react';
 import { Student } from '@/types/student';
 import { useSchool } from '@/contexts/SchoolContext';
