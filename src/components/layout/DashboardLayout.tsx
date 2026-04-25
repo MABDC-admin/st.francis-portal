@@ -93,6 +93,17 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
     setOpenGroups((previous) => ({ ...previous, ...nextOpenGroups }));
   }, [activeTab, navGroups]);
 
+  useEffect(() => {
+    const currentAcademicYear = academicYears.find((year) => year.is_current);
+    if (
+      role === "teacher" &&
+      currentAcademicYear?.id &&
+      selectedYearId !== currentAcademicYear.id
+    ) {
+      setSelectedYearId(currentAcademicYear.id);
+    }
+  }, [academicYears, role, selectedYearId, setSelectedYearId]);
+
   const pageTitle = useMemo(() => {
     for (const group of navGroups) {
       if (group.id === activeTab) return group.label;
@@ -117,6 +128,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
   const roleBadgeClass = role ? roleColors[role] : roleColors.student;
   const canShowComposer = role === "admin" || role === "registrar";
   const showRegistrationBell = role === "admin" || role === "registrar";
+  const canSwitchAcademicYear = role !== "student" && role !== "teacher";
   const desktopOffset = `${isCollapsed ? sidebarCollapsedWidth : sidebarExpandedWidth}px`;
   const adminIdentity =
     actualUser?.user_metadata?.full_name ||
@@ -245,7 +257,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
         )}
       </div>
 
-      {!isCollapsed && role !== "student" && (
+      {!isCollapsed && canSwitchAcademicYear && (
         <div className="space-y-2 border-b border-sidebar-border/70 px-4 py-4">
           <p className="micro-label text-white/60">Academic Year</p>
           <DropdownMenu>
