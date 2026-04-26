@@ -1,8 +1,27 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Plus, Edit2, Trash2, Loader2, FileText, Eye, Calendar, BookOpen, Paperclip, ShieldCheck } from 'lucide-react';
+import {
+  Plus,
+  Edit2,
+  Trash2,
+  Loader2,
+  FileText,
+  Eye,
+  Calendar,
+  BookOpen,
+  Paperclip,
+  ShieldCheck,
+  Users,
+  CheckCircle2,
+  XCircle,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  Download,
+  Clock3,
+} from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,6 +40,7 @@ import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { MultiFileUploader, Attachment } from '@/components/ui/MultiFileUploader';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeacherProfile, useTeacherSchedule } from '@/hooks/useTeacherData';
+import { cn } from '@/lib/utils';
 
 interface AssignmentRecord {
   id: string;
@@ -37,6 +57,31 @@ interface AssignmentRecord {
   subjects?: { code: string; name: string } | null;
 }
 
+interface StudentAssignee {
+  id: string;
+  student_name: string;
+  lrn: string | null;
+  level: string | null;
+  section?: string | null;
+}
+
+interface AssignmentSubmission {
+  id: string;
+  assignment_id: string;
+  student_id: string;
+  status: string | null;
+  submitted_at: string | null;
+  score: number | null;
+  feedback: string | null;
+  attachments: any;
+  students?: {
+    student_name: string;
+    lrn: string | null;
+    level: string | null;
+    section?: string | null;
+  } | null;
+}
+
 const GRADE_LEVELS = ['Kindergarten', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
 const ASSIGNMENT_TYPES = ['homework', 'project', 'quiz', 'essay', 'other'];
 
@@ -48,6 +93,70 @@ const typeColors: Record<string, string> = {
   other: 'bg-gray-100 text-gray-800',
 };
 
+const getAssignmentAttachments = (attachments: Attachment[] | null | undefined): Attachment[] => {
+  return Array.isArray(attachments) ? attachments : [];
+};
+
+const normalizeSubmissionAttachments = (attachments: any): Attachment[] => {
+  if (!attachments) return [];
+  if (Array.isArray(attachments)) return attachments;
+  if (Array.isArray(attachments.files)) {
+    return attachments.files.map((file: any) => ({
+      name: file.name || 'Submitted file',
+      url: file.url,
+      type: file.type || '',
+      size: file.size || 0,
+    }));
+  }
+  return [];
+};
+
+const isSubmittedStatus = (status: string | null | undefined) =>
+  status === 'submitted' || status === 'late' || status === 'graded' || status === 'returned';
+
+const AttachmentPreview = ({ file, compact = false }: { file: Attachment; compact?: boolean }) => {
+  const isImage = file.type?.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg)$/i.test(file.name);
+  const isVideo = file.type?.startsWith('video/') || /\.(mp4|mov|webm|m4v)$/i.test(file.name);
+  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+
+  return (
+    <Card className="overflow-hidden border-slate-200 bg-white shadow-sm">
+      <div className={cn('bg-slate-950', compact ? 'h-56' : 'h-[420px]')}>
+        {isImage ? (
+          <img src={file.url} alt={file.name} className="h-full w-full object-contain" />
+        ) : isVideo ? (
+          <video src={file.url} controls className="h-full w-full bg-black" />
+        ) : isPdf ? (
+          <iframe src={`${file.url}#view=FitH`} title={file.name} className="h-full w-full border-0 bg-white" />
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center gap-3 text-white">
+            <FileText className="h-12 w-12 text-white/60" />
+            <p className="text-sm font-semibold">Preview not available</p>
+          </div>
+        )}
+      </div>
+      <CardContent className="flex items-center justify-between gap-3 p-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">{file.name}</p>
+          <p className="text-xs text-muted-foreground">{file.type || 'Attachment'}</p>
+        </div>
+        <div className="flex shrink-0 gap-1">
+          <Button size="icon" variant="ghost" asChild>
+            <a href={file.url} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          </Button>
+          <Button size="icon" variant="ghost" asChild>
+            <a href={file.url} download={file.name}>
+              <Download className="h-4 w-4" />
+            </a>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 export const AssignmentManagement = () => {
   const queryClient = useQueryClient();
   const { user, role } = useAuth();
@@ -57,9 +166,11 @@ export const AssignmentManagement = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<AssignmentRecord | null>(null);
-  const [viewingRecord, setViewingRecord] = useState<AssignmentRecord | null>(null);
+  const [activeAssignmentId, setActiveAssignmentId] = useState<string | null>(null);
+  const [expandedAssignmentId, setExpandedAssignmentId] = useState<string | null>(null);
+  const [reviewSubmission, setReviewSubmission] = useState<AssignmentSubmission | null>(null);
+  const [gradingForm, setGradingForm] = useState({ score: '', feedback: '' });
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
@@ -175,6 +286,96 @@ export const AssignmentManagement = () => {
     enabled: !!schoolId && !!selectedYearId && (!isTeacher || !!teacherProfile?.id),
   });
 
+  const assignmentIds = useMemo(() => assignments.map((assignment: any) => assignment.id), [assignments]);
+  const assignmentGradeLevels = useMemo(
+    () => [...new Set(assignments.map((assignment: any) => assignment.grade_level).filter(Boolean))],
+    [assignments],
+  );
+
+  const { data: assignedStudents = [] } = useQuery<StudentAssignee[]>({
+    queryKey: ['assignment-assigned-students', schoolId, selectedYearId, assignmentGradeLevels.join('|')],
+    queryFn: async () => {
+      if (!schoolId || !selectedYearId || assignmentGradeLevels.length === 0) {
+        return [];
+      }
+
+      let query = supabase
+        .from('students')
+        .select('id, student_name, lrn, level, section')
+        .eq('school_id', schoolId)
+        .eq('academic_year_id', selectedYearId)
+        .order('student_name', { ascending: true });
+
+      query = assignmentGradeLevels.length === 1
+        ? query.eq('level', assignmentGradeLevels[0])
+        : query.in('level', assignmentGradeLevels);
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data || []) as StudentAssignee[];
+    },
+    enabled: !!schoolId && !!selectedYearId && assignmentGradeLevels.length > 0,
+  });
+
+  const { data: submissions = [] } = useQuery<AssignmentSubmission[]>({
+    queryKey: ['assignment-submissions-management', assignmentIds.join('|')],
+    queryFn: async () => {
+      if (assignmentIds.length === 0) {
+        return [];
+      }
+
+      const { data, error } = await supabase
+        .from('assignment_submissions')
+        .select(`
+          id,
+          assignment_id,
+          student_id,
+          status,
+          submitted_at,
+          score,
+          feedback,
+          attachments,
+          students:student_id(student_name, lrn, level, section)
+        `)
+        .in('assignment_id', assignmentIds)
+        .order('submitted_at', { ascending: false });
+
+      if (error) throw error;
+      return (data || []) as unknown as AssignmentSubmission[];
+    },
+    enabled: assignmentIds.length > 0,
+  });
+
+  const submissionsByAssignment = useMemo(() => {
+    const grouped = new Map<string, AssignmentSubmission[]>();
+    for (const submission of submissions) {
+      const list = grouped.get(submission.assignment_id) || [];
+      list.push(submission);
+      grouped.set(submission.assignment_id, list);
+    }
+    return grouped;
+  }, [submissions]);
+
+  const studentsByGrade = useMemo(() => {
+    const grouped = new Map<string, StudentAssignee[]>();
+    for (const student of assignedStudents) {
+      if (!student.level) continue;
+      const list = grouped.get(student.level) || [];
+      list.push(student);
+      grouped.set(student.level, list);
+    }
+    return grouped;
+  }, [assignedStudents]);
+
+  const activeAssignment = useMemo(() => {
+    return (assignments as AssignmentRecord[]).find((assignment) => assignment.id === activeAssignmentId) || null;
+  }, [activeAssignmentId, assignments]);
+
+  const reviewedAssignment = useMemo(() => {
+    if (!reviewSubmission) return null;
+    return (assignments as AssignmentRecord[]).find((assignment) => assignment.id === reviewSubmission.assignment_id) || null;
+  }, [assignments, reviewSubmission]);
+
   // Fetch subjects
   const { data: subjects = [] } = useQuery({
     queryKey: ['subjects-for-assignments'],
@@ -229,20 +430,32 @@ export const AssignmentManagement = () => {
       };
 
       if (editingRecord) {
-        const { error } = await supabase
+        const { data: updated, error } = await supabase
           .from('student_assignments')
           .update(payload as any)
-          .eq('id', editingRecord.id);
+          .eq('id', editingRecord.id)
+          .select('*, subjects:subject_id(code, name)')
+          .single();
         if (error) throw error;
+        return updated as AssignmentRecord;
       } else {
-        const { error } = await supabase
+        const { data: inserted, error } = await supabase
           .from('student_assignments')
-          .insert(payload as any);
+          .insert(payload as any)
+          .select('*, subjects:subject_id(code, name)')
+          .single();
         if (error) throw error;
+        return inserted as AssignmentRecord;
       }
     },
-    onSuccess: () => {
+    onSuccess: (savedRecord) => {
       queryClient.invalidateQueries({ queryKey: ['assignment-management'] });
+      queryClient.invalidateQueries({ queryKey: ['assignment-assigned-students'] });
+      queryClient.invalidateQueries({ queryKey: ['assignment-submissions-management'] });
+      if (savedRecord?.id) {
+        setActiveAssignmentId(savedRecord.id);
+        setExpandedAssignmentId(savedRecord.id);
+      }
       toast.success(editingRecord ? 'Assignment updated' : 'Assignment created');
       handleCloseModal();
     },
@@ -268,6 +481,70 @@ export const AssignmentManagement = () => {
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to delete');
+    },
+  });
+
+  const gradeSubmissionMutation = useMutation({
+    mutationFn: async ({
+      submissionId,
+      score,
+      feedback,
+      maxScore,
+    }: {
+      submissionId: string;
+      score: string;
+      feedback: string;
+      maxScore?: number | null;
+    }) => {
+      const normalizedScore = score.trim();
+      if (!normalizedScore) {
+        throw new Error('Please enter a score before saving the grade.');
+      }
+
+      const parsedScore = Number(normalizedScore);
+      if (!Number.isFinite(parsedScore) || parsedScore < 0) {
+        throw new Error('Score must be a valid positive number.');
+      }
+
+      if (typeof maxScore === 'number' && maxScore > 0 && parsedScore > maxScore) {
+        throw new Error(`Score cannot exceed the max score of ${maxScore}.`);
+      }
+
+      const { data, error } = await supabase
+        .from('assignment_submissions')
+        .update({
+          score: parsedScore,
+          feedback: feedback.trim() || null,
+          status: 'graded',
+        } as any)
+        .eq('id', submissionId)
+        .select(`
+          id,
+          assignment_id,
+          student_id,
+          status,
+          submitted_at,
+          score,
+          feedback,
+          attachments,
+          students:student_id(student_name, lrn, level, section)
+        `)
+        .single();
+
+      if (error) throw error;
+      return data as unknown as AssignmentSubmission;
+    },
+    onSuccess: (updatedSubmission) => {
+      setReviewSubmission(updatedSubmission);
+      setGradingForm({
+        score: updatedSubmission.score?.toString() || '',
+        feedback: updatedSubmission.feedback || '',
+      });
+      queryClient.invalidateQueries({ queryKey: ['assignment-submissions-management'] });
+      toast.success('Submission graded');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to save grade');
     },
   });
 
@@ -348,14 +625,36 @@ export const AssignmentManagement = () => {
     setIsModalOpen(true);
   };
 
-  const handleView = (record: AssignmentRecord) => {
-    setViewingRecord(record);
-    setIsViewModalOpen(true);
+  const handleSelectAssignment = (record: AssignmentRecord) => {
+    setActiveAssignmentId(record.id);
   };
 
   const handleDelete = (id: string) => {
     setDeletingId(id);
     setIsDeleteDialogOpen(true);
+  };
+
+  const handleOpenReview = (submission: AssignmentSubmission) => {
+    setReviewSubmission(submission);
+    setGradingForm({
+      score: submission.score?.toString() || '',
+      feedback: submission.feedback || '',
+    });
+  };
+
+  const handleCloseReview = () => {
+    setReviewSubmission(null);
+    setGradingForm({ score: '', feedback: '' });
+  };
+
+  const handleSaveGrade = () => {
+    if (!reviewSubmission) return;
+    gradeSubmissionMutation.mutate({
+      submissionId: reviewSubmission.id,
+      score: gradingForm.score,
+      feedback: gradingForm.feedback,
+      maxScore: reviewedAssignment?.max_score,
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -377,6 +676,27 @@ export const AssignmentManagement = () => {
 
   const isOverdue = (dueDate: string) => {
     return new Date(dueDate) < new Date();
+  };
+
+  const getAssignmentStudents = (assignment: AssignmentRecord) => {
+    return studentsByGrade.get(assignment.grade_level) || [];
+  };
+
+  const getSubmissionForStudent = (assignmentId: string, studentId: string) => {
+    return (submissionsByAssignment.get(assignmentId) || []).find((submission) => submission.student_id === studentId) || null;
+  };
+
+  const getSubmissionStats = (assignment: AssignmentRecord) => {
+    const students = getAssignmentStudents(assignment);
+    const submittedCount = students.filter((student) =>
+      isSubmittedStatus(getSubmissionForStudent(assignment.id, student.id)?.status),
+    ).length;
+
+    return {
+      assigned: students.length,
+      submitted: submittedCount,
+      pending: Math.max(students.length - submittedCount, 0),
+    };
   };
 
   return (
@@ -435,6 +755,99 @@ export const AssignmentManagement = () => {
         </CardContent>
       </Card>
 
+      {activeAssignment && (
+        <Card className="overflow-hidden border-cyan-100 shadow-sm">
+          <CardHeader className="bg-gradient-to-r from-cyan-50 via-white to-emerald-50">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <div className="mb-2 flex flex-wrap gap-2">
+                  <Badge className={typeColors[activeAssignment.assignment_type] || typeColors.other}>
+                    {activeAssignment.assignment_type}
+                  </Badge>
+                  <Badge variant="outline">{activeAssignment.grade_level}</Badge>
+                  <Badge variant="outline">{activeAssignment.subjects?.name || 'Subject'}</Badge>
+                </div>
+                <CardTitle className="text-2xl">{activeAssignment.title}</CardTitle>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Due {format(new Date(activeAssignment.due_date), 'MMMM d, yyyy h:mm a')}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => handleEdit(activeAssignment)}>
+                  <Edit2 className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+                <Button variant="ghost" onClick={() => setActiveAssignmentId(null)}>
+                  Close Preview
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6 p-6">
+            <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
+              <div className="space-y-4">
+                {activeAssignment.description && (
+                  <div className="rounded-2xl border bg-slate-50/60 p-4">
+                    <Label className="text-muted-foreground">Description</Label>
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{activeAssignment.description}</p>
+                  </div>
+                )}
+                {activeAssignment.instructions && (
+                  <div className="rounded-2xl border bg-amber-50/50 p-4">
+                    <Label className="text-muted-foreground">Instructions</Label>
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{activeAssignment.instructions}</p>
+                  </div>
+                )}
+              </div>
+              <div className="grid gap-3">
+                {(() => {
+                  const stats = getSubmissionStats(activeAssignment);
+                  return (
+                    <>
+                      <div className="rounded-2xl border bg-white p-4">
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Assigned Students</p>
+                        <p className="text-3xl font-bold">{stats.assigned}</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-800">
+                          <p className="text-xs uppercase tracking-wide">Submitted</p>
+                          <p className="text-2xl font-bold">{stats.submitted}</p>
+                        </div>
+                        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-800">
+                          <p className="text-xs uppercase tracking-wide">Pending</p>
+                          <p className="text-2xl font-bold">{stats.pending}</p>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="flex items-center gap-2 font-semibold">
+                  <Paperclip className="h-4 w-4 text-cyan-700" />
+                  Assignment Content
+                </h3>
+                <Badge variant="outline">{getAssignmentAttachments(activeAssignment.attachments).length} file(s)</Badge>
+              </div>
+              {getAssignmentAttachments(activeAssignment.attachments).length === 0 ? (
+                <div className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+                  No PDF, images, videos, or document attachments were added to this assignment.
+                </div>
+              ) : (
+                <div className="grid gap-4 xl:grid-cols-2">
+                  {getAssignmentAttachments(activeAssignment.attachments).map((file) => (
+                    <AttachmentPreview key={file.url} file={file} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Data Table */}
       <Card>
         <CardHeader>
@@ -458,70 +871,192 @@ export const AssignmentManagement = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10" />
                     <TableHead>Title</TableHead>
                     <TableHead>Subject</TableHead>
                     <TableHead>Grade Level</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Due Date</TableHead>
+                    <TableHead>Students</TableHead>
                     <TableHead>Max Score</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {assignments.map((record: any) => (
-                    <TableRow key={record.id}>
-                      <TableCell className="font-medium max-w-[200px] truncate">
-                        {record.title}
-                      </TableCell>
-                      <TableCell>
-                        {record.subjects?.name || 'Unknown'}
-                      </TableCell>
-                      <TableCell>{record.grade_level}</TableCell>
-                      <TableCell>
-                        <Badge className={typeColors[record.assignment_type] || typeColors.other}>
-                          {record.assignment_type}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span className={isOverdue(record.due_date) ? 'text-destructive' : ''}>
-                            {format(new Date(record.due_date), 'MMM d, yyyy h:mm a')}
-                          </span>
-                          {isOverdue(record.due_date) && (
-                            <Badge variant="destructive" className="text-xs">Overdue</Badge>
+                  {assignments.map((record: any) => {
+                    const stats = getSubmissionStats(record);
+                    const isExpanded = expandedAssignmentId === record.id;
+                    const assignmentStudents = getAssignmentStudents(record);
+
+                    return (
+                      <Fragment key={record.id}>
+                        <TableRow
+                          key={record.id}
+                          className={cn(
+                            'cursor-pointer transition-colors hover:bg-muted/60',
+                            activeAssignmentId === record.id && 'bg-cyan-50/60',
                           )}
-                        </div>
-                      </TableCell>
-                      <TableCell>{record.max_score || '-'}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleView(record)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(record)}
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(record.id)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                          onClick={() => handleSelectAssignment(record)}
+                        >
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setExpandedAssignmentId(isExpanded ? null : record.id);
+                              }}
+                            >
+                              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                            </Button>
+                          </TableCell>
+                          <TableCell className="font-medium max-w-[220px] truncate">
+                            {record.title}
+                          </TableCell>
+                          <TableCell>
+                            {record.subjects?.name || 'Unknown'}
+                          </TableCell>
+                          <TableCell>{record.grade_level}</TableCell>
+                          <TableCell>
+                            <Badge className={typeColors[record.assignment_type] || typeColors.other}>
+                              {record.assignment_type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-muted-foreground" />
+                              <span className={isOverdue(record.due_date) ? 'text-destructive' : ''}>
+                                {format(new Date(record.due_date), 'MMM d, yyyy h:mm a')}
+                              </span>
+                              {isOverdue(record.due_date) && (
+                                <Badge variant="destructive" className="text-xs">Overdue</Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-2">
+                              <Badge variant="outline" className="gap-1">
+                                <Users className="h-3 w-3" />
+                                {stats.assigned}
+                              </Badge>
+                              <Badge className="gap-1 bg-emerald-100 text-emerald-800">
+                                <CheckCircle2 className="h-3 w-3" />
+                                {stats.submitted}
+                              </Badge>
+                              <Badge className="gap-1 bg-rose-100 text-rose-800">
+                                <XCircle className="h-3 w-3" />
+                                {stats.pending}
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell>{record.max_score || '-'}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleSelectAssignment(record);
+                                }}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleEdit(record);
+                                }}
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleDelete(record.id);
+                                }}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                        {isExpanded && (
+                          <TableRow key={`${record.id}-students`}>
+                            <TableCell colSpan={9} className="bg-slate-50/70 p-0">
+                              <div className="p-4">
+                                <div className="mb-3 flex items-center justify-between">
+                                  <div>
+                                    <p className="font-semibold">Assigned Learners</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Submission status for {record.grade_level}
+                                    </p>
+                                  </div>
+                                  <Badge variant="outline">{stats.submitted}/{stats.assigned} submitted</Badge>
+                                </div>
+                                {assignmentStudents.length === 0 ? (
+                                  <div className="rounded-xl border border-dashed bg-white p-6 text-center text-sm text-muted-foreground">
+                                    No learners found for this assignment grade level.
+                                  </div>
+                                ) : (
+                                  <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                                    {assignmentStudents.map((student) => {
+                                      const submission = getSubmissionForStudent(record.id, student.id);
+                                      const submitted = isSubmittedStatus(submission?.status);
+
+                                      return (
+                                        <div
+                                          key={student.id}
+                                          className={cn(
+                                            'rounded-2xl border bg-white p-3 transition-colors',
+                                            submitted ? 'border-emerald-200 bg-emerald-50/70' : 'border-rose-200 bg-rose-50/60',
+                                          )}
+                                        >
+                                          <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                              <p className="truncate font-semibold">{student.student_name}</p>
+                                              <p className="text-xs text-muted-foreground">
+                                                {student.lrn || 'No LRN'}
+                                                {student.section ? ` - ${student.section}` : ''}
+                                              </p>
+                                            </div>
+                                            <Badge className={submitted ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}>
+                                              {submitted ? 'Submitted' : 'Not Submitted'}
+                                            </Badge>
+                                          </div>
+                                          <div className="mt-3 flex items-center justify-between gap-3">
+                                            <p className="text-xs text-muted-foreground">
+                                              {submission?.submitted_at
+                                                ? format(new Date(submission.submitted_at), 'MMM d, h:mm a')
+                                                : 'Waiting for submission'}
+                                            </p>
+                                            {submitted && submission && (
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => handleOpenReview(submission)}
+                                              >
+                                                Review
+                                              </Button>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </Fragment>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -529,67 +1064,124 @@ export const AssignmentManagement = () => {
         </CardContent>
       </Card>
 
-      {/* View Modal */}
-      <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
-        <DialogContent className="max-w-lg p-0 overflow-hidden">
-          <DialogHeader className="p-6 pb-2">
-            <DialogTitle>{viewingRecord?.title}</DialogTitle>
-          </DialogHeader>
-          <ScrollArea className="max-h-[80vh]">
-            {viewingRecord && (
-              <div className="px-6 pb-6 space-y-4">
-                <div className="flex flex-wrap gap-2">
-                  <Badge className={typeColors[viewingRecord.assignment_type]}>
-                    {viewingRecord.assignment_type}
+      <Dialog open={!!reviewSubmission} onOpenChange={(open) => !open && handleCloseReview()}>
+        <DialogContent className="max-w-[96vw] lg:max-w-5xl p-0 overflow-hidden">
+          <DialogHeader className="border-b bg-gradient-to-r from-emerald-50 via-white to-cyan-50 p-6">
+            <DialogTitle>Submitted Assignment Review</DialogTitle>
+            {reviewSubmission && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Badge className="bg-emerald-600 text-white">
+                  {reviewSubmission.status || 'submitted'}
+                </Badge>
+                <Badge variant="outline">
+                  {reviewSubmission.students?.student_name || 'Learner'}
+                </Badge>
+                {reviewSubmission.submitted_at && (
+                  <Badge variant="outline">
+                    <Clock3 className="h-3 w-3 mr-1" />
+                    {format(new Date(reviewSubmission.submitted_at), 'MMM d, yyyy h:mm a')}
                   </Badge>
-                  <Badge variant="outline">{viewingRecord.grade_level}</Badge>
-                  <Badge variant="outline">{viewingRecord.subjects?.name}</Badge>
+                )}
+              </div>
+            )}
+          </DialogHeader>
+          <ScrollArea className="max-h-[78vh]">
+            {reviewSubmission && (
+              <div className="space-y-6 p-6">
+                <div className="grid gap-4 md:grid-cols-3">
+                  <Card>
+                    <CardContent className="pt-6">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Learner</p>
+                      <p className="mt-1 font-semibold">{reviewSubmission.students?.student_name || 'Unknown'}</p>
+                      <p className="text-xs text-muted-foreground">{reviewSubmission.students?.lrn || 'No LRN'}</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Status</p>
+                      <p className="mt-1 font-semibold capitalize">{reviewSubmission.status || 'pending'}</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Score</p>
+                      <p className="mt-1 font-semibold">
+                        {reviewSubmission.score ?? 'Not graded yet'}
+                        {reviewedAssignment?.max_score ? ` / ${reviewedAssignment.max_score}` : ''}
+                      </p>
+                    </CardContent>
+                  </Card>
                 </div>
 
-                <div>
-                  <Label className="text-muted-foreground">Due Date</Label>
-                  <p className="font-medium">
-                    {format(new Date(viewingRecord.due_date), 'MMMM d, yyyy h:mm a')}
-                  </p>
-                </div>
+                <Card className="border-emerald-100 bg-emerald-50/40 shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="text-base">Grade This Submission</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Enter the learner's score and optional feedback. Saving marks the submission as graded.
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-[220px_1fr]">
+                      <div className="space-y-2">
+                        <Label>Score</Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={reviewedAssignment?.max_score || undefined}
+                            step="0.01"
+                            value={gradingForm.score}
+                            onChange={(event) => setGradingForm({ ...gradingForm, score: event.target.value })}
+                            placeholder="Enter score"
+                            className="h-11 bg-white"
+                          />
+                          {reviewedAssignment?.max_score ? (
+                            <span className="shrink-0 text-sm text-muted-foreground">/ {reviewedAssignment.max_score}</span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Teacher Feedback</Label>
+                        <Textarea
+                          value={gradingForm.feedback}
+                          onChange={(event) => setGradingForm({ ...gradingForm, feedback: event.target.value })}
+                          placeholder="Add comments, corrections, or encouragement for the learner"
+                          className="min-h-[110px] bg-white"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-xs text-muted-foreground">
+                        Current status: <span className="font-semibold capitalize">{reviewSubmission.status || 'submitted'}</span>
+                      </p>
+                      <Button onClick={handleSaveGrade} disabled={gradeSubmissionMutation.isPending}>
+                        {gradeSubmissionMutation.isPending ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="mr-2 h-4 w-4" />
+                        )}
+                        Save Grade
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
 
-                {viewingRecord.description && (
-                  <div>
-                    <Label className="text-muted-foreground">Description</Label>
-                    <p className="whitespace-pre-wrap">{viewingRecord.description}</p>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold">Submitted Files</h3>
+                    <Badge variant="outline">{normalizeSubmissionAttachments(reviewSubmission.attachments).length} file(s)</Badge>
                   </div>
-                )}
-
-                {viewingRecord.instructions && (
-                  <div>
-                    <Label className="text-muted-foreground">Instructions</Label>
-                    <p className="whitespace-pre-wrap">{viewingRecord.instructions}</p>
-                  </div>
-                )}
-
-                {viewingRecord.attachments && viewingRecord.attachments.length > 0 && (
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground">Attachments</Label>
-                    <div className="grid grid-cols-1 gap-2">
-                      {viewingRecord.attachments.map((file, i) => (
-                        <a
-                          key={i}
-                          href={file.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 p-2 border rounded bg-muted/50 hover:bg-muted transition-colors"
-                        >
-                          <FileText className="h-4 w-4 text-primary" />
-                          <span className="text-sm truncate flex-1">{file.name}</span>
-                        </a>
+                  {normalizeSubmissionAttachments(reviewSubmission.attachments).length === 0 ? (
+                    <div className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+                      This submission has no attached files. It may have been marked done without a file.
+                    </div>
+                  ) : (
+                    <div className="grid gap-4 xl:grid-cols-2">
+                      {normalizeSubmissionAttachments(reviewSubmission.attachments).map((file) => (
+                        <AttachmentPreview key={file.url} file={file} compact />
                       ))}
                     </div>
-                  </div>
-                )}
-
-                <div>
-                  <Label className="text-muted-foreground">Max Score</Label>
-                  <p className="font-medium">{viewingRecord.max_score || 'Not specified'}</p>
+                  )}
                 </div>
               </div>
             )}
