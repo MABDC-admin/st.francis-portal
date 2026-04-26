@@ -66,9 +66,9 @@ export const useBookSearch = () => {
         return null;
       }
 
-      const response = data as SearchResponse;
-      setSearchResults(response.results);
-      setTotalMatches(response.total_matches);
+      const response = ((data as any)?.data ?? data) as SearchResponse;
+      setSearchResults(response?.results || []);
+      setTotalMatches(response?.total_matches || 0);
 
       return response;
     } catch (error) {

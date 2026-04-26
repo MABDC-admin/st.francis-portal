@@ -34,30 +34,15 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBookSearch } from '@/hooks/useBookSearch';
 import { useBookIndexing } from '@/hooks/useBookIndexing';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { useSchoolId } from '@/hooks/useSchoolId';
+import { useTeacherProfile, useTeacherSchedule } from '@/hooks/useTeacherData';
+import {
+  buildLibraryGradeVariants,
+  displayLibraryGradeLabel,
+  gradeMatchesLibraryLevel,
+} from '@/utils/libraryGradeLevel';
 import { toast } from 'sonner';
-
-// Utility function to parse student level string to numeric grade
-const parseStudentLevel = (levelStr: string | null | undefined): number | null => {
-  if (!levelStr) return null;
-
-  const normalized = levelStr.toLowerCase().trim();
-
-  // Handle "Kinder" levels - map to grade 0 or null
-  if (normalized.includes('kinder')) {
-    return 0; // Kinder students get grade 0
-  }
-
-  // Extract number from strings like "Level 3", "Grade 5", "3", etc.
-  const match = normalized.match(/\d+/);
-  if (match) {
-    const grade = parseInt(match[0], 10);
-    if (grade >= 1 && grade <= 12) {
-      return grade;
-    }
-  }
-
-  return null;
-};
 
 interface Book {
   id: string;
@@ -77,8 +62,9 @@ interface Book {
 
 const GRADE_LEVELS = [
   { value: 'all', label: 'All Grades' },
+  { value: 'Kindergarten', label: 'Kindergarten' },
   ...Array.from({ length: 12 }, (_, i) => ({
-    value: (i + 1).toString(),
+    value: `Grade ${i + 1}`,
     label: `Grade ${i + 1}`,
   })),
 ];
@@ -101,11 +87,14 @@ export const LibraryPage = ({ deepLinkBookId, deepLinkPage }: LibraryPageProps =
 
   const { selectedSchool } = useSchool();
   const { role, user } = useAuth();
+  const { selectedYearId } = useAcademicYear();
+  const { data: schoolId } = useSchoolId();
   const queryClient = useQueryClient();
 
   const isAdmin = role === 'admin';
   const isRegistrar = role === 'registrar';
   const isStudent = role === 'student';
+  const isTeacher = role === 'teacher';
   const canManage = isAdmin || isRegistrar;
 
   // Fetch student data when the user is a student
@@ -146,15 +135,62 @@ export const LibraryPage = ({ deepLinkBookId, deepLinkPage }: LibraryPageProps =
   // Parse student grade level and auto-set filter for students
   const studentGradeLevel = useMemo(() => {
     if (!isStudent || !studentData?.level) return null;
-    return parseStudentLevel(studentData.level);
+    return displayLibraryGradeLabel(studentData.level) || null;
   }, [isStudent, studentData?.level]);
 
   // Auto-set grade filter for students
   useEffect(() => {
-    if (isStudent && studentGradeLevel !== null) {
-      setSelectedGrade(studentGradeLevel.toString());
+    if (isStudent && studentGradeLevel) {
+      setSelectedGrade(studentGradeLevel);
     }
   }, [isStudent, studentGradeLevel]);
+
+  const { data: teacherProfile } = useTeacherProfile(
+    isTeacher ? user?.id : undefined,
+    isTeacher ? user?.email : undefined,
+  );
+  const { data: teacherSchedules = [] } = useTeacherSchedule(
+    isTeacher ? teacherProfile?.id : undefined,
+    isTeacher ? schoolId : undefined,
+    isTeacher ? selectedYearId : undefined,
+    isTeacher ? teacherProfile?.grade_level : undefined,
+  );
+
+  const teacherGradeLevels = useMemo(() => {
+    if (!isTeacher) return [];
+
+    const scopedLevels = new Map<string, string>();
+    const register = (value: string | null | undefined) => {
+      const label = displayLibraryGradeLabel(value);
+      if (!label) return;
+      scopedLevels.set(label.toLowerCase(), label);
+    };
+
+    teacherSchedules.forEach((schedule: any) => register(schedule.grade_level));
+    register(teacherProfile?.grade_level);
+
+    return Array.from(scopedLevels.values());
+  }, [isTeacher, teacherProfile?.grade_level, teacherSchedules]);
+
+  useEffect(() => {
+    if (!isTeacher) return;
+
+    if (teacherGradeLevels.length === 1) {
+      setSelectedGrade(teacherGradeLevels[0]);
+      return;
+    }
+
+    if (selectedGrade !== 'all' && !teacherGradeLevels.some((level) => gradeMatchesLibraryLevel(level, selectedGrade))) {
+      setSelectedGrade('all');
+    }
+  }, [isTeacher, selectedGrade, teacherGradeLevels]);
+
+  const availableGradeFilters = useMemo(() => {
+    if (isTeacher) {
+      return teacherGradeLevels.map((level) => ({ value: level, label: level }));
+    }
+    return GRADE_LEVELS.filter((level) => level.value !== 'all');
+  }, [isTeacher, teacherGradeLevels]);
 
 
 
@@ -173,12 +209,31 @@ export const LibraryPage = ({ deepLinkBookId, deepLinkPage }: LibraryPageProps =
 
   // Fetch books from database
   const { data: books = [], isLoading } = useQuery({
-    queryKey: ['books', selectedSchool, showInactive, searchQuery, selectedGrade],
+    queryKey: [
+      'books',
+      selectedSchool,
+      showInactive,
+      searchQuery,
+      selectedGrade,
+      role,
+      studentGradeLevel,
+      teacherGradeLevels.join('|'),
+      selectedYearId,
+      schoolId,
+    ],
     queryFn: async () => {
+      if (isStudent && !studentGradeLevel) {
+        return [];
+      }
+
+      if (isTeacher && teacherGradeLevels.length === 0) {
+        return [];
+      }
+
       let query = supabase.from('books').select('*');
 
       // Only show active books unless admin wants to see inactive
-      if (!showInactive) {
+      if (!showInactive || !canManage) {
         query = query.eq('is_active', true);
       }
 
@@ -186,13 +241,40 @@ export const LibraryPage = ({ deepLinkBookId, deepLinkPage }: LibraryPageProps =
         query = query.ilike('title', `%${searchQuery}%`);
       }
 
-      if (selectedGrade !== 'all') {
-        query = query.eq('grade_level', selectedGrade);
+      const gradeScope = isStudent
+        ? [studentGradeLevel]
+        : isTeacher
+          ? (selectedGrade !== 'all' ? [selectedGrade] : teacherGradeLevels)
+          : (selectedGrade !== 'all' ? [selectedGrade] : []);
+
+      const gradeVariants = [...new Set(
+        gradeScope
+          .filter((grade): grade is string => !!grade)
+          .flatMap((grade) => buildLibraryGradeVariants(grade)),
+      )];
+
+      if ((isStudent || isTeacher || selectedGrade !== 'all') && gradeVariants.length === 0) {
+        return [];
+      }
+
+      if (gradeVariants.length === 1) {
+        query = query.eq('grade_level', gradeVariants[0]);
+      } else if (gradeVariants.length > 1) {
+        query = query.in('grade_level', gradeVariants);
       }
 
       // Filter by school - show books for this school or books for both (null)
+      const schoolFilters = ['school.is.null'];
       if (selectedSchool) {
-        query = query.or(`school.eq.${selectedSchool},school.is.null`);
+        schoolFilters.unshift(`school.eq.${selectedSchool}`);
+      }
+      if (schoolId) {
+        schoolFilters.unshift(`school.eq.${schoolId}`);
+      }
+      query = query.or(schoolFilters.join(','));
+
+      if (isStudent) {
+        query = query.eq('is_teacher_only', false);
       }
 
       const { data, error } = await query.order('created_at', { ascending: false });
@@ -229,9 +311,15 @@ export const LibraryPage = ({ deepLinkBookId, deepLinkPage }: LibraryPageProps =
     let result = books;
 
     // Apply grade filter
-    if (selectedGrade && selectedGrade !== 'all') {
+    if (isStudent && studentGradeLevel) {
+      result = result.filter((book) => gradeMatchesLibraryLevel(book.grade_level, studentGradeLevel));
+    } else if (isTeacher) {
+      result = selectedGrade !== 'all'
+        ? result.filter((book) => gradeMatchesLibraryLevel(book.grade_level, selectedGrade))
+        : result.filter((book) => teacherGradeLevels.some((level) => gradeMatchesLibraryLevel(book.grade_level, level)));
+    } else if (selectedGrade && selectedGrade !== 'all') {
       result = result.filter(
-        (book) => book.grade_level === selectedGrade
+        (book) => gradeMatchesLibraryLevel(book.grade_level, selectedGrade)
       );
     }
 
@@ -298,7 +386,11 @@ export const LibraryPage = ({ deepLinkBookId, deepLinkPage }: LibraryPageProps =
 
     setShowSearchResults(true);
     await search(searchQuery, {
-      grade_level: selectedGrade !== 'all' ? selectedGrade : undefined,
+      grade_level: selectedGrade !== 'all'
+        ? selectedGrade
+        : isStudent
+          ? studentGradeLevel || undefined
+          : undefined,
     });
   };
 
@@ -413,7 +505,13 @@ export const LibraryPage = ({ deepLinkBookId, deepLinkPage }: LibraryPageProps =
                   <SelectValue placeholder="Filter by grade" />
                 </SelectTrigger>
                 <SelectContent>
-                  {GRADE_LEVELS.map((level) => (
+                  {!isTeacher && (
+                    <SelectItem value="all">All Grades</SelectItem>
+                  )}
+                  {isTeacher && teacherGradeLevels.length > 1 && (
+                    <SelectItem value="all">All My Grades</SelectItem>
+                  )}
+                  {availableGradeFilters.map((level) => (
                     <SelectItem key={level.value} value={level.value}>
                       {level.label}
                     </SelectItem>
@@ -423,10 +521,10 @@ export const LibraryPage = ({ deepLinkBookId, deepLinkPage }: LibraryPageProps =
             )}
 
             {/* Show current grade for students */}
-            {isStudent && studentGradeLevel !== null && (
+            {isStudent && studentGradeLevel && (
               <Badge variant="secondary" className="h-10 px-4 flex items-center gap-2">
                 <BookOpen className="h-4 w-4" />
-                {studentGradeLevel === 0 ? 'Kinder' : `Grade ${studentGradeLevel}`} Books
+                {studentGradeLevel} Books
               </Badge>
             )}
           </div>
@@ -439,7 +537,7 @@ export const LibraryPage = ({ deepLinkBookId, deepLinkPage }: LibraryPageProps =
               </span>
               {selectedGrade !== 'all' && (
                 <Badge variant="secondary" className="gap-1">
-                  Grade {selectedGrade}
+                  {selectedGrade}
                   <button
                     onClick={() => setSelectedGrade('all')}
                     className="ml-1 hover:text-destructive"
@@ -503,13 +601,13 @@ export const LibraryPage = ({ deepLinkBookId, deepLinkPage }: LibraryPageProps =
           >
             <BookOpen className="h-16 w-16 text-muted-foreground/50 mb-4" />
             <h3 className="text-lg font-medium text-foreground mb-2">
-              {isStudent ? 'No books available for your grade level' : 'No books found'}
+              {isStudent ? 'No books available for your grade level' : isTeacher ? 'No books available for your teaching levels' : 'No books found'}
             </h3>
             <p className="text-muted-foreground max-w-md">
               {isStudent
-                ? studentGradeLevel === 0
-                  ? 'There are no books available for Kinder students yet. Check back later!'
-                  : 'There are no books available for your grade level yet. Check back later!'
+                ? 'There are no books available for your grade level yet. Check back later!'
+                : isTeacher
+                  ? 'No library books currently match the grade levels assigned to you.'
                 : searchQuery || selectedGrade !== 'all'
                   ? 'Try adjusting your search or filter criteria.'
                   : canManage

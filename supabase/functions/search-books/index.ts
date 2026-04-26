@@ -7,7 +7,7 @@ import {
   handleCors,
   jsonResponse,
   errorResponse,
-  createServiceClient,
+  requireAuth,
 } from '../_shared/response.ts';
 
 interface SearchMatch {
@@ -29,6 +29,28 @@ interface BookResult {
   matches: SearchMatch[];
 }
 
+const normalizeGradeLevel = (value: string | null | undefined) => {
+  const raw = (value || '').trim().toLowerCase();
+  if (!raw) return '';
+
+  if (raw === '0' || raw === 'kinder' || raw === 'kindergarten' || raw.startsWith('kinder ')) {
+    return 'kindergarten';
+  }
+
+  const digits = raw.match(/\d{1,2}/)?.[0];
+  if (digits) {
+    return `grade${digits}`;
+  }
+
+  return raw.replace(/\s+/g, '');
+};
+
+const gradeMatches = (left: string | null | undefined, right: string | null | undefined) => {
+  const normalizedLeft = normalizeGradeLevel(left);
+  const normalizedRight = normalizeGradeLevel(right);
+  return normalizedLeft !== '' && normalizedLeft === normalizedRight;
+};
+
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -40,45 +62,38 @@ Deno.serve(async (req) => {
       return errorResponse('Search query must be at least 2 characters', 400);
     }
 
-    const supabase = createServiceClient();
+    const authResult = await requireAuth(req);
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+
+    const { userClient: supabase } = authResult;
     const searchTerms = query.trim().split(/\s+/).join(' & ');
     const searchQuery = query.trim().toLowerCase();
 
     console.log(`Searching for: "${query}" (terms: ${searchTerms})`);
 
-    const { data: searchResults, error: searchError } = await supabase
-      .rpc('search_book_pages', {
-        search_query: searchTerms,
-        result_limit: limit
-      });
+    const { data: results, error } = await supabase
+      .from('book_page_index')
+      .select(`
+        id,
+        book_id,
+        page_id,
+        page_number,
+        extracted_text,
+        topics,
+        keywords,
+        chapter_title,
+        summary,
+        books!inner(id, title, cover_url, grade_level, subject, is_active, is_teacher_only, school)
+      `)
+      .eq('index_status', 'completed')
+      .eq('books.is_active', true)
+      .or(`extracted_text.ilike.%${searchQuery}%,summary.ilike.%${searchQuery}%,chapter_title.ilike.%${searchQuery}%`)
+      .limit(limit);
 
-    let results = searchResults;
-    if (searchError) {
-      console.log('RPC not available, using direct query:', searchError.message);
-
-      const { data, error } = await supabase
-        .from('book_page_index')
-        .select(`
-          id,
-          book_id,
-          page_id,
-          page_number,
-          extracted_text,
-          topics,
-          keywords,
-          chapter_title,
-          summary,
-          books!inner(id, title, cover_url, grade_level, subject, is_active)
-        `)
-        .eq('index_status', 'completed')
-        .eq('books.is_active', true)
-        .or(`extracted_text.ilike.%${searchQuery}%,summary.ilike.%${searchQuery}%,chapter_title.ilike.%${searchQuery}%`)
-        .limit(limit);
-
-      if (error) {
-        return errorResponse(`Search failed: ${error.message}`, 500);
-      }
-      results = data;
+    if (error) {
+      return errorResponse(`Search failed: ${error.message}`, 500);
     }
 
     if (!results || results.length === 0) {
@@ -91,7 +106,7 @@ Deno.serve(async (req) => {
       const book = row.books || row;
       const bookId = row.book_id;
 
-      if (grade_level && book.grade_level !== grade_level) continue;
+      if (grade_level && !gradeMatches(book.grade_level, grade_level)) continue;
       if (subject && book.subject !== subject) continue;
 
       let snippet = row.extracted_text || row.summary || '';

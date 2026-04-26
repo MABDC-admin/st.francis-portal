@@ -9,11 +9,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
+import { useSchool } from '@/contexts/SchoolContext';
+import {
+    buildLibraryGradeVariants,
+    displayLibraryGradeLabel,
+} from '@/utils/libraryGradeLevel';
 
 export const StudentLibraryTab = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All Books');
     const { user } = useAuth();
+    const { selectedSchool } = useSchool();
 
     // Fetch student profile to get grade level
     const { data: studentProfile } = useQuery({
@@ -41,35 +47,38 @@ export const StudentLibraryTab = () => {
 
     const studentGrade = useMemo(() => {
         if (!studentProfile?.level) return null;
-        const normalized = studentProfile.level.toLowerCase();
-        if (normalized.includes('kinder')) return 0;
-        const match = normalized.match(/\d+/);
-        return match ? parseInt(match[0], 10) : null;
+        return displayLibraryGradeLabel(studentProfile.level) || null;
     }, [studentProfile]);
 
     // Fetch books
     const { data: books = [], isLoading } = useQuery({
-        queryKey: ['student-books', studentProfile?.school_id, studentGrade],
+        queryKey: ['student-books', selectedSchool, studentProfile?.school_id, studentGrade],
         queryFn: async () => {
-            if (studentGrade === null) return [];
+            if (!studentGrade) return [];
+
+            const gradeVariants = buildLibraryGradeVariants(studentGrade);
+            if (gradeVariants.length === 0) return [];
 
             let query = supabase.from('books')
                 .select('*')
                 .eq('is_active', true)
                 .eq('is_teacher_only', false)
-                .eq('grade_level', String(studentGrade));
+                .in('grade_level', gradeVariants);
 
-            if (studentProfile?.school_id) {
-                query = query.or(`school.eq.${studentProfile.school_id},school.is.null`);
-            } else {
-                query = query.is('school', null);
+            const schoolFilters = ['school.is.null'];
+            if (selectedSchool) {
+                schoolFilters.unshift(`school.eq.${selectedSchool}`);
             }
+            if (studentProfile?.school_id) {
+                schoolFilters.unshift(`school.eq.${studentProfile.school_id}`);
+            }
+            query = query.or(schoolFilters.join(','));
 
             const { data, error } = await query.order('title');
             if (error) throw error;
             return data;
         },
-        enabled: studentGrade !== null
+        enabled: !!studentGrade
     });
 
     const filteredBooks = useMemo(() => {

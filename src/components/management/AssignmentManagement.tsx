@@ -33,6 +33,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchoolId } from '@/hooks/useSchoolId';
@@ -62,6 +63,7 @@ interface StudentAssignee {
   student_name: string;
   lrn: string | null;
   level: string | null;
+  photo_url?: string | null;
   section?: string | null;
 }
 
@@ -78,6 +80,7 @@ interface AssignmentSubmission {
     student_name: string;
     lrn: string | null;
     level: string | null;
+    photo_url?: string | null;
     section?: string | null;
   } | null;
 }
@@ -113,6 +116,41 @@ const normalizeSubmissionAttachments = (attachments: any): Attachment[] => {
 
 const isSubmittedStatus = (status: string | null | undefined) =>
   status === 'submitted' || status === 'late' || status === 'graded' || status === 'returned';
+
+const getStudentInitials = (name: string | null | undefined) => {
+  if (!name) return '??';
+
+  const cleanedName = name.replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
+  const parts = cleanedName.split(' ').filter(Boolean);
+
+  return parts
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || '??';
+};
+
+const StudentPhoto = ({
+  name,
+  photoUrl,
+  size = 'md',
+}: {
+  name: string | null | undefined;
+  photoUrl?: string | null;
+  size?: 'sm' | 'md';
+}) => (
+  <Avatar className={cn(
+    'shrink-0 border border-border bg-muted',
+    size === 'sm' ? 'h-10 w-10' : 'h-12 w-12',
+  )}>
+    {photoUrl ? <AvatarImage src={photoUrl} alt={name || 'Learner photo'} className="object-cover" /> : null}
+    <AvatarFallback className={cn(
+      'bg-primary/10 font-semibold text-primary',
+      size === 'sm' ? 'text-xs' : 'text-sm',
+    )}>
+      {getStudentInitials(name)}
+    </AvatarFallback>
+  </Avatar>
+);
 
 const AttachmentPreview = ({ file, compact = false }: { file: Attachment; compact?: boolean }) => {
   const isImage = file.type?.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg)$/i.test(file.name);
@@ -301,7 +339,7 @@ export const AssignmentManagement = () => {
 
       let query = supabase
         .from('students')
-        .select('id, student_name, lrn, level, section')
+        .select('id, student_name, lrn, level, photo_url, section')
         .eq('school_id', schoolId)
         .eq('academic_year_id', selectedYearId)
         .order('student_name', { ascending: true });
@@ -335,7 +373,7 @@ export const AssignmentManagement = () => {
           score,
           feedback,
           attachments,
-          students:student_id(student_name, lrn, level, section)
+          students:student_id(student_name, lrn, level, photo_url, section)
         `)
         .in('assignment_id', assignmentIds)
         .order('submitted_at', { ascending: false });
@@ -527,7 +565,7 @@ export const AssignmentManagement = () => {
           score,
           feedback,
           attachments,
-          students:student_id(student_name, lrn, level, section)
+          students:student_id(student_name, lrn, level, photo_url, section)
         `)
         .single();
 
@@ -1018,12 +1056,19 @@ export const AssignmentManagement = () => {
                                           )}
                                         >
                                           <div className="flex items-start justify-between gap-3">
-                                            <div className="min-w-0">
-                                              <p className="truncate font-semibold">{student.student_name}</p>
-                                              <p className="text-xs text-muted-foreground">
-                                                {student.lrn || 'No LRN'}
-                                                {student.section ? ` - ${student.section}` : ''}
-                                              </p>
+                                            <div className="flex min-w-0 items-start gap-3">
+                                              <StudentPhoto
+                                                name={student.student_name}
+                                                photoUrl={student.photo_url}
+                                                size="sm"
+                                              />
+                                              <div className="min-w-0">
+                                                <p className="truncate font-semibold">{student.student_name}</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                  {student.lrn || 'No LRN'}
+                                                  {student.section ? ` - ${student.section}` : ''}
+                                                </p>
+                                              </div>
                                             </div>
                                             <Badge className={submitted ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}>
                                               {submitted ? 'Submitted' : 'Not Submitted'}
@@ -1091,9 +1136,17 @@ export const AssignmentManagement = () => {
                 <div className="grid gap-4 md:grid-cols-3">
                   <Card>
                     <CardContent className="pt-6">
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Learner</p>
-                      <p className="mt-1 font-semibold">{reviewSubmission.students?.student_name || 'Unknown'}</p>
-                      <p className="text-xs text-muted-foreground">{reviewSubmission.students?.lrn || 'No LRN'}</p>
+                      <div className="flex items-center gap-3">
+                        <StudentPhoto
+                          name={reviewSubmission.students?.student_name}
+                          photoUrl={reviewSubmission.students?.photo_url}
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">Learner</p>
+                          <p className="mt-1 truncate font-semibold">{reviewSubmission.students?.student_name || 'Unknown'}</p>
+                          <p className="text-xs text-muted-foreground">{reviewSubmission.students?.lrn || 'No LRN'}</p>
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                   <Card>
