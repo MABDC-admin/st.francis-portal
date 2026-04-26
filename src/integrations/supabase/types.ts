@@ -4972,6 +4972,7 @@ export type Database = {
           academic_year_id: string
           grade_level: string
           school_id: string
+          section: string
         }[]
       }
       teacher_matches_current_user: {
