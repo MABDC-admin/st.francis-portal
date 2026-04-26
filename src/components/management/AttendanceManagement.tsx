@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { format } from 'date-fns';
+import { eachDayOfInterval, eachMonthOfInterval, endOfMonth, format, parseISO, startOfMonth } from 'date-fns';
 import { Plus, Edit2, Trash2, Loader2, Calendar, Users, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,6 +23,7 @@ import { useYearGuard } from '@/hooks/useYearGuard';
 import { useTeacherProfile, useTeacherSchedule } from '@/hooks/useTeacherData';
 import { YearLockedBanner } from '@/components/ui/YearLockedBanner';
 import { GRADE_LEVELS } from '@/components/enrollment/constants';
+import { matchesTeacherClassSlot, normalizeGradeLevel, type TeacherClassSlot } from '@/utils/teacherClassScope';
 
 interface AttendanceRecord {
   id: string;
@@ -35,6 +37,7 @@ interface AttendanceRecord {
     student_name: string;
     level: string;
     lrn: string;
+    photo_url?: string | null;
     section?: string | null;
   } | null;
 }
@@ -44,56 +47,68 @@ interface StudentOption {
   student_name: string;
   level: string;
   lrn: string;
+  photo_url?: string | null;
   section?: string | null;
 }
 
-interface TeacherClassSlot {
-  level: string | null;
-  section: string | null;
+interface StudentAttendanceTarget extends StudentOption {}
+
+interface MonthlyAttendanceRecord {
+  id: string;
+  date: string;
+  status: string;
+  time_in?: string | null;
+  time_out?: string | null;
+  remarks?: string | null;
 }
 
 type AttendanceStatus = 'present' | 'late' | 'absent';
-
-const normalizeGradeLevel = (value: string | null | undefined) => {
-  if (!value) return '';
-
-  const normalized = value.toLowerCase().replace(/\s+/g, ' ').trim();
-  if (normalized.includes('kinder')) {
-    return normalized.replace(/\s+/g, '');
-  }
-
-  const stripped = normalized.replace(/^grade\s*/i, '').replace(/^g\s*/i, '').trim();
-  if (/^\d{1,2}$/.test(stripped)) {
-    return `grade-${stripped}`;
-  }
-
-  return stripped.replace(/\s+/g, '');
-};
-
-const matchesTeacherClassSlot = (
-  level: string | null | undefined,
-  section: string | null | undefined,
-  classSlots: TeacherClassSlot[],
-) => {
-  return classSlots.some((slot) => {
-    const sameLevel = normalizeGradeLevel(level) === normalizeGradeLevel(slot.level);
-    if (!sameLevel) return false;
-    if (!slot.section) return true;
-    if (!section) return true;
-    return slot.section === section;
-  });
-};
 
 const resolveGradeLevelOption = (level: string | null | undefined) => {
   if (!level) return null;
   return GRADE_LEVELS.find((option) => normalizeGradeLevel(option) === normalizeGradeLevel(level)) ?? level;
 };
 
+const getStudentInitials = (name: string | null | undefined) => {
+  if (!name) return '??';
+
+  const cleanedName = name.replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
+  const parts = cleanedName.split(' ').filter(Boolean);
+
+  return parts
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || '??';
+};
+
+const StudentPhoto = ({
+  name,
+  photoUrl,
+}: {
+  name: string | null | undefined;
+  photoUrl?: string | null;
+}) => (
+  <Avatar className="h-10 w-10 border border-border bg-muted">
+    {photoUrl && <AvatarImage src={photoUrl} alt={name || 'Learner photo'} className="object-cover" />}
+    <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+      {getStudentInitials(name)}
+    </AvatarFallback>
+  </Avatar>
+);
+
 const statusConfig: Record<string, { label: string; icon: typeof CheckCircle; color: string }> = {
   present: { label: 'Present', icon: CheckCircle, color: 'bg-green-100 text-green-800' },
   absent: { label: 'Absent', icon: XCircle, color: 'bg-red-100 text-red-800' },
   late: { label: 'Late', icon: Clock, color: 'bg-yellow-100 text-yellow-800' },
   excused: { label: 'Excused', icon: AlertCircle, color: 'bg-blue-100 text-blue-800' },
+};
+
+const statusTileClasses: Record<string, string> = {
+  present: 'border-green-200 bg-green-50 text-green-800',
+  absent: 'border-red-200 bg-red-50 text-red-800',
+  late: 'border-yellow-200 bg-yellow-50 text-yellow-800',
+  excused: 'border-blue-200 bg-blue-50 text-blue-800',
+  unrecorded: 'border-border bg-muted/30 text-muted-foreground',
 };
 
 const teacherAttendanceOptions: Array<{
@@ -111,11 +126,13 @@ export const AttendanceManagement = () => {
   const queryClient = useQueryClient();
   const { user, role } = useAuth();
   const { data: schoolId } = useSchoolId();
-  const { selectedYearId } = useAcademicYear();
+  const { selectedYearId, selectedYear } = useAcademicYear();
   const { isReadOnly, guardMutation } = useYearGuard();
   const isTeacher = role === 'teacher';
   
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [attendanceModalStudent, setAttendanceModalStudent] = useState<StudentAttendanceTarget | null>(null);
+  const [showAcademicYearSummary, setShowAcademicYearSummary] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -194,6 +211,35 @@ export const AttendanceManagement = () => {
     }
   }, [isTeacher, selectedLevel, teacherGradeLevelOptions]);
 
+  const selectedMonth = useMemo(() => {
+    const selectedDateValue = parseISO(`${selectedDate}T00:00:00`);
+    const monthStart = startOfMonth(selectedDateValue);
+    const monthEnd = endOfMonth(selectedDateValue);
+
+    return {
+      start: format(monthStart, 'yyyy-MM-dd'),
+      end: format(monthEnd, 'yyyy-MM-dd'),
+      label: format(selectedDateValue, 'MMMM yyyy'),
+      days: eachDayOfInterval({ start: monthStart, end: monthEnd }),
+    };
+  }, [selectedDate]);
+
+  const academicYearRange = useMemo(() => {
+    const rangeStart = selectedYear?.start_date
+      ? parseISO(`${selectedYear.start_date}T00:00:00`)
+      : startOfMonth(parseISO(`${selectedDate}T00:00:00`));
+    const rangeEnd = selectedYear?.end_date
+      ? parseISO(`${selectedYear.end_date}T00:00:00`)
+      : endOfMonth(parseISO(`${selectedDate}T00:00:00`));
+
+    return {
+      start: format(rangeStart, 'yyyy-MM-dd'),
+      end: format(rangeEnd, 'yyyy-MM-dd'),
+      label: selectedYear?.name || format(parseISO(`${selectedDate}T00:00:00`), 'yyyy'),
+      months: eachMonthOfInterval({ start: startOfMonth(rangeStart), end: startOfMonth(rangeEnd) }),
+    };
+  }, [selectedDate, selectedYear?.end_date, selectedYear?.name, selectedYear?.start_date]);
+
   // Fetch attendance records
   const { data: attendance = [], isLoading } = useQuery<AttendanceRecord[]>({
     queryKey: ['attendance-management', schoolId, selectedYearId, selectedDate, selectedLevel],
@@ -204,7 +250,7 @@ export const AttendanceManagement = () => {
         .from('student_attendance')
         .select(`
           *,
-          students:student_id(student_name, level, lrn)
+          students:student_id(student_name, level, lrn, photo_url, section)
         `)
         .eq('school_id', schoolId)
         .eq('academic_year_id', selectedYearId)
@@ -227,7 +273,7 @@ export const AttendanceManagement = () => {
       
       let query = supabase
         .from('students')
-        .select('id, student_name, level, lrn')
+        .select('id, student_name, level, lrn, photo_url, section')
         .eq('school_id', schoolId)
         .eq('academic_year_id', selectedYearId)
         .order('student_name');
@@ -241,6 +287,66 @@ export const AttendanceManagement = () => {
       return data || [];
     },
     enabled: !!schoolId && !!selectedYearId,
+  });
+
+  const { data: monthlyAttendance = [], isLoading: isMonthlyAttendanceLoading } = useQuery<MonthlyAttendanceRecord[]>({
+    queryKey: [
+      'student-monthly-attendance',
+      attendanceModalStudent?.id,
+      schoolId,
+      selectedYearId,
+      selectedMonth.start,
+      selectedMonth.end,
+    ],
+    queryFn: async () => {
+      if (!attendanceModalStudent?.id || !schoolId || !selectedYearId) {
+        return [];
+      }
+
+      const { data, error } = await supabase
+        .from('student_attendance')
+        .select('id, date, status, time_in, time_out, remarks')
+        .eq('student_id', attendanceModalStudent.id)
+        .eq('school_id', schoolId)
+        .eq('academic_year_id', selectedYearId)
+        .gte('date', selectedMonth.start)
+        .lte('date', selectedMonth.end)
+        .order('date', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!attendanceModalStudent?.id && !!schoolId && !!selectedYearId,
+  });
+
+  const { data: academicYearAttendance = [], isLoading: isAcademicYearAttendanceLoading } = useQuery<MonthlyAttendanceRecord[]>({
+    queryKey: [
+      'student-academic-year-attendance',
+      attendanceModalStudent?.id,
+      schoolId,
+      selectedYearId,
+      academicYearRange.start,
+      academicYearRange.end,
+    ],
+    queryFn: async () => {
+      if (!attendanceModalStudent?.id || !schoolId || !selectedYearId) {
+        return [];
+      }
+
+      const { data, error } = await supabase
+        .from('student_attendance')
+        .select('id, date, status, time_in, time_out, remarks')
+        .eq('student_id', attendanceModalStudent.id)
+        .eq('school_id', schoolId)
+        .eq('academic_year_id', selectedYearId)
+        .gte('date', academicYearRange.start)
+        .lte('date', academicYearRange.end)
+        .order('date', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: showAcademicYearSummary && !!attendanceModalStudent?.id && !!schoolId && !!selectedYearId,
   });
 
   const visibleStudents = useMemo(() => {
@@ -280,6 +386,78 @@ export const AttendanceManagement = () => {
   const attendanceByStudentId = useMemo(() => {
     return new Map(visibleAttendance.map((record) => [record.student_id, record]));
   }, [visibleAttendance]);
+
+  const monthlyAttendanceByDate = useMemo(() => {
+    return new Map(monthlyAttendance.map((record) => [record.date, record]));
+  }, [monthlyAttendance]);
+
+  const monthlySummary = useMemo(() => {
+    const summary = {
+      present: 0,
+      late: 0,
+      absent: 0,
+      excused: 0,
+      unrecorded: 0,
+    };
+
+    selectedMonth.days.forEach((day) => {
+      const record = monthlyAttendanceByDate.get(format(day, 'yyyy-MM-dd'));
+      if (!record) {
+        summary.unrecorded += 1;
+        return;
+      }
+
+      if (record.status === 'present' || record.status === 'late' || record.status === 'absent' || record.status === 'excused') {
+        summary[record.status] += 1;
+      } else {
+        summary.unrecorded += 1;
+      }
+    });
+
+    return summary;
+  }, [monthlyAttendanceByDate, selectedMonth.days]);
+
+  const academicYearMonthlySummary = useMemo(() => {
+    const recordsByMonth = new Map<string, MonthlyAttendanceRecord[]>();
+
+    academicYearAttendance.forEach((record) => {
+      const monthKey = format(parseISO(`${record.date}T00:00:00`), 'yyyy-MM');
+      const existing = recordsByMonth.get(monthKey) || [];
+      existing.push(record);
+      recordsByMonth.set(monthKey, existing);
+    });
+
+    return academicYearRange.months.map((month) => {
+      const monthStart = startOfMonth(month);
+      const monthEnd = endOfMonth(month);
+      const monthKey = format(month, 'yyyy-MM');
+      const records = recordsByMonth.get(monthKey) || [];
+      const summary = {
+        present: 0,
+        late: 0,
+        absent: 0,
+        excused: 0,
+        unrecorded: 0,
+      };
+
+      records.forEach((record) => {
+        if (record.status === 'present' || record.status === 'late' || record.status === 'absent' || record.status === 'excused') {
+          summary[record.status] += 1;
+        }
+      });
+
+      const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd }).length;
+      summary.unrecorded = Math.max(daysInMonth - records.length, 0);
+
+      return {
+        key: monthKey,
+        label: format(month, 'MMM yyyy'),
+        fullLabel: format(month, 'MMMM yyyy'),
+        recorded: records.length,
+        ...summary,
+      };
+    });
+  }, [academicYearAttendance, academicYearRange.months]);
 
   useEffect(() => {
     if (!isTeacher) return;
@@ -452,6 +630,11 @@ export const AttendanceManagement = () => {
     setIsDeleteDialogOpen(true);
   };
 
+  const handleOpenMonthlyAttendance = (student: StudentAttendanceTarget) => {
+    setAttendanceModalStudent(student);
+    setShowAcademicYearSummary(false);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!guardMutation()) return;
@@ -603,8 +786,17 @@ export const AttendanceManagement = () => {
                   </TableHeader>
                   <TableBody>
                     {visibleStudents.map((student) => (
-                      <TableRow key={student.id}>
-                        <TableCell className="font-medium">{student.student_name}</TableCell>
+                      <TableRow
+                        key={student.id}
+                        className="cursor-pointer transition-colors hover:bg-muted/60"
+                        onClick={() => handleOpenMonthlyAttendance(student)}
+                      >
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-3">
+                            <StudentPhoto name={student.student_name} photoUrl={student.photo_url} />
+                            <span>{student.student_name}</span>
+                          </div>
+                        </TableCell>
                         <TableCell className="text-muted-foreground">{student.lrn || '-'}</TableCell>
                         <TableCell>{student.level || '-'}</TableCell>
                         <TableCell>{student.section || '-'}</TableCell>
@@ -621,7 +813,10 @@ export const AttendanceManagement = () => {
                                   variant="outline"
                                   size="sm"
                                   disabled={isReadOnly}
-                                  onClick={() => updateRosterStatus(student.id, option.value)}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    updateRosterStatus(student.id, option.value);
+                                  }}
                                   className={isActive ? option.activeClass : ''}
                                 >
                                   <StatusIcon className="h-4 w-4 mr-1.5" />
@@ -677,9 +872,26 @@ export const AttendanceManagement = () => {
                     const config = statusConfig[record.status] || statusConfig.present;
                     const StatusIcon = config.icon;
                     return (
-                      <TableRow key={record.id}>
+                      <TableRow
+                        key={record.id}
+                        className="cursor-pointer transition-colors hover:bg-muted/60"
+                        onClick={() => handleOpenMonthlyAttendance({
+                          id: record.student_id,
+                          student_name: record.students?.student_name || 'Unknown',
+                          lrn: record.students?.lrn || '',
+                          level: record.students?.level || '',
+                          photo_url: record.students?.photo_url || null,
+                          section: record.students?.section || null,
+                        })}
+                      >
                         <TableCell className="font-medium">
-                          {record.students?.student_name || 'Unknown'}
+                          <div className="flex items-center gap-3">
+                            <StudentPhoto
+                              name={record.students?.student_name || 'Unknown'}
+                              photoUrl={record.students?.photo_url}
+                            />
+                            <span>{record.students?.student_name || 'Unknown'}</span>
+                          </div>
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           {record.students?.lrn || '-'}
@@ -701,14 +913,20 @@ export const AttendanceManagement = () => {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleEdit(record)}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleEdit(record);
+                              }}
                             >
                               <Edit2 className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleDelete(record.id)}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleDelete(record.id);
+                              }}
                               className="text-destructive hover:text-destructive"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -820,6 +1038,226 @@ export const AttendanceManagement = () => {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!attendanceModalStudent} onOpenChange={(open) => !open && setAttendanceModalStudent(null)}>
+        <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <StudentPhoto
+                  name={attendanceModalStudent?.student_name}
+                  photoUrl={attendanceModalStudent?.photo_url}
+                />
+                <div>
+                  <span className="block text-xl">{attendanceModalStudent?.student_name || 'Learner Attendance'}</span>
+                  <span className="block text-sm font-normal text-muted-foreground">
+                    {attendanceModalStudent?.lrn || 'No LRN'}
+                    {attendanceModalStudent?.level ? ` - ${attendanceModalStudent.level}` : ''}
+                    {attendanceModalStudent?.section ? ` - ${attendanceModalStudent.section}` : ''}
+                  </span>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-fit"
+                onClick={() => setShowAcademicYearSummary((current) => !current)}
+              >
+                <Calendar className="h-4 w-4 mr-2" />
+                {selectedMonth.label}
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            <div className="grid gap-3 sm:grid-cols-5">
+              <div className="rounded-xl border bg-green-50 p-4 text-green-800">
+                <p className="text-xs font-medium uppercase tracking-wide">Present</p>
+                <p className="text-2xl font-bold">{monthlySummary.present}</p>
+              </div>
+              <div className="rounded-xl border bg-yellow-50 p-4 text-yellow-800">
+                <p className="text-xs font-medium uppercase tracking-wide">Late</p>
+                <p className="text-2xl font-bold">{monthlySummary.late}</p>
+              </div>
+              <div className="rounded-xl border bg-red-50 p-4 text-red-800">
+                <p className="text-xs font-medium uppercase tracking-wide">Absent</p>
+                <p className="text-2xl font-bold">{monthlySummary.absent}</p>
+              </div>
+              <div className="rounded-xl border bg-blue-50 p-4 text-blue-800">
+                <p className="text-xs font-medium uppercase tracking-wide">Excused</p>
+                <p className="text-2xl font-bold">{monthlySummary.excused}</p>
+              </div>
+              <div className="rounded-xl border bg-muted/40 p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Unrecorded</p>
+                <p className="text-2xl font-bold">{monthlySummary.unrecorded}</p>
+              </div>
+            </div>
+
+            {showAcademicYearSummary && (
+              <Card className="border-primary/20 bg-primary/5">
+                <CardHeader>
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <CardTitle className="text-base">Academic Year Attendance</CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        All monthly records for {academicYearRange.label}
+                      </p>
+                    </div>
+                    <Badge variant="outline">
+                      {academicYearRange.start} to {academicYearRange.end}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {isAcademicYearAttendanceLoading ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                      {academicYearMonthlySummary.map((month) => (
+                        <div key={month.key} className="rounded-2xl border bg-background p-4 shadow-sm">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="font-semibold">{month.fullLabel}</p>
+                              <p className="text-xs text-muted-foreground">{month.recorded} recorded day{month.recorded === 1 ? '' : 's'}</p>
+                            </div>
+                            <Badge variant={month.recorded > 0 ? 'default' : 'outline'}>
+                              {month.recorded > 0 ? 'Has Records' : 'No Records'}
+                            </Badge>
+                          </div>
+                          <div className="mt-4 grid grid-cols-4 gap-2 text-center text-xs">
+                            <div className="rounded-lg bg-green-50 p-2 text-green-800">
+                              <p className="font-bold">{month.present}</p>
+                              <p>Present</p>
+                            </div>
+                            <div className="rounded-lg bg-yellow-50 p-2 text-yellow-800">
+                              <p className="font-bold">{month.late}</p>
+                              <p>Late</p>
+                            </div>
+                            <div className="rounded-lg bg-red-50 p-2 text-red-800">
+                              <p className="font-bold">{month.absent}</p>
+                              <p>Absent</p>
+                            </div>
+                            <div className="rounded-lg bg-blue-50 p-2 text-blue-800">
+                              <p className="font-bold">{month.excused}</p>
+                              <p>Excused</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {isMonthlyAttendanceLoading ? (
+              <div className="flex justify-center py-10">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Monthly Calendar</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-7 gap-2 text-center text-xs font-medium text-muted-foreground">
+                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                        <div key={day}>{day}</div>
+                      ))}
+                    </div>
+                    <div className="mt-2 grid grid-cols-7 gap-2">
+                      {Array.from({ length: selectedMonth.days[0]?.getDay() || 0 }).map((_, index) => (
+                        <div key={`blank-${index}`} />
+                      ))}
+                      {selectedMonth.days.map((day) => {
+                        const dateKey = format(day, 'yyyy-MM-dd');
+                        const record = monthlyAttendanceByDate.get(dateKey);
+                        const status = record?.status || 'unrecorded';
+                        const config = record ? statusConfig[record.status] : null;
+                        const StatusIcon = config?.icon;
+
+                        return (
+                          <div
+                            key={dateKey}
+                            className={`min-h-[88px] rounded-xl border p-2 text-left ${statusTileClasses[status] || statusTileClasses.unrecorded}`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-semibold">{format(day, 'd')}</span>
+                              {StatusIcon && <StatusIcon className="h-4 w-4" />}
+                            </div>
+                            <p className="mt-2 text-xs font-medium">
+                              {config?.label || 'No record'}
+                            </p>
+                            {(record?.time_in || record?.time_out) && (
+                              <p className="mt-1 text-[11px] opacity-80">
+                                {record.time_in || '--'} - {record.time_out || '--'}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Recorded Attendance Details</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {monthlyAttendance.length === 0 ? (
+                      <p className="py-6 text-center text-sm text-muted-foreground">
+                        No attendance records were saved for this learner in {selectedMonth.label}.
+                      </p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Date</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Time In</TableHead>
+                              <TableHead>Time Out</TableHead>
+                              <TableHead>Remarks</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {monthlyAttendance.map((record) => {
+                              const config = statusConfig[record.status] || statusConfig.present;
+                              const StatusIcon = config.icon;
+
+                              return (
+                                <TableRow key={record.id}>
+                                  <TableCell className="font-medium">
+                                    {format(parseISO(`${record.date}T00:00:00`), 'MMM d, yyyy')}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge className={config.color}>
+                                      <StatusIcon className="h-3 w-3 mr-1" />
+                                      {config.label}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell>{record.time_in || '-'}</TableCell>
+                                  <TableCell>{record.time_out || '-'}</TableCell>
+                                  <TableCell className="max-w-[260px] truncate">{record.remarks || '-'}</TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 

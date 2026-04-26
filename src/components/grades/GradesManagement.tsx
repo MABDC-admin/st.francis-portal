@@ -66,6 +66,7 @@ import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { useSchoolId } from '@/hooks/useSchoolId';
 import { useTeacherProfile, useTeacherSchedule } from '@/hooks/useTeacherData';
 import { GradeChangeRequestDialog } from './GradeChangeRequestDialog';
+import { matchesTeacherClassSlot } from '@/utils/teacherClassScope';
 
 interface StudentGrade {
   id: string;
@@ -146,20 +147,6 @@ const normalizeGradeLevel = (value: string | null | undefined) => {
   }
 
   return stripped.replace(/\s+/g, '');
-};
-
-const matchesTeacherClassSlot = (
-  level: string | null | undefined,
-  section: string | null | undefined,
-  classSlots: TeacherClassSlot[],
-) => {
-  return classSlots.some((slot) => {
-    const sameLevel = normalizeGradeLevel(level) === normalizeGradeLevel(slot.level);
-    if (!sameLevel) return false;
-    if (!slot.section) return true;
-    if (!section) return true;
-    return slot.section === section;
-  });
 };
 
 export const GradesManagement = () => {

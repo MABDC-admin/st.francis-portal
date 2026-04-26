@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { matchesTeacherClassSlot } from '@/utils/teacherClassScope';
 
 export interface TeacherRecord {
   id: string;
@@ -29,22 +30,6 @@ interface ScheduleLookupRow {
   grade_level: string;
   section: string | null;
 }
-
-const normalizeGradeLevelForMatch = (value: string | null | undefined) => {
-  if (!value) return '';
-
-  const normalized = value.toLowerCase().replace(/\s+/g, ' ').trim();
-  if (normalized.includes('kinder')) {
-    return normalized.replace(/\s+/g, '');
-  }
-
-  const stripped = normalized.replace(/^grade\s*/i, '').replace(/^g\s*/i, '').trim();
-  if (/^\d{1,2}$/.test(stripped)) {
-    return `grade-${stripped}`;
-  }
-
-  return stripped.replace(/\s+/g, '');
-};
 
 const buildGradeLevelVariants = (levels: string[]) => {
   const variants = new Set<string>();
@@ -385,13 +370,7 @@ export const useTeacherStudentCount = (
 
         const matchedLearnerIds = new Set<string>();
         for (const student of students) {
-          const isMatch = classSlots.some((slot) => {
-            const sameLevel = normalizeGradeLevelForMatch(slot.level) === normalizeGradeLevelForMatch(student.level);
-            if (!sameLevel) return false;
-            if (!slot.section) return true;
-            if (!student.section) return true;
-            return slot.section === student.section;
-          });
+          const isMatch = matchesTeacherClassSlot(student.level, student.section, classSlots);
 
           if (isMatch) {
             matchedLearnerIds.add(student.id);

@@ -8,19 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { useSchoolId } from '@/hooks/useSchoolId';
 import { useTeacherProfile, useTeacherSchedule } from '@/hooks/useTeacherData';
-
-const normalizeGradeLevel = (value: string | null | undefined) => {
-  if (!value) return '';
-  const normalized = value.toLowerCase().replace(/\s+/g, ' ').trim();
-  if (normalized.includes('kinder')) {
-    return normalized.replace(/\s+/g, '');
-  }
-  const stripped = normalized.replace(/^grade\s*/i, '').replace(/^g\s*/i, '').trim();
-  if (/^\d{1,2}$/.test(stripped)) {
-    return `grade-${stripped}`;
-  }
-  return stripped.replace(/\s+/g, '');
-};
+import { matchesTeacherClassSlot } from '@/utils/teacherClassScope';
 
 interface TeacherStudentsViewProps {
   students: Student[];
@@ -70,22 +58,7 @@ export const TeacherStudentsView = ({
           }];
 
       return students.filter((student) => {
-        return classSlots.some((slot) => {
-          const sameLevel = normalizeGradeLevel(student.level) === normalizeGradeLevel(slot.level);
-          if (!sameLevel) {
-            return false;
-          }
-
-          if (!slot.section) {
-            return true;
-          }
-
-          if (!student.section) {
-            return true;
-          }
-
-          return student.section === slot.section;
-        });
+        return matchesTeacherClassSlot(student.level, student.section, classSlots);
       });
     }
     return students;

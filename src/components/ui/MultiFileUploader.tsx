@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Loader2, X, FileText, Upload, Image as ImageIcon, Video as VideoIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -16,11 +17,19 @@ interface MultiFileUploaderProps {
     attachments: Attachment[];
     onChange: (attachments: Attachment[]) => void;
     maxSizeMB?: number;
+    folder?: string;
+    helperText?: string;
 }
 
 const MAX_SIZE_MB = 100;
 
-export const MultiFileUploader = ({ attachments, onChange, maxSizeMB = MAX_SIZE_MB }: MultiFileUploaderProps) => {
+export const MultiFileUploader = ({
+    attachments,
+    onChange,
+    maxSizeMB = MAX_SIZE_MB,
+    folder = 'tasks',
+    helperText,
+}: MultiFileUploaderProps) => {
     const [uploading, setUploading] = useState(false);
 
     const onDrop = useCallback(async (acceptedFiles: File[]) => {
@@ -38,7 +47,8 @@ export const MultiFileUploader = ({ attachments, onChange, maxSizeMB = MAX_SIZE_
             try {
                 const fileExt = file.name.split('.').pop();
                 const fileName = `${crypto.randomUUID()}.${fileExt}`;
-                const filePath = `tasks/${fileName}`;
+                const safeFolder = folder.replace(/^\/+|\/+$/g, '') || 'tasks';
+                const filePath = `${safeFolder}/${fileName}`;
 
                 const { error: uploadError } = await supabase.storage
                     .from('task-attachments')
@@ -62,10 +72,10 @@ export const MultiFileUploader = ({ attachments, onChange, maxSizeMB = MAX_SIZE_
             }
         }
 
-        if (!hasError) toast.success('Upload successful');
+        if (!hasError) toast.success(`${acceptedFiles.length} file${acceptedFiles.length === 1 ? '' : 's'} uploaded`);
         onChange(newAttachments);
         setUploading(false);
-    }, [attachments, onChange, maxSizeMB]);
+    }, [attachments, folder, onChange, maxSizeMB]);
 
     const removeAttachment = (index: number) => {
         const updated = attachments.filter((_, i) => i !== index);
@@ -75,6 +85,7 @@ export const MultiFileUploader = ({ attachments, onChange, maxSizeMB = MAX_SIZE_
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
         disabled: uploading,
+        multiple: true,
     });
 
     const getFileIcon = (type: string) => {
@@ -95,7 +106,7 @@ export const MultiFileUploader = ({ attachments, onChange, maxSizeMB = MAX_SIZE_
         <div className="space-y-4">
             <div
                 {...getRootProps()}
-                className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'
+                className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-colors ${isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'
                     } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
             >
                 <input {...getInputProps()} />
@@ -106,20 +117,21 @@ export const MultiFileUploader = ({ attachments, onChange, maxSizeMB = MAX_SIZE_
                         <Upload className="h-8 w-8 text-muted-foreground" />
                     )}
                     <p className="text-sm font-medium">
-                        {isDragActive ? 'Drop files here' : 'Click or drag files to upload'}
+                        {isDragActive ? 'Drop files here' : 'Click or drag multiple files to upload'}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                        Images, Videos, Documents (Max {maxSizeMB}MB)
+                        {helperText || `Images, videos, PDFs, Word, Excel, PowerPoint (Max ${maxSizeMB}MB each)`}
                     </p>
+                    <Badge variant="outline" className="mt-1">Bulk upload allowed</Badge>
                 </div>
             </div>
 
             {attachments.length > 0 && (
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                     {attachments.map((file, index) => (
                         <div
                             key={file.url}
-                            className="flex items-center gap-3 p-2 border rounded-md bg-card hover:bg-accent/50 transition-colors group"
+                            className="flex items-center gap-3 p-2 border rounded-xl bg-card hover:bg-accent/50 transition-colors group"
                         >
                             <div className="p-2 bg-muted rounded">
                                 {getFileIcon(file.type)}

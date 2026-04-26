@@ -84,6 +84,7 @@ import { generateSF1 } from '@/utils/sf1Generator';
 import { generateAnnex1 } from '@/utils/annex1Generator';
 import { generateSF9 } from '@/utils/sf9Generator';
 import { TransmutationManager } from '@/components/students/TransmutationManager';
+import { matchesTeacherClassSlot } from '@/utils/teacherClassScope';
 import { Calculator } from 'lucide-react';
 
 interface EnrolledSubject {
@@ -124,22 +125,6 @@ const INCIDENT_CATEGORIES = [
   { value: 'positive', label: 'Positive Behavior', color: 'bg-green-100 text-green-700' },
   { value: 'other', label: 'Other', color: 'bg-gray-100 text-gray-700' },
 ];
-
-const normalizeGradeLevel = (value: string | null | undefined) => {
-  if (!value) return '';
-
-  const normalized = value.toLowerCase().replace(/\s+/g, ' ').trim();
-  if (normalized.includes('kinder')) {
-    return normalized.replace(/\s+/g, '');
-  }
-
-  const stripped = normalized.replace(/^grade\s*/i, '').replace(/^g\s*/i, '').trim();
-  if (/^\d{1,2}$/.test(stripped)) {
-    return `grade-${stripped}`;
-  }
-
-  return stripped.replace(/\s+/g, '');
-};
 
 const StudentProfile = () => {
   const { id } = useParams<{ id: string }>();
@@ -244,24 +229,9 @@ const StudentProfile = () => {
           section: null,
         }];
 
-    return students.filter((candidate) => {
-      return classSlots.some((slot) => {
-        const sameLevel = normalizeGradeLevel(candidate.level) === normalizeGradeLevel(slot.level);
-        if (!sameLevel) {
-          return false;
-        }
-
-        if (!slot.section) {
-          return true;
-        }
-
-        if (!candidate.section) {
-          return true;
-        }
-
-        return candidate.section === slot.section;
-      });
-    });
+    return students.filter((candidate) =>
+      matchesTeacherClassSlot(candidate.level, candidate.section, classSlots),
+    );
   }, [role, students, teacherProfile?.grade_level, teacherSchedules]);
 
   const student = visibleStudents.find(s => s.id === id);

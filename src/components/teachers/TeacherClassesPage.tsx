@@ -12,6 +12,7 @@ import { useTeacherProfile } from '@/hooks/useTeacherData';
 import { useSchoolId } from '@/hooks/useSchoolId';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { supabase } from '@/integrations/supabase/client';
+import { matchesTeacherClassSlot } from '@/utils/teacherClassScope';
 
 interface TeacherClassesPageProps {
   onNavigate?: (tab: string) => void;
@@ -49,22 +50,6 @@ interface ScheduleQueryResult {
   rows: ScheduleRow[];
   source: ScheduleSource;
 }
-
-const normalizeGradeLevelForMatch = (value: string | null | undefined) => {
-  if (!value) return '';
-
-  const normalized = value.toLowerCase().replace(/\s+/g, ' ').trim();
-  if (normalized.includes('kinder')) {
-    return normalized.replace(/\s+/g, '');
-  }
-
-  const stripped = normalized.replace(/^grade\s*/i, '').replace(/^g\s*/i, '').trim();
-  if (/^\d{1,2}$/.test(stripped)) {
-    return `grade-${stripped}`;
-  }
-
-  return stripped.replace(/\s+/g, '');
-};
 
 const buildGradeLevelVariants = (levels: string[]) => {
   const variants = new Set<string>();
@@ -270,11 +255,10 @@ export const TeacherClassesPage = ({ onNavigate }: TeacherClassesPageProps) => {
 
     return Array.from(grouped.values()).map(({ schedule, sessionsPerWeek }) => {
       const learnerCount = students.filter((student) => {
-        const sameLevel = normalizeGradeLevelForMatch(student.level) === normalizeGradeLevelForMatch(schedule.grade_level);
-        if (!sameLevel) return false;
-        if (!schedule.section) return true;
-        if (!student.section) return true;
-        return student.section === schedule.section;
+        return matchesTeacherClassSlot(student.level, student.section, [{
+          level: schedule.grade_level,
+          section: schedule.section,
+        }]);
       }).length;
 
       return {
@@ -285,12 +269,27 @@ export const TeacherClassesPage = ({ onNavigate }: TeacherClassesPageProps) => {
     });
   }, [schedules, students]);
 
+  const visibleStudents = useMemo(() => {
+    if (schedules.length === 0) {
+      return [] as StudentSummary[];
+    }
+
+    const classSlots = schedules.map((schedule) => ({
+      level: schedule.grade_level,
+      section: schedule.section,
+    }));
+
+    return students.filter((student) =>
+      matchesTeacherClassSlot(student.level, student.section, classSlots),
+    );
+  }, [schedules, students]);
+
   const todayClasses = useMemo(
     () => schedules.filter((schedule) => schedule.day_of_week === new Date().getDay()),
     [schedules],
   );
 
-  const totalLearners = useMemo(() => students.length, [students]);
+  const totalLearners = useMemo(() => visibleStudents.length, [visibleStudents]);
   const isLoading = loadingSchedules || loadingStudents;
 
   const fallbackNotice = useMemo(() => {
