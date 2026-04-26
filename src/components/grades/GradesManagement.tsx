@@ -60,9 +60,11 @@ import {
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { useSchoolId } from '@/hooks/useSchoolId';
+import { useTeacherProfile, useTeacherSchedule } from '@/hooks/useTeacherData';
 import { GradeChangeRequestDialog } from './GradeChangeRequestDialog';
 
 interface StudentGrade {
@@ -80,6 +82,7 @@ interface StudentGrade {
   student_name?: string;
   student_lrn?: string;
   student_level?: string;
+  student_section?: string | null;
   subject_code?: string;
   subject_name?: string;
   academic_year?: string;
@@ -90,6 +93,7 @@ interface Student {
   student_name: string;
   lrn: string;
   level: string;
+  section?: string | null;
 }
 
 interface Subject {
@@ -122,11 +126,50 @@ interface CSVGradeRow {
   error?: string;
 }
 
+interface TeacherClassSlot {
+  level: string | null;
+  section: string | null;
+  subjectId: string | null;
+}
+
+const normalizeGradeLevel = (value: string | null | undefined) => {
+  if (!value) return '';
+
+  const normalized = value.toLowerCase().replace(/\s+/g, ' ').trim();
+  if (normalized.includes('kinder')) {
+    return normalized.replace(/\s+/g, '');
+  }
+
+  const stripped = normalized.replace(/^grade\s*/i, '').replace(/^g\s*/i, '').trim();
+  if (/^\d{1,2}$/.test(stripped)) {
+    return `grade-${stripped}`;
+  }
+
+  return stripped.replace(/\s+/g, '');
+};
+
+const matchesTeacherClassSlot = (
+  level: string | null | undefined,
+  section: string | null | undefined,
+  classSlots: TeacherClassSlot[],
+) => {
+  return classSlots.some((slot) => {
+    const sameLevel = normalizeGradeLevel(level) === normalizeGradeLevel(slot.level);
+    if (!sameLevel) return false;
+    if (!slot.section) return true;
+    if (!section) return true;
+    return slot.section === section;
+  });
+};
+
 export const GradesManagement = () => {
   const navigate = useNavigate();
+  const { user, role } = useAuth();
   const { selectedSchool } = useSchool();
   const { selectedYearId } = useAcademicYear();
   const { data: schoolId } = useSchoolId();
+  const isTeacher = role === 'teacher';
+  const canManageGrades = role === 'admin' || role === 'registrar' || role === 'teacher';
   const [grades, setGrades] = useState<StudentGrade[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -178,6 +221,17 @@ export const GradesManagement = () => {
     hasExisting: boolean;
   }>>({});
 
+  const { data: teacherProfile } = useTeacherProfile(
+    isTeacher ? user?.id : undefined,
+    isTeacher ? user?.email : undefined,
+  );
+  const { data: teacherSchedules = [] } = useTeacherSchedule(
+    isTeacher ? teacherProfile?.id : undefined,
+    isTeacher ? schoolId : undefined,
+    isTeacher ? selectedYearId : undefined,
+    isTeacher ? teacherProfile?.grade_level : undefined,
+  );
+
   // Fetch data when school changes
   useEffect(() => {
     if (!schoolId) {
@@ -188,7 +242,7 @@ export const GradesManagement = () => {
       return;
     }
     fetchData();
-  }, [schoolId, selectedSchool]);
+  }, [schoolId, selectedSchool, role, selectedYearId]);
 
   useEffect(() => {
     setSelectedYear(selectedYearId || 'all');
@@ -200,23 +254,31 @@ export const GradesManagement = () => {
     setIsLoading(true);
     try {
       // Fetch students scoped by database school
-      const { data: studentsData } = await supabase
+      let studentsQuery = supabase
         .from('students')
-        .select('id, student_name, lrn, level')
+        .select('id, student_name, lrn, level, section')
         .eq('school_id', schoolId)
         .order('student_name');
+      if (isTeacher && selectedYearId) {
+        studentsQuery = studentsQuery.eq('academic_year_id', selectedYearId);
+      }
+      const { data: studentsData } = await studentsQuery;
       setStudents(studentsData || []);
 
-      const { data: gradesData = [], error: gradesError } = await supabase
+      let gradesQuery = supabase
         .from('student_grades')
         .select(`
           *,
-          students:student_id (student_name, lrn, level),
+          students:student_id (student_name, lrn, level, section),
           subjects:subject_id (code, name),
           academic_years:academic_year_id (name)
         `)
         .eq('school_id', schoolId)
         .order('created_at', { ascending: false });
+      if (isTeacher && selectedYearId) {
+        gradesQuery = gradesQuery.eq('academic_year_id', selectedYearId);
+      }
+      const { data: gradesData = [], error: gradesError } = await gradesQuery;
 
       if (gradesError) throw gradesError;
 
@@ -225,6 +287,7 @@ export const GradesManagement = () => {
         student_name: g.students?.student_name,
         student_lrn: g.students?.lrn,
         student_level: g.students?.level,
+        student_section: g.students?.section,
         subject_code: g.subjects?.code,
         subject_name: g.subjects?.name,
         academic_year: g.academic_years?.name
@@ -255,6 +318,101 @@ export const GradesManagement = () => {
       setIsLoading(false);
     }
   };
+
+  const teacherGradeScope = useMemo(() => {
+    if (!isTeacher) {
+      return null;
+    }
+
+    const classSlots: TeacherClassSlot[] = teacherSchedules.length > 0
+      ? teacherSchedules.map((schedule: any) => ({
+          level: schedule.grade_level ?? null,
+          section: schedule.section ?? null,
+          subjectId: schedule.subject_id ?? null,
+        }))
+      : teacherProfile?.grade_level
+        ? [{
+            level: teacherProfile.grade_level,
+            section: null,
+            subjectId: null,
+          }]
+        : [];
+
+    const allowedSubjectIds = new Set(
+      classSlots
+        .map((slot) => slot.subjectId)
+        .filter((subjectId): subjectId is string => !!subjectId),
+    );
+
+    return {
+      classSlots,
+      allowedSubjectIds,
+      hasExplicitSubjectScope: allowedSubjectIds.size > 0,
+    };
+  }, [isTeacher, teacherProfile?.grade_level, teacherSchedules]);
+
+  const visibleStudents = useMemo(() => {
+    if (!teacherGradeScope) {
+      return students;
+    }
+
+    if (teacherGradeScope.classSlots.length === 0) {
+      return [];
+    }
+
+    return students.filter((student) =>
+      matchesTeacherClassSlot(student.level, student.section, teacherGradeScope.classSlots),
+    );
+  }, [students, teacherGradeScope]);
+
+  const visibleSubjects = useMemo(() => {
+    if (!teacherGradeScope) {
+      return subjects;
+    }
+
+    if (teacherGradeScope.classSlots.length === 0) {
+      return [];
+    }
+
+    if (teacherGradeScope.hasExplicitSubjectScope) {
+      return subjects.filter((subject) => teacherGradeScope.allowedSubjectIds.has(subject.id));
+    }
+
+    const allowedLevels = new Set(
+      teacherGradeScope.classSlots.map((slot) => normalizeGradeLevel(slot.level)),
+    );
+
+    return subjects.filter((subject) =>
+      subject.grade_levels.some((gradeLevel) => allowedLevels.has(normalizeGradeLevel(gradeLevel))),
+    );
+  }, [subjects, teacherGradeScope]);
+
+  const visibleGrades = useMemo(() => {
+    if (!teacherGradeScope) {
+      return grades;
+    }
+
+    if (teacherGradeScope.classSlots.length === 0) {
+      return [];
+    }
+
+    return grades.filter((grade) => {
+      const classMatch = matchesTeacherClassSlot(
+        grade.student_level,
+        grade.student_section,
+        teacherGradeScope.classSlots,
+      );
+      if (!classMatch) {
+        return false;
+      }
+
+      if (!teacherGradeScope.hasExplicitSubjectScope) {
+        return true;
+      }
+
+      return teacherGradeScope.allowedSubjectIds.has(grade.subject_id);
+    });
+  }, [grades, teacherGradeScope]);
 
   const handleAdd = (studentId?: string) => {
     const defaultYearId = selectedYearId || academicYears.find(y => y.is_current)?.id || '';
@@ -565,6 +723,11 @@ export const GradesManagement = () => {
   };
 
   const handleImportGrades = async () => {
+    if (!canManageGrades) {
+      toast.error('You do not have permission to import grades');
+      return;
+    }
+
     if (!schoolId) {
       toast.error('School context is not ready yet');
       return;
@@ -654,11 +817,10 @@ export const GradesManagement = () => {
   };
 
   const filteredGrades = useMemo(() => {
-    if (!searchQuery || searchQuery.trim().length === 0) return [];
+    const searchTerm = searchQuery.trim().toLowerCase();
 
-    return grades.filter(grade => {
-      const searchTerm = searchQuery.toLowerCase();
-      const matchesSearch =
+    return visibleGrades.filter(grade => {
+      const matchesSearch = !searchTerm ||
         grade.student_name?.toLowerCase().includes(searchTerm) ||
         grade.student_lrn?.toLowerCase().includes(searchTerm) ||
         grade.subject_name?.toLowerCase().includes(searchTerm) ||
@@ -669,30 +831,30 @@ export const GradesManagement = () => {
 
       return matchesSearch && matchesYear && matchesLevel;
     });
-  }, [grades, searchQuery, selectedYear, selectedLevel]);
+  }, [visibleGrades, searchQuery, selectedYear, selectedLevel]);
 
-  const levelOptions = [...new Set(grades.map(g => g.student_level).filter(Boolean))].sort();
+  const levelOptions = [...new Set(visibleGrades.map(g => g.student_level).filter(Boolean))].sort();
 
   const filteredMatchingStudents = useMemo(() => {
     if (!searchQuery || searchQuery.length < 2) return [];
     const term = searchQuery.toLowerCase();
-    return students.filter(s =>
+    return visibleStudents.filter(s =>
       s.student_name.toLowerCase().includes(term) ||
       s.lrn.toLowerCase().includes(term)
     ).slice(0, 5); // Limit to top 5 results for clarity
-  }, [searchQuery, students]);
+  }, [searchQuery, visibleStudents]);
 
-  const selectedStudentForAdd = students.find(s => s.id === formData.student_id);
+  const selectedStudentForAdd = visibleStudents.find(s => s.id === formData.student_id);
   const subjectsForStudent = selectedStudentForAdd
-    ? subjects.filter(sub => sub.grade_levels.includes(selectedStudentForAdd.level))
+    ? visibleSubjects.filter(sub => sub.grade_levels.includes(selectedStudentForAdd.level))
     : [];
 
   // Available levels for the modal filter
-  const modalLevelOptions = [...new Set(students.map(s => s.level).filter(Boolean))].sort();
+  const modalLevelOptions = [...new Set(visibleStudents.map(s => s.level).filter(Boolean))].sort();
   // Students filtered by the modal level filter
   const filteredStudentsForModal = modalLevelFilter === 'all'
-    ? students
-    : students.filter(s => s.level === modalLevelFilter);
+    ? visibleStudents
+    : visibleStudents.filter(s => s.level === modalLevelFilter);
 
 
   return (
@@ -706,19 +868,23 @@ export const GradesManagement = () => {
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Grades Management</h1>
           <p className="text-muted-foreground mt-1">Manage student grades by subject and quarter</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={() => handleAdd()} className="w-full sm:w-auto">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Grade
-          </Button>
-          <Button variant="outline" onClick={() => setIsImportModalOpen(true)} className="w-full sm:w-auto">
-            <Upload className="h-4 w-4 mr-2" />
-            Import CSV
-          </Button>
-          <Button variant="outline" onClick={exportGrades} disabled={filteredGrades.length === 0} className="w-full sm:w-auto">
-            <Download className="h-4 w-4 mr-2" />
-            Export CSV
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {canManageGrades && (
+              <Button onClick={() => handleAdd()} className="w-full sm:w-auto">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Grade
+              </Button>
+            )}
+            {canManageGrades && (
+              <Button variant="outline" onClick={() => setIsImportModalOpen(true)} className="w-full sm:w-auto">
+                <Upload className="h-4 w-4 mr-2" />
+                Import CSV
+              </Button>
+            )}
+            <Button variant="outline" onClick={exportGrades} disabled={filteredGrades.length === 0} className="w-full sm:w-auto">
+              <Download className="h-4 w-4 mr-2" />
+              Export CSV
+            </Button>
         </div>
       </motion.div>
 
@@ -748,19 +914,21 @@ export const GradesManagement = () => {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Academic Year" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Years</SelectItem>
-                  {academicYears.map(y => (
-                    <SelectItem key={y.id} value={y.id}>
-                      {y.name} {y.is_current && '(Current)'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {!isTeacher && (
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Academic Year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Years</SelectItem>
+                    {academicYears.map(y => (
+                      <SelectItem key={y.id} value={y.id}>
+                        {y.name} {y.is_current && '(Current)'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </div>
         </CardContent>
@@ -798,15 +966,17 @@ export const GradesManagement = () => {
                         </p>
                         <p className="text-xs text-muted-foreground tabular-nums">LRN: {student.lrn} • {student.level}</p>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 px-2 text-xs font-bold shrink-0 hover:bg-primary hover:text-white"
-                        onClick={() => handleAdd(student.id)}
-                      >
-                        <Plus className="h-3 w-3 mr-1" />
-                        Give Grades
-                      </Button>
+                      {canManageGrades && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 px-2 text-xs font-bold shrink-0 hover:bg-primary hover:text-white"
+                          onClick={() => handleAdd(student.id)}
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Give Grades
+                        </Button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -828,15 +998,11 @@ export const GradesManagement = () => {
             <div className="flex items-center justify-center py-10">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          ) : !searchQuery || searchQuery.trim().length === 0 ? (
-            <div className="text-center py-20 bg-muted/20 rounded-xl border border-dashed flex flex-col items-center justify-center">
-              <Search className="h-10 w-10 text-muted-foreground mb-4 opacity-20" />
-              <p className="text-muted-foreground font-medium">Search for a student name or LRN to view grades</p>
-              <p className="text-xs text-muted-foreground mt-1">Found students will appear above</p>
-            </div>
           ) : filteredGrades.length === 0 ? (
             <div className="text-center py-10 text-muted-foreground">
-              No matching grades found for "{searchQuery}".
+              {searchQuery.trim().length > 0
+                ? `No matching grades found for "${searchQuery}".`
+                : 'No grade records found for the selected filters.'}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -888,22 +1054,24 @@ export const GradesManagement = () => {
                         {grade.final_grade ?? '-'}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          {grade.status === 'draft' && (
-                            <Button variant="ghost" size="icon" onClick={() => handleSubmitGrade(grade.id)} title="Submit for approval">
-                              <Send className="h-4 w-4 text-blue-500" />
+                        {canManageGrades && (
+                          <div className="flex justify-end gap-1">
+                            {grade.status === 'draft' && (
+                              <Button variant="ghost" size="icon" onClick={() => handleSubmitGrade(grade.id)} title="Submit for approval">
+                                <Send className="h-4 w-4 text-blue-500" />
+                              </Button>
+                            )}
+                            <Button variant="ghost" size="icon" onClick={() => handleEdit(grade)}
+                              title={grade.status === 'finalized' ? 'Request change' : 'Edit'}>
+                              {grade.status === 'finalized' ? <Lock className="h-4 w-4 text-muted-foreground" /> : <Edit className="h-4 w-4" />}
                             </Button>
-                          )}
-                          <Button variant="ghost" size="icon" onClick={() => handleEdit(grade)}
-                            title={grade.status === 'finalized' ? 'Request change' : 'Edit'}>
-                            {grade.status === 'finalized' ? <Lock className="h-4 w-4 text-muted-foreground" /> : <Edit className="h-4 w-4" />}
-                          </Button>
-                          {grade.status !== 'finalized' && (
-                            <Button variant="ghost" size="icon" onClick={() => handleDelete(grade)} className="text-destructive">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
+                            {grade.status !== 'finalized' && (
+                              <Button variant="ghost" size="icon" onClick={() => handleDelete(grade)} className="text-destructive">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

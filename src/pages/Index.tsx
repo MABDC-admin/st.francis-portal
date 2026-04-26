@@ -615,8 +615,8 @@ const Index = () => {
           <AttendanceManagement />
         )}
 
-        {/* Schedule Management - Admin/Registrar/Teacher */}
-        {activeTab === 'schedule-mgmt' && (hasAdminAccess || role === 'teacher') && (
+        {/* Schedule Management - Admin/Registrar only */}
+        {activeTab === 'schedule-mgmt' && hasAdminAccess && (
           <ScheduleManagement />
         )}
 

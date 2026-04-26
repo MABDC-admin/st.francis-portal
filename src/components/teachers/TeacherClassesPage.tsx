@@ -41,8 +41,6 @@ interface StudentSummary {
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 type ScheduleSource =
   | 'direct_selected_year'
-  | 'direct_school'
-  | 'direct_any'
   | 'advisory_section'
   | 'grade_level'
   | 'none';
@@ -110,18 +108,17 @@ export const TeacherClassesPage = ({ onNavigate }: TeacherClassesPageProps) => {
 
       const selectClause = 'id, subject_id, grade_level, section, day_of_week, start_time, end_time, room, subjects:subject_id(code, name)';
 
-      const getDirectSchedules = async (withSchool: boolean, withYear: boolean) => {
+      if (!schoolId || !selectedYearId) {
+        return { rows: [], source: 'none' } as ScheduleQueryResult;
+      }
+
+      const getDirectSchedules = async () => {
         let query = supabase
           .from('class_schedules')
           .select(selectClause)
-          .eq('teacher_id', teacherProfile.id);
-
-        if (withSchool && schoolId) {
-          query = query.eq('school_id', schoolId);
-        }
-        if (withYear && selectedYearId) {
-          query = query.eq('academic_year_id', selectedYearId);
-        }
+          .eq('teacher_id', teacherProfile.id)
+          .eq('school_id', schoolId)
+          .eq('academic_year_id', selectedYearId);
 
         const { data, error } = await query
           .order('day_of_week', { ascending: true })
@@ -134,26 +131,12 @@ export const TeacherClassesPage = ({ onNavigate }: TeacherClassesPageProps) => {
         return (data || []) as ScheduleRow[];
       };
 
-      if (schoolId && selectedYearId) {
-        const directSelectedYear = await getDirectSchedules(true, true);
-        if (directSelectedYear.length > 0) {
-          return { rows: directSelectedYear, source: 'direct_selected_year' } as ScheduleQueryResult;
-        }
+      const directSelectedYear = await getDirectSchedules();
+      if (directSelectedYear.length > 0) {
+        return { rows: directSelectedYear, source: 'direct_selected_year' } as ScheduleQueryResult;
       }
 
-      if (schoolId) {
-        const directSchool = await getDirectSchedules(true, false);
-        if (directSchool.length > 0) {
-          return { rows: directSchool, source: 'direct_school' } as ScheduleQueryResult;
-        }
-      }
-
-      const directAny = await getDirectSchedules(false, false);
-      if (directAny.length > 0) {
-        return { rows: directAny, source: 'direct_any' } as ScheduleQueryResult;
-      }
-
-      if (!schoolId || !selectedYearId || !teacherProfile.grade_level) {
+      if (!teacherProfile.grade_level) {
         return { rows: [], source: 'none' } as ScheduleQueryResult;
       }
 
@@ -263,21 +246,11 @@ export const TeacherClassesPage = ({ onNavigate }: TeacherClassesPageProps) => {
         return (data || []) as StudentSummary[];
       };
 
-      if (schoolId && selectedYearId) {
-        const strictRows = await fetchStudents(true, true);
-        if (strictRows.length > 0) {
-          return strictRows;
-        }
+      if (!schoolId || !selectedYearId) {
+        return [] as StudentSummary[];
       }
 
-      if (schoolId) {
-        const schoolRows = await fetchStudents(true, false);
-        if (schoolRows.length > 0) {
-          return schoolRows;
-        }
-      }
-
-      return fetchStudents(false, false);
+      return fetchStudents(true, true);
     },
     enabled: !!schoolId && (schedules.length > 0 || !!teacherProfile?.grade_level),
   });
@@ -322,14 +295,10 @@ export const TeacherClassesPage = ({ onNavigate }: TeacherClassesPageProps) => {
 
   const fallbackNotice = useMemo(() => {
     switch (scheduleSource) {
-      case 'direct_school':
-        return 'Showing your class assignments from another academic year because no classes are assigned to your account in the selected year.';
-      case 'direct_any':
-        return 'Showing your class assignments from another school/year context because no direct class assignment matched the current school.';
       case 'advisory_section':
-        return 'No direct class schedule was linked to your account, so advisory section schedules are shown for visibility.';
+        return 'No direct class schedule was linked to your account for the current academic year, so advisory section schedules are shown.';
       case 'grade_level':
-        return `No direct teacher schedule was found, so grade-level schedules for ${teacherProfile?.grade_level} are shown as fallback.`;
+        return `No direct teacher schedule was found for the current academic year, so grade-level schedules for ${teacherProfile?.grade_level} are shown.`;
       default:
         return null;
     }

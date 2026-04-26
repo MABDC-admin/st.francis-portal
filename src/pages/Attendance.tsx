@@ -108,6 +108,10 @@ export const Attendance = () => {
             toast.error('School context is not ready yet. Please try again.');
             return;
         }
+        if (!selectedYearId) {
+            toast.error('Academic year context is not ready yet. Please try again.');
+            return;
+        }
 
         setIsSubmitting(true);
         // Vibrate on scan if available
@@ -128,9 +132,14 @@ export const Attendance = () => {
             }
 
             const schoolToUse = student.school_id || schoolId;
-            const academicYearToUse = selectedYearId || student.academic_year_id;
+            const academicYearToUse = selectedYearId;
             if (!schoolToUse || !academicYearToUse) {
                 throw new Error('Attendance context is incomplete for this learner.');
+            }
+            if (student.academic_year_id !== academicYearToUse) {
+                toast.error('This learner is not enrolled in the active academic year.');
+                setIsSubmitting(false);
+                return;
             }
             const today = format(new Date(), 'yyyy-MM-dd');
             const timeStr = format(new Date(), 'HH:mm:ss');

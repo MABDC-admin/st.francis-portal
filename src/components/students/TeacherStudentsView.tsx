@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import { StudentTable } from './StudentTable';
 import { Student } from '@/types/student';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTeacherProfile } from '@/hooks/useTeacherData';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { useSchoolId } from '@/hooks/useSchoolId';
+import { useTeacherProfile, useTeacherSchedule } from '@/hooks/useTeacherData';
 
 const normalizeGradeLevel = (value: string | null | undefined) => {
   if (!value) return '';
@@ -42,18 +44,52 @@ export const TeacherStudentsView = ({
   onAddNew,
 }: TeacherStudentsViewProps) => {
   const { user } = useAuth();
+  const { data: schoolId } = useSchoolId();
+  const { selectedYearId } = useAcademicYear();
   const { data: teacherProfile } = useTeacherProfile(
     role === 'teacher' ? user?.id : undefined,
     role === 'teacher' ? user?.email : undefined,
   );
+  const { data: teacherSchedules = [] } = useTeacherSchedule(
+    role === 'teacher' ? teacherProfile?.id : undefined,
+    role === 'teacher' ? schoolId : undefined,
+    role === 'teacher' ? selectedYearId : undefined,
+    role === 'teacher' ? teacherProfile?.grade_level : undefined,
+  );
 
   const filteredStudents = useMemo(() => {
     if (role === 'teacher' && teacherProfile?.grade_level) {
-      const teacherLevel = normalizeGradeLevel(teacherProfile.grade_level);
-      return students.filter((student) => normalizeGradeLevel(student.level) === teacherLevel);
+      const classSlots = teacherSchedules.length > 0
+        ? teacherSchedules.map((schedule) => ({
+            level: schedule.grade_level,
+            section: schedule.section,
+          }))
+        : [{
+            level: teacherProfile.grade_level,
+            section: null,
+          }];
+
+      return students.filter((student) => {
+        return classSlots.some((slot) => {
+          const sameLevel = normalizeGradeLevel(student.level) === normalizeGradeLevel(slot.level);
+          if (!sameLevel) {
+            return false;
+          }
+
+          if (!slot.section) {
+            return true;
+          }
+
+          if (!student.section) {
+            return true;
+          }
+
+          return student.section === slot.section;
+        });
+      });
     }
     return students;
-  }, [students, role, teacherProfile?.grade_level]);
+  }, [students, role, teacherProfile?.grade_level, teacherSchedules]);
 
   const noopHandler = () => {};
 

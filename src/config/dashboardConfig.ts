@@ -202,7 +202,7 @@ export const getNavGroupsForRole = (role: string | null): NavGroup[] => {
             { id: "subjects", icon: BookCopy, label: "Subjects" },
             { id: "sections-mgmt", icon: Layers3, label: "Sections" },
             { id: "subject-enrollment", icon: FileSpreadsheet, label: "Subject Enrollment" },
-            { id: "schedule-mgmt", icon: CalendarDays, label: "Schedules" },
+            { id: "teacher-schedule", icon: CalendarDays, label: "My Schedule" },
             { id: "assignment-mgmt", icon: SquarePen, label: "Assignments" },
             { id: "exam-mgmt", icon: FileBarChart2, label: "Exams" },
           ],

@@ -83,19 +83,17 @@ const fetchTeacherSchedulesWithFallback = async <T extends ScheduleLookupRow>({
   teacherId: string;
   selectClause: string;
 } & TeacherScheduleFallbackOptions): Promise<T[]> => {
-  const runDirectLookup = async (withSchoolFilter: boolean, withYearFilter: boolean) => {
+  if (!schoolId || !academicYearId) {
+    return [];
+  }
+
+  const runDirectLookup = async () => {
     let query = supabase
       .from('class_schedules')
       .select(selectClause)
-      .eq('teacher_id', teacherId);
-
-    if (withSchoolFilter && schoolId) {
-      query = query.eq('school_id', schoolId);
-    }
-
-    if (withYearFilter && academicYearId) {
-      query = query.eq('academic_year_id', academicYearId);
-    }
+      .eq('teacher_id', teacherId)
+      .eq('school_id', schoolId)
+      .eq('academic_year_id', academicYearId);
 
     const { data, error } = await query
       .order('day_of_week', { ascending: true })
@@ -108,26 +106,12 @@ const fetchTeacherSchedulesWithFallback = async <T extends ScheduleLookupRow>({
     return (data || []) as unknown as T[];
   };
 
-  if (schoolId && academicYearId) {
-    const selectedYearSchedules = await runDirectLookup(true, true);
-    if (selectedYearSchedules.length > 0) {
-      return selectedYearSchedules;
-    }
+  const selectedYearSchedules = await runDirectLookup();
+  if (selectedYearSchedules.length > 0) {
+    return selectedYearSchedules;
   }
 
-  if (schoolId) {
-    const schoolSchedules = await runDirectLookup(true, false);
-    if (schoolSchedules.length > 0) {
-      return schoolSchedules;
-    }
-  }
-
-  const directSchedules = await runDirectLookup(false, false);
-  if (directSchedules.length > 0) {
-    return directSchedules;
-  }
-
-  if (!schoolId || !academicYearId || !gradeLevel) {
+  if (!gradeLevel) {
     return [];
   }
 
@@ -193,47 +177,50 @@ export const useTeacherProfile = (userId: string | undefined, userEmail?: string
     queryFn: async () => {
       if (!userId && !userEmail) return null;
 
-      const fetchTeacherById = async (teacherId: string) => {
-        const { data: teacherById, error: teacherByIdError } = await supabase
-          .from('teachers')
-          .select('*')
-          .eq('id', teacherId)
-          .maybeSingle();
+      const candidateMap = new Map<string, TeacherRecord>();
 
-        if (teacherByIdError) {
-          console.error('Error fetching teacher by ID:', teacherByIdError);
-          return null;
+      const appendCandidates = (records: TeacherRecord[] | null | undefined) => {
+        for (const record of records || []) {
+          if (record?.id) {
+            candidateMap.set(record.id, record);
+          }
         }
-
-        return teacherById as TeacherRecord | null;
       };
 
-      // First try direct user_id match on teachers table
-      if (userId) {
-        const { data: teacher, error } = await supabase
-          .from('teachers')
-          .select('*')
-          .eq('user_id', userId)
-          .maybeSingle();
+      const fetchTeachersByField = async (
+        column: 'id' | 'user_id' | 'email',
+        value: string,
+        useCaseInsensitiveEmail = false,
+      ) => {
+        let query = supabase.from('teachers').select('*');
+        query = column === 'email' && useCaseInsensitiveEmail
+          ? query.ilike(column, value)
+          : query.eq(column, value);
 
+        const { data, error } = await query.limit(10);
         if (error) {
-          console.error('Error fetching teacher profile:', error);
-        } else if (teacher) {
-          return teacher as TeacherRecord;
+          console.error(`Error fetching teachers by ${column}:`, error);
+          return [] as TeacherRecord[];
         }
 
-        // Fallback: check user_credentials for teacher_id link by user_id
+        return (data || []) as TeacherRecord[];
+      };
+
+      let linkedTeacherId: string | null = null;
+      if (userId) {
+        appendCandidates(await fetchTeachersByField('user_id', userId));
+
         const { data: creds, error: credError } = await supabase
           .from('user_credentials')
           .select('teacher_id')
           .eq('user_id', userId)
           .maybeSingle();
 
-        if (!credError && creds?.teacher_id) {
-          const teacherByCred = await fetchTeacherById(creds.teacher_id);
-          if (teacherByCred) {
-            return teacherByCred;
-          }
+        if (credError) {
+          console.error('Error fetching teacher credential link by user ID:', credError);
+        } else if (creds?.teacher_id) {
+          linkedTeacherId = creds.teacher_id;
+          appendCandidates(await fetchTeachersByField('id', creds.teacher_id));
         }
       }
 
@@ -244,36 +231,47 @@ export const useTeacherProfile = (userId: string | undefined, userEmail?: string
       }
 
       if (!resolvedEmail) {
-        return null;
+        const fallbackCandidate = Array.from(candidateMap.values())[0] || null;
+        return fallbackCandidate;
       }
 
-      // Fallback: check user_credentials by email
       const { data: credsByEmail, error: credsByEmailError } = await supabase
         .from('user_credentials')
         .select('teacher_id')
         .ilike('email', resolvedEmail)
         .maybeSingle();
 
-      if (!credsByEmailError && credsByEmail?.teacher_id) {
-        const teacherByEmailCred = await fetchTeacherById(credsByEmail.teacher_id);
-        if (teacherByEmailCred) {
-          return teacherByEmailCred;
-        }
+      if (credsByEmailError) {
+        console.error('Error fetching teacher credential link by email:', credsByEmailError);
+      } else if (credsByEmail?.teacher_id) {
+        linkedTeacherId = linkedTeacherId || credsByEmail.teacher_id;
+        appendCandidates(await fetchTeachersByField('id', credsByEmail.teacher_id));
       }
 
-      // Final fallback: direct teacher email match
-      const { data: teacherByEmail, error: teacherByEmailError } = await supabase
-        .from('teachers')
-        .select('*')
-        .ilike('email', resolvedEmail)
-        .maybeSingle();
+      appendCandidates(await fetchTeachersByField('email', resolvedEmail, true));
 
-      if (teacherByEmailError) {
-        console.error('Error fetching teacher by email:', teacherByEmailError);
+      const candidates = Array.from(candidateMap.values());
+      if (candidates.length === 0) {
         return null;
       }
 
-      return teacherByEmail as TeacherRecord | null;
+      const scoreCandidate = (candidate: TeacherRecord) => {
+        let score = 0;
+
+        if (userId && candidate.user_id === userId) score += 6;
+        if (linkedTeacherId && candidate.id === linkedTeacherId) score += 10;
+        if (resolvedEmail && candidate.email?.trim().toLowerCase() === resolvedEmail) score += 4;
+        if (candidate.grade_level) score += 3;
+        if (candidate.subjects && candidate.subjects.length > 0) score += 1;
+        if (candidate.school) score += 1;
+
+        return score;
+      };
+
+      const bestCandidate = candidates
+        .sort((left, right) => scoreCandidate(right) - scoreCandidate(left))[0];
+
+      return bestCandidate || null;
     },
     enabled: !!userId || !!userEmail,
     staleTime: 5 * 60 * 1000,
@@ -365,19 +363,11 @@ export const useTeacherStudentCount = (
           return data || [];
         };
 
-        let students: Array<{ id: string; level: string; section: string | null }> = [];
-
-        if (schoolId && academicYearId) {
-          students = await fetchStudents(true, true);
+        if (!schoolId || !academicYearId) {
+          return 0;
         }
 
-        if (students.length === 0 && schoolId) {
-          students = await fetchStudents(true, false);
-        }
-
-        if (students.length === 0) {
-          students = await fetchStudents(false, false);
-        }
+        const students = await fetchStudents(true, true);
 
         if (!students.length) {
           return 0;

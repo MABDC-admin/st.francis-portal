@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   ArrowLeft,
   Printer,
@@ -75,7 +75,11 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { StudentSubjectsManager } from '@/components/students/StudentSubjectsManager';
+import { useAuth } from '@/contexts/AuthContext';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { useSchool } from '@/contexts/SchoolContext';
+import { useSchoolId } from '@/hooks/useSchoolId';
+import { useTeacherProfile, useTeacherSchedule } from '@/hooks/useTeacherData';
 import { generateSF1 } from '@/utils/sf1Generator';
 import { generateAnnex1 } from '@/utils/annex1Generator';
 import { generateSF9 } from '@/utils/sf9Generator';
@@ -121,9 +125,26 @@ const INCIDENT_CATEGORIES = [
   { value: 'other', label: 'Other', color: 'bg-gray-100 text-gray-700' },
 ];
 
+const normalizeGradeLevel = (value: string | null | undefined) => {
+  if (!value) return '';
+
+  const normalized = value.toLowerCase().replace(/\s+/g, ' ').trim();
+  if (normalized.includes('kinder')) {
+    return normalized.replace(/\s+/g, '');
+  }
+
+  const stripped = normalized.replace(/^grade\s*/i, '').replace(/^g\s*/i, '').trim();
+  if (/^\d{1,2}$/.test(stripped)) {
+    return `grade-${stripped}`;
+  }
+
+  return stripped.replace(/\s+/g, '');
+};
+
 const StudentProfile = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user, role } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const { theme } = useColorTheme();
   const [enrolledSubjects, setEnrolledSubjects] = useState<EnrolledSubject[]>([]);
@@ -131,7 +152,6 @@ const StudentProfile = () => {
   const [incidents, setIncidents] = useState<StudentIncident[]>([]);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [currentAcademicYearId, setCurrentAcademicYearId] = useState<string>('');
   const { schoolTheme } = useSchool();
 
   // Modal states
@@ -196,7 +216,56 @@ const StudentProfile = () => {
   const updateStudent = useUpdateStudent();
 
   const { data: students = [], isLoading } = useStudents();
-  const student = students.find(s => s.id === id);
+  const { data: schoolId } = useSchoolId();
+  const { selectedYearId } = useAcademicYear();
+  const { data: teacherProfile } = useTeacherProfile(
+    role === 'teacher' ? user?.id : undefined,
+    role === 'teacher' ? user?.email : undefined,
+  );
+  const { data: teacherSchedules = [] } = useTeacherSchedule(
+    role === 'teacher' ? teacherProfile?.id : undefined,
+    role === 'teacher' ? schoolId : undefined,
+    role === 'teacher' ? selectedYearId : undefined,
+    role === 'teacher' ? teacherProfile?.grade_level : undefined,
+  );
+
+  const visibleStudents = useMemo(() => {
+    if (role !== 'teacher' || !teacherProfile?.grade_level) {
+      return students;
+    }
+
+    const classSlots = teacherSchedules.length > 0
+      ? teacherSchedules.map((schedule) => ({
+          level: schedule.grade_level,
+          section: schedule.section,
+        }))
+      : [{
+          level: teacherProfile.grade_level,
+          section: null,
+        }];
+
+    return students.filter((candidate) => {
+      return classSlots.some((slot) => {
+        const sameLevel = normalizeGradeLevel(candidate.level) === normalizeGradeLevel(slot.level);
+        if (!sameLevel) {
+          return false;
+        }
+
+        if (!slot.section) {
+          return true;
+        }
+
+        if (!candidate.section) {
+          return true;
+        }
+
+        return candidate.section === slot.section;
+      });
+    });
+  }, [role, students, teacherProfile?.grade_level, teacherSchedules]);
+
+  const student = visibleStudents.find(s => s.id === id);
+  const effectiveAcademicYearId = student?.academic_year_id || '';
 
   // Initialize student form when student data loads
   useEffect(() => {
@@ -236,19 +305,6 @@ const StudentProfile = () => {
       });
     }
   }, [student?.id]); // Only re-run when student ID changes
-
-  // Fetch current academic year for TransmutationManager
-  useEffect(() => {
-    const fetchCurrentYear = async () => {
-      const { data } = await supabase
-        .from('academic_years')
-        .select('id')
-        .eq('is_current', true)
-        .single();
-      if (data) setCurrentAcademicYearId(data.id);
-    };
-    fetchCurrentYear();
-  }, []);
 
   // Fetch enrolled subjects
   useEffect(() => {
@@ -469,8 +525,13 @@ const StudentProfile = () => {
         return;
       }
 
-      const academicYear = gradesData?.[0]?.academic_years?.name || '2025-2026';
-      const yearId = gradesData?.[0]?.academic_year_id || currentAcademicYearId;
+      const academicYear = gradesData?.[0]?.academic_years?.name || 'Current academic year';
+      const yearId = gradesData?.[0]?.academic_year_id || effectiveAcademicYearId;
+
+      if (!yearId) {
+        toast.error('Academic year is missing for this learner record');
+        return;
+      }
 
       const formattedGrades = (gradesData || []).map((g: any) => ({
         subject_code: g.subjects?.code || 'N/A',
@@ -1699,9 +1760,9 @@ const StudentProfile = () => {
 
           {/* Transmutation Tab */}
           <TabsContent value="transmutation" className="mt-6">
-            {currentAcademicYearId && student ? (
+            {effectiveAcademicYearId && student ? (
               <div className="h-[600px]">
-                <TransmutationManager student={student} academicYearId={currentAcademicYearId} />
+                <TransmutationManager student={student} academicYearId={effectiveAcademicYearId} />
               </div>
             ) : (
               <div className="flex items-center justify-center h-64">
