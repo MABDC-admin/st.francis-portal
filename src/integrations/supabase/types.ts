@@ -4975,6 +4975,16 @@ export type Database = {
           section: string
         }[]
       }
+      teacher_grade_scope: {
+        Args: { _user_id: string }
+        Returns: {
+          academic_year_id: string
+          grade_level: string
+          school_id: string
+          section: string
+          subject_id: string
+        }[]
+      }
       teacher_matches_current_user: {
         Args: {
           target_email: string
