@@ -4969,9 +4969,18 @@ export type Database = {
       teacher_grade_levels: {
         Args: { _user_id: string }
         Returns: {
+          academic_year_id: string
           grade_level: string
           school_id: string
         }[]
+      }
+      teacher_matches_current_user: {
+        Args: {
+          target_email: string
+          target_teacher_id: string
+          target_user_id: string
+        }
+        Returns: boolean
       }
       title_case: { Args: { input_text: string }; Returns: string }
       user_has_school_access: {
