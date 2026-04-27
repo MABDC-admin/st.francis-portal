@@ -200,11 +200,18 @@ Deno.serve(async (req) => {
 
     console.log('[Scheduled Indexing] Starting midnight UAE indexing job...');
 
+    // Reset orphaned 'processing' page rows so they get retried
+    await supabase
+      .from('book_page_index')
+      .update({ index_status: 'pending' })
+      .eq('index_status', 'processing');
+
+    // Pick up new books AND books that stalled mid-indexing or errored out
     const { data: pendingBooks, error: booksError } = await supabase
       .from('books')
       .select('id, title')
       .eq('status', 'ready')
-      .or('index_status.is.null,index_status.eq.pending')
+      .or('index_status.is.null,index_status.eq.pending,index_status.eq.indexing,index_status.eq.error')
       .order('created_at', { ascending: true });
 
     if (booksError) {
