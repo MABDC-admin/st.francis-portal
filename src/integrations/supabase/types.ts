@@ -4919,6 +4919,10 @@ export type Database = {
         Args: { p_action: string; p_confirmation_text: string }
         Returns: Json
       }
+      book_matches_school_scope: {
+        Args: { _book_school: string; _school_code: string; _school_id: string }
+        Returns: boolean
+      }
       check_finance_access: { Args: { p_school_id: string }; Returns: boolean }
       current_teacher_id: { Args: never; Returns: string }
       get_user_conversation_ids: {
@@ -4965,6 +4969,23 @@ export type Database = {
           target_user_id: string
         }
         Returns: string
+      }
+      normalize_library_grade_level: {
+        Args: { value: string }
+        Returns: string
+      }
+      student_can_access_library_book: {
+        Args: {
+          _book_grade: string
+          _book_school: string
+          _is_teacher_only: boolean
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      teacher_can_access_library_book: {
+        Args: { _book_grade: string; _book_school: string; _user_id: string }
+        Returns: boolean
       }
       teacher_grade_levels: {
         Args: { _user_id: string }

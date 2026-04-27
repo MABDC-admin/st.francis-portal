@@ -102,8 +102,9 @@ Deno.serve(async (req) => {
 
     const bookMap = new Map<string, BookResult>();
 
-    for (const row of results) {
-      const book = row.books || row;
+    for (const row of results as any[]) {
+      const book = Array.isArray(row.books) ? row.books[0] : (row.books || row);
+      if (!book) continue;
       const bookId = row.book_id;
 
       if (grade_level && !gradeMatches(book.grade_level, grade_level)) continue;
