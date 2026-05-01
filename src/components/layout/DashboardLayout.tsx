@@ -158,18 +158,18 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
         onClick={() => handleNavigate(item.id)}
         title={isCollapsed ? item.label : undefined}
         className={cn(
-          "group relative flex w-full items-center gap-3 rounded-xl border border-transparent font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
+          "group relative flex w-full items-center gap-3 rounded-2xl border border-transparent font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
           isNested ? "px-3 py-2 text-sm" : "px-3 py-2.5 text-sm",
           isCollapsed && !isNested && "justify-center px-0",
           isActive
-            ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]"
+            ? "bg-white text-[#191f38] shadow-[0_16px_34px_rgba(15,23,42,0.22)]"
             : "text-sidebar-foreground/78 hover:bg-white/10 hover:text-sidebar-foreground",
         )}
       >
         <span
           className={cn(
             "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors",
-            isActive ? "bg-white/16" : "bg-white/6 group-hover:bg-white/12",
+            isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "bg-white/6 group-hover:bg-white/12",
           )}
         >
           <Icon className={cn("h-[18px] w-[18px]", isNested && "h-4 w-4")} />
@@ -198,7 +198,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
           className={cn(
             "flex h-12 w-full items-center justify-center rounded-xl border border-transparent transition-colors",
             hasActiveChild
-              ? "bg-sidebar-accent text-sidebar-accent-foreground"
+              ? "bg-white text-[#191f38] shadow-[0_16px_34px_rgba(15,23,42,0.22)]"
               : "text-sidebar-foreground/80 hover:bg-white/10 hover:text-sidebar-foreground",
           )}
         >
@@ -213,14 +213,14 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
           <button
             type="button"
             className={cn(
-              "flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-all",
+              "flex w-full items-center justify-between rounded-2xl px-3 py-2.5 text-left text-sm font-medium transition-all",
               hasActiveChild
-                ? "bg-white/10 text-sidebar-foreground"
+                ? "bg-white/12 text-sidebar-foreground"
                 : "text-sidebar-foreground/78 hover:bg-white/10 hover:text-sidebar-foreground",
             )}
           >
             <span className="flex items-center gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/6">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/8">
                 <Icon className="h-[18px] w-[18px]" />
               </span>
               <span>{group.label}</span>
@@ -240,7 +240,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
   const sidebar = (
     <div className="flex h-full flex-col gradient-sidebar text-sidebar-foreground">
       <div className={cn("flex items-center gap-3 border-b border-sidebar-border/70 px-4 py-4", isCollapsed && "justify-center px-3")}>
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground ring-4 ring-white/10">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white p-1 text-sidebar-primary ring-4 ring-white/10">
           <SchoolLogo
             src={schoolLogoSrc}
             className="h-full w-full rounded-xl"
@@ -249,10 +249,11 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
         </div>
         {!isCollapsed && (
           <div className="min-w-0">
-            <p className="micro-label text-white/60">School Portal</p>
-            <p className="truncate text-sm font-black tracking-tight">
+            <p className="micro-label text-white/55">School Portal</p>
+            <p className="truncate text-base font-extrabold tracking-tight">
               {schoolSettings?.acronym || selectedSchool}
             </p>
+            <p className="mt-1 text-xs text-white/55">Unified operations workspace</p>
           </div>
         )}
       </div>
@@ -264,7 +265,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="h-10 w-full justify-between rounded-xl border border-white/16 bg-white/8 px-3 text-sidebar-foreground hover:bg-white/14 hover:text-sidebar-foreground"
+                className="h-11 w-full justify-between rounded-2xl border border-white/16 bg-white/8 px-3 text-sidebar-foreground hover:bg-white/14 hover:text-sidebar-foreground"
               >
                 {isLoadingYears ? (
                   <Skeleton className="h-4 w-24 bg-white/18" />
@@ -295,7 +296,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
             </DropdownMenuContent>
           </DropdownMenu>
           {selectedYear && !selectedYear.is_current && (
-            <div className="flex items-center gap-2 rounded-xl bg-warning/18 px-3 py-2 text-xs text-white">
+            <div className="flex items-center gap-2 rounded-2xl border border-destructive/30 bg-destructive/20 px-3 py-2 text-xs font-semibold text-red-50">
               <Lock className="h-3.5 w-3.5" />
               <span>Read-only year selected</span>
             </div>
@@ -315,7 +316,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
             className={cn(
               "mb-2 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
               activeTab === adminItem.id
-                ? "bg-white text-sidebar-background"
+                ? "bg-white text-[#191f38]"
                 : "text-sidebar-foreground hover:bg-white/10",
             )}
           >
@@ -328,7 +329,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
 
         <div
           className={cn(
-            "rounded-2xl border border-white/12 bg-white/10 p-3",
+            "rounded-[1.6rem] border border-white/12 bg-white/10 p-3 backdrop-blur-sm",
             isCollapsed && "border-none bg-transparent p-0",
           )}
         >
@@ -357,7 +358,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
               <button
                 type="button"
                 onClick={() => handleNavigate("helpdesk")}
-                className="mt-3 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-sidebar-foreground/84 transition-colors hover:bg-white/10"
+                className="mt-3 flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-left text-sm text-sidebar-foreground/84 transition-colors hover:bg-white/10"
               >
                 <HelpCircle className="h-4 w-4" />
                 <span>Help & Support</span>
@@ -409,13 +410,13 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
         )}
       </AnimatePresence>
 
-      <header className="fixed inset-x-0 top-0 z-30 h-16 border-b border-border/80 bg-card/92 backdrop-blur md:pl-[var(--sidebar-offset)]">
+      <header className="fixed inset-x-0 top-0 z-30 h-16 border-b border-border/80 bg-card/82 shadow-[0_10px_34px_rgba(25,31,56,0.08)] backdrop-blur-xl md:pl-[var(--sidebar-offset)]">
         <div className="flex h-full items-center justify-between gap-4 px-4 md:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-full md:hidden"
+              className="rounded-2xl md:hidden"
               onClick={() => setMobileSidebarOpen(true)}
             >
               <Menu className="h-5 w-5" />
@@ -423,14 +424,14 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
             <Button
               variant="ghost"
               size="icon"
-              className="hidden rounded-full md:inline-flex"
+              className="hidden rounded-2xl md:inline-flex"
               onClick={() => setIsCollapsed((previous) => !previous)}
             >
               {isCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
             </Button>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <div className="hidden items-center gap-2 rounded-full border border-border bg-background px-2 py-1 md:flex">
+                <div className="hidden items-center gap-2 rounded-2xl border border-border/80 bg-card/90 px-2 py-1 shadow-sm md:flex">
                   <SchoolLogo
                     src={schoolLogoSrc}
                     className="h-7 w-7 rounded-full border border-border/60"
@@ -442,7 +443,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
                 <Badge className={cn("border", roleBadgeClass)} variant="outline">
                   {roleLabel}
                 </Badge>
-                <div className="hidden items-center rounded-full border border-border bg-muted/50 px-3 py-1 text-xs text-muted-foreground md:flex">
+                <div className="hidden items-center rounded-2xl border border-border/80 bg-secondary/65 px-3 py-1 text-xs text-muted-foreground md:flex">
                   <span className="tabular">
                     {format(clock, "EEE, MMM d • hh:mm a")}
                   </span>
@@ -456,7 +457,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
             {canShowComposer && (
               <Button
                 size="icon"
-                className="rounded-full"
+                className="rounded-2xl"
                 onClick={() => handleNavigate("enrollment")}
                 aria-label="Create enrollment"
               >
@@ -465,7 +466,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
             )}
 
             {showRegistrationBell && (
-              <div className="rounded-full border border-border bg-background p-0.5">
+              <div className="rounded-2xl border border-border/80 bg-card/90 p-0.5 shadow-sm">
                 <NotificationBell
                   unreadCount={unreadCount}
                   newRegistrations={newRegistrations}
@@ -475,13 +476,13 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
               </div>
             )}
 
-            <Button variant="ghost" size="icon" className="rounded-full" onClick={toggle}>
+            <Button variant="ghost" size="icon" className="rounded-2xl" onClick={toggle}>
               {isDark ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
             </Button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 rounded-full border border-border bg-background px-1 py-1 shadow-sm transition-colors hover:bg-muted">
+                <button className="flex items-center gap-2 rounded-2xl border border-border/80 bg-card/92 px-1 py-1 shadow-sm transition-colors hover:bg-accent">
                   <Avatar className="h-9 w-9">
                     <AvatarFallback className="bg-primary text-primary-foreground font-bold">
                       {userInitials}
@@ -489,7 +490,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
                   </Avatar>
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-72">
+              <DropdownMenuContent align="end" className="w-72 rounded-2xl border-border/80 shadow-soft">
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10">
@@ -525,7 +526,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
         <div className="px-4 pb-24 pt-20 md:px-6 md:pb-6">
           <div className="mx-auto space-y-6">
             {isImpersonating && actualRole === "admin" && (
-              <div className="flex flex-col gap-3 rounded-2xl border border-warning/35 bg-warning/10 px-4 py-4 text-sm shadow-sm md:flex-row md:items-center md:justify-between">
+              <div className="flex flex-col gap-3 rounded-[1.6rem] border border-warning/35 bg-warning/10 px-4 py-4 text-sm shadow-sm md:flex-row md:items-center md:justify-between">
                 <div className="flex items-start gap-3">
                   <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-warning/18 text-warning">
                     <Eye className="h-4 w-4" />
@@ -544,14 +545,14 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardL
                   <Button
                     type="button"
                     variant="outline"
-                    className="rounded-full"
+                    className="rounded-2xl"
                     onClick={() => handleNavigate("impersonate")}
                   >
                     Manage Impersonation
                   </Button>
                   <Button
                     type="button"
-                    className="rounded-full"
+                    className="rounded-2xl"
                     onClick={stopImpersonating}
                   >
                     <XCircle className="mr-2 h-4 w-4" />

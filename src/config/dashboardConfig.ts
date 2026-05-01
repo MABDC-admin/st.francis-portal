@@ -139,14 +139,14 @@ const iconMap: Record<string, IconComponent> = {
 export const adminItem: NavItem = { id: "admin", icon: LucideShield, label: "Admin Panel" };
 
 export const roleColors: Record<string, string> = {
-  admin: "bg-destructive/12 text-destructive border-destructive/15",
-  registrar: "bg-primary/12 text-primary border-primary/15",
-  teacher: "bg-hrms-success/12 text-hrms-success border-hrms-success/15",
-  student: "bg-primary/12 text-primary border-primary/15",
-  parent: "bg-warning/12 text-warning border-warning/15",
-  finance: "bg-hrms-success/12 text-hrms-success border-hrms-success/15",
-  principal: "bg-accent text-accent-foreground border-primary/10",
-  it: "bg-secondary text-secondary-foreground border-border",
+  admin: "bg-[hsl(var(--getyn-navy)/0.1)] text-[hsl(var(--getyn-navy))] border-[hsl(var(--getyn-navy)/0.16)]",
+  registrar: "bg-primary/12 text-primary border-primary/18",
+  teacher: "bg-[hsl(var(--getyn-blue)/0.12)] text-[hsl(var(--getyn-blue))] border-[hsl(var(--getyn-blue)/0.18)]",
+  student: "bg-[hsl(var(--getyn-teal)/0.12)] text-[hsl(var(--getyn-teal))] border-[hsl(var(--getyn-teal)/0.18)]",
+  parent: "bg-[hsl(var(--getyn-orange)/0.12)] text-[hsl(var(--getyn-orange))] border-[hsl(var(--getyn-orange)/0.18)]",
+  finance: "bg-[hsl(var(--primary)/0.12)] text-primary border-primary/18",
+  principal: "bg-[hsl(var(--getyn-purple)/0.12)] text-[hsl(var(--getyn-purple))] border-[hsl(var(--getyn-purple)/0.18)]",
+  it: "bg-[hsl(var(--getyn-pink)/0.12)] text-[hsl(var(--getyn-pink))] border-[hsl(var(--getyn-pink)/0.18)]",
 };
 
 export const roleLabels: Record<string, string> = {

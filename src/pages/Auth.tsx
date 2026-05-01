@@ -396,18 +396,18 @@ const Auth = () => {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background px-4 py-4 lg:py-6">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,123,255,0.18),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(0,123,255,0.08),transparent_24%)]" />
-      <div className="relative mx-auto flex min-h-[calc(100vh-2rem)] max-w-6xl items-center">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(25,31,56,0.12),transparent_30%),radial-gradient(circle_at_top_right,rgba(33,196,93,0.16),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(37,140,244,0.12),transparent_26%),linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,247,252,0.98))]" />
+      <div className="relative mx-auto flex min-h-[calc(100vh-2rem)] max-w-7xl items-center">
         <div className="grid w-full gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-8">
-          <div className="space-y-4 lg:space-y-5">
-            <Badge variant="outline" className="border-primary/15 bg-accent text-accent-foreground">
+          <div className="space-y-5 lg:space-y-6">
+            <Badge variant="outline" className="w-fit rounded-full border-primary/20 bg-primary/10 px-3.5 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
               {schoolSettings?.acronym || currentTheme.name} Portal
             </Badge>
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="flex items-center gap-4">
                 <SchoolLogo
                   src={resolveSchoolLogo(schoolSettings?.logo_url || currentTheme.logoSrc)}
-                  className="h-16 w-16 rounded-[1.35rem] border border-border/60 shadow-soft lg:h-[4.5rem] lg:w-[4.5rem]"
+                  className="h-16 w-16 rounded-[1.35rem] border border-white/70 bg-white p-1 shadow-soft lg:h-[4.75rem] lg:w-[4.75rem]"
                 />
                 <div>
                   <p className="micro-label">School Portal</p>
@@ -416,13 +416,36 @@ const Auth = () => {
                   </p>
                 </div>
               </div>
-              <p className="max-w-xl text-sm text-muted-foreground">
-                Latest school updates and scheduled activities.
-              </p>
+              <div className="space-y-2">
+                <h1 className="max-w-2xl text-4xl font-extrabold tracking-[-0.04em] text-foreground sm:text-5xl">
+                  Calm, modern school access with live campus updates.
+                </h1>
+                <p className="max-w-xl text-sm leading-6 text-muted-foreground">
+                  Sign in while staying informed with announcements, events, and a cleaner portal experience built for daily school operations.
+                </p>
+              </div>
             </div>
 
-            <div className="relative w-full max-w-lg overflow-hidden rounded-[1.45rem] border border-border/70 bg-card/85 shadow-soft backdrop-blur">
-              <div className="absolute inset-x-0 top-0 h-20 bg-[radial-gradient(circle_at_top_left,rgba(0,123,255,0.14),transparent_48%),radial-gradient(circle_at_top_right,rgba(16,185,129,0.12),transparent_40%)]" />
+            <div className="grid max-w-2xl gap-3 sm:grid-cols-3">
+              <div className="rounded-[1.35rem] border border-border/70 bg-card/88 p-4 shadow-card backdrop-blur-sm">
+                <p className="micro-label">Announcements</p>
+                <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">{loginAnnouncements.length}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Published for this academic year</p>
+              </div>
+              <div className="rounded-[1.35rem] border border-border/70 bg-card/88 p-4 shadow-card backdrop-blur-sm">
+                <p className="micro-label">Incoming Activities</p>
+                <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">{loginEvents.length}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Upcoming items on the calendar</p>
+              </div>
+              <div className="rounded-[1.35rem] border border-border/70 bg-card/88 p-4 shadow-card backdrop-blur-sm">
+                <p className="micro-label">Portal Year</p>
+                <p className="mt-2 text-lg font-bold tracking-tight text-foreground">{selectedYearId ? "Active" : "Pending"}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Feeds follow the selected school year</p>
+              </div>
+            </div>
+
+            <div className="relative w-full max-w-2xl overflow-hidden rounded-[1.8rem] border border-border/70 bg-card/88 shadow-soft backdrop-blur">
+              <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top_left,rgba(25,31,56,0.1),transparent_48%),radial-gradient(circle_at_top_right,rgba(33,196,93,0.18),transparent_40%)]" />
               <div className="relative border-b border-border/60 px-4 pb-3 pt-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1.5">
@@ -437,7 +460,7 @@ const Auth = () => {
                       Swipe through the latest school updates before signing in.
                     </p>
                   </div>
-                  <div className="rounded-xl border border-border/60 bg-background/75 px-3 py-2 text-right shadow-sm">
+                  <div className="rounded-2xl border border-border/60 bg-background/80 px-3 py-2 text-right shadow-sm">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                       Live feed
                     </p>
@@ -452,7 +475,7 @@ const Auth = () => {
                 <Carousel setApi={setBulletinApi} opts={{ loop: true, align: "start" }} className="w-full">
                   <CarouselContent className="-ml-0">
                     <CarouselItem className="pl-0">
-                      <section className="min-h-[220px] rounded-[1.2rem] border border-border/70 bg-background/70 p-4 lg:min-h-[230px]">
+                      <section className="min-h-[220px] rounded-[1.35rem] border border-border/70 bg-background/70 p-4 lg:min-h-[230px]">
                         <div className="mb-4 flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2">
                             <div className="rounded-lg bg-primary/10 p-2 text-primary">
@@ -487,7 +510,7 @@ const Auth = () => {
                           </div>
                         ) : featuredAnnouncement ? (
                           <div className="space-y-3">
-                            <article className={`rounded-[1.2rem] border border-border/70 p-4 shadow-sm ${getAnnouncementTone(featuredAnnouncement.priority)}`}>
+                            <article className={`rounded-[1.35rem] border border-border/70 p-4 shadow-sm ${getAnnouncementTone(featuredAnnouncement.priority)}`}>
                               <div className="flex flex-wrap items-center gap-2">
                                 <Badge className="bg-foreground text-[11px] text-background hover:bg-foreground">
                                   Featured
@@ -517,7 +540,7 @@ const Auth = () => {
                             {secondaryAnnouncements.length > 0 ? (
                               <div className="grid gap-2 sm:grid-cols-2">
                                 {secondaryAnnouncements.map((announcement: any) => (
-                                  <article key={announcement.id} className="rounded-xl border border-border/70 bg-background/80 p-3 shadow-sm">
+                                  <article key={announcement.id} className="rounded-2xl border border-border/70 bg-background/80 p-3 shadow-sm">
                                     <div className="flex items-start justify-between gap-2">
                                       <p className="line-clamp-2 text-xs font-semibold text-foreground">
                                         {announcement.title}
@@ -535,7 +558,7 @@ const Auth = () => {
                             ) : null}
                           </div>
                         ) : (
-                          <div className="rounded-[1.2rem] border border-dashed border-border/80 bg-background/60 p-5 text-center">
+                          <div className="rounded-[1.35rem] border border-dashed border-border/80 bg-background/60 p-5 text-center">
                             <Bell className="mx-auto h-8 w-8 text-primary/70" />
                             <p className="mt-3 text-sm font-semibold text-foreground">No active announcements right now.</p>
                             <p className="mt-1 text-xs text-muted-foreground">
@@ -547,7 +570,7 @@ const Auth = () => {
                     </CarouselItem>
 
                     <CarouselItem className="pl-0">
-                      <section className="min-h-[220px] rounded-[1.2rem] border border-border/70 bg-background/70 p-4 lg:min-h-[230px]">
+                      <section className="min-h-[220px] rounded-[1.35rem] border border-border/70 bg-background/70 p-4 lg:min-h-[230px]">
                         <div className="mb-4 flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2">
                             <div className="rounded-lg bg-emerald-500/10 p-2 text-emerald-600">
@@ -583,7 +606,7 @@ const Auth = () => {
                               const EventIcon = theme.icon;
 
                               return (
-                                <article key={event.id} className="overflow-hidden rounded-xl border border-border/70 bg-background/80 shadow-sm">
+                                <article key={event.id} className="overflow-hidden rounded-2xl border border-border/70 bg-background/80 shadow-sm">
                                   <div className="flex gap-3 p-3">
                                     <div className={`relative flex h-24 w-24 shrink-0 overflow-hidden rounded-[1rem] border border-white/50 ${theme.shellClass}`}>
                                       <div className="absolute inset-0 opacity-90">
@@ -637,7 +660,7 @@ const Auth = () => {
                             })}
                           </div>
                         ) : (
-                          <div className="rounded-[1.2rem] border border-dashed border-border/80 bg-background/60 p-5 text-center">
+                          <div className="rounded-[1.35rem] border border-dashed border-border/80 bg-background/60 p-5 text-center">
                             <CalendarDays className="mx-auto h-8 w-8 text-emerald-600/80" />
                             <p className="mt-3 text-sm font-semibold text-foreground">
                               No upcoming activities have been posted yet.
@@ -668,11 +691,11 @@ const Auth = () => {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Button
+            <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="h-8 rounded-full px-3 text-xs"
+                      className="h-8 rounded-xl px-3 text-xs"
                       onClick={() => bulletinApi?.scrollPrev()}
                     >
                       Previous
@@ -681,7 +704,7 @@ const Auth = () => {
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="h-8 rounded-full px-3 text-xs"
+                      className="h-8 rounded-xl px-3 text-xs"
                       onClick={() => bulletinApi?.scrollNext()}
                     >
                       Next
@@ -692,13 +715,13 @@ const Auth = () => {
             </div>
           </div>
 
-          <Card className="overflow-hidden border-border/80 shadow-soft">
+          <Card className="overflow-hidden rounded-[2rem] border-border/80 shadow-soft">
             <CardContent className="p-0">
-              <div className="border-b border-border/80 bg-gradient-to-r from-primary/10 via-background to-background p-8">
+              <div className="border-b border-border/80 bg-[linear-gradient(135deg,rgba(25,31,56,0.04),rgba(37,140,244,0.03)_45%,rgba(33,196,93,0.09))] p-8">
                 <div className="mb-6 flex items-center gap-4">
                   <SchoolLogo
                     src={resolveSchoolLogo(schoolSettings?.logo_url || currentTheme.logoSrc)}
-                    className="h-14 w-14 rounded-2xl ring-4 ring-primary/10"
+                    className="h-14 w-14 rounded-2xl border border-white/70 bg-white p-1 ring-4 ring-primary/10"
                     imageClassName="rounded-2xl"
                   />
                   <div>
@@ -708,7 +731,15 @@ const Auth = () => {
                     </h2>
                   </div>
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline" className="rounded-full border-[hsl(var(--getyn-navy)/0.12)] bg-[hsl(var(--getyn-navy)/0.05)] text-[hsl(var(--getyn-navy))]">
+                    Session protected
+                  </Badge>
+                  <Badge variant="outline" className="rounded-full border-primary/20 bg-primary/10 text-primary">
+                    Google approval ready
+                  </Badge>
+                </div>
+                <p className="mt-4 text-sm leading-6 text-muted-foreground">
                   Use your email or learner reference number to continue to the portal.
                 </p>
               </div>
@@ -757,7 +788,7 @@ const Auth = () => {
                   <Button
                     type="button"
                     variant="outline"
-                    className="w-full justify-center gap-3"
+                    className="h-11 w-full justify-center gap-3 rounded-xl"
                     onClick={handleGoogleLogin}
                     disabled={isGoogleSubmitting || isSubmitting}
                   >
@@ -783,14 +814,14 @@ const Auth = () => {
 
                 <Button
                   type="submit"
-                  className="w-full"
+                  className="h-11 w-full rounded-xl"
                   disabled={isSubmitting || (lockoutUntil ? Date.now() < lockoutUntil : false)}
                 >
                   {isSubmitting ? "Signing in..." : "Continue to Dashboard"}
                 </Button>
               </form>
 
-              <div className="flex items-center justify-between border-t border-border/80 bg-muted/40 px-8 py-4 text-xs text-muted-foreground">
+              <div className="flex items-center justify-between border-t border-border/80 bg-secondary/55 px-8 py-4 text-xs text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="h-3.5 w-3.5 text-primary" />
                   <span>TLS secured session</span>
