@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.send-teacher-application-email]
 verify_jwt = false
+
+[functions.admin-reset-rene]
+verify_jwt = false
