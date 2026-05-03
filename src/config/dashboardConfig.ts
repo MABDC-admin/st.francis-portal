@@ -298,6 +298,7 @@ export const getNavGroupsForRole = (role: string | null): NavGroup[] => {
             { id: "zoom", icon: MonitorCog, label: "Virtual Classes" },
             { id: "events", icon: CalendarDays, label: "Events" },
             { id: "banner-management", icon: Bell, label: "Banner Management" },
+            { id: "academic-years", icon: CalendarDays, label: "Academic Years" },
           ],
         },
         {

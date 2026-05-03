@@ -2,20 +2,44 @@ import { motion } from "framer-motion";
 import { CalendarDays, ClipboardCheck, MessageSquare, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LayoutStyle } from "@/contexts/DashboardLayoutContext";
+import { cn } from "@/lib/utils";
 
 interface QuickActionsProps {
   onNavigate: (tab: string) => void;
   variant?: LayoutStyle;
+  palette?: "default" | "registrar";
 }
 
 const actions = [
-  { label: "Admit Learner", icon: UserPlus, tab: "enrollment" },
-  { label: "Messages", icon: MessageSquare, tab: "messages" },
-  { label: "Academic Years", icon: CalendarDays, tab: "academic-years" },
-  { label: "Enter Grades", icon: ClipboardCheck, tab: "grades" },
+  {
+    label: "Admit Learner",
+    icon: UserPlus,
+    tab: "enrollment",
+    registrarTone: "border-[hsl(var(--getyn-teal)/0.18)] bg-[hsl(var(--getyn-teal)/0.08)] text-[hsl(var(--getyn-teal))]",
+  },
+  {
+    label: "Messages",
+    icon: MessageSquare,
+    tab: "messages",
+    registrarTone: "border-[hsl(var(--getyn-blue)/0.18)] bg-[hsl(var(--getyn-blue)/0.08)] text-[hsl(var(--getyn-blue))]",
+  },
+  {
+    label: "Academic Years",
+    icon: CalendarDays,
+    tab: "academic-years",
+    registrarTone: "border-[hsl(var(--getyn-orange)/0.18)] bg-[hsl(var(--getyn-orange)/0.08)] text-[hsl(var(--getyn-orange))]",
+  },
+  {
+    label: "Enter Grades",
+    icon: ClipboardCheck,
+    tab: "grades",
+    registrarTone: "border-[hsl(var(--getyn-purple)/0.18)] bg-[hsl(var(--getyn-purple)/0.08)] text-[hsl(var(--getyn-purple))]",
+  },
 ];
 
-export const QuickActions = ({ onNavigate }: QuickActionsProps) => {
+export const QuickActions = ({ onNavigate, palette = "default" }: QuickActionsProps) => {
+  const isRegistrarPalette = palette === "registrar";
+
   return (
     <div className="page-surface p-6">
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -39,10 +63,18 @@ export const QuickActions = ({ onNavigate }: QuickActionsProps) => {
             >
               <Button
                 variant="outline"
-                className="h-auto w-full justify-start gap-3 rounded-lg px-4 py-4 text-left"
+                className={cn(
+                  "h-auto w-full justify-start gap-3 rounded-lg px-4 py-4 text-left",
+                  isRegistrarPalette && "border-border/80 bg-card/90 hover:-translate-y-0.5 hover:bg-card",
+                )}
                 onClick={() => onNavigate(action.tab)}
               >
-                <span className="rounded-2xl bg-accent p-2 text-accent-foreground">
+                <span
+                  className={cn(
+                    "rounded-2xl border p-2",
+                    isRegistrarPalette ? action.registrarTone : "border-transparent bg-accent text-accent-foreground",
+                  )}
+                >
                   <Icon className="h-4 w-4" />
                 </span>
                 <span className="text-sm font-medium">{action.label}</span>

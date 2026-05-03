@@ -10,9 +10,10 @@ interface DashboardStatsRowProps {
   libraryCount?: number;
   onLibraryClick?: () => void;
   variant?: LayoutStyle;
+  palette?: "default" | "registrar";
 }
 
-const stats = [
+const defaultStats = [
   {
     key: "students",
     label: "Total Learners",
@@ -47,12 +48,52 @@ const stats = [
   },
 ];
 
+const registrarStats = [
+  {
+    key: "students",
+    label: "Total Learners",
+    tint: "text-[hsl(var(--getyn-teal))]",
+    shell: "from-[hsl(var(--getyn-teal)/0.18)] via-card to-card",
+    iconBg: "bg-[hsl(var(--getyn-teal)/0.14)] text-[hsl(var(--getyn-teal))]",
+    accent: "bg-[hsl(var(--getyn-teal))]",
+    icon: Users,
+  },
+  {
+    key: "teachers",
+    label: "Teachers",
+    tint: "text-[hsl(var(--getyn-blue))]",
+    shell: "from-[hsl(var(--getyn-blue)/0.16)] via-card to-card",
+    iconBg: "bg-[hsl(var(--getyn-blue)/0.13)] text-[hsl(var(--getyn-blue))]",
+    accent: "bg-[hsl(var(--getyn-blue))]",
+    icon: GraduationCap,
+  },
+  {
+    key: "classes",
+    label: "Grade Levels",
+    tint: "text-[hsl(var(--getyn-orange))]",
+    shell: "from-[hsl(var(--getyn-orange)/0.16)] via-card to-card",
+    iconBg: "bg-[hsl(var(--getyn-orange)/0.13)] text-[hsl(var(--getyn-orange))]",
+    accent: "bg-[hsl(var(--getyn-orange))]",
+    icon: BookOpen,
+  },
+  {
+    key: "library",
+    label: "Library Items",
+    tint: "text-[hsl(var(--getyn-purple))]",
+    shell: "from-[hsl(var(--getyn-purple)/0.16)] via-card to-card",
+    iconBg: "bg-[hsl(var(--getyn-purple)/0.13)] text-[hsl(var(--getyn-purple))]",
+    accent: "bg-[hsl(var(--getyn-purple))]",
+    icon: Library,
+  },
+];
+
 export const DashboardStatsRow = ({
   totalStudents,
   totalTeachers,
   totalClasses,
   libraryCount = 0,
   onLibraryClick,
+  palette = "default",
 }: DashboardStatsRowProps) => {
   const values: Record<string, number> = {
     students: totalStudents,
@@ -60,6 +101,7 @@ export const DashboardStatsRow = ({
     classes: totalClasses,
     library: libraryCount,
   };
+  const stats = palette === "registrar" ? registrarStats : defaultStats;
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -78,9 +120,13 @@ export const DashboardStatsRow = ({
             className={cn(
               "relative overflow-hidden rounded-lg border bg-gradient-to-br p-5 text-left shadow-card transition-all duration-500",
               stat.shell,
+              palette === "registrar" && "border-border/70 hover:-translate-y-1",
               isInteractive ? "hover:scale-[1.02] hover:shadow-lg" : "cursor-default",
             )}
           >
+            {"accent" in stat && (
+              <span className={cn("absolute inset-x-0 top-0 h-1", stat.accent)} />
+            )}
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="micro-label">{stat.label}</p>

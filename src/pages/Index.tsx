@@ -507,8 +507,8 @@ const Index = () => {
           <SubjectManagement />
         )}
 
-        {/* Academic Years - Admin only */}
-        {activeTab === 'academic-years' && role === 'admin' && (
+        {/* Academic Years - Admin/Registrar only */}
+        {activeTab === 'academic-years' && hasAdminAccess && (
           <AcademicYearManagement />
         )}
 

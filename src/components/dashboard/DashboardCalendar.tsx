@@ -57,7 +57,11 @@ import { SchoolType } from '@/contexts/SchoolContext';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-export const DashboardCalendar = () => {
+interface DashboardCalendarProps {
+  compact?: boolean;
+}
+
+export const DashboardCalendar = ({ compact = false }: DashboardCalendarProps) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const { selectedSchool } = useSchool();
   const [calendarSchool, setCalendarSchool] = useState<SchoolType>(selectedSchool);
@@ -247,7 +251,10 @@ export const DashboardCalendar = () => {
       transition={{ delay: 0.3 }}
     >
       <Card className="h-full bg-white dark:bg-slate-900 text-foreground overflow-hidden border-border shadow-sm group/calendar">
-        <CardHeader className="pb-3 border-b border-border/50 transition-colors duration-500 bg-gradient-to-r from-violet-600 via-indigo-500 to-blue-500 text-white">
+        <CardHeader className={cn(
+          "border-b border-border/50 transition-colors duration-500 bg-gradient-to-r from-violet-600 via-indigo-500 to-blue-500 text-white",
+          compact ? "pb-2 pt-3" : "pb-3",
+        )}>
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Calendar className="h-5 w-5 text-white/90" />
@@ -483,7 +490,7 @@ export const DashboardCalendar = () => {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-3">
+        <CardContent className={compact ? "p-2" : "p-3"}>
           <div className="grid grid-cols-7 gap-1 mb-1">
             {daysOfWeek.map((day, idx) => (
               <div key={day} className={cn("text-center text-xs font-medium py-1", idx === new Date().getDay() && isCurrentMonth ? 'bg-slate-100 dark:bg-slate-800 rounded' : '')}>{day}</div>
@@ -504,16 +511,20 @@ export const DashboardCalendar = () => {
                     whileHover={dayObj.currentMonth ? { scale: 1.02, y: -3 } : {}}
                     transition={{ type: "spring", stiffness: 300, damping: 20 }}
                     className={cn(
-                      "text-center text-xs py-2 sm:py-3 rounded transition-all relative border border-transparent flex flex-col items-center justify-start h-full min-h-[60px] sm:min-h-[80px] cursor-pointer",
+                      "text-center text-xs rounded transition-all relative border border-transparent flex flex-col items-center justify-start h-full cursor-pointer",
+                      compact ? "min-h-[42px] py-1.5 sm:min-h-[52px] sm:py-2" : "min-h-[60px] py-2 sm:min-h-[80px] sm:py-3",
                       !dayObj.currentMonth && "opacity-40 cursor-default",
                       isToday && "bg-success text-white font-bold shadow-md",
                       dayEvent && !isToday && "bg-red-500 text-white shadow-md",
                       dayObj.currentMonth && !isToday && !dayEvent && "bg-white dark:bg-slate-900/40 hover:bg-slate-50 dark:hover:bg-slate-800/80 border-slate-100 dark:border-slate-800/50"
                     )}
                   >
-                    <span className="text-sm sm:text-lg font-medium">{dayObj.day}</span>
+                    <span className={cn("font-medium", compact ? "text-xs sm:text-sm" : "text-sm sm:text-lg")}>{dayObj.day}</span>
                     {dayEvent && (
-                      <span className="text-[10px] sm:text-xs mt-1 leading-tight px-1 line-clamp-2 w-full text-center font-normal">
+                      <span className={cn(
+                        "mt-1 leading-tight px-1 w-full text-center font-normal",
+                        compact ? "line-clamp-1 text-[9px]" : "line-clamp-2 text-[10px] sm:text-xs",
+                      )}>
                         {dayEvent.title}
                       </span>
                     )}

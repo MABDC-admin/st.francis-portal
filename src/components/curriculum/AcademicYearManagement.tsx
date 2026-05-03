@@ -47,6 +47,7 @@ export const AcademicYearManagement = () => {
   const [isArchiving, setIsArchiving] = useState(false);
   const [editingYear, setEditingYear] = useState<AcademicYear | null>(null);
   const [formData, setFormData] = useState(initialFormState);
+  const [settingCurrentId, setSettingCurrentId] = useState<string | null>(null);
 
   const fetchYears = async () => {
     if (!schoolId) return;
@@ -97,6 +98,35 @@ export const AcademicYearManagement = () => {
     setIsModalOpen(true);
   };
 
+  const setCurrentAcademicYear = async (year: Pick<AcademicYear, 'id' | 'name' | 'is_archived'>) => {
+    if (year.is_archived) {
+      toast.error('Cannot set an archived year as current');
+      return false;
+    }
+
+    setSettingCurrentId(year.id);
+    try {
+      const { error } = await (supabase as any).rpc('set_current_academic_year', {
+        p_year_id: year.id,
+      });
+
+      if (error) {
+        console.error('Error setting current academic year:', error);
+        throw error;
+      }
+
+      toast.success(`${year.name} set as current academic year`);
+      await fetchYears();
+      return true;
+    } catch (error: any) {
+      console.error('Error setting current academic year:', error);
+      toast.error(error.message || 'Failed to set current academic year');
+      return false;
+    } finally {
+      setSettingCurrentId(null);
+    }
+  };
+
   const handleSave = async () => {
     // Validation
     if (!formData.name || !formData.start_date || !formData.end_date) {
@@ -124,20 +154,6 @@ export const AcademicYearManagement = () => {
 
     setIsSaving(true);
     try {
-      // If setting as current, unset others first
-      if (formData.is_current) {
-        const { error: unsetError } = await supabase
-          .from('academic_years')
-          .update({ is_current: false })
-          .eq('is_current', true)
-          .eq('school_id', schoolId!);
-
-        if (unsetError) {
-          console.error('Error unsetting current year:', unsetError);
-          throw unsetError;
-        }
-      }
-
       if (editingYear) {
         // Update existing year
         const { error } = await supabase
@@ -146,7 +162,6 @@ export const AcademicYearManagement = () => {
             name: formData.name,
             start_date: formData.start_date,
             end_date: formData.end_date,
-            is_current: formData.is_current,
           })
           .eq('id', editingYear.id);
 
@@ -154,23 +169,39 @@ export const AcademicYearManagement = () => {
           console.error('Error updating academic year:', error);
           throw error;
         }
+
+        if (formData.is_current) {
+          await setCurrentAcademicYear({
+            id: editingYear.id,
+            name: formData.name,
+            is_archived: editingYear.is_archived,
+          });
+        }
+
         toast.success('Academic year updated successfully');
       } else {
         // Create new year
-        const { error } = await (supabase
+        const { data, error } = await (supabase
           .from('academic_years') as any)
           .insert({
             name: formData.name,
             start_date: formData.start_date,
             end_date: formData.end_date,
-            is_current: formData.is_current,
+            is_current: false,
             school_id: schoolId!,
-          });
+          })
+          .select('id, name, is_archived')
+          .single();
 
         if (error) {
           console.error('Error creating academic year:', error);
           throw error;
         }
+
+        if (formData.is_current && data) {
+          await setCurrentAcademicYear(data);
+        }
+
         toast.success('Academic year created successfully');
       }
 
@@ -190,41 +221,7 @@ export const AcademicYearManagement = () => {
   };
 
   const handleSetCurrent = async (year: AcademicYear) => {
-    if (year.is_archived) {
-      toast.error('Cannot set an archived year as current');
-      return;
-    }
-
-    try {
-      // First unset the current year
-      const { error: unsetError } = await supabase
-        .from('academic_years')
-        .update({ is_current: false })
-        .eq('is_current', true)
-        .eq('school_id', schoolId!);
-
-      if (unsetError) {
-        console.error('Error unsetting current year:', unsetError);
-        throw unsetError;
-      }
-
-      // Then set the new current year
-      const { error: setError } = await supabase
-        .from('academic_years')
-        .update({ is_current: true })
-        .eq('id', year.id);
-
-      if (setError) {
-        console.error('Error setting current year:', setError);
-        throw setError;
-      }
-
-      toast.success(`${year.name} set as current academic year`);
-      await fetchYears();
-    } catch (error: any) {
-      console.error('Error setting current year:', error);
-      toast.error(error.message || 'Failed to set current academic year');
-    }
+    await setCurrentAcademicYear(year);
   };
 
   const handleDelete = async (year: AcademicYear) => {
@@ -309,6 +306,7 @@ export const AcademicYearManagement = () => {
       const { error: archiveError } = await supabase
         .from('academic_years')
         .update({
+          is_current: false,
           is_archived: true,
           archived_at: new Date().toISOString(),
           archived_by: user?.id,
@@ -434,16 +432,26 @@ export const AcademicYearManagement = () => {
                         <div className="flex items-center gap-1">
                           {!year.is_archived && !year.is_current && (
                             <>
-                              <Button variant="ghost" size="icon" onClick={() => handleSetCurrent(year)} title="Set as current">
-                                <Check className="h-4 w-4 text-green-500" />
-                              </Button>
-                              <Button variant="ghost" size="icon" onClick={() => setArchiveConfirm(year)} title="Archive this year">
-                                <Archive className="h-4 w-4 text-amber-600" />
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleSetCurrent(year)}
+                                disabled={settingCurrentId === year.id}
+                                title="Set as current"
+                              >
+                                {settingCurrentId === year.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin text-green-500" />
+                                ) : (
+                                  <Check className="h-4 w-4 text-green-500" />
+                                )}
                               </Button>
                             </>
                           )}
                           {!year.is_archived && (
                             <>
+                              <Button variant="ghost" size="icon" onClick={() => setArchiveConfirm(year)} title="Close / archive this year">
+                                <Archive className="h-4 w-4 text-amber-600" />
+                              </Button>
                               <Button variant="ghost" size="icon" onClick={() => handleOpenModal(year)}>
                                 <Edit className="h-4 w-4" />
                               </Button>
@@ -560,13 +568,13 @@ export const AcademicYearManagement = () => {
       <AlertDialog open={!!archiveConfirm} onOpenChange={(open) => { if (!open) setArchiveConfirm(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Archive {archiveConfirm?.name}?</AlertDialogTitle>
+            <AlertDialogTitle>Close / archive {archiveConfirm?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
               This will:
               <ul className="list-disc pl-5 mt-2 space-y-1">
                 <li>Create immutable snapshots of all grades for this year</li>
                 <li>Lock grade editing for this academic year</li>
-                <li>Mark this year as archived</li>
+                <li>Mark this year as archived and no longer active</li>
               </ul>
               <p className="mt-2 font-medium text-destructive">This action cannot be undone.</p>
             </AlertDialogDescription>
@@ -576,7 +584,7 @@ export const AcademicYearManagement = () => {
             <AlertDialogAction onClick={handleArchive} disabled={isArchiving} className="bg-amber-600 hover:bg-amber-700">
               {isArchiving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               <Archive className="h-4 w-4 mr-2" />
-              Archive Year
+              Close / Archive Year
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
